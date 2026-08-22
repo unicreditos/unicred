@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -52,7 +52,7 @@ export function LoanSimulator({
             min={minAmount}
             max={maxAmount}
             step={10000}
-            onValueChange={(v) => setAmount(v[0])}
+            onValueChange={(v) => setAmount(Array.isArray(v) ? v[0] : v)}
             aria-label="Monto del crédito"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -100,9 +100,7 @@ export function LoanSimulator({
         </dl>
 
         {cta && (
-          <Button asChild className="w-full" size="lg">
-            <Link href="/sign-up">Solicitar este crédito</Link>
-          </Button>
+<Link href="/sign-up" className={buttonVariants({ className: 'w-full', size: 'lg' })}>Solicitar este crédito</Link>
         )}
       </div>
     </Card>

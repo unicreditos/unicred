@@ -1,6 +1,6 @@
 import { Logo } from '@/components/brand'
 import { LoanSimulator } from '@/components/loan-simulator'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
 import {
   BadgeCheck,
@@ -29,17 +29,11 @@ export default async function HomePage() {
           </nav>
           <div className="flex items-center gap-2">
             {session?.user ? (
-              <Button asChild size="sm">
-                <Link href="/dashboard">Mi cuenta</Link>
-              </Button>
+<Link href="/dashboard" className={buttonVariants({ size: 'sm' })}>Mi cuenta</Link>
             ) : (
               <>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/sign-in">Ingresar</Link>
-                </Button>
-                <Button asChild size="sm">
-                  <Link href="/sign-up">Crear cuenta</Link>
-                </Button>
+<Link href="/sign-in" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>Ingresar</Link>
+  <Link href="/sign-up" className={buttonVariants({ size: 'sm' })}>Crear cuenta</Link>
               </>
             )}
           </div>
@@ -63,12 +57,8 @@ export default async function HomePage() {
               toda la Argentina.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link href="/sign-up">Solicitar mi crédito</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="#comercios">Soy un comercio</Link>
-              </Button>
+<Link href="/sign-up" className={buttonVariants({ size: 'lg' })}>Solicitar mi crédito</Link>
+  <Link href="#comercios" className={buttonVariants({ variant: 'outline', size: 'lg' })}>Soy un comercio</Link>
             </div>
             <div className="flex flex-wrap gap-6 pt-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-2">
@@ -175,11 +165,7 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
-            <Button asChild>
-              <Link href="/sign-up">
-                <Building2 className="mr-1 h-4 w-4" /> Registrar mi comercio
-              </Link>
-            </Button>
+<Link href="/sign-up" className={buttonVariants()}><Building2 className="mr-1 h-4 w-4" /> Registrar mi comercio</Link>
           </div>
           <div className="rounded-xl bg-sidebar p-8 text-sidebar-foreground">
             <p className="text-sm text-sidebar-foreground/70">Ejemplo de liquidación</p>
