@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoanSimulator } from '@/components/loan-simulator'
 import { formatARS } from '@/lib/finance'
-import { payInstallment, requestLoan, updateProfile } from '@/app/actions/loans'
+import { requestLoan, updateProfile } from '@/app/actions/loans'
 import { signOut } from '@/lib/auth-client'
 import { toast } from 'sonner'
 import { ArrowRight, CheckCircle2, LogOut, ShieldCheck, UserRound, WalletCards } from 'lucide-react'

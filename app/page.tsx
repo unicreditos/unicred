@@ -52,9 +52,7 @@ export default async function HomePage() {
               Créditos y préstamos online, en cuotas fijas y sin vueltas.
             </h1>
             <p className="max-w-lg text-pretty text-lg text-muted-foreground">
-              UniCred te presta hasta $3.000.000 con aprobación al instante. Simulá tu cuota,
-              solicitá 100% online y recibí el dinero en tu cuenta. Para personas y comercios de
-              toda la Argentina.
+UniCred permite simular solicitudes de hasta $3.000.000. La solicitud online queda sujeta a evaluación, condiciones vigentes y aprobación. Para personas y comercios de toda la Argentina.
             </p>
             <div className="flex flex-wrap gap-3">
 <Link href="/sign-up" className={buttonVariants({ size: 'lg' })}>Solicitar mi crédito</Link>
@@ -62,10 +60,10 @@ export default async function HomePage() {
             </div>
             <div className="flex flex-wrap gap-6 pt-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" /> Respuesta en minutos
+                <Clock className="h-4 w-4 text-primary" /> Solicitud online
               </span>
               <span className="inline-flex items-center gap-2">
-                <BadgeCheck className="h-4 w-4 text-primary" /> Sin costos ocultos
+                <BadgeCheck className="h-4 w-4 text-primary" /> Costos informados antes de contratar
               </span>
             </div>
           </div>
@@ -85,19 +83,19 @@ export default async function HomePage() {
             {
               icon: Wallet,
               name: 'Préstamo Personal',
-              desc: 'Hasta $3.000.000 en hasta 48 cuotas fijas para lo que necesites.',
+              desc: 'Hasta $3.000.000 y hasta 48 cuotas, sujeto a evaluación, condiciones vigentes y aprobación.',
               rate: 'TNA desde 90%',
             },
             {
               icon: TrendingUp,
               name: 'Crédito de Consumo',
-              desc: 'Financiá tus compras en cuotas con acreditación inmediata.',
+              desc: 'Financiá tus compras en cuotas, sujeto a evaluación y a las condiciones informadas antes de contratar.',
               rate: 'Hasta 24 cuotas',
             },
             {
               icon: Clock,
               name: 'RapiCuotas Express',
-              desc: 'Montos chicos, aprobación en segundos y sin papeles.',
+              desc: 'Montos chicos para simular online, sujetos a evaluación, documentación y aprobación.',
               rate: 'Desde $10.000',
             },
           ].map((p) => (
@@ -123,8 +121,8 @@ export default async function HomePage() {
           <div className="mt-8 grid gap-8 md:grid-cols-3">
             {[
               { n: '1', t: 'Simulá y solicitá', d: 'Elegí monto y cuotas, completá tus datos y enviá la solicitud online.' },
-              { n: '2', t: 'Evaluamos con el BCRA', d: 'Consultamos la Central de Deudores del Banco Central y calculamos tu score al instante.' },
-              { n: '3', t: 'Recibí el dinero', d: 'Si sos aprobado, acreditamos el crédito y ves tu plan de cuotas en el panel.' },
+              { n: '2', t: 'Evaluamos con información autorizada', d: 'Podemos consultar la Central de Deudores del BCRA como parte de una evaluación, con los consentimientos y controles correspondientes.' },
+              { n: '3', t: 'Conocé el resultado', d: 'La decisión y las condiciones se informan antes de contratar. Esta versión no realiza desembolsos ni emite contratos.' },
             ].map((s) => (
               <div key={s.n} className="flex gap-4">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-mono text-sm font-bold text-primary-foreground">
@@ -197,10 +195,13 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Legales</p>
-              <p className="mt-2 max-w-xs text-pretty">
-                Evaluación crediticia realizada con información pública de la Central de Deudores
-                del Banco Central de la República Argentina (BCRA).
+              <p className="font-medium text-foreground">Información</p>
+              <div className="mt-2 flex flex-col gap-2">
+                <Link href="/legales" className="hover:text-foreground">Términos y condiciones</Link>
+                <Link href="/ayuda" className="hover:text-foreground">Centro de ayuda</Link>
+              </div>
+              <p className="mt-3 max-w-xs text-pretty">
+                La evaluación crediticia puede utilizar información pública de la Central de Deudores del BCRA. La simulación no garantiza aprobación.
               </p>
             </div>
           </div>

@@ -33,6 +33,7 @@ export function LoanSimulator({
     <Card className="w-full max-w-md overflow-hidden p-0">
       <div className="bg-sidebar px-6 py-4">
         <p className="text-sm font-medium text-sidebar-foreground/70">Simulá tu crédito</p>
+        <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/60">Estimación orientativa. La oferta final, tasas, CFT, impuestos y condiciones se informan antes de contratar.</p>
         <p className="mt-1 font-mono text-3xl font-bold text-sidebar-foreground">
           {formatARS(result.installmentAmount)}
           <span className="ml-1 text-base font-normal text-sidebar-foreground/60">/mes</span>
