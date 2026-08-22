@@ -166,3 +166,55 @@ export const bcraCheck = pgTable('bcra_check', {
   computedScore: integer('computedScore'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
 })
+
+export const identityVerification = pgTable('identity_verification', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  provider: text('provider').notNull(),
+  providerSessionId: text('providerSessionId').unique(),
+  status: text('status').notNull().default('not_started'),
+  decision: jsonb('decision'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
+export const payment = pgTable('payment', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  loanId: text('loanId').notNull(),
+  installmentId: text('installmentId').notNull(),
+  provider: text('provider').notNull(),
+  providerPaymentId: text('providerPaymentId'),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('ARS'),
+  status: text('status').notNull().default('created'),
+  checkoutUrl: text('checkoutUrl'),
+  receiptUrl: text('receiptUrl'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
+export const document = pgTable('document', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  loanId: text('loanId'),
+  installmentId: text('installmentId'),
+  type: text('type').notNull(),
+  status: text('status').notNull().default('pending'),
+  provider: text('provider'),
+  providerDocumentId: text('providerDocumentId'),
+  storageKey: text('storageKey'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
+export const webhookEvent = pgTable('webhook_event', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull(),
+  eventId: text('eventId').notNull(),
+  signature: text('signature'),
+  payload: jsonb('payload').notNull(),
+  processedAt: timestamp('processedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})

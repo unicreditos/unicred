@@ -3,7 +3,7 @@
 import { computeScore, getDeudas } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
-import { bcraCheck, installment, loan, loanProduct, profile } from '@/lib/db/schema'
+import { bcraCheck, installment, loan, loanProduct, payment, profile } from '@/lib/db/schema'
 import { getOrCreateProfile, newId, requireUserId } from '@/lib/session'
 import { and, desc, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -199,13 +199,17 @@ export async function getLoanInstallments(loanId: string) {
     .orderBy(installment.number)
 }
 
-export async function payInstallment(installmentId: string) {
+export async function createPaymentAttempt(installmentId: string) {
   const userId = await requireUserId()
-  await db
-    .update(installment)
-    .set({ status: 'paid', paidAt: new Date() })
-    .where(and(eq(installment.id, installmentId), eq(installment.userId, userId)))
-
+  const [row] = await db.select({ item: installment, parent: loan }).from(installment).innerJoin(loan, eq(loan.id, installment.loanId)).where(and(eq(installment.id, installmentId), eq(installment.userId, userId))).limit(1)
+  if (!row) throw new Error('Cuota no encontrada.')
+  const id = newId('payment')
+  await db.insert(payment).values({ id, userId, loanId: row.parent.id, installmentId, provider: 'none', amount: String(row.item.amount), status: 'unavailable', metadata: { reason: 'No hay proveedor de pagos conectado' } })
   revalidatePath('/dashboard')
-  return { ok: true }
+  return { ok: false as const, paymentId: id, error: 'No hay un proveedor de pagos conectado. La cuota no fue pagada ni modificada.' }
+}
+
+export async function payInstallment(_installmentId: string) {
+  await requireUserId()
+  throw new Error('Los pagos solo se confirman mediante un proveedor de pagos conectado y su webhook verificado.')
 }
