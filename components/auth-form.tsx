@@ -51,11 +51,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         <Logo invert />
         <div className="space-y-4">
           <h2 className="text-balance text-3xl font-bold leading-tight text-sidebar-foreground">
-            Tu crédito, en minutos y 100% online.
+            Tu solicitud, clara y online.
           </h2>
           <p className="max-w-sm text-pretty text-sidebar-foreground/70">
-            Evaluamos tu solicitud con datos del Banco Central de la República Argentina y te
-            damos una respuesta al instante. Transparencia total en cada cuota.
+            Evaluamos tu solicitud con información autorizada, incluida la Central de Deudores del Banco Central cuando corresponda. Las condiciones y el resultado se informan antes de contratar.
           </p>
         </div>
         <p className="text-xs text-sidebar-foreground/50">

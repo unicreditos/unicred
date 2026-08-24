@@ -149,14 +149,13 @@ UniCred permite simular solicitudes de hasta $3.000.000. La solicitud online que
               Vendé más con financiación propia
             </h2>
             <p className="text-muted-foreground">
-              Sumá tu comercio a UniCred y ofrecé cuotas a tus clientes en el acto. Nosotros
-              ponemos la financiación y la evaluación crediticia; vos vendés y cobrás.
+              Registrá tu comercio para evaluar una futura operatoria en cuotas. La habilitación, financiación y liquidación quedan sujetas a validación, contrato y proveedores conectados.
             </p>
             <ul className="space-y-2 text-sm text-foreground">
               {[
-                'Alta de ventas en cuotas en segundos',
-                'Liquidaciones y comisiones transparentes',
-                'Panel de gestión de clientes y cobranzas',
+                'Registro de interés para ventas en cuotas',
+                'Condiciones y comisiones informadas antes de contratar',
+                'Panel de gestión sujeto a habilitación operativa',
               ].map((f) => (
                 <li key={f} className="flex items-center gap-2">
                   <BadgeCheck className="h-4 w-4 text-primary" /> {f}

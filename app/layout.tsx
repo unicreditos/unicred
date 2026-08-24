@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'UniCred — Créditos y préstamos online en Argentina',
   description:
-    'UniCred, unidad de negocio de Unipagos. Préstamos personales y créditos de consumo en cuotas, 100% online, para usuarios y comercios en Argentina.',
+    'UniCred, unidad de negocio de Unipagos. Simulación y gestión de solicitudes de préstamos personales y créditos de consumo en cuotas para usuarios y comercios en Argentina, sujetos a evaluación y aprobación.',
   generator: 'v0.app',
 }
 
