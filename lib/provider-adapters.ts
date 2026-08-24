@@ -1,15 +1,21 @@
 export type ProviderStatus = { provider: string; configured: boolean; live: boolean; reason: string }
 
 const configured = (keys: string[]) => keys.every((key) => Boolean(process.env[key]))
+const enabled = (key: string) => process.env[key] === 'true'
 
 export function getProviderStatus(): ProviderStatus[] {
+  const diditConfigured = configured(['DIDIT_API_KEY', 'DIDIT_WEBHOOK_SECRET'])
+  const argenConfigured = enabled('PROVIDER_ARGENAPI_ENABLED') && configured(['ARGENAPI_API_KEY', 'ARGENAPI_BASE_URL'])
+  const nosisConfigured = enabled('PROVIDER_NOSIS_ENABLED') && configured(['NOSIS_API_KEY', 'NOSIS_BASE_URL'])
+  const arcaConfigured = enabled('PROVIDER_ARCA_ENABLED') && configured(['ARCA_API_KEY', 'ARCA_BASE_URL'])
+  const paymentsConfigured = enabled('PAYMENTS_ENABLED') && enabled('PROVIDER_MERCADOPAGO_ENABLED') && configured(['MERCADOPAGO_ACCESS_TOKEN', 'MERCADOPAGO_WEBHOOK_SECRET'])
   return [
-    { provider: 'Didit', configured: Boolean(process.env.DIDIT_API_KEY && process.env.DIDIT_WEBHOOK_SECRET), live: true, reason: 'KYC con sesión y webhook firmado habilitados.' },
-    { provider: 'BCRA', configured: true, live: true, reason: 'APIs públicas consultadas desde servidor.' },
-    { provider: 'ArgenAPI', configured: configured(['ARGENAPI_API_KEY', 'ARGENAPI_BASE_URL']), live: configured(['ARGENAPI_API_KEY', 'ARGENAPI_BASE_URL']), reason: 'Requiere contrato, endpoint base y credencial del comercio.' },
-    { provider: 'Nosis', configured: configured(['NOSIS_API_KEY', 'NOSIS_BASE_URL']), live: configured(['NOSIS_API_KEY', 'NOSIS_BASE_URL']), reason: 'Requiere contrato y credenciales privadas.' },
-    { provider: 'ARCA', configured: configured(['ARCA_API_KEY', 'ARCA_BASE_URL']), live: configured(['ARCA_API_KEY', 'ARCA_BASE_URL']), reason: 'La consulta depende de autorización y servicio habilitado.' },
-    { provider: 'Pagos', configured: false, live: false, reason: 'No hay PSP conectado; no se crean pagos, QR ni comprobantes.' },
+    { provider: 'Didit', configured: diditConfigured, live: diditConfigured, reason: diditConfigured ? 'KYC con sesión y webhook firmado habilitados.' : 'Faltan credenciales privadas del proveedor.' },
+    { provider: 'BCRA', configured: true, live: true, reason: 'APIs públicas consultadas desde servidor; el resultado no constituye aprobación crediticia.' },
+    { provider: 'ArgenAPI', configured: argenConfigured, live: argenConfigured, reason: argenConfigured ? 'Lookup de cuenta habilitado con proveedor contratado.' : 'Requiere habilitar la bandera, contrato, endpoint y credencial.' },
+    { provider: 'Nosis', configured: nosisConfigured, live: nosisConfigured, reason: nosisConfigured ? 'Consulta de identidad habilitada con proveedor contratado.' : 'Requiere habilitar la bandera, contrato, endpoint y credencial.' },
+    { provider: 'ARCA', configured: arcaConfigured, live: arcaConfigured, reason: arcaConfigured ? 'Consulta habilitada con autorización correspondiente.' : 'Requiere habilitar la bandera, autorización, endpoint y credencial.' },
+    { provider: 'Mercado Pago', configured: paymentsConfigured, live: paymentsConfigured, reason: paymentsConfigured ? 'Cobros habilitados; requiere webhook verificado y conciliación.' : 'No se crean cobros hasta configurar proveedor y webhook.' },
   ]
 }
 
