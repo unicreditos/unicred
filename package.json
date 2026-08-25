@@ -18,6 +18,7 @@
     "didit:setup": "npx tsx scripts/didit-setup.ts",
     "prod:env": "npx tsx scripts/write-prod-env.ts",
     "prod:check": "npx tsx scripts/check-prod-env.ts",
+    "prod:resend": "npx tsx scripts/verify-resend.ts",
     "test": "tsx --test scripts/tests/*.test.ts",
     "smoke": "npx tsx scripts/smoke.ts",
     "preflight": "npm run test && npm run typecheck && npm run lint && npm run prod:check",
