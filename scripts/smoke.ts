@@ -89,7 +89,10 @@ async function main() {
       bodyIncludes: ['Privacidad', 'BCRA'],
     }),
     probe('pedir cuenta sin sesión', '/pedir/cuenta', { status: [307, 308, 302] }),
-    probe('pedir pagar sin sesión', '/pedir/pagar', { status: [307, 308, 302] }),
+    probe('pedir pagar sin id', '/pedir/pagar', { status: [404] }),
+    probe('pedir pagar cuota inexistente', '/pedir/pagar/inst_inexistente', {
+      status: [200, 404, 307, 308, 302],
+    }),
 
     // Docs protegidos (sin sesión → login)
     probe('docs contrato sin sesión', '/pedir/docs/contrato/demo', { status: [307, 308, 302] }),

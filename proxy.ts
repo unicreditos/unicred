@@ -98,12 +98,14 @@ export function proxy(request: NextRequest) {
   )
   if (needsAuth && !authed) {
     const url = request.nextUrl.clone()
+    const intended = `${pathname}${request.nextUrl.search}`
+    url.search = ''
     if (pathname.startsWith('/pedir/')) {
       url.pathname = '/pedir/ingresar'
-      url.searchParams.set('callbackUrl', pathname)
+      url.searchParams.set('callbackUrl', intended)
     } else {
       url.pathname = '/sign-in'
-      url.searchParams.set('next', pathname)
+      url.searchParams.set('next', intended)
     }
     return NextResponse.redirect(url)
   }

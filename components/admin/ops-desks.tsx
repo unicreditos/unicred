@@ -267,7 +267,7 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
 export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
   const router = useRouter()
   const [filter, setFilter] = useState<'overdue' | 'due7' | 'paid' | 'all'>('overdue')
-  const now = Date.now()
+  const now = new Date(desk.generatedAt).getTime()
   const rows = useMemo(() => {
     return desk.installments.filter((row) => {
       if (filter === 'all') return true
