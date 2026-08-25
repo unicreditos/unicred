@@ -239,7 +239,7 @@ export function DashboardTabsWrapper({
 
     // Reacción a la vuelta del checkout externo, no sincronización de estado.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (mp === 'success') showToast('ok', 'Pago acreditado. El comprobante aparece en Cuotas cuando Mercado Pago confirma.')
+    if (mp === 'success') showToast('ok', 'Volviste de Mercado Pago. El recibo aparece cuando el cobro está confirmado.')
     else if (mp === 'pending') showToast('ok', 'Pago pendiente: si elegiste Pago Fácil o Rapipago, pagá el cupón en la red. Te avisamos al acreditar.')
     else if (mp === 'failure') showToast('err', 'El pago no se completó. Podés reintentar con otro medio.')
 
@@ -1670,6 +1670,7 @@ function PagosPanel({
   const [method, setMethod] = useState<any>('mercado_pago')
   const [payOpen, setPayOpen] = useState(false)
   const searchParams = useSearchParams()
+  const router = useRouter()
   const cuotaFromQr = searchParams.get('cuota')
   const pendingIds = pending.map((row) => row.id).join(',')
 
@@ -1905,13 +1906,15 @@ function PagosPanel({
               {method === 'transferencia_bancaria' ? 'Informar transferencia' : 'Pagar en UNICRÉDITOS'}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
-              Mercado Pago acredita por webhook. La transferencia a RM la confirma un administrador.
+              Mercado Pago acredita en tiempo real y emite el recibo cuando confirma el dinero. La transferencia a RM la concilia tesorería.
             </p>
             <PayInstallmentDialog
               open={payOpen}
               onClose={() => setPayOpen(false)}
               email={payerEmail}
+              method={method}
               initialTab={method === 'transferencia_bancaria' ? 'transfer' : 'mp'}
+              onSettled={() => router.refresh()}
               installments={pending
                 .filter((i) => selectedIds.includes(i.id))
                 .map((i) => ({

@@ -24,6 +24,7 @@ import { ensureLoanContract, notifyContractReady, requireAcceptedContract, syncO
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { syncBcraVariablesFromApi } from '@/app/actions/bcra'
+import { notifyLoanRejected } from '@/lib/notify-email'
 
 export async function requireAdmin() {
   const session = await getSession()
@@ -279,6 +280,8 @@ export async function rejectLoan(id: string, reason: string) {
     summary: `Crédito rechazado: ${reason.trim()}`,
     changes: diffFields(existing as any, { status: 'rejected', rejectionReason: reason.trim() }),
   })
+
+  await notifyLoanRejected({ userId: existing.userId, reason: reason.trim() })
 
   revalidatePath('/admin')
   revalidatePath('/dashboard')

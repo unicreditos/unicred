@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { diditSession, diditWebhookLog, kycVerification, merchant, profile } from '@/lib/db/schema'
 import { newId } from '@/lib/session'
 import { eq } from 'drizzle-orm'
+import { notifyKycDecision } from '@/lib/notify-email'
 
 const DIDIT_API = 'https://verification.didit.me'
 const WEBHOOK_MAX_SKEW_SECONDS = 300
@@ -406,6 +407,7 @@ export async function applyDiditDecision(input: {
     .from(kycVerification)
     .where(eq(kycVerification.userId, userId))
     .limit(1)
+  const previousKyc = existing?.status
 
   if (existing?.status === 'approved' && kycStatus === 'pending') {
     return { ok: true as const, keptApproved: true as const, userId }
@@ -463,6 +465,10 @@ export async function applyDiditDecision(input: {
     .update(profile)
     .set({ kycStatus, updatedAt: now })
     .where(eq(profile.userId, userId))
+
+  if ((kycStatus === 'approved' || kycStatus === 'rejected') && previousKyc !== kycStatus) {
+    await notifyKycDecision({ userId, status: kycStatus })
+  }
 
   return { ok: true as const, userId, kycStatus }
 }

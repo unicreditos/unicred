@@ -2,8 +2,11 @@ import { createPaymentFromBrick } from '@/lib/mercadopago'
 import { db } from '@/lib/db'
 import { payment } from '@/lib/db/schema'
 import { requireUserId } from '@/lib/session'
+import { settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
+import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,8 +27,15 @@ export async function POST(req: Request) {
     .limit(1)
   if (!row) return NextResponse.json({ error: 'Pago no encontrado.' }, { status: 404 })
   if (row.status === 'paid') {
-    return NextResponse.json({ error: 'Este pago ya está acreditado.' }, { status: 409 })
+    return NextResponse.json({ ok: true, status: 'approved', alreadyPaid: true })
   }
+
+  const previous = (row.gatewayResponse as Record<string, unknown> | null) ?? {}
+  const installmentIds = Array.isArray(previous.installment_ids)
+    ? previous.installment_ids
+    : row.installmentId
+      ? [row.installmentId]
+      : []
 
   try {
     const created = await createPaymentFromBrick({
@@ -37,6 +47,7 @@ export async function POST(req: Request) {
         local_payment_id: row.id,
         loan_id: row.loanId,
         user_id: userId,
+        installment_ids: installmentIds,
       },
     })
 
@@ -44,22 +55,57 @@ export async function POST(req: Request) {
     await db
       .update(payment)
       .set({
-        status: created?.status === 'approved' ? 'processing' : created?.status === 'rejected' ? 'failed' : 'processing',
+        status: created?.status === 'rejected' ? 'failed' : 'processing',
         paymentLinkId: row.paymentLinkId,
         externalId: mpId ?? row.externalId,
         gatewayResponse: {
-          ...((row.gatewayResponse as Record<string, unknown> | null) ?? {}),
+          ...previous,
           mp_payment_id: mpId,
           mp_status: created?.status ?? null,
+          installment_ids: installmentIds,
         },
         updatedAt: new Date(),
       } as any)
       .where(eq(payment.id, row.id))
 
+    if (mpId && created?.status === 'approved') {
+      const settled = await settleMercadoPagoPayment({ mpPaymentId: mpId, localPaymentId: row.id })
+      if (settled.credited > 0 && settled.userId) {
+        try {
+          revalidatePath('/dashboard')
+        } catch {
+          /* ignore */
+        }
+        await notifyPaymentReceived({
+          userId: settled.userId,
+          amount: settled.amount ?? Number(row.amount),
+          installmentNumber: settled.installmentNumber,
+          receiptId: settled.receiptId,
+        })
+      }
+      return NextResponse.json({
+        ok: true,
+        status: created.status,
+        id: mpId,
+        credited: settled.credited,
+        receiptId: settled.receiptId ?? null,
+        localStatus: settled.localStatus,
+      })
+    }
+
+    if (created?.status === 'rejected') {
+      await notifyPaymentRejected({
+        userId,
+        amount: row.amount,
+        reason: String((created as { status_detail?: string }).status_detail ?? 'Mercado Pago rechazó el cobro.'),
+      })
+    }
+
     return NextResponse.json({
       ok: true,
       status: created?.status ?? 'pending',
       id: mpId,
+      credited: 0,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'No se pudo procesar el pago en Mercado Pago.'

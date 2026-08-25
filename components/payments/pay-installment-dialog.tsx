@@ -1,7 +1,7 @@
 'use client'
 
-import { createPaymentLink, getCollectionAccount, reportBankTransfer } from '@/app/actions/payments'
-import { MercadoPagoCheckoutBrick } from '@/components/payments/mp-checkout-brick'
+import { createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, type PaymentMethod } from '@/app/actions/payments'
+import { MercadoPagoCheckoutBrick, type BrickChannel } from '@/components/payments/mp-checkout-brick'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,7 @@ import { formatARS } from '@/lib/finance'
 import { cn } from '@/lib/utils'
 import QRCode from 'qrcode'
 import { Landmark, QrCode, Wallet, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 type InstallmentPay = {
@@ -23,24 +23,36 @@ type InstallmentPay = {
 
 type Tab = 'mp' | 'transfer'
 
+function toBrickChannel(method: PaymentMethod): BrickChannel {
+  if (method === 'pago_facil') return 'pago_facil'
+  if (method === 'rapipago') return 'rapipago'
+  if (method === 'ticket' || method === 'efectivo') return 'ticket'
+  if (method === 'tarjeta_credito') return 'credit_card'
+  if (method === 'tarjeta_debito') return 'debit_card'
+  if (method === 'mercadopago_wallet' || method === 'cvu') return 'account_money'
+  return 'all'
+}
+
 export function PayInstallmentDialog({
   open,
   onClose,
   installments,
   email,
   initialTab = 'mp',
+  method = 'mercado_pago',
   payPathPrefix = '/dashboard/pagar',
   returnPath,
+  onSettled,
 }: {
   open: boolean
   onClose: () => void
   installments: InstallmentPay[]
   email?: string | null
   initialTab?: Tab
-  /** Prefijo de URL para QR/fallback (sin barra final). Default: panel cliente. */
+  method?: PaymentMethod
   payPathPrefix?: string
-  /** Ruta de retorno post Mercado Pago (ej. /pedir/cuenta). */
   returnPath?: string
+  onSettled?: () => void
 }) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [busy, setBusy] = useState(false)
@@ -54,6 +66,8 @@ export function PayInstallmentDialog({
   } | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
+  const startedFor = useRef('')
+  const idsKey = installments.map((row) => row.id).join(',')
 
   const total = installments.reduce((sum, row) => sum + Number(row.amount), 0)
   const single = installments.length === 1 ? installments[0] : null
@@ -77,31 +91,12 @@ export function PayInstallmentDialog({
     return origin ? `${origin}${path}` : path
   }, [single, payPathPrefix])
 
-  useEffect(() => {
-    if (!open) return
-    setTab(initialTab)
-    setSession(null)
-    setQr(null)
-    void getCollectionAccount().then(setTreasury).catch(() => setTreasury(null))
-    if (initialTab === 'mp') {
-      void startMp()
-    }
-  }, [open, installments.map((row) => row.id).join(','), initialTab])
-
-  useEffect(() => {
-    const url = session?.paymentLinkUrl || fallbackPayUrl
-    if (!url) return
-    void QRCode.toDataURL(url, { margin: 1, width: 240 }).then(setQr)
-  }, [session?.paymentLinkUrl, fallbackPayUrl])
-
-  if (!open) return null
-
-  async function startMp() {
+  const startMp = useCallback(async () => {
     setBusy(true)
     try {
       const r = await createPaymentLink(
         installments.map((row) => row.id),
-        'mercado_pago',
+        method,
         returnPath ? { returnPath } : undefined,
       )
       if (!r.publicKey || !r.externalPreferenceId) {
@@ -120,7 +115,70 @@ export function PayInstallmentDialog({
     } finally {
       setBusy(false)
     }
-  }
+  }, [installments, method, returnPath])
+
+  useEffect(() => {
+    if (!open) {
+      startedFor.current = ''
+      return
+    }
+    setTab(initialTab)
+    void getCollectionAccount().then(setTreasury).catch(() => setTreasury(null))
+    if (initialTab !== 'mp') return
+    const key = `${idsKey}:${method}`
+    if (startedFor.current === key) return
+    startedFor.current = key
+    void startMp()
+  }, [open, idsKey, initialTab, method, startMp])
+
+  useEffect(() => {
+    const url = session?.paymentLinkUrl || fallbackPayUrl
+    if (!url) return
+    void QRCode.toDataURL(url, { margin: 1, width: 240 }).then(setQr)
+  }, [session?.paymentLinkUrl, fallbackPayUrl])
+
+  const handlePaid = useCallback(
+    async (status: string, extra?: { receiptId?: string | null; credited?: number }) => {
+      if (status === 'approved' && extra?.credited && extra.credited > 0) {
+        toast.success('Pago acreditado. Ya podés descargar el recibo.')
+        onSettled?.()
+        onClose()
+        return
+      }
+      if (status === 'approved' && session?.paymentId) {
+        toast.message('Confirmando el cobro con Mercado Pago…')
+        for (let i = 0; i < 12; i++) {
+          await new Promise((r) => setTimeout(r, 2500))
+          try {
+            const st = await getCheckoutStatus(session.paymentId)
+            if (st.settled) {
+              toast.success('Pago acreditado. El recibo quedó en tu panel.')
+              onSettled?.()
+              onClose()
+              return
+            }
+          } catch {
+            /* reintento */
+          }
+        }
+        toast.message('El cobro fue aceptado. El recibo aparece cuando Mercado Pago confirma el dinero.')
+        onClose()
+        return
+      }
+      if (status === 'rejected') {
+        toast.error('Mercado Pago no pudo cobrar. Probá otro medio.')
+        return
+      }
+      toast.message(`Mercado Pago: ${status}. Si es cupón, pagalo en la red y el recibo se emite al acreditar.`)
+    },
+    [onClose, onSettled, session?.paymentId],
+  )
+
+  const handleBrickError = useCallback((message: string) => {
+    toast.error(message)
+  }, [])
+
+  if (!open) return null
 
   async function sendTransfer(formData: FormData) {
     setBusy(true)
@@ -157,7 +215,15 @@ export function PayInstallmentDialog({
         </header>
 
         <div className="flex gap-2 border-b border-slate-100 px-4 py-2">
-          <Button type="button" size="sm" variant={tab === 'mp' ? 'default' : 'outline'} onClick={() => setTab('mp')}>
+          <Button
+            type="button"
+            size="sm"
+            variant={tab === 'mp' ? 'default' : 'outline'}
+            onClick={() => {
+              setTab('mp')
+              if (!session) void startMp()
+            }}
+          >
             <Wallet className="h-3.5 w-3.5" /> Mercado Pago
           </Button>
           <Button type="button" size="sm" variant={tab === 'transfer' ? 'default' : 'outline'} onClick={() => setTab('transfer')}>
@@ -167,12 +233,35 @@ export function PayInstallmentDialog({
 
         {tab === 'mp' ? (
           <div className="space-y-4 p-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Talón de la cuota</p>
+            {session ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-600">
+                  Pagá con tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando Mercado Pago confirma el dinero.
+                </p>
+                <MercadoPagoCheckoutBrick
+                  publicKey={session.publicKey}
+                  amount={session.amount}
+                  email={email}
+                  localPaymentId={session.paymentId}
+                  channel={toBrickChannel(method)}
+                  onPaid={handlePaid}
+                  onError={handleBrickError}
+                />
+              </div>
+            ) : (
+              <Button type="button" className="w-full" disabled={busy} onClick={() => void startMp()}>
+                {busy ? 'Abriendo Mercado Pago…' : 'Reintentar cobro Mercado Pago'}
+              </Button>
+            )}
+
+            <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <summary className="cursor-pointer text-xs font-medium text-slate-600">
+                Pagar con QR o talón desde la app
+              </summary>
               <div className="mt-3 flex flex-wrap items-start gap-4">
                 {qr ? (
                   <div className="flex flex-col items-center">
-                    <img src={qr} alt="QR de pago Mercado Pago" className="h-40 w-40" />
+                    <img src={qr} alt="QR de pago Mercado Pago" className="h-36 w-36" />
                     <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
                       <QrCode className="h-3.5 w-3.5" /> QR Mercado Pago
                     </p>
@@ -185,38 +274,13 @@ export function PayInstallmentDialog({
                 )}
                 {coupon && barcode ? (
                   <div className="min-w-0 flex-1 overflow-x-auto">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Talón de la cuota</p>
                     <div dangerouslySetInnerHTML={{ __html: barcode }} />
                     <p className="mt-1 font-mono text-[11px] text-slate-600">{coupon}</p>
                   </div>
                 ) : null}
               </div>
-            </div>
-
-            {session ? (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-600">Pagar en el sitio con tarjeta o efectivo</p>
-                <MercadoPagoCheckoutBrick
-                  publicKey={session.publicKey}
-                  amount={session.amount}
-                  preferenceId={session.preferenceId}
-                  email={email}
-                  localPaymentId={session.paymentId}
-                  onPaid={(status) => {
-                    if (status === 'approved') {
-                      toast.success('Pago aprobado. La cuota se acredita al confirmar Mercado Pago.')
-                      onClose()
-                    } else {
-                      toast.message(`Mercado Pago: ${status}. Si es cupón, pagalo y esperá la acreditación.`)
-                    }
-                  }}
-                  onError={(message) => toast.error(message)}
-                />
-              </div>
-            ) : (
-              <Button type="button" className="w-full" disabled={busy} onClick={() => void startMp()}>
-                {busy ? 'Abriendo Mercado Pago…' : 'Reintentar cobro Mercado Pago'}
-              </Button>
-            )}
+            </details>
           </div>
         ) : (
           <form action={sendTransfer} className="space-y-4 p-4">
@@ -252,7 +316,7 @@ export function PayInstallmentDialog({
               </dl>
               <p className="mt-2 text-[11px] text-slate-500">
                 Transferí {formatARS(total)}. En el concepto usá {coupon ?? 'el ID del crédito y el n° de cuota'}.
-                La cuota no se marca paga hasta que un admin verifique la acreditación en Brubank.
+                La cuota no se marca paga hasta que tesorería vea el dinero en Brubank.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

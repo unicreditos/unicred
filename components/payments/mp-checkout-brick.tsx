@@ -1,26 +1,71 @@
 'use client'
 
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react'
-import { useEffect, useState } from 'react'
+import { brickPaymentMethods, type BrickChannel } from '@/lib/payments/brick-methods'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+export type { BrickChannel }
 
 export function MercadoPagoCheckoutBrick({
   publicKey,
   amount,
-  preferenceId,
   email,
   localPaymentId,
+  channel = 'all',
   onPaid,
   onError,
 }: {
   publicKey: string
   amount: number
-  preferenceId: string
   email?: string | null
   localPaymentId: string
-  onPaid: (status: string) => void
+  channel?: BrickChannel
+  onPaid: (status: string, extra?: { receiptId?: string | null; credited?: number }) => void
   onError: (message: string) => void
 }) {
   const [ready, setReady] = useState(false)
+  const methods = useMemo(() => brickPaymentMethods(channel), [channel])
+  const initialization = useMemo(
+    () => ({
+      amount,
+      payer: email ? { email } : undefined,
+    }),
+    [amount, email],
+  )
+  const customization = useMemo(
+    () => ({
+      paymentMethods: methods,
+    }),
+    [methods],
+  )
+
+  const handleSubmit = useCallback(
+    async ({ formData }: { formData: Record<string, unknown> }) => {
+      const res = await fetch('/api/payments/mp-process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formData, localPaymentId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        onError(data.error || 'Mercado Pago rechazó el cobro.')
+        throw new Error(data.error || 'Pago rechazado')
+      }
+      onPaid(String(data.status || 'pending'), {
+        receiptId: data.receiptId ?? null,
+        credited: Number(data.credited) || 0,
+      })
+      return data
+    },
+    [localPaymentId, onError, onPaid],
+  )
+
+  const handleError = useCallback(
+    (error: { message?: string }) => {
+      onError(error?.message || 'No se pudo abrir el checkout de Mercado Pago.')
+    },
+    [onError],
+  )
 
   useEffect(() => {
     initMercadoPago(publicKey, { locale: 'es-AR' })
@@ -33,37 +78,12 @@ export function MercadoPagoCheckoutBrick({
 
   return (
     <Payment
-      initialization={{
-        amount,
-        preferenceId,
-        payer: email ? { email } : undefined,
-      }}
-      customization={{
-        paymentMethods: {
-          creditCard: 'all',
-          debitCard: 'all',
-          ticket: 'all',
-          bankTransfer: 'all',
-          maxInstallments: 12,
-        },
-      }}
-      onSubmit={async ({ formData }) => {
-        const res = await fetch('/api/payments/mp-process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ formData, localPaymentId }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          onError(data.error || 'Mercado Pago rechazó el cobro.')
-          throw new Error(data.error || 'Pago rechazado')
-        }
-        onPaid(String(data.status || 'pending'))
-        return data
-      }}
-      onError={(error) => {
-        onError(error?.message || 'No se pudo abrir el checkout de Mercado Pago.')
-      }}
+      id={`paymentBrick_${localPaymentId}`}
+      locale="es-AR"
+      initialization={initialization}
+      customization={customization}
+      onSubmit={handleSubmit as never}
+      onError={handleError}
     />
   )
 }

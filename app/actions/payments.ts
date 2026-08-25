@@ -16,7 +16,9 @@ import { couponCode } from '@/lib/coupon'
 import { treasuryForClient } from '@/lib/treasury'
 import { recordAudit } from '@/lib/audit'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
-import { and, eq, sql, desc, inArray } from 'drizzle-orm'
+import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
+import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
+import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
 
 export type PaymentMethod =
@@ -129,6 +131,47 @@ export async function createPaymentLink(
   const payerFullName = session?.user?.name ?? null
   const payerFirst = payerFullName?.split(' ')[0] ?? undefined
   const payerLast = payerFullName?.split(' ').slice(1).join(' ') || undefined
+
+  const existing = await db
+    .select()
+    .from(payment)
+    .where(
+      and(
+        eq(payment.userId, userId),
+        eq(payment.loanId, loanId),
+        eq(payment.gateway, 'mercado_pago'),
+        inArray(payment.status, ['pending', 'processing']),
+        gte(payment.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(payment.createdAt))
+    .limit(12)
+
+  const reusable = existing.find((row) => {
+    if (row.method !== method) return false
+    if (!row.paymentLinkId || !row.paymentLinkUrl) return false
+    return sameInstallmentSet((row.gatewayResponse as { installment_ids?: unknown } | null)?.installment_ids, installmentIds)
+  })
+  if (reusable) {
+    return {
+      ok: true,
+      paymentId: reusable.id,
+      paymentLinkUrl: reusable.paymentLinkUrl,
+      gateway: reusable.gateway,
+      externalPreferenceId: reusable.paymentLinkId,
+      publicKey: getMercadoPagoPublicKey(),
+      amount: total,
+      coupon:
+        insts.length === 1
+          ? couponCode({
+              loanId,
+              number: insts[0].number,
+              dueDate: insts[0].dueDate,
+              amount: insts[0].amount,
+            })
+          : null,
+    }
+  }
 
   const id = crypto.randomUUID()
   const linkId = `pay-${id.slice(0, 12)}`
@@ -256,6 +299,7 @@ export async function applyPaymentToInstallment(
   installmentId: string,
   amountPaid: string | number,
   externalRef?: string,
+  opts?: { notify?: boolean },
 ) {
   await assertAdmin()
 
@@ -379,6 +423,14 @@ export async function applyPaymentToInstallment(
   })
 
   revalidateCustomer()
+  if (opts?.notify !== false) {
+    await notifyPaymentReceived({
+      userId: ownerId,
+      amount: payAmount,
+      installmentNumber: inst.number,
+      receiptId,
+    })
+  }
   return { ok: true, receiptId, receiptNumber }
 }
 
@@ -662,6 +714,11 @@ export async function reviewBankTransfer(
       targetUserId: row.userId,
       summary: reason?.trim() || 'Transferencia rechazada',
     })
+    await notifyPaymentRejected({
+      userId: row.userId,
+      amount: row.amount,
+      reason: reason?.trim() || 'Comprobante rechazado: no se verificó la acreditación.',
+    })
     revalidateOps()
     revalidateCustomer()
     return { ok: true, status: 'failed' }
@@ -681,7 +738,9 @@ export async function reviewBankTransfer(
 
   for (const inst of insts) {
     if (inst.status === 'paid') continue
-    await applyPaymentToInstallment(row.id, inst.id, inst.amount, row.referenceNumber ?? undefined)
+    await applyPaymentToInstallment(row.id, inst.id, inst.amount, row.referenceNumber ?? undefined, {
+      notify: false,
+    })
   }
 
   await db
@@ -700,6 +759,17 @@ export async function reviewBankTransfer(
     entityId: paymentId,
     targetUserId: row.userId,
     summary: `Transferencia acreditada · ${credited.toFixed(2)} ARS`,
+  })
+
+  const [rcpt] = await db
+    .select({ id: paymentReceipt.id })
+    .from(paymentReceipt)
+    .where(eq(paymentReceipt.paymentId, row.id))
+    .limit(1)
+  await notifyPaymentReceived({
+    userId: row.userId,
+    amount: credited,
+    receiptId: rcpt?.id,
   })
 
   revalidateOps()
@@ -735,8 +805,29 @@ export async function getInstallmentCoupons(loanId: string) {
   }))
 }
 
+export async function getCheckoutStatus(paymentId: string) {
+  const userId = await assertRole('customer')
+  const [row] = await db
+    .select({ id: payment.id, status: payment.status, amount: payment.amount })
+    .from(payment)
+    .where(and(eq(payment.id, paymentId), eq(payment.userId, userId)))
+    .limit(1)
+  if (!row) throw new Error('Pago no encontrado.')
+  const [rcpt] = await db
+    .select({ id: paymentReceipt.id })
+    .from(paymentReceipt)
+    .where(eq(paymentReceipt.paymentId, row.id))
+    .limit(1)
+  return {
+    status: row.status,
+    amount: row.amount,
+    receiptId: rcpt?.id ?? null,
+    settled: row.status === 'paid',
+  }
+}
+
 /*
  * Se eliminó la acreditación automática de cuotas desde el cliente: permitía dar
  * por pagado un crédito sin cobro real. La acreditación llega por el webhook de
- * Mercado Pago o por aprobación admin de una transferencia a RM.
+ * Mercado Pago, la conciliación del Brick o por aprobación admin de una transferencia a RM.
  */

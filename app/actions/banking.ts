@@ -15,6 +15,7 @@ import { recordAudit } from '@/lib/audit'
 import { requireAcceptedContract } from '@/lib/legal/expediente'
 import { activateLoanAfterDisbursement } from '@/lib/loan-schedule'
 import { revalidateOps } from '@/lib/revalidate'
+import { notifyDisbursementCredited } from '@/lib/notify-email'
 import { and, eq, sql, desc, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { formatCBU, formatCVU, formatAlias, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
@@ -641,6 +642,17 @@ export async function markDisbursementAsCredited(
     targetUserId: d.userId,
     summary: `Desembolso acreditado por ${d.amount} ${d.currency} · comprobante ${receiptNumber}`,
     changes: { estado: { antes: d.status, despues: 'credited' }, referencia: externalRef ?? null },
+  })
+
+  const [rcpt] = await db
+    .select({ id: paymentReceipt.id })
+    .from(paymentReceipt)
+    .where(eq(paymentReceipt.receiptNumber, receiptNumber))
+    .limit(1)
+  await notifyDisbursementCredited({
+    userId: d.userId,
+    amount: d.amount,
+    receiptId: rcpt?.id,
   })
 
   revalidateOps()
