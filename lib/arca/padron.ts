@@ -282,7 +282,7 @@ export async function lookupPersonaByCuit(cuit: string): Promise<ArcaPersona | n
   const idPersona = cuit.replace(/\D/g, '')
   if (!/^\d{11}$/.test(idPersona)) return null
 
-  let merged = mergePersonas(
+  const merged = mergePersonas(
     await Promise.all([
       fetchPadron(
         { service: 'ws_sr_constancia_inscripcion', kind: 'a5', method: 'getPersona_v2', mappedKind: 'a5' },
@@ -294,16 +294,6 @@ export async function lookupPersonaByCuit(cuit: string): Promise<ArcaPersona | n
       ),
     ]),
   )
-
-  if (!merged?.name || !merged.address) {
-    merged = mergePersonas([
-      merged,
-      await fetchPadron(
-        { service: 'ws_sr_padron_a4', kind: 'a4', method: 'getPersona', mappedKind: 'a4' },
-        idPersona,
-      ),
-    ])
-  }
   return merged
 }
 

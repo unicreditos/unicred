@@ -386,12 +386,12 @@ export function RegisterWizard() {
                       <span className="text-muted-foreground">Domicilio fiscal: </span>
                       {[identity.address, identity.city, identity.department, identity.province, identity.postalCode].filter(Boolean).join(' · ') || 'Sin domicilio en el padrón'}
                     </p>
-                    {identity.arcaErrors.length > 0 ||
+                    {(identity.arcaErrors ?? []).length > 0 ||
                     identity.taxCondition === 'no_inscripto' ||
                     /inactiv|limitad/i.test(identity.taxStatus) ? (
                       <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-relaxed text-amber-950 dark:text-amber-100">
                         <p className="font-medium">Esta clave no habilita el alta de comercio.</p>
-                        {identity.arcaErrors.slice(0, 2).map((msg) => (
+                        {(identity.arcaErrors ?? []).slice(0, 2).map((msg) => (
                           <p key={msg} className="mt-1">
                             {msg}
                           </p>

@@ -1,9 +1,9 @@
 'use server'
 
-import { persistBcraReportForUser } from '@/app/actions/documents'
+import { persistBcraReportForUser } from '@/lib/bcra-report'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
-import { snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
+import { snapshotFromIdentity, snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { kycVerification, merchant, profile, user } from '@/lib/db/schema'
@@ -198,8 +198,10 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   await db.update(user).set({ role: accountRole, updatedAt: now }).where(eq(user.id, userId))
 
   const [existingKyc] = await db.select().from(kycVerification).where(eq(kycVerification.userId, userId)).limit(1)
-  const personPadron = arcaConfigured() ? await lookupPersonaByCuit(cuil) : null
-  const personSnapshot = personPadron ? snapshotFromPersona(personPadron) : null
+  const personSnapshot =
+    input.identity && normalizeCuit(input.identity.cuil) === cuil
+      ? snapshotFromIdentity(input.identity)
+      : null
   const prevOcr = (existingKyc?.ocrData as Record<string, unknown> | null) ?? {}
   const kycValues = {
     dniNumber: dni,
@@ -305,11 +307,12 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     console.warn('[register] no se pudo sincronizar Didit:', (err as Error).message)
   }
 
-  const bcra = await persistBcraConsultation({ userId, cuil, monthlyIncome: income })
-  const merchantBcra =
+  const [bcra, merchantBcra] = await Promise.all([
+    persistBcraConsultation({ userId, cuil, monthlyIncome: income }),
     input.accountType === 'comercio' && merchantCuit && merchantCuit !== cuil
-      ? await persistBcraConsultation({ userId, cuil: merchantCuit, monthlyIncome: income })
-      : null
+      ? persistBcraConsultation({ userId, cuil: merchantCuit, monthlyIncome: income })
+      : Promise.resolve(null),
+  ])
   if (!bcra.ok && !(merchantBcra && merchantBcra.ok)) {
     return {
       ok: true as const,

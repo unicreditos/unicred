@@ -4,7 +4,6 @@ import { db } from '@/lib/db'
 import {
   bcraReport,
   loanContract,
-  bcraCheck,
   loan,
   installment,
   profile,
@@ -33,128 +32,10 @@ import {
   money,
   splitBalanceEvenly,
 } from '@/lib/legal/mora'
+import { persistBcraReportForUser } from '@/lib/bcra-report'
 import { assertRole, getRoleForUser } from '@/lib/session'
-import { receiptBranding } from '@/lib/brand'
 import { and, eq, desc, ne } from 'drizzle-orm'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
-
-type RuntimeBCRACheck = {
-  id: string
-  userId: string
-  cuil: string | null
-  worstSituation: number | null
-  totalDebt: string | null
-  entitiesCount: number | null
-  hasRejectedChecks: boolean
-  computedScore: number | null
-  consultedAt: Date | null
-  source: string | null
-  [k: string]: any
-}
-
-async function safeTrySelectLastCheck(userId: string): Promise<RuntimeBCRACheck | null> {
-  try {
-    const rows = await db
-      .select()
-      .from(bcraCheck)
-      .where(eq(bcraCheck.userId, userId))
-      .orderBy(desc(bcraCheck.createdAt))
-      .limit(1)
-    return rows[0] as RuntimeBCRACheck | null ?? null
-  } catch (e: any) {
-    console.warn('[documents.safeLastCheck] using fallback bcra_check table mismatch:', e?.message ?? String(e))
-    return null
-  }
-}
-
-export async function persistBcraReportForUser(userId: string, checkId?: string | null) {
-  let check: RuntimeBCRACheck | null = null
-
-  if (checkId && String(checkId).trim().length > 0) {
-    try {
-      const [existing] = await db
-        .select()
-        .from(bcraCheck)
-        .where(and(eq(bcraCheck.id, checkId), eq(bcraCheck.userId, userId)))
-        .limit(1)
-      check = (existing as RuntimeBCRACheck) || null
-    } catch {
-      check = null
-    }
-  }
-  if (!check) {
-    check = await safeTrySelectLastCheck(userId)
-  }
-  if (!check) {
-    const [p] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
-    if (p?.cuil) {
-      const { persistBcraConsultation } = await import('@/lib/bcra-persist')
-      const live = await persistBcraConsultation({
-        userId,
-        cuil: p.cuil,
-        monthlyIncome: Number(p.monthlyIncome ?? 0),
-      })
-      if (live.ok) {
-        check = await safeTrySelectLastCheck(userId)
-      }
-    }
-  }
-  if (!check) {
-    throw new Error('No hay un informe BCRA real. Consultá tu situación desde Scoring e intentá de nuevo.')
-  }
-
-  const id = crypto.randomUUID()
-  const reportNumber = `INF-BCRA-${Date.now().toString().slice(-8)}`
-  const checkForReportId = check?.id ?? `synth-check-${id}`
-  const raw = (check as any).rawResult ?? (check as any).rawResponse ?? {}
-  const fullReportData = JSON.parse(
-    JSON.stringify({
-      ...check,
-      cuil: check.cuil,
-      consultedAt: check.consultedAt,
-      deudas: raw.deudas,
-      historicas: raw.historicas,
-      chequesRechazados: raw.chequesRechazados,
-      score: raw.score,
-      denominacion: raw.denominacion,
-      unavailable: false,
-    }),
-  )
-
-  let report: any = null
-  try {
-    const inserted = await db
-      .insert(bcraReport)
-      .values({
-        id,
-        userId,
-        bcraCheckId: checkForReportId,
-        reportNumber,
-        scoreAtGeneration: check?.computedScore ?? null,
-        worstSituation: check?.worstSituation ?? null,
-        totalDebt: check?.totalDebt ?? null,
-        entitiesCount: check?.entitiesCount ?? null,
-        hasRejectedChecks: check?.hasRejectedChecks ?? false,
-        currency: 'ARS',
-        fullReportData,
-        branding: JSON.parse(
-          JSON.stringify({
-            ...receiptBranding(),
-            reportType: 'Informe de Situación Crediticia BCRA',
-          }),
-        ),
-        createdAt: new Date(),
-      })
-      .returning()
-    report = inserted[0] ?? { id, reportNumber }
-  } catch (e: any) {
-    console.error('[documents.generateBCRAReport] insert bcraReport failed:', e?.message ?? String(e))
-    throw new Error('No se pudo guardar el informe BCRA. Reintentá en unos minutos.')
-  }
-
-  revalidateCustomer()
-  return { ok: true as const, reportId: report.id as string, reportNumber: report.reportNumber as string, fromCheckId: checkForReportId }
-}
 
 export async function generateBCRAReport(checkId?: string | null) {
   const userId = await assertRole('customer', 'merchant', 'admin')
@@ -162,7 +43,7 @@ export async function generateBCRAReport(checkId?: string | null) {
 }
 
 export async function getLastBCRAReport() {
-  const userId = await assertRole('customer')
+  const userId = await assertRole('customer', 'merchant')
   try {
     const rows = await db
       .select()
@@ -178,7 +59,7 @@ export async function getLastBCRAReport() {
 }
 
 export async function getBCRAReport(id: string) {
-  const userId = await assertRole('customer', 'admin')
+  const userId = await assertRole('customer', 'merchant', 'admin')
   const role = await getRoleForUser(userId)
   const rows = await db
     .select()
@@ -193,7 +74,7 @@ export async function getBCRAReport(id: string) {
 }
 
 export async function listBCRAReports(limit = 10) {
-  const userId = await assertRole('customer')
+  const userId = await assertRole('customer', 'merchant')
   try {
     return await db
       .select()

@@ -20,6 +20,43 @@ export type ArcaConstanciaSnapshot = {
   consultedAt: string
 }
 
+type IdentityLike = {
+  cuil: string
+  name: string
+  personType: string
+  taxStatus?: string
+  taxCondition?: string
+  taxConditionLabel?: string
+  monotributoCategory?: string
+  address?: string
+  city?: string
+  province?: string
+  postalCode?: string
+  arcaErrors?: string[]
+}
+
+export function snapshotFromIdentity(match: IdentityLike, consultedAt = new Date().toISOString()): ArcaConstanciaSnapshot {
+  const taxCondition = String(match.taxCondition ?? '')
+  return {
+    cuil: String(match.cuil ?? '').replace(/\D/g, ''),
+    name: String(match.name ?? ''),
+    personType: String(match.personType ?? ''),
+    taxStatus: String(match.taxStatus ?? ''),
+    taxCondition,
+    taxConditionLabel: String(match.taxConditionLabel ?? '') || (taxCondition ? taxConditionLabel(taxCondition as TaxCondition) : ''),
+    monotributoCategory: String(match.monotributoCategory ?? ''),
+    taxes: [],
+    activities: [],
+    address: String(match.address ?? ''),
+    city: String(match.city ?? ''),
+    province: String(match.province ?? ''),
+    postalCode: String(match.postalCode ?? ''),
+    service: 'a5',
+    constanciaErrors: Array.isArray(match.arcaErrors) ? match.arcaErrors : [],
+    consultedAt,
+  }
+}
+
 export function snapshotFromPersona(persona: ArcaPersona, consultedAt = new Date().toISOString()): ArcaConstanciaSnapshot {
   return {
     cuil: persona.cuil,
