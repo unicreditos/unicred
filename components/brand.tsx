@@ -13,8 +13,8 @@ export function Logo({
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
       <Image
-        src="/unicred-logo.png"
-        alt="UniCred"
+        src="/icon.svg"
+        alt="UNICRÉDITOS"
         width={32}
         height={32}
         className="h-8 w-8 rounded-md object-contain"
@@ -27,7 +27,7 @@ export function Logo({
               invert ? 'text-sidebar-foreground' : 'text-foreground',
             )}
           >
-            UniCred
+            UNICRÉDITOS
           </span>
           <span
             className={cn(
@@ -35,7 +35,7 @@ export function Logo({
               invert ? 'text-sidebar-foreground/60' : 'text-muted-foreground',
             )}
           >
-            by Unipagos
+            RM International Group
           </span>
         </span>
       )}

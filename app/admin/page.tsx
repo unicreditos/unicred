@@ -1,19 +1,192 @@
+import {
+  getAdminStats,
+  getAllLoans,
+  getBcraVariables,
+  getPendingMerchants,
+  getAllBankAccounts,
+  getAllUsers,
+  getAdminAuditLog,
+} from '@/app/actions/admin'
+import { getAllKYCReviews } from '@/app/actions/kyc'
+import { getAllDisbursements } from '@/app/actions/banking'
+import { getAdminClientFicha } from '@/app/actions/admin-ficha'
+import { getAdminOpsDesk } from '@/app/actions/admin-ops'
+import { AdminDashboard } from '@/components/admin/admin-dashboard'
+import { parseAdminTab } from '@/lib/admin-nav'
+import { db } from '@/lib/db'
+import {
+  profile,
+  user as userTable,
+  loan as loansTable,
+  bankAccount,
+  loanProduct,
+  loanContract,
+} from '@/lib/db/schema'
+import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
+import { eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { getAdminStats, getAllLoans, getPendingMerchants, getBcraVariables } from '@/app/actions/admin'
-import { AdminDashboard } from '@/components/admin-dashboard'
 
-export default async function AdminPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; persona?: string }>
+}) {
+  const { tab: rawTab, persona: personaId } = await searchParams
+  const activeTab = personaId ? 'usuarios' : parseAdminTab(rawTab)
+  const userId = await requireAdmin()
   const session = await getSession()
-  if (!session?.user) redirect('/sign-in')
-
-  let data
-  try {
-    data = await Promise.all([getAdminStats(), getAllLoans(), getPendingMerchants(), getBcraVariables()])
-  } catch {
-    redirect('/dashboard')
+  if (!session?.user) {
+    redirect('/sign-in')
   }
 
-  const [stats, loans, merchants, variables] = data
-  return <AdminDashboard user={session.user} stats={stats} loans={loans} merchants={merchants} variables={variables} />
+  const [p] = await db
+    .select()
+    .from(profile)
+    .where(eq(profile.userId, userId))
+    .limit(1)
+
+  if (!p || p.role !== 'admin') {
+    const role = await getRoleForUser(userId)
+    redirect(getDashboardUrlByRole(role))
+  }
+
+  const fichaPromise = personaId
+    ? getAdminClientFicha(personaId)
+        .then((ficha) => ({ ficha, error: null as string | null }))
+        .catch((err: unknown) => ({
+          ficha: null,
+          error: err instanceof Error ? err.message : 'No se pudo abrir la ficha.',
+        }))
+    : Promise.resolve({ ficha: null, error: null as string | null })
+
+  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk] = await Promise.all([
+    getAdminStats().catch((e) => { console.error('[admin] getAdminStats failed:', e.message); return { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any }),
+    getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
+    getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
+    getBcraVariables().catch((e) => { console.error('[admin] getBcraVariables failed:', e.message); return [] as any[] }),
+    getAllKYCReviews(100).catch((e) => { console.error('[admin] getAllKYCReviews failed:', e.message); return [] as any[] }),
+    getAllDisbursements(100).catch((e) => { console.error('[admin] getAllDisbursements failed:', e.message); return [] as any[] }),
+    getAllBankAccounts().catch((e) => { console.error('[admin] getAllBankAccounts failed:', e.message); return [] as any[] }),
+    getAllUsers().catch((e) => { console.error('[admin] getAllUsers failed:', e.message); return [] as any[] }),
+    db.select().from(loanProduct).orderBy(loanProduct.name).catch((e) => { console.error('[admin] loanProduct failed:', e.message); return [] as any[] }),
+    getAdminAuditLog(200).catch((e) => { console.error('[admin] getAdminAuditLog failed:', e.message); return [] as any[] }),
+    fichaPromise,
+    getAdminOpsDesk().catch((e) => {
+      console.error('[admin] getAdminOpsDesk failed:', e.message)
+      return {
+        generatedAt: new Date().toISOString(),
+        market: { country: 'Argentina', currency: 'ARS' },
+        kpis: {
+          overdueCount: 0,
+          overdueAmount: 0,
+          due7Count: 0,
+          due7Amount: 0,
+          collectedMonth: 0,
+          receiptsMonth: 0,
+          pendingReview: 0,
+        },
+        installments: [],
+        receipts: [],
+        movements: [],
+        contracts: [],
+      }
+    }),
+  ])
+
+  const userIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.userId)))
+  const loanIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.loanId).filter(Boolean) as string[]))
+  const bankIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.bankAccountId).filter(Boolean) as string[]))
+
+  const [custRows, loanRows, bankRows, contractRows] = await Promise.all([
+    userIdsForDisb.length
+      ? db
+          .select({
+            userId: profile.userId,
+            fullName: userTable.name,
+            cuil: profile.cuil,
+            email: userTable.email,
+          })
+          .from(profile)
+          .leftJoin(userTable, eq(profile.userId, userTable.id))
+          .where(inArray(profile.userId, userIdsForDisb))
+      : Promise.resolve([]),
+    loanIdsForDisb.length
+      ? db
+          .select({
+            id: loansTable.id,
+            principal: loansTable.principal,
+            term: loansTable.term,
+            totalAmount: loansTable.totalAmount,
+            status: loansTable.status,
+          })
+          .from(loansTable)
+          .where(inArray(loansTable.id, loanIdsForDisb))
+      : Promise.resolve([]),
+    bankIdsForDisb.length
+      ? db
+          .select({
+            id: bankAccount.id,
+            bankName: bankAccount.bankName,
+            accountType: bankAccount.accountType,
+            cbu: bankAccount.cbu,
+            cvu: bankAccount.cvu,
+            alias: bankAccount.alias,
+            holderName: bankAccount.holderName,
+            holderCuil: bankAccount.holderCuil,
+          })
+          .from(bankAccount)
+          .where(inArray(bankAccount.id, bankIdsForDisb))
+      : Promise.resolve([]),
+    loanIdsForDisb.length
+      ? db
+          .select({
+            id: loanContract.id,
+            loanId: loanContract.loanId,
+            status: loanContract.status,
+          })
+          .from(loanContract)
+          .where(inArray(loanContract.loanId, loanIdsForDisb))
+      : Promise.resolve([]),
+  ])
+
+  const custMap = new Map(custRows.map((r) => [r.userId, r]))
+  const loanMap = new Map(loanRows.map((r) => [r.id, r]))
+  const bankMap = new Map(bankRows.map((r) => [r.id, r]))
+  const contractMap = new Map(contractRows.map((r) => [r.loanId, r]))
+
+  const disbursementList = disbRaw.map((d) => ({
+    ...d,
+    customer: custMap.get(d.userId) ?? null,
+    loan: d.loanId ? loanMap.get(d.loanId) ?? null : null,
+    bankAccount: d.bankAccountId ? bankMap.get(d.bankAccountId) ?? null : null,
+    contract: d.loanId ? contractMap.get(d.loanId) ?? null : null,
+  }))
+
+  return (
+    <AdminDashboard
+      user={{
+        id: session.user.id,
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        image: session.user.image ?? null,
+      }}
+      stats={stats as any}
+      loans={loans as any}
+      merchants={merchants as any}
+      bcra={bcra as any}
+      kycList={kycRaw as any}
+      disbursementList={disbursementList as any}
+      bankAccounts={bankAccounts as any}
+      users={users as any}
+      products={products as any}
+      auditLog={auditLog as any}
+      activeTab={activeTab}
+      personaId={personaId ?? null}
+      ficha={fichaResult.ficha}
+      fichaError={fichaResult.error}
+      opsDesk={opsDesk}
+    />
+  )
 }

@@ -1,44 +1,100 @@
-import crypto from 'node:crypto'
-import { NextResponse } from 'next/server'
-import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { identityVerification, profile, webhookEvent } from '@/lib/db/schema'
+import { after, NextRequest, NextResponse } from 'next/server'
+import {
+  applyDiditDecision,
+  claimDiditWebhookEvent,
+  getDiditDecision,
+  isDiditConfigured,
+  markDiditWebhookProcessed,
+  processDiditWebhook,
+  verifyDiditWebhook,
+} from '@/lib/didit'
 
-function shortenFloats(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(shortenFloats)
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, shortenFloats(item)]))
-  if (typeof value === 'number' && !Number.isInteger(value) && value % 1 === 0) return Math.trunc(value)
-  return value
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+function logSignatureFailure(reason: string, rawBody: string, req: NextRequest) {
+  // Sin preview del body: puede contener PII/KYC.
+  console.warn('[didit-webhook] firma rechazada', {
+    reason,
+    timestamp: req.headers.get('x-timestamp'),
+    hasV2: Boolean(req.headers.get('x-signature-v2')),
+    hasRaw: Boolean(req.headers.get('x-signature')),
+    hasSimple: Boolean(req.headers.get('x-signature-simple')),
+    bytes: rawBody.length,
+  })
 }
 
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys)
-  if (value && typeof value === 'object') return Object.keys(value as object).sort().reduce<Record<string, unknown>>((out, key) => { out[key] = sortKeys((value as Record<string, unknown>)[key]); return out }, {})
-  return value
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    webhook: 'didit',
+    configured: isDiditConfigured(),
+    time: new Date().toISOString(),
+  })
 }
 
-export async function POST(request: Request) {
-  const raw = await request.text()
-  const signature = request.headers.get('x-signature-v2') ?? ''
-  const timestamp = Number(request.headers.get('x-timestamp'))
-  if (!process.env.DIDIT_WEBHOOK_SECRET || !timestamp || Math.abs(Date.now() / 1000 - timestamp) > 300) return new NextResponse('stale', { status: 401 })
-  let payload: Record<string, any>
-  try { payload = JSON.parse(raw) } catch { return new NextResponse('invalid', { status: 400 }) }
-  const expected = crypto.createHmac('sha256', process.env.DIDIT_WEBHOOK_SECRET).update(JSON.stringify(sortKeys(shortenFloats(payload))), 'utf8').digest('hex')
-  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) return new NextResponse('bad signature', { status: 401 })
-  const eventId = String(payload.event_id ?? payload.session_id ?? '')
-  if (!eventId) return new NextResponse('missing event', { status: 400 })
-  const existing = await db.select({ id: webhookEvent.id }).from(webhookEvent).where(and(eq(webhookEvent.provider, 'didit'), eq(webhookEvent.eventId, eventId))).limit(1)
-  if (existing.length) return new NextResponse('ok')
-  const webhookId = crypto.randomUUID()
-  await db.insert(webhookEvent).values({ id: webhookId, provider: 'didit', eventId, signature, payload })
-  const userId = String(payload.vendor_data ?? '')
-  const status = String(payload.status ?? 'Not Started').toLowerCase().replaceAll(' ', '_')
-  if (userId) {
-    await db.insert(identityVerification).values({ id: crypto.randomUUID(), userId, provider: 'didit', providerSessionId: payload.session_id ?? null, status, decision: payload.decision ?? payload }).onConflictDoUpdate({ target: identityVerification.providerSessionId, set: { status, decision: payload.decision ?? payload, updatedAt: new Date() } })
-    if (payload.status === 'Approved') await db.update(profile).set({ kycStatus: 'approved', updatedAt: new Date() }).where(eq(profile.userId, userId))
-    if (payload.status === 'Declined') await db.update(profile).set({ kycStatus: 'rejected', updatedAt: new Date() }).where(eq(profile.userId, userId))
+export async function POST(req: NextRequest) {
+  const rawBody = await req.text()
+  const verified = verifyDiditWebhook({
+    rawBody,
+    signatureV2: req.headers.get('x-signature-v2'),
+    signature: req.headers.get('x-signature'),
+    signatureSimple: req.headers.get('x-signature-simple'),
+    timestamp: req.headers.get('x-timestamp'),
+  })
+
+  if (!verified.ok) {
+    logSignatureFailure(verified.reason, rawBody, req)
+    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
-  await db.update(webhookEvent).set({ processedAt: new Date() }).where(eq(webhookEvent.id, webhookId))
-  return new NextResponse('ok')
+
+  let body: Record<string, unknown>
+  try {
+    body = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {}
+  } catch {
+    return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 })
+  }
+
+  try {
+    const claim = await claimDiditWebhookEvent(body)
+    if (claim.duplicate) {
+      return NextResponse.json({ ok: true, duplicate: true, eventId: claim.eventId })
+    }
+
+    const result = await processDiditWebhook(body)
+    await markDiditWebhookProcessed(claim.eventId)
+
+    const sessionId = String(body.session_id ?? body.business_session_id ?? '')
+    const webhookType = String(body.webhook_type ?? '')
+    if (
+      isDiditConfigured() &&
+      sessionId &&
+      (webhookType === 'status.updated' || webhookType === 'data.updated') &&
+      verified.method === 'simple'
+    ) {
+      after(async () => {
+        try {
+          const decision = await getDiditDecision(sessionId)
+          const status = String(decision.status ?? body.status ?? '')
+          if (!status) return
+          await applyDiditDecision({
+            sessionId,
+            vendorData: typeof body.vendor_data === 'string' ? body.vendor_data : null,
+            status,
+            decision,
+            webhookEventId: typeof body.event_id === 'string' ? `${body.event_id}:decision` : null,
+            webhookType,
+          })
+        } catch (err) {
+          console.warn('[didit-webhook] recálculo de decisión omitido:', (err as Error).message)
+        }
+      })
+    }
+
+    return NextResponse.json({ ...result, eventId: claim.eventId, method: verified.method })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'internal_error'
+    console.error('[didit-webhook] error al procesar:', message)
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+  }
 }

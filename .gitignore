@@ -7,9 +7,31 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 
 # Environment variables
+.env
 .env*.local
+.env.production
+.afip-cache/
+
+# Certificados AFIP / claves (nunca versionar)
+emitia/
+emitia/certificates/
+*.key
+*.p12
+*.pfx
+*.crt
 
 # Common ignores
 node_modules
 .next/
 .DS_Store
+public/uploads/disbursements/*
+!public/uploads/disbursements/.gitkeep
+public/uploads/transfers/*
+!public/uploads/transfers/.gitkeep
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
+
+# Build/tooling artefactos
+tsconfig.tsbuildinfo
+*.log
+next-env.d.ts

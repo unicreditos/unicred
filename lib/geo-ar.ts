@@ -1,0 +1,130 @@
+const GEOREF = 'https://apis.datos.gob.ar/georef/api'
+const TTL_MS = 6 * 60 * 60 * 1000
+
+export type GeoOption = { id: string; name: string }
+
+type CacheEntry<T> = { value: T; expiresAt: number }
+const cache = new Map<string, CacheEntry<unknown>>()
+
+function fold(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function readCache<T>(key: string): T | null {
+  const hit = cache.get(key)
+  if (!hit || hit.expiresAt <= Date.now()) return null
+  return hit.value as T
+}
+
+function writeCache<T>(key: string, value: T) {
+  cache.set(key, { value, expiresAt: Date.now() + TTL_MS })
+}
+
+async function georef<T>(path: string, params: Record<string, string | number>): Promise<T> {
+  const url = new URL(`${GEOREF}${path}`)
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value))
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json', 'User-Agent': 'UNICREDITOS/1.0' },
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`Georef ${res.status}`)
+  return (await res.json()) as T
+}
+
+const ALIASES: Record<string, string> = {
+  caba: 'ciudad autonoma de buenos aires',
+  'capital federal': 'ciudad autonoma de buenos aires',
+  'ciudad de buenos aires': 'ciudad autonoma de buenos aires',
+}
+
+export const CPA_LETTER: Record<string, string> = {
+  'ciudad autonoma de buenos aires': 'C',
+  'buenos aires': 'B',
+  catamarca: 'K',
+  chaco: 'H',
+  chubut: 'U',
+  cordoba: 'X',
+  corrientes: 'W',
+  'entre rios': 'E',
+  formosa: 'P',
+  jujuy: 'Y',
+  'la pampa': 'L',
+  'la rioja': 'F',
+  mendoza: 'M',
+  misiones: 'N',
+  neuquen: 'Q',
+  'rio negro': 'R',
+  salta: 'A',
+  'san juan': 'J',
+  'san luis': 'D',
+  'santa cruz': 'Z',
+  'santa fe': 'S',
+  'santiago del estero': 'G',
+  'tierra del fuego': 'V',
+  tucuman: 'T',
+}
+
+export function cpaLetterForProvince(province: string) {
+  const key = fold(ALIASES[fold(province)] ? ALIASES[fold(province)] : province)
+  return CPA_LETTER[key] ?? ''
+}
+
+export function displayProvinceName(name: string) {
+  return fold(name) === 'ciudad autonoma de buenos aires' ? 'CABA' : name
+}
+
+export async function listProvinces(): Promise<GeoOption[]> {
+  const cached = readCache<GeoOption[]>('provincias')
+  if (cached) return cached
+  const json = await georef<{ provincias: { id: string; nombre: string }[] }>('/provincias', {
+    campos: 'id,nombre',
+    max: 30,
+  })
+  const rows = (json.provincias ?? [])
+    .map((p) => ({ id: p.id, name: displayProvinceName(p.nombre) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  writeCache('provincias', rows)
+  return rows
+}
+
+function officialProvinceName(name: string) {
+  const folded = fold(name)
+  if (folded === 'caba' || folded === 'capital federal') return 'Ciudad Autónoma de Buenos Aires'
+  return name
+}
+
+export async function listDepartments(provinceName: string): Promise<GeoOption[]> {
+  const key = `dptos:${fold(provinceName)}`
+  const cached = readCache<GeoOption[]>(key)
+  if (cached) return cached
+  const json = await georef<{ departamentos: { id: string; nombre: string }[] }>('/departamentos', {
+    provincia: officialProvinceName(provinceName),
+    campos: 'id,nombre',
+    max: 500,
+    orden: 'nombre',
+  })
+  const rows = (json.departamentos ?? []).map((d) => ({ id: d.id, name: d.nombre }))
+  writeCache(key, rows)
+  return rows
+}
+
+export async function listLocalities(provinceName: string, departmentName: string): Promise<GeoOption[]> {
+  const key = `loc:${fold(provinceName)}:${fold(departmentName)}`
+  const cached = readCache<GeoOption[]>(key)
+  if (cached) return cached
+  const json = await georef<{ localidades: { id: string; nombre: string }[] }>('/localidades', {
+    provincia: officialProvinceName(provinceName),
+    departamento: departmentName,
+    campos: 'id,nombre',
+    max: 1000,
+    orden: 'nombre',
+  })
+  const rows = (json.localidades ?? []).map((l) => ({ id: l.id, name: l.nombre }))
+  writeCache(key, rows)
+  return rows
+}

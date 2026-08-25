@@ -1,12 +1,32 @@
-import { Logo } from '@/components/brand'
 import { LoanSimulator } from '@/components/loan-simulator'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { getSession } from '@/lib/session'
+import { Button } from '@/components/ui/button'
+import { getAccountHref } from '@/lib/session'
+import {
+  HeroLanding,
+  SectionCard,
+  Stepper,
+  TrustBar,
+} from '@/components/unicred/dashboard-kit'
+import { PublicBcraBoard, PublicBcraTicker } from '@/components/unicred/public-bcra-board'
+import {
+  LegalStrip,
+  PublicCtaBanner,
+  PublicFooter,
+  PublicHeader,
+} from '@/components/unicred/public-chrome'
+import { formatARS } from '@/lib/finance'
+import { COMERCIO_QUOTE, CONSUMO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import {
   BadgeCheck,
+  Banknote,
   Building2,
-  Clock,
+  CheckCircle2,
+  FileCheck2,
+  Handshake,
+  Landmark,
+  Shield,
   ShieldCheck,
+  Sparkles,
   Store,
   TrendingUp,
   Wallet,
@@ -14,201 +34,321 @@ import {
 import Link from 'next/link'
 
 export default async function HomePage() {
-  const session = await getSession()
+  const { isLoggedIn, accountHref } = await getAccountHref()
+
+  const products = [
+    {
+      icon: Wallet,
+      tag: 'Personas',
+      name: 'Préstamo personal',
+      desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. Destino libre, sujeto a evaluación.`,
+      metric: PERSONAL_QUOTE.metric,
+      metricHint: PERSONAL_QUOTE.metricHint,
+      cta: 'Simular personal',
+      href: '/productos#personal',
+    },
+    {
+      icon: Store,
+      tag: 'PyME',
+      name: 'Crédito comercial',
+      desc: `Capital de trabajo. Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)}. Evaluación con KYC y Central de Deudores.`,
+      metric: COMERCIO_QUOTE.metric,
+      metricHint: COMERCIO_QUOTE.metricHint,
+      cta: 'Ver línea comercial',
+      href: '/productos#comercial',
+    },
+    {
+      icon: TrendingUp,
+      tag: 'Punto de venta',
+      name: 'Crédito de consumo',
+      desc: `Financiación en comercios adheridos. Hasta ${formatARS(CONSUMO_QUOTE.maxAmount)}. El cliente debe tener cuenta y KYC aprobado.`,
+      metric: CONSUMO_QUOTE.metric,
+      metricHint: CONSUMO_QUOTE.metricHint,
+      cta: 'Ver red de comercios',
+      href: '/comercios',
+    },
+  ]
+
+  const flowSteps = ['Simulá', 'Validación', 'Oferta', 'Acreditación']
+  const flowCards = [
+    {
+      icon: Sparkles,
+      t: '1 · Simulá la cuota',
+      d: 'Elegí monto y plazo. Ves cuota, TNA, CFT y total a devolver con sistema francés, antes de crear la cuenta.',
+    },
+    {
+      icon: ShieldCheck,
+      t: '2 · Validación BCRA y KYC',
+      d: 'Cargás DNI y CUIL. Consultamos la Central de Deudores del BCRA y verificamos identidad. Sin sucursal.',
+    },
+    {
+      icon: FileCheck2,
+      t: '3 · Oferta para firmar',
+      d: 'Si el perfil califica, ves monto, plan de cuotas y CFT contractual. Aceptás solo cuando los números cierran.',
+    },
+    {
+      icon: Banknote,
+      t: '4 · Dinero en tu cuenta',
+      d: 'Acreditamos en el CBU o CVU a tu nombre. Desde ahí administrás cuotas, recibos y contrato en el panel.',
+    },
+  ]
+
+  const merchantHighlights = [
+    'El cliente debe tener cuenta UNICRÉDITOS y KYC aprobado. No hay crédito anónimo en el local.',
+    'UNICRÉDITOS evalúa a esa persona con Central de Deudores. Si no califica, la venta no se financia.',
+    'Comisión por operación aprobada, informada al adherir. Sin costo de alta.',
+    'El comercio cobra el neto cuando UNICRÉDITOS acredita, no hay plazo de 48 horas garantizado.',
+  ]
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <Logo />
-          <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
-            <a href="#productos" className="hover:text-foreground">Créditos</a>
-            <a href="#comercios" className="hover:text-foreground">Comercios</a>
-            <a href="#como-funciona" className="hover:text-foreground">Cómo funciona</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            {session?.user ? (
-<Link href="/dashboard" className={buttonVariants({ size: 'sm' })}>Mi cuenta</Link>
-            ) : (
-              <>
-<Link href="/sign-in" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>Ingresar</Link>
-  <Link href="/sign-up" className={buttonVariants({ size: 'sm' })}>Crear cuenta</Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <PublicBcraTicker />
+      <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
+      <HeroLanding />
 
-      {/* Hero */}
-      <section className="border-b border-border">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 lg:grid-cols-2 lg:py-24">
-          <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Evaluación con datos del BCRA
-            </span>
-            <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
-              Créditos y préstamos online, en cuotas fijas y sin vueltas.
-            </h1>
-            <p className="max-w-lg text-pretty text-lg text-muted-foreground">
-UniCred permite simular solicitudes de hasta $3.000.000. La solicitud online queda sujeta a evaluación, condiciones vigentes y aprobación. Para personas y comercios de toda la Argentina.
-            </p>
-            <div className="flex flex-wrap gap-3">
-<Link href="/sign-up" className={buttonVariants({ size: 'lg' })}>Solicitar mi crédito</Link>
-  <Link href="#comercios" className={buttonVariants({ variant: 'outline', size: 'lg' })}>Soy un comercio</Link>
-            </div>
-            <div className="flex flex-wrap gap-6 pt-4 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" /> Solicitud online
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <BadgeCheck className="h-4 w-4 text-primary" /> Costos informados antes de contratar
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-center lg:justify-end">
-            <LoanSimulator />
-          </div>
+      <section id="datos-bcra" className="relative scroll-mt-24 border-b border-border/60 bg-slate-50/40">
+        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
+          <PublicBcraBoard compact />
         </div>
       </section>
 
-      {/* Productos */}
-      <section id="productos" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Nuestros créditos</h2>
-        <p className="mt-1 text-muted-foreground">Elegí el producto que mejor se adapta a vos.</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              icon: Wallet,
-              name: 'Préstamo Personal',
-              desc: 'Hasta $3.000.000 y hasta 48 cuotas, sujeto a evaluación, condiciones vigentes y aprobación.',
-              rate: 'TNA desde 90%',
-            },
-            {
-              icon: TrendingUp,
-              name: 'Crédito de Consumo',
-              desc: 'Financiá tus compras en cuotas, sujeto a evaluación y a las condiciones informadas antes de contratar.',
-              rate: 'Hasta 24 cuotas',
-            },
-            {
-              icon: Clock,
-              name: 'RapiCuotas Express',
-              desc: 'Montos chicos para simular online, sujetos a evaluación, documentación y aprobación.',
-              rate: 'Desde $10.000',
-            },
-          ].map((p) => (
-            <div
-              key={p.name}
-              className="rounded-xl border border-border bg-card p-6 transition-shadow hover:shadow-md"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <p.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-card-foreground">{p.name}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
-              <p className="mt-4 text-sm font-medium text-primary">{p.rate}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Cómo funciona */}
-      <section id="como-funciona" className="border-y border-border bg-muted/40">
-        <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Cómo funciona</h2>
-          <div className="mt-8 grid gap-8 md:grid-cols-3">
-            {[
-              { n: '1', t: 'Simulá y solicitá', d: 'Elegí monto y cuotas, completá tus datos y enviá la solicitud online.' },
-              { n: '2', t: 'Evaluamos con información autorizada', d: 'Podemos consultar la Central de Deudores del BCRA como parte de una evaluación, con los consentimientos y controles correspondientes.' },
-              { n: '3', t: 'Conocé el resultado', d: 'La decisión y las condiciones se informan antes de contratar. Esta versión no realiza desembolsos ni emite contratos.' },
-            ].map((s) => (
-              <div key={s.n} className="flex gap-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-mono text-sm font-bold text-primary-foreground">
-                  {s.n}
+      <section id="simulador" className="relative scroll-mt-24">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <SectionCard
+              title="Simulá tu crédito"
+              description="Ajustá monto y cuotas. Los valores son informativos y no constituyen oferta ni aprobación."
+              icon={<Sparkles className="h-4.5 w-4.5" />}
+              action={
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200/60">
+                  <BadgeCheck className="h-3.5 w-3.5" /> Sin compromiso
                 </span>
-                <div>
-                  <h3 className="font-semibold text-foreground">{s.t}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{s.d}</p>
+              }
+            >
+              <div className="grid gap-6 md:grid-cols-5">
+                <div className="md:col-span-3">
+                  <LoanSimulator className="max-w-none" />
+                </div>
+                <div className="md:col-span-2 space-y-4">
+                  <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-slate-50/60 p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-brand-navy-700">
+                      <BadgeCheck className="h-4 w-4 text-brand-primary" /> Documentación para aplicar
+                    </div>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> DNI y CUIL a tu nombre</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> CBU o CVU del titular</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> Ingresos netos comprobables</li>
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-brand-primary/15 bg-brand-primary-50/40 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Transparencia de costos</p>
+                    <p className="mt-2 text-sm text-slate-700">
+                      Informamos TNA y CFT con IVA en la misma pantalla. La tasa final depende del perfil de riesgo
+                      y se confirma en el contrato.
+                    </p>
+                    <Button asChild className="mt-4 w-full font-bold">
+                      <Link href="/sign-up">Solicitar con esta simulación</Link>
+                    </Button>
+                  </div>
+                  <LegalStrip />
                 </div>
               </div>
-            ))}
+
+              <div className="mt-6 border-t border-border/60 pt-5">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-bold tracking-tight text-foreground">Camino de solicitud</h4>
+                  <span className="text-[11px] font-semibold text-muted-foreground">El tiempo depende de KYC y de la API del BCRA</span>
+                </div>
+                <Stepper steps={flowSteps} current={0} />
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="space-y-6 lg:col-span-4">
+            <SectionCard
+              title="Cómo evaluamos"
+              description="No publicamos tasas de aprobación ni volúmenes. Cada caso se decide con KYC, BCRA e ingresos."
+              icon={<Handshake className="h-4.5 w-4.5" />}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-brand-primary/15 bg-brand-primary-50/50 p-3.5 ring-1 ring-brand-primary/10">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-brand-primary">Identidad</div>
+                  <div className="mt-1 text-sm font-black text-brand-navy">Didit</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">DNI y prueba de vida</div>
+                </div>
+                <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 p-3.5 ring-1 ring-emerald-200/40">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Crediticio</div>
+                  <div className="mt-1 text-sm font-black text-brand-navy">BCRA</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">Central de Deudores</div>
+                </div>
+                <div className="rounded-xl border border-brand-cian-200/60 bg-brand-cian-50/60 p-3.5 ring-1 ring-brand-cian-200/40">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-brand-cian-700">Costos</div>
+                  <div className="mt-1 text-sm font-black text-brand-navy">TNA y CFT</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">Antes de firmar</div>
+                </div>
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-3.5 ring-1 ring-amber-200/40">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Cuota</div>
+                  <div className="mt-1 text-sm font-black text-brand-navy">Tope 35%</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">de ingresos declarados</div>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 text-brand-primary" /> Datos personales: Ley 25.326</div>
+                <div className="flex items-center gap-2"><Landmark className="h-3.5 w-3.5 text-brand-primary" /> No somos entidad financiera del BCRA</div>
+              </div>
+            </SectionCard>
           </div>
         </div>
       </section>
 
-      {/* Comercios */}
-      <section id="comercios" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <div className="grid items-center gap-10 rounded-2xl border border-border bg-card p-8 lg:grid-cols-2 lg:p-12">
-          <div className="space-y-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <Store className="h-5 w-5" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-card-foreground">
-              Vendé más con financiación propia
+      <section id="como-funciona" className="scroll-mt-24 border-y border-border/60 bg-slate-50/60">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary ring-1 ring-brand-primary/10">
+              <FileCheck2 className="h-3.5 w-3.5" /> Proceso 100% digital
+            </span>
+            <h2 className="mt-4 text-balance text-3xl font-black leading-tight tracking-tight text-brand-navy sm:text-4xl">
+              De la simulación al desembolso, con costos claros.
             </h2>
-            <p className="text-muted-foreground">
-              Registrá tu comercio para evaluar una futura operatoria en cuotas. La habilitación, financiación y liquidación quedan sujetas a validación, contrato y proveedores conectados.
+            <p className="mt-3 text-base text-muted-foreground">
+              Cuatro pasos. Sin sucursal. La oferta se firma recién cuando ves TNA, CFT y plan de cuotas.
             </p>
-            <ul className="space-y-2 text-sm text-foreground">
-              {[
-                'Registro de interés para ventas en cuotas',
-                'Condiciones y comisiones informadas antes de contratar',
-                'Panel de gestión sujeto a habilitación operativa',
-              ].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <BadgeCheck className="h-4 w-4 text-primary" /> {f}
-                </li>
-              ))}
-            </ul>
-<Link href="/sign-up" className={buttonVariants()}><Building2 className="mr-1 h-4 w-4" /> Registrar mi comercio</Link>
           </div>
-          <div className="rounded-xl bg-sidebar p-8 text-sidebar-foreground">
-            <p className="text-sm text-sidebar-foreground/70">Ejemplo de liquidación</p>
-            <p className="mt-2 font-mono text-3xl font-bold">$250.000</p>
-            <p className="text-sm text-sidebar-foreground/60">venta en 6 cuotas</p>
-            <div className="mt-6 space-y-2 border-t border-sidebar-border pt-4 text-sm">
-              <div className="flex justify-between">
-                <span className="text-sidebar-foreground/70">Comisión UniCred (8%)</span>
-                <span className="font-mono">-$20.000</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Recibís</span>
-                <span className="font-mono text-sidebar-primary">$230.000</span>
-              </div>
-            </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {flowCards.map((f, idx) => {
+              const Icon = f.icon
+              return (
+                <SectionCard
+                  key={idx}
+                  title={f.t}
+                  description={f.d}
+                  icon={<Icon className="h-4.5 w-4.5" />}
+                  className="h-full transition-transform group hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-[11px] font-semibold">
+                    <span className="text-muted-foreground">Etapa</span>
+                    <span className="flex items-center gap-1 text-brand-primary">0{idx + 1} / 04</span>
+                  </div>
+                </SectionCard>
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-background">
-        <div className="mx-auto w-full max-w-6xl px-4 py-10">
-          <div className="flex flex-col justify-between gap-6 md:flex-row">
-            <div className="max-w-sm space-y-3">
-              <Logo />
-              <p className="text-sm text-muted-foreground">
-                UniCred es una unidad de negocio de Unipagos S.A. Créditos sujetos a aprobación
-                crediticia. TNA, CFT e impuestos informados en cada operación.
-              </p>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Información</p>
-              <div className="mt-2 flex flex-col gap-2">
-                <Link href="/legales" className="hover:text-foreground">Términos y condiciones</Link>
-                <Link href="/ayuda" className="hover:text-foreground">Centro de ayuda</Link>
-              </div>
-              <p className="mt-3 max-w-xs text-pretty">
-                La evaluación crediticia puede utilizar información pública de la Central de Deudores del BCRA. La simulación no garantiza aprobación.
-              </p>
-            </div>
+      <section id="productos" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">Líneas de crédito</h2>
+            <p className="mt-2 text-base text-muted-foreground">Tres productos. Misma regla: cuota fija y CFT informado.</p>
           </div>
-          <p className="mt-8 text-xs text-muted-foreground">
-            © {new Date().getFullYear()} UniCred — Unipagos S.A. Todos los derechos reservados.
-          </p>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+            <BadgeCheck className="h-4 w-4 text-brand-primary" /> Sujeto a evaluación crediticia
+          </div>
         </div>
-      </footer>
+
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          {products.map((p) => {
+            const Icon = p.icon
+            return (
+              <SectionCard
+                key={p.name}
+                title={p.name}
+                description={p.desc}
+                icon={<Icon className="h-4.5 w-4.5" />}
+                className="h-full transition-transform group hover:-translate-y-0.5"
+                action={
+                  <span className="rounded-full border border-brand-primary/15 bg-brand-primary-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary ring-1 ring-brand-primary/10">
+                    {p.tag}
+                  </span>
+                }
+              >
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Costos de referencia</div>
+                  <div className="mt-0.5 font-bold text-brand-navy">{p.metric}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{p.metricHint}</div>
+                </div>
+                <Button asChild className="mt-5 w-full rounded-xl font-bold">
+                  <Link href={p.href}>{p.cta}</Link>
+                </Button>
+              </SectionCard>
+            )
+          })}
+        </div>
+      </section>
+
+      <section id="comercios" className="scroll-mt-24 border-y border-border/60 bg-slate-50/60">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <SectionCard
+              title="Financiá tus ventas sin asumir el riesgo"
+              description="Red de comercios UNICRÉDITOS. Sin costo de adhesión. El cliente paga en cuotas; vos cobrás el neto."
+              icon={<Store className="h-4.5 w-4.5" />}
+              className="h-full"
+              action={
+                <Button asChild className="font-bold shadow-sm shadow-brand-primary/20">
+                  <Link href="/comercios">
+                    <Building2 className="mr-1.5 h-4 w-4" /> Adherir mi comercio
+                  </Link>
+                </Button>
+              }
+            >
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2.5 text-sm">
+                  {merchantHighlights.map((h) => (
+                    <div key={h} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/10">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="leading-relaxed text-foreground">{h}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl uc-gradient-navy p-5 text-white shadow-lg shadow-brand-navy/20">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-brand-cian-200">Ejemplo de liquidación</div>
+                  <div className="mt-1 font-mono text-3xl font-black text-white tabular-nums">{formatARS(250000)}</div>
+                  <div className="mt-0.5 text-xs text-slate-200/80">Venta financiada en 6 cuotas</div>
+                  <div className="mt-6 space-y-2 border-t border-white/10 pt-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-200/80">Bruto de la venta</span>
+                      <span className="font-mono font-bold text-white">{formatARS(250000)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-200/80">Comisión UNICRÉDITOS (8%)</span>
+                      <span className="font-mono font-bold text-rose-300">-{formatARS(20000)}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+                      <span className="text-sm font-bold text-brand-cian-200">Neto al comercio</span>
+                      <span className="font-mono text-lg font-black text-white">{formatARS(230000)}</span>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[10px] text-slate-300/80">Ejemplo ilustrativo. La comisión vigente se informa al adherir el comercio.</p>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="space-y-6 lg:col-span-5">
+            <SectionCard
+              title="Qué no prometemos"
+              description="No publicamos ticket medio, mix de ventas ni plazos de acreditación que no podamos cumplir."
+              icon={<TrendingUp className="h-4.5 w-4.5" />}
+            >
+              <ul className="space-y-2.5 text-sm text-slate-700">
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> El cliente firma su propio contrato. El comercio no es el deudor.</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> Comisión del ejemplo: 8% sobre $250.000. La vigente se informa al adherir.</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" /> Acreditación al comercio cuando UNICRÉDITOS desembolsa, no un SLA de 48 horas.</li>
+              </ul>
+            </SectionCard>
+          </div>
+        </div>
+      </section>
+
+      <TrustBar />
+      <PublicCtaBanner />
+      <PublicFooter />
     </div>
   )
 }
