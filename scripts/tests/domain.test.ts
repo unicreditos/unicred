@@ -8,7 +8,7 @@ import { computeCreditOffer, FIRST_CREDIT_HARD_CAP } from '../../lib/loan-underw
 import { LEGAL_COPY } from '../../lib/legal/copy'
 import { CANONICAL_HOST, shouldRedirectHost, trustedOrigins } from '../../lib/site'
 import { checkEnv } from '../../lib/env'
-import { couponCode } from '../../lib/coupon'
+import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber } from '../../lib/coupon'
 import { amountInWords } from '../../lib/legal/money-words'
 import { publicBrandWebsite } from '../../lib/brand'
 
@@ -143,6 +143,18 @@ describe('cupón de cuota', () => {
     const b = couponCode({ loanId: 'loan_abc', number: 1, dueDate: '2026-09-18', amount: 432125 })
     assert.equal(a, b)
     assert.ok(a.length > 8)
+  })
+
+  it('el código de barras se escala al ancho del talón sin recortar el número', () => {
+    const raw = '3335012345678901234567890123456789012345'
+    const svg = barcodeSvg(raw, { height: 48, module: 1, showText: false, fit: true })
+    assert.match(svg, /width="100%"/)
+    assert.match(svg, /viewBox=/)
+    assert.match(svg, /preserveAspectRatio="xMidYMid meet"/)
+    assert.doesNotMatch(svg, /<text /)
+    assert.equal(formatBarcodeHuman(raw), '3335 0123 4567 8901 2345 6789 0123 4567 8901 2345')
+    assert.equal(formatBarcodeHuman('UCABC123'), 'UCABC123')
+    assert.equal(formatOperationNumber('174577133827'), '1745 7713 3827')
   })
 })
 

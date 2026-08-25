@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getLoanCouponQrs, getPublicTreasury } from '@/app/actions/payments'
-import { barcodeSvg, couponCode, installmentPayPath } from '@/lib/coupon'
+import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber, installmentPayPath } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import type { InstallmentCashCoupons } from '@/lib/payments/installment-mp-ticket'
@@ -651,7 +651,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
               <div>
                 <CardTitle className="text-base">Talonario / cuponera</CardTitle>
                 <CardDescription>
-                  Cada talón abierto tiene el QR de Mercado Pago y los cupones de Pago Fácil y Rapipago de esa cuota. También podés transferir a Brubank.
+                  Cada talón abierto tiene el QR de Mercado Pago y, en Pago Fácil y Rapipago, el Nº de operación para dictar en caja. También podés transferir a Brubank.
                 </CardDescription>
               </div>
               <Button asChild variant="outline" size="sm">
@@ -827,12 +827,15 @@ function CashTicketMini({
   ticket,
 }: {
   label: string
-  ticket: { barcode: string | null; expiresAt: string } | null
+  ticket: { barcode: string | null; operationNumber?: string | null; expiresAt: string } | null
 }) {
+  const operation = ticket?.operationNumber?.replace(/\s+/g, '') || null
+  const barcode = ticket?.barcode?.replace(/\s+/g, '') || null
+  const showBarcode = Boolean(barcode && barcode !== operation)
   let svg: string | null = null
-  if (ticket?.barcode) {
+  if (showBarcode && barcode) {
     try {
-      svg = barcodeSvg(ticket.barcode, { height: 28, module: ticket.barcode.length > 24 ? 0.8 : 1 })
+      svg = barcodeSvg(barcode, { height: 36, module: 1, showText: false, fit: true })
     } catch {
       svg = null
     }
@@ -840,11 +843,27 @@ function CashTicketMini({
   return (
     <div className="rounded-md border border-border/80 bg-muted/30 px-2 py-1.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      {operation ? (
+        <div className="mt-1 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Nº de operación</p>
+          <p className="font-mono text-lg font-bold tracking-[0.12em] text-foreground">
+            {formatOperationNumber(operation)}
+          </p>
+        </div>
+      ) : null}
       {svg ? (
-        <div className="mt-1 overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />
-      ) : (
+        <div className="cuponera-barcode mt-1">
+          <div dangerouslySetInnerHTML={{ __html: svg }} />
+          {barcode ? (
+            <p className="mt-1 text-center font-mono text-[10px] leading-snug tracking-wide">
+              {formatBarcodeHuman(barcode)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {!operation && !svg ? (
         <p className="mt-1 text-[10px] text-muted-foreground">Sin cupón emitido</p>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -932,7 +951,16 @@ function LoanCouponBook({
                   </p>
                 </div>
               ) : null}
-              <div className="min-w-0 flex-1 overflow-x-auto" dangerouslySetInnerHTML={{ __html: barcodeSvg(code, { height: 36, module: 1.1 }) }} />
+              <div className="cuponera-barcode min-w-0 flex-1">
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: barcodeSvg(code, { height: 36, module: 1, showText: false, fit: true }),
+                  }}
+                />
+                <p className="mt-1 text-center font-mono text-[10px] leading-snug tracking-wide">
+                  {formatBarcodeHuman(code)}
+                </p>
+              </div>
             </div>
             {open ? (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">

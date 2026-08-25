@@ -605,12 +605,372 @@
   .doc-letterhead,
   .doc-table tr,
   .doc-field,
-  .doc-coupon-ticket {
+  .doc-coupon-ticket,
+  .cuponera-coupon {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .cuponera-book:has(.cuponera-coupon) .cuponera-cover {
+    break-after: page;
+    page-break-after: always;
+  }
+  .cuponera-coupon {
+    break-after: page;
+    page-break-after: always;
+    margin-top: 0 !important;
+  }
+  .cuponera-coupon:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .cuponera-coupons {
+    padding: 0 !important;
+  }
+  .cuponera-schedule thead {
+    display: table-header-group;
+  }
+  .cuponera-barcode,
+  .cuponera-barcode svg,
+  .doc-barcode-fit {
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+  .cuponera-barcode svg,
+  .doc-barcode-fit {
+    width: 100% !important;
+    height: auto !important;
+  }
+  .cuponera-coupon-head {
+    background: #0b2545 !important;
+    color: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .cuponera-op-number {
+    color: #0b2545 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   a { color: inherit !important; text-decoration: none !important; }
   * { box-shadow: none !important; text-shadow: none !important; }
+}
+
+.cuponera-howto {
+  margin-top: 0.85rem;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.cuponera-alert {
+  margin-top: 0.45rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.cuponera-schedule {
+  font-size: 12px;
+}
+
+.cuponera-schedule th,
+.cuponera-schedule td {
+  padding: 0.38rem 0.45rem;
+  color: #0f172a;
+}
+
+.cuponera-schedule tr.is-closed td {
+  color: #64748b;
+}
+
+.cuponera-coupons {
+  padding: 0 1.15rem 1.25rem;
+}
+
+.cuponera-coupon {
+  margin-top: 1rem;
+  overflow: visible;
+  border: 1.5px solid #0b2545;
+  background: #fff;
+  color: #0f172a;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.cuponera-coupon-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: #0b2545;
+  color: #f8fafc;
+}
+
+.cuponera-brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.cuponera-book {
+  margin-top: 0.1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #cbd5e1;
+}
+
+.cuponera-coupon-head-meta {
+  text-align: right;
+}
+
+.cuponera-talon-index {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.cuponera-quota {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.cuponera-holder {
+  padding: 0.4rem 0.75rem 0.15rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.cuponera-amount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+  padding: 0.35rem 0.75rem 0.55rem;
+  border-bottom: 1px solid #d6dee8;
+}
+
+@container docsheet (min-width: 28rem) {
+  .cuponera-amount-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(7.5rem, 9.5rem);
+  }
+  .cuponera-due {
+    text-align: right;
+  }
+}
+
+.cuponera-kicker {
+  margin: 0 0 0.12rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cuponera-amount {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: #0b2545;
+}
+
+.cuponera-due {
+  text-align: left;
+}
+
+.cuponera-due-date {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cuponera-status {
+  margin-top: 0.15rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0b2545;
+}
+
+.cuponera-status.is-overdue,
+.cuponera-coupon.is-overdue .cuponera-status {
+  color: #b91c1c;
+}
+
+.cuponera-pay-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.65rem 0.85rem;
+  padding: 0.65rem 0.75rem 0.35rem;
+  align-items: start;
+}
+
+@container docsheet (min-width: 28rem) {
+  .cuponera-pay-grid {
+    grid-template-columns: 34mm minmax(0, 1fr);
+  }
+}
+
+.cuponera-qr-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cuponera-qr {
+  width: 32mm;
+  height: 32mm;
+  display: block;
+  background: #fff;
+}
+
+.cuponera-qr-caption {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  text-align: center;
+}
+
+.cuponera-pay-copy ol {
+  margin: 0 0 0.55rem;
+  padding-left: 1.15rem;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.cuponera-pay-copy li + li {
+  margin-top: 0.12rem;
+}
+
+.cuponera-barcode {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+.cuponera-barcode svg,
+.doc-barcode-fit {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.cuponera-barcode-number {
+  margin-top: 0.2rem;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.cuponera-network {
+  margin: 0.35rem 0.75rem;
+  padding: 0.4rem 0.5rem 0.5rem;
+  border: 1px solid #d6dee8;
+  background: #f8fafc;
+}
+
+.cuponera-network-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.75rem;
+  margin-bottom: 0.3rem;
+  font-size: 11px;
+}
+
+.cuponera-network-head strong {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0b2545;
+}
+
+.cuponera-network-head span {
+  color: #475569;
+}
+
+.cuponera-op {
+  margin: 0.15rem 0 0.45rem;
+  text-align: center;
+}
+
+.cuponera-op-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.cuponera-op-number {
+  margin: 0.15rem 0 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  color: #0b2545;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.cuponera-op-hint {
+  margin: 0.2rem 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.cuponera-network-fallback {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cuponera-network-fallback img {
+  width: 22mm;
+  height: 22mm;
+  flex-shrink: 0;
+}
+
+.cuponera-network-fallback p,
+.cuponera-missing {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.cuponera-coupon-foot {
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.75rem 0.6rem;
+  border-top: 1px solid #d6dee8;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.cuponera-mono {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
 .uc-gradient-navy {

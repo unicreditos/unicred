@@ -362,6 +362,7 @@ export type MpOfflineTicketNetwork = 'pagofacil' | 'rapipago'
 export type MpOfflineTicketResult = {
   paymentId: string
   barcode: string | null
+  operationNumber: string | null
   ticketUrl: string | null
   status: string
   expiresAt: string | null
@@ -400,7 +401,12 @@ export function extractMpTicketFields(data: unknown): MpOfflineTicketResult | nu
     rec.barcode_content,
     poiTx.barcode_content,
     poiTx.barcode,
+  )
+  const operationNumber = firstTicketString(
     td.payment_method_reference_id,
+    poiTx.payment_method_reference_id,
+    rec.payment_method_reference_id,
+    poiTx.reference,
   )
   const ticketUrl = firstTicketString(
     td.external_resource_url,
@@ -408,10 +414,13 @@ export function extractMpTicketFields(data: unknown): MpOfflineTicketResult | nu
     poiTx.external_resource_url,
     rec.ticket_url,
   )
-  if (!barcode && !ticketUrl) return null
+  if (!barcode && !operationNumber && !ticketUrl) return null
+  const cleanBarcode = barcode ? barcode.replace(/\s+/g, '') : null
+  const cleanOperation = operationNumber ? operationNumber.replace(/\s+/g, '') : null
   return {
     paymentId: id,
-    barcode: barcode ? barcode.replace(/\s+/g, '') : null,
+    barcode: cleanBarcode,
+    operationNumber: cleanOperation,
     ticketUrl,
     status: String(rec.status ?? ''),
     expiresAt: firstTicketString(rec.date_of_expiration),

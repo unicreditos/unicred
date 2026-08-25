@@ -18,7 +18,24 @@ describe('cupones Pago Fácil / Rapipago', () => {
     })
     assert.equal(parsed?.paymentId, '5466310457')
     assert.equal(parsed?.barcode, '3335008800000000006004835002100020000242462010')
+    assert.equal(parsed?.operationNumber, '1234567890')
     assert.match(parsed?.ticketUrl ?? '', /mercadopago\.com\.ar\/payments\/123456\/ticket/)
+  })
+
+  it('separa el Nº de operación del código de barras, como en el ticket de Rapipago', () => {
+    const parsed = extractMpTicketFields({
+      id: 174577133827,
+      status: 'pending',
+      date_of_expiration: '2026-09-24T23:59:59.000-03:00',
+      barcode: { content: '6002609246005036341491330106101282160180988962' },
+      transaction_details: {
+        payment_method_reference_id: '174577133827',
+        external_resource_url: 'https://www.mercadopago.com.ar/payments/1/ticket?payment_method_id=rapipago',
+      },
+    })
+    assert.equal(parsed?.operationNumber, '174577133827')
+    assert.equal(parsed?.barcode, '6002609246005036341491330106101282160180988962')
+    assert.notEqual(parsed?.operationNumber, parsed?.barcode)
   })
 
   it('acepta barcode_content del Orders API', () => {
@@ -32,6 +49,7 @@ describe('cupones Pago Fácil / Rapipago', () => {
       },
     })
     assert.equal(parsed?.barcode, '3335008800000000006004835002100020000242462010')
+    assert.equal(parsed?.operationNumber, null)
     assert.ok(parsed?.ticketUrl)
   })
 

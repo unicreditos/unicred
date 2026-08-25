@@ -71,12 +71,43 @@ function encodeCode128B(text: string) {
   return values.map((v) => CODE128_PATTERNS[v]).join('') + '11'
 }
 
-export function barcodeSvg(text: string, opts?: { height?: number; module?: number }) {
+export type BarcodeSvgOpts = {
+  height?: number
+  module?: number
+  /** Si es false, el número se imprime en HTML a tamaño legible. */
+  showText?: boolean
+  /** Escala el SVG al 100% del contenedor (imprescindible en A4). */
+  fit?: boolean
+}
+
+function xmlEscape(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+}
+
+/** Agrupa el número del cupón para leerlo en el local sin recortar dígitos. */
+export function formatBarcodeHuman(value: string) {
+  const raw = String(value ?? '').replace(/\s+/g, '')
+  if (!raw) return ''
+  if (/^\d+$/.test(raw)) {
+    return (raw.match(/.{1,4}/g) ?? [raw]).join(' ')
+  }
+  return raw
+}
+
+/** Nº de operación de Pago Fácil / Rapipago, agrupado como en el ticket de Mercado Pago. */
+export function formatOperationNumber(value: string) {
+  return formatBarcodeHuman(String(value ?? '').replace(/\D/g, ''))
+}
+
+export function barcodeSvg(text: string, opts?: BarcodeSvgOpts) {
   const bits = encodeCode128B(text)
   const bar = opts?.module ?? 1.6
   const height = opts?.height ?? 46
+  const showText = opts?.showText !== false
+  const textBand = showText ? 16 : 0
   const quiet = 10
   const width = bits.length * bar + quiet * 2
+  const svgH = height + textBand
   let x = quiet
   let rects = ''
   for (const bit of bits) {
@@ -85,7 +116,14 @@ export function barcodeSvg(text: string, opts?: { height?: number; module?: numb
     }
     x += bar
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(1)}" height="${height + 16}" viewBox="0 0 ${width.toFixed(1)} ${height + 16}" role="img" aria-label="${text}">${rects}<text x="${(width / 2).toFixed(1)}" y="${height + 13}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#334155">${text}</text></svg>`
+  const label = xmlEscape(text)
+  const textEl = showText
+    ? `<text x="${(width / 2).toFixed(1)}" y="${height + 13}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#334155">${label}</text>`
+    : ''
+  const widthAttr = opts?.fit ? '100%' : width.toFixed(1)
+  const fitClass = opts?.fit ? ' doc-barcode-fit' : ''
+  const fitStyle = opts?.fit ? ' style="width:100%;max-width:100%;height:auto;display:block"' : ''
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="doc-barcode${fitClass}" width="${widthAttr}" height="${svgH}" viewBox="0 0 ${width.toFixed(1)} ${svgH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}"${fitStyle}>${rects}${textEl}</svg>`
 }
 
 export function couponLabel(input: {

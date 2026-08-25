@@ -44,6 +44,7 @@ export default async function CuponeraPage({ params }: { params: Promise<{ loanI
       meta={`Cuponera · ${loanId}`}
       fileName={documentPdfBaseName('Cuponera', shortDocCode(loanId, 'CUP'))}
       extra={<DocumentPackLinks contractId={data.id} loanId={loanId} />}
+      hint="Vista previa A4. Imprimí o guardá como PDF: carátula en la primera hoja y un talón completo por cada cuota abierta, con códigos a todo el ancho."
     >
       <CouponBookPrintable contract={data} />
     </DocumentPreviewShell>

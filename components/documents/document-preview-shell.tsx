@@ -11,6 +11,7 @@ export function DocumentPreviewShell({
   meta,
   fileName,
   extra,
+  hint,
   children,
 }: {
   backHref: string
@@ -18,6 +19,7 @@ export function DocumentPreviewShell({
   /** Nombre al guardar PDF (sin .pdf). */
   fileName: string
   extra?: ReactNode
+  hint?: string
   children: ReactNode
 }) {
   return (
@@ -32,8 +34,8 @@ export function DocumentPreviewShell({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-slate-800">{meta}</p>
           <p className="hidden text-[11px] text-slate-500 sm:block">
-            Vista previa A4. En el diálogo de impresión usá «Guardar como PDF» — el archivo se
-            nombrará según este documento.
+            {hint ??
+              'Vista previa A4. En el diálogo de impresión usá «Guardar como PDF» — el archivo se nombrará según este documento.'}
           </p>
         </div>
         {extra}

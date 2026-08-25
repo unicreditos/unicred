@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { installment, loan, payment, profile, user as userTable } from '@/lib/db/schema'
 import {
   createOfflineTicketPayment,
+  extractMpTicketFields,
+  mpApiFetch,
   type MpOfflineTicketNetwork,
 } from '@/lib/mercadopago'
 import { and, desc, eq, gte, inArray } from 'drizzle-orm'
@@ -13,6 +15,7 @@ export type InstallmentCashTicket = {
   network: MpOfflineTicketNetwork
   label: 'Pago Fácil' | 'Rapipago'
   barcode: string | null
+  operationNumber: string | null
   ticketUrl: string | null
   paymentId: string
   expiresAt: string
@@ -26,6 +29,16 @@ export type InstallmentCashCoupons = {
 
 function gatewayRecord(value: unknown) {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function gatewayString(value: unknown) {
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return null
+}
+
+function looksLikeOperationNumber(value: string | null) {
+  return Boolean(value && /^\d{8,16}$/.test(value.replace(/\s+/g, '')))
 }
 
 function sameInstallment(row: { installmentId: string | null; gatewayResponse: unknown }, installmentId: string) {
@@ -47,6 +60,8 @@ function ticketStillValid(row: { expiresAt?: Date | string | null; gatewayRespon
   const g = gatewayRecord(row.gatewayResponse)
   const hasData =
     (typeof g.barcode_content === 'string' && g.barcode_content.trim()) ||
+    (typeof g.operation_number === 'string' && g.operation_number.trim()) ||
+    (typeof g.payment_method_reference_id === 'string' && g.payment_method_reference_id.trim()) ||
     (typeof g.ticket_url === 'string' && g.ticket_url.trim())
   if (!hasData) return false
   const exp = row.expiresAt ? new Date(row.expiresAt) : null
@@ -56,13 +71,24 @@ function ticketStillValid(row: { expiresAt?: Date | string | null; gatewayRespon
 
 function asCashTicket(
   network: MpOfflineTicketNetwork,
-  parsed: { barcode: string | null; ticketUrl: string | null; paymentId: string },
+  parsed: {
+    barcode: string | null
+    operationNumber?: string | null
+    ticketUrl: string | null
+    paymentId: string
+  },
   expiresAt: Date,
 ): InstallmentCashTicket {
+  const barcode = parsed.barcode?.replace(/\s+/g, '') || null
+  let operationNumber = parsed.operationNumber?.replace(/\s+/g, '') || null
+  if (!operationNumber && barcode && /^\d{8,16}$/.test(barcode)) {
+    operationNumber = barcode
+  }
   return {
     network,
     label: network === 'pagofacil' ? 'Pago Fácil' : 'Rapipago',
-    barcode: parsed.barcode,
+    barcode,
+    operationNumber,
     ticketUrl: parsed.ticketUrl,
     paymentId: parsed.paymentId,
     expiresAt: expiresAt.toISOString(),
@@ -71,6 +97,28 @@ function asCashTicket(
 
 function methodFor(network: MpOfflineTicketNetwork) {
   return network === 'pagofacil' ? 'pago_facil' : 'rapipago'
+}
+
+async function hydrateTicketFromMercadoPago(parsed: {
+  barcode: string | null
+  operationNumber: string | null
+  ticketUrl: string | null
+  paymentId: string
+}) {
+  try {
+    const fetched = await mpApiFetch(`/v1/payments/${encodeURIComponent(parsed.paymentId)}`)
+    if (!fetched.ok) return parsed
+    const fresh = extractMpTicketFields(fetched.data)
+    if (!fresh) return parsed
+    return {
+      barcode: parsed.barcode || fresh.barcode,
+      operationNumber: parsed.operationNumber || fresh.operationNumber,
+      ticketUrl: parsed.ticketUrl || fresh.ticketUrl,
+      paymentId: parsed.paymentId || fresh.paymentId,
+    }
+  } catch {
+    return parsed
+  }
 }
 
 async function ensureInstallmentNetworkTicket(opts: {
@@ -106,13 +154,48 @@ async function ensureInstallmentNetworkTicket(opts: {
   const reusable = existing.find((row) => sameInstallment(row, opts.installmentId) && ticketStillValid(row))
   if (reusable) {
     const g = gatewayRecord(reusable.gatewayResponse)
+    const storedOp =
+      gatewayString(g.operation_number) ||
+      gatewayString(g.payment_method_reference_id) ||
+      (looksLikeOperationNumber(gatewayString(reusable.referenceNumber))
+        ? gatewayString(reusable.referenceNumber)
+        : null)
+    let parsed = {
+      barcode: gatewayString(g.barcode_content),
+      operationNumber: storedOp,
+      ticketUrl: gatewayString(g.ticket_url) || reusable.paymentLinkUrl,
+      paymentId: String(g.mp_payment_id ?? reusable.externalId ?? reusable.id),
+    }
+    if (
+      (!parsed.operationNumber || !parsed.barcode || looksLikeOperationNumber(parsed.barcode)) &&
+      parsed.paymentId
+    ) {
+      const before = parsed
+      parsed = await hydrateTicketFromMercadoPago(parsed)
+      if (
+        parsed.operationNumber !== before.operationNumber ||
+        parsed.barcode !== before.barcode ||
+        parsed.ticketUrl !== before.ticketUrl
+      ) {
+        await db
+          .update(payment)
+          .set({
+            gatewayResponse: {
+              ...g,
+              barcode_content: parsed.barcode,
+              operation_number: parsed.operationNumber,
+              ticket_url: parsed.ticketUrl,
+              mp_payment_id: parsed.paymentId,
+            },
+            referenceNumber: parsed.operationNumber,
+            updatedAt: new Date(),
+          })
+          .where(eq(payment.id, reusable.id))
+      }
+    }
     return asCashTicket(
       opts.network,
-      {
-        barcode: typeof g.barcode_content === 'string' ? g.barcode_content : null,
-        ticketUrl: typeof g.ticket_url === 'string' ? g.ticket_url : reusable.paymentLinkUrl,
-        paymentId: String(g.mp_payment_id ?? reusable.externalId ?? reusable.id),
-      },
+      parsed,
       reusable.expiresAt ? new Date(reusable.expiresAt) : ticketValidUntil(opts.dueDate),
     )
   }
@@ -158,6 +241,7 @@ async function ensureInstallmentNetworkTicket(opts: {
         kind: 'coupon_ticket',
         network: opts.network,
         barcode_content: ticket.barcode,
+        operation_number: ticket.operationNumber,
         ticket_url: ticket.ticketUrl,
         mp_payment_id: ticket.paymentId,
         installment_ids: [opts.installmentId],
@@ -165,7 +249,7 @@ async function ensureInstallmentNetworkTicket(opts: {
       paymentLinkId: ticket.paymentId,
       paymentLinkUrl: ticket.ticketUrl,
       externalId: ticket.paymentId,
-      referenceNumber: ticket.barcode,
+      referenceNumber: ticket.operationNumber || ticket.barcode,
       expiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),

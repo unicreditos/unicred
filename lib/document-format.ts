@@ -58,6 +58,13 @@ export function docDate(value: Date | string | null | undefined): string {
   return formatDocDate(d)
 }
 
+export function docDateShort(value: Date | string | null | undefined): string {
+  const d = asDate(value)
+  if (!d) return '—'
+  const p = calendarInArgentina(d)
+  return `${String(Number(p.day)).padStart(2, '0')}/${String(p.month).padStart(2, '0')}/${p.year}`
+}
+
 export function docDateTime(value: Date | string | null | undefined): string {
   const d = asDate(value)
   if (!d) return '—'
