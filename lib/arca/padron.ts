@@ -1,7 +1,11 @@
 import { applyEmitiaAfipEnv } from '@/lib/arca/emitia-certs'
 import { getAFIPCredentials, getTicketAcceso } from '@/lib/arca/wsaa'
 
-applyEmitiaAfipEnv()
+try {
+  applyEmitiaAfipEnv()
+} catch (err) {
+  console.warn('[arca] padron: certificados no disponibles:', (err as Error).message)
+}
 
 const WSDL = {
   a13: {

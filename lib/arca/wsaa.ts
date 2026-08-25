@@ -64,49 +64,74 @@ function decodePem(value: string) {
   return Buffer.from(trimmed, 'base64').toString('utf8')
 }
 
-function resolveExisting(...candidates: string[]) {
+function isServerless() {
+  return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+}
+
+function resolveExistingFile(...candidates: string[]) {
   for (const rel of candidates) {
-    const abs = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel)
-    if (fs.existsSync(abs)) return abs
+    const trimmed = rel.trim()
+    if (!trimmed) continue
+    const abs = path.isAbsolute(trimmed) ? trimmed : path.join(process.cwd(), trimmed)
+    try {
+      if (fs.statSync(abs).isFile()) return abs
+    } catch {
+      continue
+    }
   }
   return null
 }
 
+function readTextFile(file: string) {
+  try {
+    return fs.readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
 export function getAFIPCredentials() {
-  const fromEmitia = applyEmitiaAfipEnv() ?? loadEmitiaAfipBundle()
-  if (fromEmitia) {
-    return {
-      certPem: fromEmitia.certPem,
-      keyPem: fromEmitia.keyPem,
-      cuit: fromEmitia.cuit,
-      environment: fromEmitia.environment,
+  try {
+    const fromEmitia = applyEmitiaAfipEnv() ?? loadEmitiaAfipBundle()
+    if (fromEmitia) {
+      return {
+        certPem: fromEmitia.certPem,
+        keyPem: fromEmitia.keyPem,
+        cuit: fromEmitia.cuit,
+        environment: fromEmitia.environment,
+      }
     }
+
+    const cuit = (process.env.AFIP_CUIT ?? '').replace(/\D/g, '')
+    const raw = (process.env.AFIP_ENVIRONMENT || 'production').toLowerCase()
+    const environment: AfipEnv = raw === 'testing' || raw === 'homo' ? 'testing' : 'production'
+
+    let certPem = process.env.AFIP_CERT ? decodePem(process.env.AFIP_CERT) : ''
+    let keyPem = process.env.AFIP_KEY ? decodePem(process.env.AFIP_KEY) : ''
+
+    // En Vercel no hay emitia/certificates. Un path vacío coincidía con cwd y
+    // readFileSync tiraba EISDIR, derribando todo el sitio.
+    if ((!certPem || !keyPem) && !isServerless()) {
+      const certPath = resolveExistingFile(
+        process.env.AFIP_CERT_PATH || '',
+        'certificates/afip-prod.crt',
+        'emitia/certificates/afip-prod.crt',
+      )
+      const keyPath = resolveExistingFile(
+        process.env.AFIP_KEY_PATH || '',
+        'certificates/afip_private.key',
+        'emitia/certificates/afip_private.key',
+      )
+      if (certPath) certPem = readTextFile(certPath)
+      if (keyPath) keyPem = readTextFile(keyPath)
+    }
+
+    if (!certPem || !keyPem || !cuit) return null
+    return { certPem, keyPem, cuit, environment }
+  } catch (err) {
+    console.warn('[arca] no se pudieron cargar credenciales AFIP:', (err as Error).message)
+    return null
   }
-
-  const cuit = (process.env.AFIP_CUIT ?? '').replace(/\D/g, '')
-  const raw = (process.env.AFIP_ENVIRONMENT || 'production').toLowerCase()
-  const environment: AfipEnv = raw === 'testing' || raw === 'homo' ? 'testing' : 'production'
-  const certEnv = process.env.AFIP_CERT
-  const keyEnv = process.env.AFIP_KEY
-
-  let certPem = certEnv ? decodePem(certEnv) : ''
-  let keyPem = keyEnv ? decodePem(keyEnv) : ''
-
-  if (!certPem || !keyPem) {
-    const certPath = resolveExisting(
-      process.env.AFIP_CERT_PATH || '',
-      'certificates/afip-prod.crt',
-    )
-    const keyPath = resolveExisting(
-      process.env.AFIP_KEY_PATH || '',
-      'certificates/afip_private.key',
-    )
-    if (certPath) certPem = fs.readFileSync(certPath, 'utf8')
-    if (keyPath) keyPem = fs.readFileSync(keyPath, 'utf8')
-  }
-
-  if (!certPem || !keyPem || !cuit) return null
-  return { certPem, keyPem, cuit, environment }
 }
 
 function cacheDir() {

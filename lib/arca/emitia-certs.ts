@@ -22,32 +22,44 @@ function emitiaRoots() {
   ].filter((v): v is string => Boolean(v))
 }
 
+function isFile(file: string) {
+  try {
+    return fs.statSync(file).isFile()
+  } catch {
+    return false
+  }
+}
+
 function findEmitiaRoot() {
   for (const root of emitiaRoots()) {
     const abs = path.resolve(root)
-    if (fs.existsSync(path.join(abs, 'certificates', 'afip-prod.crt'))) return abs
-    if (fs.existsSync(path.join(abs, 'certificates', 'afip_private.key'))) return abs
-    if (fs.existsSync(path.join(abs, '.env.local'))) return abs
+    if (isFile(path.join(abs, 'certificates', 'afip-prod.crt'))) return abs
+    if (isFile(path.join(abs, 'certificates', 'afip_private.key'))) return abs
+    if (isFile(path.join(abs, '.env.local'))) return abs
   }
   return null
 }
 
 function parseAfipEnv(file: string) {
   const out: Record<string, string> = {}
-  if (!fs.existsSync(file)) return out
-  const text = fs.readFileSync(file, 'utf8')
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim()
-    if (!line || line.startsWith('#')) continue
-    const eq = line.indexOf('=')
-    if (eq < 0) continue
-    const key = line.slice(0, eq).trim()
-    if (!AFIP_KEYS.has(key)) continue
-    let value = line.slice(eq + 1).trim()
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1)
+  try {
+    if (!file || !fs.existsSync(file) || !fs.statSync(file).isFile()) return out
+    const text = fs.readFileSync(file, 'utf8')
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim()
+      if (!line || line.startsWith('#')) continue
+      const eq = line.indexOf('=')
+      if (eq < 0) continue
+      const key = line.slice(0, eq).trim()
+      if (!AFIP_KEYS.has(key)) continue
+      let value = line.slice(eq + 1).trim()
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1)
+      }
+      out[key] = value
     }
-    out[key] = value
+  } catch {
+    return out
   }
   return out
 }
@@ -60,7 +72,12 @@ function decodePem(value: string) {
 }
 
 function readIfExists(file: string) {
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+  try {
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return ''
+    return fs.readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
 }
 
 let cached: EmitiaAfipBundle | null | undefined
@@ -68,6 +85,16 @@ let cached: EmitiaAfipBundle | null | undefined
 export function loadEmitiaAfipBundle(): EmitiaAfipBundle | null {
   if (cached !== undefined) return cached
 
+  try {
+    return loadEmitiaAfipBundleUncached()
+  } catch (err) {
+    console.warn('[arca] no se pudieron leer certificados Emitia:', (err as Error).message)
+    cached = null
+    return null
+  }
+}
+
+function loadEmitiaAfipBundleUncached(): EmitiaAfipBundle | null {
   const root = findEmitiaRoot()
   const envFile = root ? path.join(root, '.env.local') : ''
   const fromEmitia = envFile ? parseAfipEnv(envFile) : {}

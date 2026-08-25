@@ -167,3 +167,13 @@ describe('entorno de producción', () => {
     )
   })
 })
+
+describe('AFIP en serverless', () => {
+  it('no lee certificados del disco ni tira si el path está vacío', async () => {
+    const prev = process.env.VERCEL
+    process.env.VERCEL = '1'
+    const { getAFIPCredentials } = await import('../../lib/arca/wsaa')
+    assert.doesNotThrow(() => getAFIPCredentials())
+    process.env.VERCEL = prev
+  })
+})
