@@ -26,6 +26,7 @@ export type IdentityMatch = {
   taxCondition: TaxCondition | ''
   taxConditionLabel: string
   monotributoCategory: string
+  arcaErrors: string[]
   sources: IdentitySource[]
 }
 
@@ -79,6 +80,7 @@ function emptyMatch(cuil: string): IdentityMatch {
     taxCondition: '',
     taxConditionLabel: '',
     monotributoCategory: '',
+    arcaErrors: [],
     sources: [],
   }
 }
@@ -99,6 +101,7 @@ async function lookupArcaPadron(cuit: string): Promise<Partial<IdentityMatch> | 
     taxConditionLabel: taxConditionLabel(persona.taxCondition),
     monotributoCategory: persona.monotributoCategory,
     dni: persona.dni,
+    arcaErrors: persona.constanciaErrors,
   }
 }
 
@@ -124,10 +127,12 @@ async function enrichFromPublicApis(cuit: string): Promise<IdentityMatch> {
     match.taxConditionLabel = arca.taxConditionLabel || match.taxConditionLabel
     match.monotributoCategory = arca.monotributoCategory || match.monotributoCategory
     match.dni = arca.dni || match.dni
+    match.arcaErrors = arca.arcaErrors ?? []
     const geo = await resolveGeoFromPadron({
       province: match.province,
       city: match.city,
       postalCode: match.postalCode,
+      address: match.address,
     })
     match.province = geo.province || match.province
     match.department = geo.department
@@ -137,9 +142,11 @@ async function enrichFromPublicApis(cuit: string): Promise<IdentityMatch> {
       id: 'arca',
       ok: Boolean(arca.name),
       label: 'ARCA',
-      detail: arca.name
-        ? `Padrón de contribuyentes. ${arca.taxConditionLabel || arca.taxStatus || ''}`.trim()
-        : 'Sin datos nominativos en el padrón configurado.',
+      detail: arca.arcaErrors?.[0]
+        ? arca.arcaErrors[0]
+        : arca.name
+          ? `Padrón de contribuyentes. ${arca.taxConditionLabel || arca.taxStatus || ''}`.trim()
+          : 'Sin datos nominativos en el padrón configurado.',
     })
   } else {
     match.sources.push({

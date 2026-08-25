@@ -58,6 +58,13 @@ export type GeoValue = {
 
 type Opt = { id: string; name: string }
 
+function withCurrent(options: Opt[], current: string, idPrefix: string): Opt[] {
+  const value = current.trim()
+  if (!value) return options
+  if (options.some((o) => o.name === value)) return options
+  return [{ id: `${idPrefix}:${value}`, name: value }, ...options]
+}
+
 export function GeoArFields({
   value,
   onChange,
@@ -108,10 +115,14 @@ export function GeoArFields({
     }
   }, [locKey, locCache, value.department, value.province])
 
-  const departments = value.province ? (deptCache[value.province] ?? []) : []
+  const departments = withCurrent(
+    value.province ? (deptCache[value.province] ?? []) : [],
+    value.department,
+    'padron-dpto',
+  )
   const localities = useMemo(
-    () => (locKey ? (locCache[locKey] ?? []) : []),
-    [locCache, locKey],
+    () => withCurrent(locKey ? (locCache[locKey] ?? []) : [], value.city, 'padron-loc'),
+    [locCache, locKey, value.city],
   )
   const loadingDpto = Boolean(value.province) && !(value.province in deptCache)
   const loadingLoc = Boolean(locKey) && !(locKey in locCache)

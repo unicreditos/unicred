@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { mapArcaPersona } from '../../lib/arca/padron'
+import { mapArcaPersona, mergeArcaPersona } from '../../lib/arca/padron'
 import {
   classifyTaxCondition,
   collectTaxes,
@@ -169,6 +169,77 @@ describe('padrón ARCA: condición fiscal', () => {
     assert.equal(mapped?.province, 'Salta')
     assert.equal(mapped?.postalCode, '4400')
     assert.equal(mapped?.taxCondition, 'responsable_inscripto')
+  })
+
+  it('mapea errorConstancia de CUIT limitada y conserva el id', () => {
+    const mapped = mapArcaPersona(
+      {
+        personaReturn: {
+          errorConstancia: {
+            error: [
+              'La CUIT del contribuyente fue limitada en los términos de la RG AFIP 3832/16. Motivo: CUIT LIMITADA - Incluido en Base Contribuyentes NO Confiable.',
+              'La CUIT fue cancelada de acuerdo a: CUIT LIMITADA - Incluido en Base Contribuyentes NO Confiable.',
+            ],
+            idPersona: 30716036010,
+          },
+        },
+      },
+      'a5',
+    )
+    assert.equal(mapped?.cuil, PJ_CUIT)
+    assert.equal(mapped?.name, '')
+    assert.equal(mapped?.personType, 'JURIDICA')
+    assert.equal(mapped?.taxStatus, 'LIMITADA')
+    assert.equal(mapped?.taxCondition, 'no_inscripto')
+    assert.ok(mapped?.constanciaErrors[0]?.includes('RG AFIP 3832/16'))
+  })
+
+  it('combina constancia limitada A5 con razón social y domicilio A13', () => {
+    const a5 = mapArcaPersona(
+      {
+        personaReturn: {
+          errorConstancia: {
+            error: ['CUIT LIMITADA - Incluido en Base Contribuyentes NO Confiable.'],
+            idPersona: PJ_CUIT,
+          },
+        },
+      },
+      'a5',
+    )
+    const a13 = mapArcaPersona(
+      {
+        personaReturn: {
+          persona: {
+            idPersona: Number(PJ_CUIT),
+            tipoPersona: 'JURIDICA',
+            razonSocial: 'RM INTERNATIONAL GROUP S.A.S.',
+            estadoClave: 'INACTIVO',
+            domicilio: [
+              {
+                tipoDomicilio: 'FISCAL',
+                direccion: 'MAIPU 566 Piso:4 D',
+                codigoPostal: '1006',
+                idProvincia: 0,
+                descripcionProvincia: 'CIUDAD AUTONOMA BUENOS AIRES',
+              },
+            ],
+          },
+        },
+      },
+      'a13',
+    )
+    assert.equal(a13?.name, 'RM INTERNATIONAL GROUP S.A.S.')
+    assert.equal(a13?.address, 'MAIPU 566 Piso:4 D')
+    assert.equal(a13?.province, 'CABA')
+    assert.equal(a13?.postalCode, '1006')
+    assert.equal(a13?.city, '')
+    assert.ok(a5 && a13)
+    const merged = mergeArcaPersona(a5, a13)
+    assert.equal(merged.name, 'RM INTERNATIONAL GROUP S.A.S.')
+    assert.equal(merged.address, 'MAIPU 566 Piso:4 D')
+    assert.equal(merged.taxStatus, 'INACTIVO')
+    assert.equal(merged.constanciaErrors.length, 1)
+    assert.match(merged.constanciaErrors[0], /NO Confiable/)
   })
 
   it('CUIT 20 es física y 30 jurídica', () => {

@@ -78,6 +78,8 @@ export type ArcaPersona = {
   taxes: ArcaTax[]
   activities: ArcaActivity[]
   service: 'a13' | 'a5' | 'a4'
+  /** Mensajes de errorConstancia (CUIT limitada, sin DDJJ, etc.). */
+  constanciaErrors: string[]
 }
 
 function soapText(value: unknown): string {
@@ -122,14 +124,40 @@ function unwrapConstancia(raw: any): any {
 
 function generalBlock(raw: any): any {
   if (!raw || typeof raw !== 'object') return {}
-  return firstObject(raw.datosGenerales ?? raw.persona ?? raw)
+  if (raw.datosGenerales) return firstObject(raw.datosGenerales)
+  if (raw.persona) return firstObject(raw.persona)
+  if (raw.errorConstancia && raw.razonSocial == null && raw.idPersona == null) return {}
+  return raw
+}
+
+function errorConstanciaBlock(raw: any): any {
+  const body = unwrapConstancia(raw)
+  return firstObject(body?.errorConstancia ?? raw?.errorConstancia)
+}
+
+export function collectConstanciaErrors(raw: any): string[] {
+  const block = errorConstanciaBlock(raw)
+  return asArray(block?.error ?? block?.mensaje)
+    .map((item) => soapText(item))
+    .filter(Boolean)
+}
+
+function limitedKeyStatus(errors: string[]): string {
+  const blob = errors.join(' ').toUpperCase()
+  if (blob.includes('LIMITADA') || blob.includes('NO CONFIABLE') || blob.includes('CANCELADA')) {
+    return 'LIMITADA'
+  }
+  return ''
 }
 
 export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5'): ArcaPersona | null {
   const body = unwrapConstancia(raw)
   const persona = generalBlock(body)
+  const constanciaErrors = collectConstanciaErrors(raw)
   if (!persona || typeof persona !== 'object') return null
-  const cuil = soapText(persona.idPersona ?? persona.cuit ?? body?.idPersona).replace(/\D/g, '')
+  const cuil = soapText(
+    persona.idPersona ?? persona.cuit ?? body?.idPersona ?? errorConstanciaBlock(raw)?.idPersona,
+  ).replace(/\D/g, '')
   if (!/^\d{11}$/.test(cuil)) return null
   const name =
     soapText(persona.razonSocial) ||
@@ -141,7 +169,9 @@ export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5')
   const tipo = soapText(persona.tipoPersona || body?.tipoPersona).toUpperCase()
   const personType: ArcaPersonType =
     tipo === 'JURIDICA' ? 'JURIDICA' : tipo === 'FISICA' ? 'FISICA' : personTypeFromCuit(cuil)
-  const taxStatus = soapText(persona.estadoClave ?? persona.estadoClaveFiscal ?? body?.estadoClave)
+  const taxStatus =
+    soapText(persona.estadoClave ?? persona.estadoClaveFiscal ?? body?.estadoClave) ||
+    limitedKeyStatus(constanciaErrors)
   const taxes = collectTaxes(body)
   const activities = collectActivities(body)
   const monotributoCategory = monotributoCategoryFromRaw(body)
@@ -167,14 +197,16 @@ export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5')
     taxes,
     activities,
     service,
+    constanciaErrors,
   }
 }
 
-function richer(a: ArcaPersona, b: ArcaPersona): ArcaPersona {
+export function mergeArcaPersona(a: ArcaPersona, b: ArcaPersona): ArcaPersona {
   const rank = (p: ArcaPersona) =>
-    (p.taxCondition !== 'desconocida' ? 4 : 0) +
+    (p.name ? 8 : 0) +
+    (p.address ? 4 : 0) +
     (p.taxes.length ? 2 : 0) +
-    (p.name ? 1 : 0) +
+    (p.taxCondition !== 'desconocida' && p.taxCondition !== 'no_inscripto' ? 2 : 0) +
     (p.service === 'a5' ? 1 : 0)
   const base = rank(b) > rank(a) ? b : a
   const other = base === a ? b : a
@@ -192,6 +224,7 @@ function richer(a: ArcaPersona, b: ArcaPersona): ArcaPersona {
     taxes: base.taxes.length ? base.taxes : other.taxes,
     activities: base.activities.length ? base.activities : other.activities,
     personType: base.personType === 'DESCONOCIDA' ? other.personType : base.personType,
+    constanciaErrors: [...new Set([...base.constanciaErrors, ...other.constanciaErrors])],
   }
 }
 
@@ -219,35 +252,58 @@ export function arcaConfigured() {
   return Boolean(getAFIPCredentials())
 }
 
+type PadronAttempt = {
+  service: string
+  kind: keyof typeof WSDL
+  method: string
+  mappedKind: ArcaPersona['service']
+}
+
+async function fetchPadron(attempt: PadronAttempt, idPersona: string): Promise<ArcaPersona | null> {
+  try {
+    const client = await soapClient(attempt.kind)
+    const payload = { ...(await auth(attempt.service)), idPersona }
+    const [result] = await client[`${attempt.method}Async`](payload)
+    return mapArcaPersona(result, attempt.mappedKind)
+  } catch (err) {
+    console.warn(`[arca] ${attempt.service} falló:`, ((err as Error).message ?? String(err)).slice(0, 180))
+    return null
+  }
+}
+
+function mergePersonas(rows: Array<ArcaPersona | null>): ArcaPersona | null {
+  return rows.reduce<ArcaPersona | null>((acc, row) => {
+    if (!row) return acc
+    return acc ? mergeArcaPersona(acc, row) : row
+  }, null)
+}
+
 export async function lookupPersonaByCuit(cuit: string): Promise<ArcaPersona | null> {
   const idPersona = cuit.replace(/\D/g, '')
   if (!/^\d{11}$/.test(idPersona)) return null
 
-  const attempts: Array<{ service: string; kind: keyof typeof WSDL; method: string }> = [
-    { service: 'ws_sr_constancia_inscripcion', kind: 'a5', method: 'getPersona_v2' },
-    { service: 'ws_sr_padron_a5', kind: 'a5', method: 'getPersona_v2' },
-    { service: 'ws_sr_padron_a13', kind: 'a13', method: 'getPersona' },
-    { service: 'ws_sr_padron_a4', kind: 'a4', method: 'getPersona' },
-  ]
+  let merged = mergePersonas(
+    await Promise.all([
+      fetchPadron(
+        { service: 'ws_sr_constancia_inscripcion', kind: 'a5', method: 'getPersona_v2', mappedKind: 'a5' },
+        idPersona,
+      ),
+      fetchPadron(
+        { service: 'ws_sr_padron_a13', kind: 'a13', method: 'getPersona', mappedKind: 'a13' },
+        idPersona,
+      ),
+    ]),
+  )
 
-  let lastError = ''
-  let merged: ArcaPersona | null = null
-  for (const attempt of attempts) {
-    try {
-      const client = await soapClient(attempt.kind)
-      const payload = { ...(await auth(attempt.service)), idPersona }
-      const [result] = await client[`${attempt.method}Async`](payload)
-      const mapped = mapArcaPersona(result, attempt.kind === 'a5' ? 'a5' : attempt.kind)
-      if (mapped) merged = merged ? richer(merged, mapped) : mapped
-      if (merged?.taxCondition && merged.taxCondition !== 'desconocida' && merged.name) {
-        return merged
-      }
-    } catch (err) {
-      lastError = (err as Error).message ?? String(err)
-      console.warn(`[arca] ${attempt.service} falló:`, lastError.slice(0, 180))
-    }
+  if (!merged?.name || !merged.address) {
+    merged = mergePersonas([
+      merged,
+      await fetchPadron(
+        { service: 'ws_sr_padron_a4', kind: 'a4', method: 'getPersona', mappedKind: 'a4' },
+        idPersona,
+      ),
+    ])
   }
-  if (!merged && lastError) console.warn('[arca] padrón sin resultado:', lastError.slice(0, 180))
   return merged
 }
 

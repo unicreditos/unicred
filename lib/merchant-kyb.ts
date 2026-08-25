@@ -135,6 +135,9 @@ export function evaluateMerchantKyb(input: MerchantKybInput): MerchantKybResult 
   if (padron && !isActiveKeyStatus(padron.taxStatus)) {
     hard.push(`La clave fiscal no está activa en ARCA (${padron.taxStatus || 'sin estado'}).`)
   }
+  if (padron?.constanciaErrors?.length) {
+    hard.push(padron.constanciaErrors[0])
+  }
   if (padron && !isAllowedMerchantTaxCondition(padron.taxCondition)) {
     hard.push(
       `La condición fiscal (${taxConditionLabel(padron.taxCondition)}) no habilita adhesión como comercio. Se admite monotributo, IVA responsable inscripto o IVA exento.`,
