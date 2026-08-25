@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { barcodeSvg } from '@/lib/coupon'
+import { installmentPosPath } from '@/lib/workspace-gate'
 import { formatARS, formatARSDecimal } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import type { TreasuryClientView } from '@/lib/treasury'
@@ -23,14 +24,15 @@ const CHANNELS: { id: PaymentMethod; label: string; hint: string }[] = [
   { id: 'mercado_pago', label: 'Mercado Pago · todos los medios', hint: 'Tarjeta, dinero en cuenta, QR, Pago Fácil y Rapipago' },
   { id: 'pago_facil', label: 'Pago Fácil', hint: 'Cupón para pagar en efectivo en la red' },
   { id: 'rapipago', label: 'Rapipago', hint: 'Cupón para pagar en efectivo en la red' },
-  { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Checkout de Mercado Pago' },
-  { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Checkout de Mercado Pago' },
+  { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Formulario en tu panel, como una caja' },
+  { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Formulario en tu panel, como una caja' },
   { id: 'mercadopago_wallet', label: 'Dinero en cuenta', hint: 'Saldo Mercado Pago' },
 ]
 
 export function CouponPayDesk({
   installment,
   mpStatus,
+  guest = false,
 }: {
   installment: {
     id: string
@@ -47,6 +49,7 @@ export function CouponPayDesk({
     treasury: Treasury
   }
   mpStatus?: string
+  guest?: boolean
 }) {
   const [method, setMethod] = useState<PaymentMethod>('mercado_pago')
   const [busy, setBusy] = useState(false)
@@ -142,6 +145,7 @@ export function CouponPayDesk({
               type="button"
               onClick={() => {
                 setMethod(c.id)
+                if (guest && (c.id === 'tarjeta_credito' || c.id === 'tarjeta_debito')) return
                 void start(c.id, false)
               }}
               className={`rounded-lg border p-3 text-left text-sm ${
@@ -154,21 +158,36 @@ export function CouponPayDesk({
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={busy || !link} onClick={() => link && (window.location.href = link)} className="gap-1.5">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-            Pagar en la web Mercado Pago
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || !link}
-            onClick={() => link && (window.location.href = link)}
-            className="gap-1.5"
-          >
-            <Smartphone className="h-4 w-4" />
-            Abrir en la app
-          </Button>
-        </div>
+        {guest && (method === 'tarjeta_credito' || method === 'tarjeta_debito') ? (
+          <div className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3">
+            <p className="text-sm font-medium text-brand-navy-900">Pagar con tarjeta en la caja</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ingresá a tu cuenta para cargar una tarjeta nueva o usar una guardada. El cobro queda en el panel; no
+              volvés al sitio público.
+            </p>
+            <Button asChild className="mt-3 w-full">
+              <a href={`/sign-in?next=${encodeURIComponent(installmentPosPath(installment.id, method))}`}>
+                Ingresar y pagar con {method === 'tarjeta_debito' ? 'débito' : 'crédito'}
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy || !link} onClick={() => link && (window.location.href = link)} className="gap-1.5">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+              Pagar en la web Mercado Pago
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || !link}
+              onClick={() => link && (window.location.href = link)}
+              className="gap-1.5"
+            >
+              <Smartphone className="h-4 w-4" />
+              Abrir en la app
+            </Button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           El QR de la derecha es el código EMV de Mercado Pago con el importe de esta cuota
           ({formatARS(amount)}). Escanealo con la app. En la web podés elegir tarjeta, dinero en

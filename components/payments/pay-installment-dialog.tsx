@@ -65,6 +65,8 @@ export function PayInstallmentDialog({
     paymentLinkUrl: string
     coupon: string | null
     qrData: string | null
+    mpCustomerId: string | null
+    mpCardIds: string[]
   } | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
@@ -112,6 +114,8 @@ export function PayInstallmentDialog({
         paymentLinkUrl: r.paymentLinkUrl ?? '',
         coupon: r.coupon,
         qrData: r.qrData ?? null,
+        mpCustomerId: r.mpCustomerId ?? null,
+        mpCardIds: r.mpCardIds ?? [],
       })
     } catch (err) {
       toast.error((err as Error).message)
@@ -199,7 +203,7 @@ export function PayInstallmentDialog({
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold text-brand-navy-900">Pagar en UNICRÉDITOS</h2>
+            <h2 className="text-base font-semibold text-brand-navy-900">Caja UNICRÉDITOS</h2>
             <p className="text-xs text-slate-500">
               {installments.length === 1
                 ? `Cuota ${String(installments[0].number).padStart(2, '0')} · ${formatARS(total)}`
@@ -233,10 +237,12 @@ export function PayInstallmentDialog({
             {session ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-slate-600">
-                  Pagá con tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando Mercado Pago confirma el dinero.
+                  {method === 'tarjeta_credito' || method === 'tarjeta_debito'
+                    ? 'Cargá una tarjeta nueva o elegí una guardada. El cobro queda en esta caja; no hace falta salir al sitio de Mercado Pago.'
+                    : 'Pagá con tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando Mercado Pago confirma el dinero.'}
                 </p>
-                {session.paymentLinkUrl ? (
-                  <Button type="button" className="w-full" onClick={() => (window.location.href = session.paymentLinkUrl)}>
+                {session.paymentLinkUrl && method !== 'tarjeta_credito' && method !== 'tarjeta_debito' ? (
+                  <Button type="button" variant="outline" className="w-full" onClick={() => (window.location.href = session.paymentLinkUrl)}>
                     Abrir Mercado Pago (web o app)
                   </Button>
                 ) : null}
@@ -246,6 +252,8 @@ export function PayInstallmentDialog({
                   email={email}
                   localPaymentId={session.paymentId}
                   channel={toBrickChannel(method)}
+                  customerId={session.mpCustomerId}
+                  cardIds={session.mpCardIds}
                   onPaid={handlePaid}
                   onError={handleBrickError}
                 />

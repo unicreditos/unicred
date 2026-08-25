@@ -33,10 +33,10 @@ export type WorkspaceNavItem = {
   children?: readonly WorkspaceNavChild[]
 }
 
-const ROLE_META: Record<WorkspaceRole, { eyebrow: string; homeLabel: string }> = {
-  customer: { eyebrow: 'Cuenta', homeLabel: 'Inicio' },
-  admin: { eyebrow: 'Ejecutivo', homeLabel: 'Dashboard' },
-  merchant: { eyebrow: 'Comercio', homeLabel: 'Inicio' },
+const ROLE_META: Record<WorkspaceRole, { eyebrow: string; homeLabel: string; homeHref: string }> = {
+  customer: { eyebrow: 'Cuenta', homeLabel: 'Inicio', homeHref: '/dashboard' },
+  admin: { eyebrow: 'Ejecutivo', homeLabel: 'Dashboard', homeHref: '/admin' },
+  merchant: { eyebrow: 'Comercio', homeLabel: 'Inicio', homeHref: '/merchant' },
 }
 
 const SIDEBAR_KEY = 'uc-sidebar-collapsed'
@@ -269,7 +269,7 @@ export function WorkspaceShell({
         )}
       >
         <div className={cn('flex h-16 items-center border-b border-white/8', collapsed ? 'justify-center px-2' : 'px-4')}>
-          <BrandLogo showText={!collapsed} light className="[&_span.flex]:gap-0" />
+          <BrandLogo href={meta.homeHref} showText={!collapsed} light className="[&_span.flex]:gap-0" />
         </div>
         {collapsed ? null : (
           <div className="px-4 pt-3 pb-1 text-[11px] font-medium text-brand-cian-300/80">{meta.eyebrow}</div>
@@ -304,7 +304,7 @@ export function WorkspaceShell({
           <button type="button" aria-label="Cerrar menú" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex h-full w-[248px] flex-col bg-brand-navy-900">
             <div className="flex h-16 items-center justify-between border-b border-white/8 px-4">
-              <BrandLogo showText light />
+              <BrandLogo href={meta.homeHref} showText light />
               <button type="button" onClick={() => setMobileOpen(false)} className="text-white/70">
                 <X className="h-6 w-6" />
               </button>

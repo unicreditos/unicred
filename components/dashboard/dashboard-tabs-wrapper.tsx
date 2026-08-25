@@ -1673,15 +1673,24 @@ function PagosPanel({
   const [payOpen, setPayOpen] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
-  const cuotaFromQr = searchParams.get('cuota')
+  const payFromUrl = searchParams.get('pay') || searchParams.get('cuota')
+  const methodFromUrl = searchParams.get('method')
   const pendingIds = pending.map((row) => row.id).join(',')
 
   useEffect(() => {
-    if (!cuotaFromQr) return
-    if (!pendingIds.split(',').includes(cuotaFromQr)) return
-    setSelectedIds((ids) => (ids.includes(cuotaFromQr) ? ids : [...ids, cuotaFromQr]))
+    if (!payFromUrl) return
+    if (!pendingIds.split(',').includes(payFromUrl)) return
+    setSelectedIds((ids) => (ids.includes(payFromUrl) ? ids : [...ids, payFromUrl]))
+    if (
+      methodFromUrl &&
+      ['mercado_pago', 'tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'mercadopago_wallet', 'transferencia_bancaria'].includes(
+        methodFromUrl,
+      )
+    ) {
+      setMethod(methodFromUrl)
+    }
     setPayOpen(true)
-  }, [cuotaFromQr, pendingIds])
+  }, [payFromUrl, methodFromUrl, pendingIds])
 
   const toggle = (id: string) =>
     setSelectedIds((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]))
@@ -1700,7 +1709,7 @@ function PagosPanel({
                 <Wallet className="h-5 w-5 text-primary" /> Mis cuotas · pagar desde la web
               </CardTitle>
               <CardDescription>
-                  Seleccioná las cuotas y pagá con Mercado Pago: tarjetas, dinero en cuenta, transferencia, Pago Fácil y Rapipago.
+                Caja de cobro: crédito, débito, tarjetas guardadas, Mercado Pago, Pago Fácil, Rapipago o transferencia. No salís del panel.
               </CardDescription>
             </div>
             <Badge variant="outline" className="text-xs">
@@ -1860,7 +1869,9 @@ function PagosPanel({
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {method === 'transferencia_bancaria'
                   ? 'Vas a ver el CBU de RM International Group (Brubank). Transferí, subí el comprobante y tesorería acredita cuando vea el dinero.'
-                  : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR EMV de Mercado Pago con el importe real.'}
+                  : method === 'tarjeta_credito' || method === 'tarjeta_debito'
+                    ? 'Se abre el formulario de tarjeta en esta caja: una nueva o una ya guardada. El cobro no te saca del panel.'
+                    : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR EMV de Mercado Pago con el importe real.'}
               </p>
             </div>
 
@@ -1869,9 +1880,16 @@ function PagosPanel({
                 <p className="text-xs font-medium text-foreground">Métodos guardados</p>
                 <div className="grid gap-2">
                   {savedMethods.map((m) => (
-                    <div
+                    <button
+                      type="button"
                       key={m.id}
-                      className="flex items-center justify-between rounded-lg border bg-card p-2.5 text-xs"
+                      className="flex w-full items-center justify-between rounded-lg border bg-card p-2.5 text-left text-xs hover:border-brand-primary/40"
+                      onClick={() => {
+                        if (!pending.length) return
+                        setMethod(m.type === 'card' ? 'tarjeta_credito' : method)
+                        setSelectedIds((ids) => (ids.length ? ids : [pending[0].id]))
+                        setPayOpen(true)
+                      }}
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
@@ -1892,7 +1910,7 @@ function PagosPanel({
                           ✓
                         </Badge>
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1905,14 +1923,24 @@ function PagosPanel({
               onClick={() => setPayOpen(true)}
             >
               <Wallet className="h-4 w-4" />
-              {method === 'transferencia_bancaria' ? 'Informar transferencia' : 'Pagar en UNICRÉDITOS'}
+              {method === 'transferencia_bancaria' ? 'Informar transferencia' : 'Abrir caja'}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
               Mercado Pago acredita en tiempo real y emite el recibo cuando confirma el dinero. La transferencia a RM la concilia tesorería.
             </p>
             <PayInstallmentDialog
               open={payOpen}
-              onClose={() => setPayOpen(false)}
+              onClose={() => {
+                setPayOpen(false)
+                const sp = new URLSearchParams(window.location.search)
+                if (sp.has('pay') || sp.has('cuota') || sp.has('method')) {
+                  sp.delete('pay')
+                  sp.delete('cuota')
+                  sp.delete('method')
+                  const next = sp.toString()
+                  router.replace(next ? `/dashboard?${next}` : '/dashboard?tab=pagos')
+                }
+              }}
               email={payerEmail}
               method={method}
               initialTab={method === 'transferencia_bancaria' ? 'transfer' : 'mp'}

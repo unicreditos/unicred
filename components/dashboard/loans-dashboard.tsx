@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getLoanCouponQrs, getPublicTreasury } from '@/app/actions/payments'
-import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber, installmentPayPath } from '@/lib/coupon'
+import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber, installmentPosPath } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import type { InstallmentCashCoupons } from '@/lib/payments/installment-mp-ticket'
@@ -971,7 +971,7 @@ function LoanCouponBook({
             {open ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button asChild size="sm">
-                  <Link href={installmentPayPath(row.id)}>Pagar en la web o app</Link>
+                  <Link href={installmentPosPath(row.id, 'tarjeta_credito')}>Pagar con tarjeta</Link>
                 </Button>
                 {cbu ? (
                   <p className="text-[10px] text-muted-foreground">

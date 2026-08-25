@@ -12,6 +12,8 @@ export function MercadoPagoCheckoutBrick({
   email,
   localPaymentId,
   channel = 'all',
+  customerId = null,
+  cardIds = [],
   onPaid,
   onError,
 }: {
@@ -20,18 +22,24 @@ export function MercadoPagoCheckoutBrick({
   email?: string | null
   localPaymentId: string
   channel?: BrickChannel
+  customerId?: string | null
+  cardIds?: string[]
   onPaid: (status: string, extra?: { receiptId?: string | null; credited?: number }) => void
   onError: (message: string) => void
 }) {
   const [ready, setReady] = useState(false)
   const methods = useMemo(() => brickPaymentMethods(channel), [channel])
-  const initialization = useMemo(
-    () => ({
+  const initialization = useMemo(() => {
+    const payer = {
+      ...(email ? { email } : {}),
+      ...(customerId ? { customerId } : {}),
+      ...(cardIds.length ? { cardsIds: cardIds } : {}),
+    }
+    return {
       amount,
-      payer: email ? { email } : undefined,
-    }),
-    [amount, email],
-  )
+      ...(Object.keys(payer).length ? { payer } : {}),
+    }
+  }, [amount, email, customerId, cardIds])
   const customization = useMemo(
     () => ({
       paymentMethods: methods,

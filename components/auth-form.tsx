@@ -21,7 +21,7 @@ function safeCallbackUrl(value: string | null): string | null {
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'))
+  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl') || searchParams.get('next'))
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

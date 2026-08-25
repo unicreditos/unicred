@@ -540,9 +540,19 @@ export function BrandMark({ className }: { className?: string }) {
   )
 }
 
-export function BrandLogo({ className, showText = true, light = false }: { className?: string; showText?: boolean; light?: boolean }) {
+export function BrandLogo({
+  className,
+  showText = true,
+  light = false,
+  href = '/',
+}: {
+  className?: string
+  showText?: boolean
+  light?: boolean
+  href?: string
+}) {
   return (
-    <Link href="/" className={cn('inline-flex items-center gap-2.5 select-none', className)}>
+    <Link href={href} className={cn('inline-flex items-center gap-2.5 select-none', className)}>
       <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full shadow-sm ring-1 ring-white/10">
         <BrandMark className="h-9 w-9" />
       </span>

@@ -1,4 +1,10 @@
 import { CANONICAL_HOST, shouldRedirectHost } from '@/lib/site'
+import {
+  installmentPosPath,
+  publicPayInstallmentId,
+  safeInternalPath,
+  shouldBounceLoggedInToWorkspace,
+} from '@/lib/workspace-gate'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -58,10 +64,39 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  const authed = hasSessionCookie(request)
+
+  if (authed) {
+    const payId = publicPayInstallmentId(pathname)
+    if (payId) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.search = ''
+      const dest = new URL(installmentPosPath(payId), url)
+      url.search = dest.search
+      return NextResponse.redirect(url)
+    }
+    if (shouldBounceLoggedInToWorkspace(pathname)) {
+      const next = safeInternalPath(
+        request.nextUrl.searchParams.get('next') || request.nextUrl.searchParams.get('callbackUrl'),
+      )
+      const url = request.nextUrl.clone()
+      if (next) {
+        const dest = new URL(next, url)
+        url.pathname = dest.pathname
+        url.search = dest.search
+        return NextResponse.redirect(url)
+      }
+      url.pathname = '/dashboard'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+  }
+
   const needsAuth = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
-  if (needsAuth && !hasSessionCookie(request)) {
+  if (needsAuth && !authed) {
     const url = request.nextUrl.clone()
     if (pathname.startsWith('/pedir/')) {
       url.pathname = '/pedir/ingresar'

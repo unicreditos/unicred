@@ -1,4 +1,4 @@
-import { createPaymentFromBrick } from '@/lib/mercadopago'
+import { createPaymentFromBrick, saveMercadoPagoCustomerCard } from '@/lib/mercadopago'
 import { db } from '@/lib/db'
 import { payment } from '@/lib/db/schema'
 import { requireUserId } from '@/lib/session'
@@ -69,6 +69,11 @@ export async function POST(req: Request) {
       .where(eq(payment.id, row.id))
 
     if (mpId && created?.status === 'approved') {
+      const customerId = typeof previous.mp_customer_id === 'string' ? previous.mp_customer_id : ''
+      const token = typeof (formData as { token?: unknown }).token === 'string' ? (formData as { token: string }).token : ''
+      if (customerId && token) {
+        await saveMercadoPagoCustomerCard(customerId, token)
+      }
       const settled = await settleMercadoPagoPayment({ mpPaymentId: mpId, localPaymentId: row.id })
       if (settled.credited > 0 && settled.userId) {
         try {

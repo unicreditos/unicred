@@ -20,7 +20,7 @@ import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
 import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
-import { createPaymentLinkMP, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
+import { createPaymentLinkMP, ensureMercadoPagoCustomer, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
 import { attachMercadoPagoQr, ensureLoanCouponMpQrs, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
 import { ensureLoanCouponTickets } from '@/lib/payments/installment-mp-ticket'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
@@ -173,6 +173,7 @@ export async function createPaymentLink(
         console.error('[payments] QR Mercado Pago (reuso):', err)
       }
     }
+    const vault = session?.user?.email ? await ensureMercadoPagoCustomer(session.user.email).catch(() => null) : null
     return {
       ok: true,
       paymentId: reusable.id,
@@ -182,6 +183,8 @@ export async function createPaymentLink(
       publicKey: getMercadoPagoPublicKey(),
       amount: total,
       qrData,
+      mpCustomerId: vault?.id ?? null,
+      mpCardIds: vault?.cardIds ?? [],
       coupon:
         insts.length === 1
           ? couponCode({
@@ -222,6 +225,7 @@ export async function createPaymentLink(
   let mpInitPoint: string | null = null
   let mpGatewayResponse: any = null
   let finalGateway: string | null = null
+  let vault: Awaited<ReturnType<typeof ensureMercadoPagoCustomer>> = null
 
   try {
     const returnPath = opts?.returnPath?.trim().replace(/\/$/, '')
@@ -253,6 +257,8 @@ export async function createPaymentLink(
     mpPreferenceId = res.preferenceId
     mpInitPoint = res.initPoint
     finalGateway = 'mercado_pago'
+    const nextVault = session?.user?.email ? await ensureMercadoPagoCustomer(session.user.email).catch(() => null) : null
+    vault = nextVault
     mpGatewayResponse = {
       preference_id: res.preferenceId,
       init_point: res.initPoint,
@@ -260,6 +266,7 @@ export async function createPaymentLink(
       external_reference: res.externalReference,
       channel: MP_CHANNELS[method] ?? 'all',
       installment_ids: installmentIds,
+      mp_customer_id: nextVault?.id ?? null,
     }
   } catch (err: any) {
     console.error('[payments] MP createPaymentLink error:', err?.message ?? err)
@@ -321,6 +328,8 @@ export async function createPaymentLink(
     publicKey: getMercadoPagoPublicKey(),
     amount: total,
     qrData,
+    mpCustomerId: vault?.id ?? null,
+    mpCardIds: vault?.cardIds ?? [],
     coupon:
       insts.length === 1
         ? couponCode({

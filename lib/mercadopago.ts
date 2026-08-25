@@ -494,6 +494,56 @@ export async function createOfflineTicketPayment(input: {
   return ticket
 }
 
+export async function ensureMercadoPagoCustomer(email: string) {
+  const trimmed = email.trim().toLowerCase()
+  if (!trimmed.includes('@')) return null
+  try {
+    const found = await mpApiFetch<{ results?: Array<{ id?: string; cards?: Array<{ id?: string }> }> }>(
+      `/v1/customers/search?email=${encodeURIComponent(trimmed)}`,
+    )
+    const existing = found.ok ? found.data?.results?.find((row) => row.id) : null
+    if (existing?.id) {
+      const cards = await listMercadoPagoCustomerCards(existing.id)
+      return { id: String(existing.id), cardIds: cards }
+    }
+    const created = await mpApiFetch<{ id?: string }>('/v1/customers', {
+      method: 'POST',
+      body: JSON.stringify({ email: trimmed }),
+      idempotencyKey: `cust-${trimmed.slice(0, 48)}`,
+    })
+    if (!created.ok || !created.data?.id) return null
+    return { id: String(created.data.id), cardIds: [] as string[] }
+  } catch (err) {
+    console.error('[mercadopago] customer:', err)
+    return null
+  }
+}
+
+export async function listMercadoPagoCustomerCards(customerId: string) {
+  try {
+    const res = await mpApiFetch<Array<{ id?: string }> | { data?: Array<{ id?: string }> }>(
+      `/v1/customers/${encodeURIComponent(customerId)}/cards`,
+    )
+    if (!res.ok) return [] as string[]
+    const rows = Array.isArray(res.data) ? res.data : res.data?.data
+    return (rows ?? []).map((row) => String(row.id ?? '')).filter(Boolean)
+  } catch {
+    return [] as string[]
+  }
+}
+
+export async function saveMercadoPagoCustomerCard(customerId: string, token: string) {
+  try {
+    const res = await mpApiFetch(`/v1/customers/${encodeURIComponent(customerId)}/cards`, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function mpApiFetch<T = unknown>(
   path: string,
   init?: RequestInit & { idempotencyKey?: string },

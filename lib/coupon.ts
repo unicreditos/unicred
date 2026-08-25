@@ -1,8 +1,14 @@
 import { BRAND, publicBrandWebsite } from '@/lib/brand'
 import { formatARSDecimal } from '@/lib/finance'
+import { installmentPosPath as dashboardPosPath } from '@/lib/workspace-gate'
 
 export function installmentPayPath(installmentId: string) {
   return `/pagar/${installmentId}`
+}
+
+/** Caja de cobro dentro del dashboard. El talón impreso sigue usando /pagar/… */
+export function installmentPosPath(installmentId: string, method?: string) {
+  return dashboardPosPath(installmentId, method)
 }
 
 export function installmentPayUrl(installmentId: string, origin?: string) {

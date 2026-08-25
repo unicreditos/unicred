@@ -84,7 +84,7 @@ const MOBILE_TABS: WorkspaceNavItem[] = [
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   overview: { title: 'Tu cuenta', subtitle: 'Vencimientos, score y estado de tus préstamos' },
-  pagos: { title: 'Pagar cuotas', subtitle: 'Mercado Pago, tarjetas, Pago Fácil y Rapipago' },
+  pagos: { title: 'Pagar cuotas', subtitle: 'Caja de cobro: tarjetas, Mercado Pago y redes de efectivo' },
   cuotas: { title: 'Mis créditos', subtitle: 'Saldos, cuotas y amortización' },
   solicitar: { title: 'Nueva solicitud', subtitle: 'Simulá TNA, CFT y enviá el pedido' },
   mis_solicitudes: { title: 'Solicitudes', subtitle: 'Estado de cada trámite' },
