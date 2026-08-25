@@ -21,9 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getPublicTreasury } from '@/app/actions/payments'
-import { barcodeSvg, couponCode, installmentPayPath, installmentPayUrl } from '@/lib/coupon'
+import { getLoanCouponQrs, getPublicTreasury } from '@/app/actions/payments'
+import { barcodeSvg, couponCode, installmentPayPath } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
+import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import QRCode from 'qrcode'
 import Link from 'next/link'
 import { installment, loan } from '@/lib/db/schema'
@@ -649,7 +650,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
               <div>
                 <CardTitle className="text-base">Talonario / cuponera</CardTitle>
                 <CardDescription>
-                  Cada talón abierto tiene QR para pagar esa cuota (Mercado Pago web o app, Pago Fácil, Rapipago o transferencia a Brubank).
+                  Cada talón abierto tiene el QR EMV de Mercado Pago con el importe de esa cuota. También podés pagar por la web, Pago Fácil, Rapipago o transferencia a Brubank.
                 </CardDescription>
               </div>
               <Button asChild variant="outline" size="sm">
@@ -837,24 +838,26 @@ function LoanCouponBook({
   }, [])
 
   useEffect(() => {
-    const origin = window.location.origin
     let cancelled = false
-    void Promise.all(
-      installments
-        .filter((row) => row.status !== 'paid' && row.status !== 'cancelled')
-        .map(async (row) => {
-          const url = installmentPayUrl(row.id, origin)
-          const data = await QRCode.toDataURL(url, { margin: 1, width: 180 })
-          return [row.id, data] as const
-        }),
-    ).then((pairs) => {
-      if (cancelled) return
-      setQrs(Object.fromEntries(pairs))
-    })
+    void getLoanCouponQrs(loanId)
+      .then(async (payloads) => {
+        const pairs = await Promise.all(
+          Object.entries(payloads).map(async ([id, payload]) => {
+            if (!isMercadoPagoEmvQr(payload.qrData)) return null
+            const data = await QRCode.toDataURL(payload.qrData, { margin: 1, width: 180 })
+            return [id, data] as const
+          }),
+        )
+        if (cancelled) return
+        setQrs(Object.fromEntries(pairs.filter((row): row is readonly [string, string] => Boolean(row))))
+      })
+      .catch(() => {
+        if (!cancelled) setQrs({})
+      })
     return () => {
       cancelled = true
     }
-  }, [installments])
+  }, [loanId, installments])
 
   return (
     <div className="grid gap-3 md:grid-cols-2">

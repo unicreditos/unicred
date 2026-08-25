@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { barcodeSvg } from '@/lib/coupon'
 import { formatARS, formatARSDecimal } from '@/lib/finance'
+import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import type { TreasuryClientView } from '@/lib/treasury'
 import QRCode from 'qrcode'
 import { Landmark, Loader2, QrCode, Smartphone, Wallet } from 'lucide-react'
@@ -61,13 +62,16 @@ export function CouponPayDesk({
       const r = await createCouponCheckout(installment.id, channel)
       setLink(r.paymentLinkUrl)
       setAmount(r.amount)
-      if (r.paymentLinkUrl) {
-        const data = await QRCode.toDataURL(r.paymentLinkUrl, { margin: 1, width: 280 })
+      if (isMercadoPagoEmvQr(r.qrData)) {
+        const data = await QRCode.toDataURL(r.qrData, { margin: 1, width: 280 })
         setMpQr(data)
-        if (redirect) {
+        if (redirect && r.paymentLinkUrl) {
           window.location.href = r.paymentLinkUrl
           return
         }
+      } else {
+        setMpQr(null)
+        throw new Error('Mercado Pago no emitió un QR de pago válido para esta cuota.')
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo abrir Mercado Pago.')
@@ -166,9 +170,9 @@ export function CouponPayDesk({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          El QR de la derecha es el checkout real de Mercado Pago ({formatARS(amount)}). En la app o en la web
-          podés elegir tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando el cobro está
-          confirmado.
+          El QR de la derecha es el código EMV de Mercado Pago con el importe de esta cuota
+          ({formatARS(amount)}). Escanealo con la app. En la web podés elegir tarjeta, dinero en
+          cuenta, Pago Fácil o Rapipago. El recibo se emite cuando el cobro está confirmado.
         </p>
       </section>
 
@@ -181,7 +185,7 @@ export function CouponPayDesk({
             <div className="mt-3 flex flex-col items-center">
               <img src={mpQr} alt="QR de checkout Mercado Pago" className="h-48 w-48" />
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Escaneá con Mercado Pago u otra billetera. Importe {formatARSDecimal(amount)}.
+                Escaneá con la app Mercado Pago. Importe {formatARSDecimal(amount)}.
               </p>
             </div>
           ) : (

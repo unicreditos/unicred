@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateWebhookSecret, validateWebhookSignature } from '@/lib/mercadopago'
+import { getMercadoPagoQrOrder, paymentIdsFromQrOrder } from '@/lib/mercadopago-qr'
 import { findLocalPaymentId, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
 import { revalidatePath } from 'next/cache'
@@ -48,41 +49,79 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, matched: false, reason: 'sin_id_mp' })
     }
 
-    const meta = (body?.data?.metadata ?? body?.metadata ?? {}) as Record<string, unknown>
-    const localPaymentId = await findLocalPaymentId({
-      mpPaymentId,
-      preferenceId: body?.data?.preference_id ?? body?.preference_id ?? null,
-      externalReference: body?.data?.external_reference ?? body?.external_reference ?? null,
-      metadataPaymentId: meta.local_payment_id ? String(meta.local_payment_id) : null,
-    })
+    const topic = String(body?.type ?? body?.topic ?? body?.action ?? '')
+    const looksLikeOrder =
+      mpPaymentId.startsWith('ORD') ||
+      /order/i.test(topic) ||
+      String(body?.action ?? '').startsWith('order.')
 
-    const result = await settleMercadoPagoPayment({
-      mpPaymentId,
-      localPaymentId,
-      webhookBody: body,
-    })
+    const paymentIds: string[] = []
+    let orderExternalRef: string | null = body?.data?.external_reference ?? body?.external_reference ?? null
+    let orderId: string | null = looksLikeOrder ? mpPaymentId : null
 
-    if (result.matched && result.credited > 0 && result.userId) {
-      try {
-        revalidatePath('/dashboard')
-      } catch (e) {
-        console.warn('[mp-webhook] revalidatePath omitido:', e)
+    if (looksLikeOrder) {
+      const order = await getMercadoPagoQrOrder(mpPaymentId)
+      orderExternalRef =
+        (order?.external_reference ? String(order.external_reference) : null) ?? orderExternalRef
+      for (const id of paymentIdsFromQrOrder(order)) {
+        if (!id.startsWith('ORD')) paymentIds.push(id)
       }
-      await notifyPaymentReceived({
-        userId: result.userId,
-        amount: result.amount ?? 0,
-        installmentNumber: result.installmentNumber,
-        receiptId: result.receiptId,
-      })
-    } else if (result.matched && result.rejected && result.userId) {
-      await notifyPaymentRejected({
-        userId: result.userId,
-        amount: result.amount ?? 0,
-        reason: result.reason,
-      })
+      if (!paymentIds.length) {
+        const localPaymentId = await findLocalPaymentId({
+          orderId: mpPaymentId,
+          externalReference: orderExternalRef,
+        })
+        return NextResponse.json({
+          ok: true,
+          matched: Boolean(localPaymentId),
+          reason: 'orden_qr_sin_pago_final',
+          orderId: mpPaymentId,
+        })
+      }
+    } else {
+      paymentIds.push(mpPaymentId)
     }
 
-    return NextResponse.json({ ok: true, mpPaymentId, ...result })
+    const results = []
+    for (const id of paymentIds) {
+      const meta = (body?.data?.metadata ?? body?.metadata ?? {}) as Record<string, unknown>
+      const localPaymentId = await findLocalPaymentId({
+        mpPaymentId: id,
+        preferenceId: body?.data?.preference_id ?? body?.preference_id ?? null,
+        externalReference: orderExternalRef,
+        metadataPaymentId: meta.local_payment_id ? String(meta.local_payment_id) : null,
+        orderId,
+      })
+      const result = await settleMercadoPagoPayment({
+        mpPaymentId: id,
+        localPaymentId,
+        webhookBody: body,
+      })
+      results.push({ mpPaymentId: id, ...result })
+
+      if (result.matched && result.credited > 0 && result.userId) {
+        try {
+          revalidatePath('/dashboard')
+        } catch (e) {
+          console.warn('[mp-webhook] revalidatePath omitido:', e)
+        }
+        await notifyPaymentReceived({
+          userId: result.userId,
+          amount: result.amount ?? 0,
+          installmentNumber: result.installmentNumber,
+          receiptId: result.receiptId,
+        })
+      } else if (result.matched && result.rejected && result.userId) {
+        await notifyPaymentRejected({
+          userId: result.userId,
+          amount: result.amount ?? 0,
+          reason: result.reason,
+        })
+      }
+    }
+
+    const credited = results.reduce((sum, row) => sum + (row.credited ?? 0), 0)
+    return NextResponse.json({ ok: true, results, credited })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'internal_error'
     console.error('[mp-webhook] Error fatal:', message)

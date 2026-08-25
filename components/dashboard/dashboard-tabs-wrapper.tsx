@@ -1860,7 +1860,7 @@ function PagosPanel({
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {method === 'transferencia_bancaria'
                   ? 'Vas a ver el CBU de RM International Group (Brubank). Transferí, subí el comprobante y tesorería acredita cuando vea el dinero.'
-                  : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR con el importe real.'}
+                  : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR EMV de Mercado Pago con el importe real.'}
               </p>
             </div>
 

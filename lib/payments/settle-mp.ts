@@ -67,6 +67,7 @@ export async function findLocalPaymentId(input: {
   preferenceId?: string | null
   externalReference?: string | null
   metadataPaymentId?: string | null
+  orderId?: string | null
 }) {
   const conds = []
   if (input.metadataPaymentId) conds.push(eq(paymentTable.id, input.metadataPaymentId))
@@ -76,6 +77,7 @@ export async function findLocalPaymentId(input: {
   }
   if (input.externalReference) conds.push(eq(paymentTable.referenceNumber, String(input.externalReference)))
   if (input.preferenceId) conds.push(eq(paymentTable.paymentLinkId, String(input.preferenceId)))
+  if (input.orderId) conds.push(eq(paymentTable.paymentLinkId, String(input.orderId)))
   if (!conds.length) return null
 
   const [row] = await db

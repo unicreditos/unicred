@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { barcodeSvg, couponCode } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
+import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
 import { cn } from '@/lib/utils'
 import QRCode from 'qrcode'
 import { Landmark, QrCode, Wallet, X } from 'lucide-react'
@@ -40,7 +41,7 @@ export function PayInstallmentDialog({
   email,
   initialTab = 'mp',
   method = 'mercado_pago',
-  payPathPrefix = '/pagar',
+  payPathPrefix: _payPathPrefix = '/pagar',
   returnPath,
   onSettled,
 }: {
@@ -63,6 +64,7 @@ export function PayInstallmentDialog({
     amount: number
     paymentLinkUrl: string
     coupon: string | null
+    qrData: string | null
   } | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
@@ -81,15 +83,15 @@ export function PayInstallmentDialog({
     })
   }, [single, session?.coupon])
   const barcode = coupon ? barcodeSvg(coupon) : null
-  const fallbackPayUrl = useMemo(() => {
-    if (!single) return null
-    const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
-    const path = `${payPathPrefix}/${single.id}`
-    return origin ? `${origin}${path}` : path
-  }, [single, payPathPrefix])
+
+  useEffect(() => {
+    const payload = session?.qrData
+    if (!payload || !isMercadoPagoEmvQr(payload)) {
+      setQr(null)
+      return
+    }
+    void QRCode.toDataURL(payload, { margin: 1, width: 240 }).then(setQr)
+  }, [session?.qrData])
 
   const startMp = useCallback(async () => {
     setBusy(true)
@@ -109,6 +111,7 @@ export function PayInstallmentDialog({
         amount: r.amount,
         paymentLinkUrl: r.paymentLinkUrl ?? '',
         coupon: r.coupon,
+        qrData: r.qrData ?? null,
       })
     } catch (err) {
       toast.error((err as Error).message)
@@ -130,12 +133,6 @@ export function PayInstallmentDialog({
     startedFor.current = key
     void startMp()
   }, [open, idsKey, initialTab, method, startMp])
-
-  useEffect(() => {
-    const url = session?.paymentLinkUrl || fallbackPayUrl
-    if (!url) return
-    void QRCode.toDataURL(url, { margin: 1, width: 240 }).then(setQr)
-  }, [session?.paymentLinkUrl, fallbackPayUrl])
 
   const handlePaid = useCallback(
     async (status: string, extra?: { receiptId?: string | null; credited?: number }) => {
@@ -268,17 +265,18 @@ export function PayInstallmentDialog({
                   <div className="flex flex-col items-center">
                     <img src={qr} alt="QR de pago Mercado Pago" className="h-36 w-36" />
                     <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-                      <QrCode className="h-3.5 w-3.5" />{' '}
-                      {session?.paymentLinkUrl && /mercadopago\.com/i.test(session.paymentLinkUrl)
-                        ? 'QR Mercado Pago'
-                        : 'QR de esta cuota'}
+                      <QrCode className="h-3.5 w-3.5" /> QR Mercado Pago
                     </p>
                     <p className="max-w-[180px] text-center text-[10px] text-slate-500">
-                      {formatARS(session?.amount ?? total)}. Escaneá con Mercado Pago u otra billetera, o abrí el checkout en la web.
+                      {formatARS(session?.amount ?? total)}. Escaneá con la app Mercado Pago. Importe cerrado de esta cuota.
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Generando QR…</p>
+                  <p className="text-xs text-muted-foreground">
+                    {session && !session.qrData
+                      ? 'Mercado Pago no emitió el QR de esta cuota. Usá el checkout web o reintentá.'
+                      : 'Generando QR Mercado Pago…'}
+                  </p>
                 )}
                 {coupon && barcode ? (
                   <div className="min-w-0 flex-1 overflow-x-auto">

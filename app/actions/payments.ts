@@ -10,7 +10,8 @@ import {
   profile,
   user as userTable,
 } from '@/lib/db/schema'
-import { assertRole, getSession, assertAdmin, getRoleForUser } from '@/lib/session'
+import { assertRole, getSession, assertAdmin, getRoleForUser, requireUserId } from '@/lib/session'
+import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
 import { couponCode } from '@/lib/coupon'
 import { treasuryForClient } from '@/lib/treasury'
@@ -20,6 +21,7 @@ import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email
 import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
+import { attachMercadoPagoQr, ensureLoanCouponMpQrs, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
 
 export type PaymentMethod =
@@ -154,6 +156,22 @@ export async function createPaymentLink(
     return sameInstallmentSet((row.gatewayResponse as { installment_ids?: unknown } | null)?.installment_ids, installmentIds)
   })
   if (reusable) {
+    let qrData = qrDataFromGateway(reusable.gatewayResponse)
+    if (!qrData && insts.length === 1) {
+      try {
+        const qr = await attachMercadoPagoQr({
+          paymentId: reusable.id,
+          amount: total,
+          title: `UNICRÉDITOS · Cuota #${insts[0].number}`,
+          description: `Pago cuota ${insts[0].number} · UNICRÉDITOS`,
+          installmentIds,
+          dueDate: insts[0].dueDate,
+        })
+        qrData = qr.qrData
+      } catch (err) {
+        console.error('[payments] QR Mercado Pago (reuso):', err)
+      }
+    }
     return {
       ok: true,
       paymentId: reusable.id,
@@ -162,6 +180,7 @@ export async function createPaymentLink(
       externalPreferenceId: reusable.paymentLinkId,
       publicKey: getMercadoPagoPublicKey(),
       amount: total,
+      qrData,
       coupon:
         insts.length === 1
           ? couponCode({
@@ -274,6 +293,23 @@ export async function createPaymentLink(
     } as any)
     .returning()
 
+  let qrData: string | null = null
+  if (insts.length === 1) {
+    try {
+      const qr = await attachMercadoPagoQr({
+        paymentId: pay.id,
+        amount: total,
+        title: `UNICRÉDITOS · Cuota #${insts[0].number}`,
+        description: `Pago cuota ${insts[0].number} · UNICRÉDITOS`,
+        installmentIds,
+        dueDate: insts[0].dueDate,
+      })
+      qrData = qr.qrData
+    } catch (err) {
+      console.error('[payments] QR Mercado Pago:', err)
+    }
+  }
+
   revalidateCustomer()
   return {
     ok: true,
@@ -283,6 +319,7 @@ export async function createPaymentLink(
     externalPreferenceId: mpPreferenceId,
     publicKey: getMercadoPagoPublicKey(),
     amount: total,
+    qrData,
     coupon:
       insts.length === 1
         ? couponCode({
@@ -420,6 +457,30 @@ export async function createCouponCheckout(
     ])
   })
   if (reusable) {
+    let qrData = qrDataFromGateway(reusable.gatewayResponse)
+    if (!qrData) {
+      try {
+        const qr = await attachMercadoPagoQr({
+          paymentId: reusable.id,
+          amount: total,
+          title: `UNICRÉDITOS · Cuota #${inst.number}`,
+          description: `Pago cuota ${inst.number} · UNICRÉDITOS`,
+          installmentIds: [inst.id],
+          dueDate: inst.dueDate,
+        })
+        qrData = qr.qrData
+      } catch (err) {
+        console.error('[payments] QR cupón (reuso):', err)
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : 'Mercado Pago no emitió un QR de pago válido para esta cuota.',
+        )
+      }
+    }
+    if (!qrData) {
+      throw new Error('Mercado Pago no emitió un QR de pago válido para esta cuota.')
+    }
     return {
       ok: true as const,
       paymentId: reusable.id,
@@ -428,6 +489,7 @@ export async function createCouponCheckout(
       externalPreferenceId: reusable.paymentLinkId,
       publicKey: getMercadoPagoPublicKey(),
       amount: total,
+      qrData,
       coupon: couponCode({
         loanId,
         number: inst.number,
@@ -495,6 +557,28 @@ export async function createCouponCheckout(
     } as any)
     .returning()
 
+  let qrData: string | null = qrDataFromGateway(pay.gatewayResponse)
+  if (!qrData) {
+    try {
+      const qr = await attachMercadoPagoQr({
+        paymentId: pay.id,
+        amount: total,
+        title: `UNICRÉDITOS · Cuota #${inst.number}`,
+        description: `Pago cuota ${inst.number} · UNICRÉDITOS`,
+        installmentIds: [inst.id],
+        dueDate: inst.dueDate,
+      })
+      qrData = qr.qrData
+    } catch (err) {
+      console.error('[payments] QR cupón:', err)
+      throw new Error(
+        err instanceof Error
+          ? err.message
+          : 'Mercado Pago no emitió un QR de pago válido para esta cuota.',
+      )
+    }
+  }
+
   return {
     ok: true as const,
     paymentId: pay.id,
@@ -503,6 +587,7 @@ export async function createCouponCheckout(
     externalPreferenceId: res.preferenceId,
     publicKey: getMercadoPagoPublicKey(),
     amount: total,
+    qrData,
     coupon: couponCode({
       loanId,
       number: inst.number,
@@ -510,6 +595,17 @@ export async function createCouponCheckout(
       amount: inst.amount,
     }),
   }
+}
+
+export async function getLoanCouponQrs(loanId: string) {
+  const userId = await requireUserId()
+  const id = String(loanId ?? '').trim()
+  if (!id) throw new Error('Crédito inválido.')
+  const [loanRow] = await db.select({ userId: loan.userId }).from(loan).where(eq(loan.id, id)).limit(1)
+  if (!loanRow || !(await canViewOwnedRecord(userId, loanRow.userId))) {
+    throw new Error('No podés ver la cuponera de este crédito.')
+  }
+  return ensureLoanCouponMpQrs(id, loanRow.userId)
 }
 
 export async function reportCouponTransfer(installmentId: string, formData: FormData) {

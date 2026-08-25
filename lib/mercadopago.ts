@@ -83,7 +83,7 @@ function buildRedirectUrl(kind: 'success' | 'failure' | 'pending', custom?: stri
   return `${base}/dashboard?tab=pagos&mp_status=${kind}`
 }
 
-function mercadoPagoNotificationUrl(siteBase: string) {
+export function mercadoPagoNotificationUrl(siteBase: string) {
   const raw = (process.env.MERCADO_PAGO_NOTIFICATION_URL ?? `${siteBase}/api/webhooks/mercadopago`).trim()
   try {
     const u = new URL(raw)
@@ -355,4 +355,26 @@ export const MP_CONFIG = {
 
 export function getMercadoPagoPublicKey() {
   return MP_CONFIG.publicKey
+}
+
+export async function mpApiFetch<T = unknown>(
+  path: string,
+  init?: RequestInit & { idempotencyKey?: string },
+): Promise<{ ok: boolean; status: number; data: T; raw: string }> {
+  if (!accessToken) throw new Error('Mercado Pago no está configurado.')
+  const { idempotencyKey, headers: initHeaders, ...rest } = init ?? {}
+  const headers = new Headers(initHeaders)
+  headers.set('Authorization', `Bearer ${accessToken}`)
+  if (rest.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  if (idempotencyKey) headers.set('X-Idempotency-Key', idempotencyKey)
+  const url = `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+  const res = await fetch(url, { ...rest, headers })
+  const raw = await res.text()
+  let data = null as T
+  try {
+    data = (raw ? JSON.parse(raw) : null) as T
+  } catch {
+    /* cuerpo no JSON */
+  }
+  return { ok: res.ok, status: res.status, data, raw }
 }

@@ -7,11 +7,15 @@ import {
   DocumentSheet,
 } from '@/components/documents/document-frame'
 import { barcodeSvg, couponCode, installmentPayUrl } from '@/lib/coupon'
+import { db } from '@/lib/db'
+import { loan } from '@/lib/db/schema'
+import { ensureLoanCouponMpQrs } from '@/lib/payments/installment-mp-qr'
 import { treasuryForClient } from '@/lib/treasury'
 import { BRAND } from '@/lib/brand'
 import { docDate, docShortId, installmentStatusLabel } from '@/lib/document-format'
 import { formatARSDecimal } from '@/lib/finance'
 import type { ContractDocData } from '@/lib/legal/types'
+import { eq } from 'drizzle-orm'
 import QRCode from 'qrcode'
 
 function isOpenCoupon(status: string) {
@@ -21,6 +25,19 @@ function isOpenCoupon(status: string) {
 export async function CouponBookPrintable({ contract }: { contract: ContractDocData }) {
   const treasury = treasuryForClient()
   const open = contract.installments.filter((row) => isOpenCoupon(row.status))
+  let qrError: string | null = null
+  let payloads: Awaited<ReturnType<typeof ensureLoanCouponMpQrs>> = {}
+  try {
+    const [loanRow] = await db
+      .select({ userId: loan.userId })
+      .from(loan)
+      .where(eq(loan.id, contract.loanId))
+      .limit(1)
+    if (loanRow) payloads = await ensureLoanCouponMpQrs(contract.loanId, loanRow.userId)
+  } catch (err) {
+    qrError = err instanceof Error ? err.message : 'Mercado Pago no emitió el QR de las cuotas.'
+  }
+
   const coupons = await Promise.all(
     contract.installments.map(async (row) => {
       const code = couponCode({
@@ -31,10 +48,12 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
       })
       const openRow = isOpenCoupon(row.status)
       const payUrl = row.id ? installmentPayUrl(row.id) : ''
-      const qr = openRow && payUrl
-        ? await QRCode.toDataURL(payUrl, { margin: 1, width: 220, color: { dark: '#0f172a', light: '#ffffff' } })
-        : null
-      return { row, code, qr, payUrl }
+      const qrData = row.id ? payloads[row.id]?.qrData : null
+      const qr =
+        openRow && qrData
+          ? await QRCode.toDataURL(qrData, { margin: 1, width: 220, color: { dark: '#0f172a', light: '#ffffff' } })
+          : null
+      return { row, code, qr, payUrl, qrData: Boolean(qrData) }
     }),
   )
 
@@ -43,7 +62,7 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
       <DocumentLetterhead
         kind="estado"
         title="Cuponera de cuotas"
-        subtitle="Talonario operativo: escaneá el QR o entrá a unicreditos.com para pagar con Mercado Pago, Pago Fácil, Rapipago o transferencia"
+        subtitle="Talonario operativo: el QR impreso es el código EMV de Mercado Pago con el importe de la cuota"
         number={`CUP-${docShortId(contract.loanId)}`}
         issuedAt={docDate(new Date())}
         status={open.length ? 'Vigente' : 'Cancelada'}
@@ -71,13 +90,15 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
           <DocumentField label="Alias" value={treasury.alias ?? 'No informado'} mono />
         </DocumentFieldGrid>
         <p className="mt-3 text-[12px] leading-relaxed text-slate-600">
-          Cada talón abierto tiene un QR estable de esa cuota. Al escanearlo se abre
-          {' '}{BRAND.website.replace(/^https?:\/\//, '')}/pagar/… y ahí se genera el checkout
-          vivo de Mercado Pago (web o app) con el importe real. En esa pantalla también podés
-          pagar en Pago Fácil, Rapipago o transferir a esta cuenta Brubank. El código de barras
-          identifica el talón; la cuota se marca paga cuando Mercado Pago o tesorería confirman
-          el dinero.
+          Cada talón abierto lleva el QR dinámico de Mercado Pago (estándar EMVCo) con el importe
+          de esa cuota. Escanealo con la app Mercado Pago u otra billetera interoperable. El cobro
+          se acredita cuando Mercado Pago confirma el dinero. También podés entrar a
+          {' '}{BRAND.website.replace(/^https?:\/\//, '')}/pagar/… para tarjeta, Pago Fácil,
+          Rapipago o transferencia a esta cuenta Brubank. El código de barras identifica el talón.
         </p>
+        {qrError ? (
+          <p className="mt-2 text-[12px] font-medium text-red-700">{qrError}</p>
+        ) : null}
       </DocumentSection>
 
       <DocumentSection number="03" title="Talonario">
@@ -114,12 +135,16 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
                     <div className="flex w-[148px] shrink-0 flex-col items-center">
                       <img src={qr} alt={`QR para pagar la cuota ${row.number}`} className="h-[120px] w-[120px]" />
                       <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                        Escaneá para pagar
+                        QR Mercado Pago
                       </p>
                     </div>
                   ) : (
                     <p className="w-[148px] text-center text-[11px] text-slate-500">
-                      {row.status === 'cancelled' ? 'Talón anulado' : 'Talón saldado'}
+                      {row.status === 'cancelled'
+                        ? 'Talón anulado'
+                        : row.status === 'paid'
+                          ? 'Talón saldado'
+                          : qrError || 'QR Mercado Pago no emitido'}
                     </p>
                   )}
                 </div>
@@ -141,7 +166,7 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
 
       <DocumentFooter
         documentId={`CUP-${contract.loanId}`}
-        extra={`${BRAND.legalName} · CBU ${treasury.cbu} · ${treasury.bank}. El QR abre el pago real de esa cuota. El código no sustituye la acreditación.`}
+        extra={`${BRAND.legalName} · CBU ${treasury.cbu} · ${treasury.bank}. El QR es el código EMV de Mercado Pago con el importe de esa cuota. El código de barras no sustituye la acreditación.`}
       />
     </DocumentSheet>
   )
