@@ -15,11 +15,16 @@ const DASHBOARD_TABS = new Set([
   'comprobantes',
   'bancos',
   'documentos',
-  'banca',
   'ayuda',
+  'cuenta',
+  'reclamos',
 ])
 
-const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/merchant', '/pedir/cuenta', '/pedir/docs', '/pedir/pagar']
+const DASHBOARD_TAB_ALIASES: Record<string, string> = {
+  banca: 'bancos',
+}
+
+const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/merchant', '/pedir/cuenta', '/pedir/docs']
 
 function hasSessionCookie(request: NextRequest) {
   return request.cookies
@@ -43,11 +48,14 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const dashboardLeaf = pathname.match(/^\/dashboard\/([^/]+)\/?$/)
-  if (dashboardLeaf && DASHBOARD_TABS.has(dashboardLeaf[1])) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    url.searchParams.set('tab', dashboardLeaf[1])
-    return NextResponse.redirect(url)
+  if (dashboardLeaf) {
+    const leaf = DASHBOARD_TAB_ALIASES[dashboardLeaf[1]] ?? dashboardLeaf[1]
+    if (DASHBOARD_TABS.has(leaf)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.searchParams.set('tab', leaf)
+      return NextResponse.redirect(url)
+    }
   }
 
   const needsAuth = PROTECTED_PREFIXES.some(

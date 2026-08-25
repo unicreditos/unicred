@@ -11,6 +11,7 @@ import {
   Landmark,
   LayoutDashboard,
   Scale,
+  Settings2,
   ShieldCheck,
   Sparkles,
   User,
@@ -31,6 +32,8 @@ export type TabValue =
   | 'bancos'
   | 'documentos'
   | 'ayuda'
+  | 'cuenta'
+  | 'reclamos'
 
 const TAB_VALUES: readonly TabValue[] = [
   'overview',
@@ -46,6 +49,8 @@ const TAB_VALUES: readonly TabValue[] = [
   'bancos',
   'documentos',
   'ayuda',
+  'cuenta',
+  'reclamos',
 ]
 
 export function isDashboardTab(value: string | null): value is TabValue {
@@ -62,9 +67,11 @@ const NAV: WorkspaceNavItem[] = [
   { id: 'perfil', label: 'Identidad', icon: User, group: 'Datos' },
   { id: 'kyc_biometrico', label: 'Biometría', icon: ShieldCheck, group: 'Datos' },
   { id: 'bancos', label: 'Cuentas de desembolso', icon: Landmark, group: 'Datos' },
+  { id: 'cuenta', label: 'Configuración', icon: Settings2, group: 'Datos' },
   { id: 'documentos', label: 'Documentos', icon: FolderKanban, group: 'Archivo' },
   { id: 'comprobantes', label: 'Comprobantes', icon: FileText, group: 'Archivo' },
   { id: 'notificaciones', label: 'Actividad', icon: Bell, group: 'Soporte' },
+  { id: 'reclamos', label: 'Reclamos', icon: Scale, group: 'Soporte' },
   { id: 'ayuda', label: 'Ayuda', icon: Handshake, group: 'Soporte' },
 ]
 
@@ -85,10 +92,12 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   perfil: { title: 'Identidad', subtitle: 'CUIL, domicilio e ingresos declarados' },
   kyc_biometrico: { title: 'Biometría', subtitle: 'Verificación de identidad con Didit' },
   bancos: { title: 'Cuentas de desembolso', subtitle: 'CBU, CVU o alias para acreditar el crédito' },
-  documentos: { title: 'Documentos', subtitle: 'Contratos e informe BCRA' },
+  documentos: { title: 'Documentos', subtitle: 'Contrato, pagaré, cuponera, solvencia y libre deuda' },
   comprobantes: { title: 'Comprobantes', subtitle: 'Pagos y acreditaciones' },
   ayuda: { title: 'Ayuda', subtitle: 'Preguntas frecuentes y contacto' },
-  notificaciones: { title: 'Actividad', subtitle: 'Vencimientos y estado de trámites' },
+  notificaciones: { title: 'Actividad', subtitle: 'Vencimientos, pagos y reclamos de tu cuenta' },
+  cuenta: { title: 'Configuración', subtitle: 'Clave de acceso y seguridad de la cuenta' },
+  reclamos: { title: 'Reclamos', subtitle: 'Mesa de Defensa del Consumidor · Ley 24.240' },
 }
 
 interface DashboardShellProps {

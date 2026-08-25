@@ -51,12 +51,13 @@ export default async function DashboardPage() {
       .select()
       .from(bankAccount)
       .where(and(eq(bankAccount.userId, userId), eq(bankAccount.isActive, true)))
-      .orderBy((a) => [desc(a.isPrimary), desc(a.createdAt)])
+      .orderBy(desc(bankAccount.isPrimary), desc(bankAccount.createdAt))
       .catch((e) => { console.error('[dashboard] bankAccount failed:', e.message); return [] }),
     db
       .select()
       .from(kycVerification)
       .where(eq(kycVerification.userId, userId))
+      .orderBy(desc(kycVerification.updatedAt))
       .limit(1)
       .catch((e) => { console.error('[dashboard] kycVerification failed:', e.message); return [] }),
     db
@@ -91,7 +92,7 @@ export default async function DashboardPage() {
       .select()
       .from(savedPaymentMethod)
       .where(and(eq(savedPaymentMethod.userId, userId), eq(savedPaymentMethod.isActive, true)))
-      .orderBy((a) => [desc(a.isDefault), desc(a.lastUsedAt)])
+      .orderBy(desc(savedPaymentMethod.isDefault), desc(savedPaymentMethod.lastUsedAt))
       .catch((e) => { console.error('[dashboard] savedPaymentMethod failed:', e.message); return [] }),
     db
       .select()
@@ -121,6 +122,11 @@ export default async function DashboardPage() {
   const contracts = contractsRaw.map((c: any) => ({ ...c, loan: (loanMap.get(c.loanId) ?? null) as any }))
   const disbursements = disbursementsArr.map((d: any) => ({ ...d, loan: (loanMap.get(d.loanId) ?? null) as any }))
 
+  const remainingBalance = installmentsAllArr.reduce((sum: number, i: any) => {
+    if (i.status === 'paid' || i.status === 'cancelled') return sum
+    return sum + (Number(i.amount) || 0)
+  }, 0)
+
   const kpiTotals = loans.reduce(
     (acc, l: any) => {
       const p = Number(l.principal) || 0
@@ -128,8 +134,6 @@ export default async function DashboardPage() {
       acc.totalRequested += p
       if (l.status === 'active') {
         acc.active += 1
-        acc.pendingAmount += t
-        acc.totalDebt += t
       } else if (l.status === 'paid') {
         acc.paid += 1
         acc.totalPaid += t
@@ -142,8 +146,8 @@ export default async function DashboardPage() {
     },
     {
       totalRequested: 0,
-      totalDebt: 0,
-      pendingAmount: 0,
+      totalDebt: remainingBalance,
+      pendingAmount: remainingBalance,
       totalPaid: 0,
       active: 0,
       paid: 0,

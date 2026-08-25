@@ -1,6 +1,8 @@
 'use client'
 
 import { getLoanInstallments, withdrawLoanAcceptance } from '@/app/actions/loans'
+import { AmortizationTable } from '@/components/dashboard/amortization-table'
+import { EarlySettlementCard } from '@/components/dashboard/early-settlement-card'
 import { PayInstallmentButton } from '@/components/payments/pay-installment-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,7 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { barcodeSvg, couponCode, installmentPayUrl } from '@/lib/coupon'
+import { getPublicTreasury } from '@/app/actions/payments'
+import { barcodeSvg, couponCode, installmentPayPath, installmentPayUrl } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
 import QRCode from 'qrcode'
 import Link from 'next/link'
@@ -116,7 +119,8 @@ function formatDate(d: Date | string) {
 }
 
 function isOverdue(dueDate: Date | string, status: string) {
-  if (status !== 'pending') return false
+  if (status === 'paid' || status === 'cancelled') return false
+  if (status === 'overdue') return true
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return new Date(dueDate) < today
@@ -491,8 +495,19 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
         />
       </div>
 
+      <AmortizationTable
+        principal={Number(selectedLoan.principal) || 0}
+        monthlyRate={Number(selectedLoan.monthlyRate) || 0}
+        term={selectedLoan.term}
+        tna={selectedLoan.tna}
+        cft={selectedLoan.cft}
+      />
+
       {funded ? (
         <>
+        {(selectedLoan.status === 'active' || selectedLoan.status === 'paid') ? (
+          <EarlySettlementCard loanId={selectedLoan.id} loanStatus={selectedLoan.status} />
+        ) : null}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-4">
@@ -634,7 +649,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
               <div>
                 <CardTitle className="text-base">Talonario / cuponera</CardTitle>
                 <CardDescription>
-                  Cada talón muestra vencimiento, estado, fecha de pago y QR Mercado Pago si la cuota está abierta.
+                  Cada talón abierto tiene QR para pagar esa cuota (Mercado Pago web o app, Pago Fácil, Rapipago o transferencia a Brubank).
                 </CardDescription>
               </div>
               <Button asChild variant="outline" size="sm">
@@ -650,6 +665,47 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
             )}
           </CardContent>
         </Card>
+        {installments.some(
+          (inst) =>
+            (inst.status !== 'paid' && inst.status !== 'cancelled' && isOverdue(inst.dueDate, inst.status)) ||
+            (inst.paidAt && new Date(inst.paidAt) > new Date(inst.dueDate)),
+        ) ? (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Historial de mora</CardTitle>
+              <CardDescription>
+                Cuotas vencidas o pagadas después del vencimiento. UNICRÉDITOS no liquida punitorios de oficio.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {installments
+                  .filter(
+                    (inst) =>
+                      (inst.status !== 'paid' && inst.status !== 'cancelled' && isOverdue(inst.dueDate, inst.status)) ||
+                      (inst.paidAt && new Date(inst.paidAt) > new Date(inst.dueDate)),
+                  )
+                  .map((inst) => {
+                    const due = new Date(inst.dueDate)
+                    const paid = inst.paidAt ? new Date(inst.paidAt) : null
+                    const days = paid
+                      ? Math.max(0, Math.ceil((paid.getTime() - due.getTime()) / 86400000))
+                      : Math.max(0, Math.ceil((Date.now() - due.getTime()) / 86400000))
+                    return (
+                      <div key={inst.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                        <span>
+                          Cuota #{inst.number} · vence {formatDate(inst.dueDate)}
+                        </span>
+                        <span className="font-mono text-xs text-rose-700">
+                          {paid ? `Pagada con ${days} día${days === 1 ? '' : 's'} de atraso` : `${days} día${days === 1 ? '' : 's'} de mora`}
+                        </span>
+                      </div>
+                    )
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
         </>
       ) : (
         <Card>
@@ -772,6 +828,13 @@ function LoanCouponBook({
   installments: Installment[]
 }) {
   const [qrs, setQrs] = useState<Record<string, string>>({})
+  const [cbu, setCbu] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getPublicTreasury()
+      .then((t) => setCbu(t.cbu))
+      .catch(() => setCbu(null))
+  }, [])
 
   useEffect(() => {
     const origin = window.location.origin
@@ -827,14 +890,26 @@ function LoanCouponBook({
             <div className="flex flex-wrap items-end gap-3">
               {open && qrs[row.id] ? (
                 <div className="flex flex-col items-center">
-                  <img src={qrs[row.id]} alt={`QR Mercado Pago cuota ${row.number}`} className="h-28 w-28" />
+                  <img src={qrs[row.id]} alt={`QR para pagar la cuota ${row.number}`} className="h-28 w-28" />
                   <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    QR Mercado Pago
+                    Escaneá para pagar
                   </p>
                 </div>
               ) : null}
               <div className="min-w-0 flex-1 overflow-x-auto" dangerouslySetInnerHTML={{ __html: barcodeSvg(code, { height: 36, module: 1.1 }) }} />
             </div>
+            {open ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button asChild size="sm">
+                  <Link href={installmentPayPath(row.id)}>Pagar en la web o app</Link>
+                </Button>
+                {cbu ? (
+                  <p className="text-[10px] text-muted-foreground">
+                    MP · Pago Fácil · Rapipago · CBU {cbu}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         )
       })}

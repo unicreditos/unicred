@@ -24,6 +24,7 @@ import {
 import { formatARS } from '@/lib/finance'
 import { profile } from '@/lib/db/schema'
 import { useActionState, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AccountAvatar } from '@/components/unicred/account-avatar'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 
@@ -46,6 +47,7 @@ export function KYCProfileForm({
   initialProfile: Profile | null
   user?: { name?: string | null; email?: string | null; image?: string | null }
 }) {
+  const router = useRouter()
   const [formState, action, isPending] = useActionState(
     async (_prev: { ok?: boolean; error?: string; message?: string } | null, formData: FormData) => {
       try {
@@ -64,6 +66,7 @@ export function KYCProfileForm({
           employmentStatus: formData.get('employmentStatus') as string,
         })
         if (res.ok) {
+          router.refresh()
           return { ok: true, message: 'Perfil guardado correctamente.' }
         }
         return { ok: false, error: 'No se pudo guardar el perfil.' }
@@ -99,6 +102,8 @@ export function KYCProfileForm({
   const kycStatusLabel: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     pending: { label: 'Pendiente', variant: 'secondary' },
     submitted: { label: 'En revisión', variant: 'outline' },
+    reviewing: { label: 'En revisión', variant: 'outline' },
+    verified: { label: 'Verificado', variant: 'default' },
     approved: { label: 'Aprobado', variant: 'default' },
     rejected: { label: 'Rechazado', variant: 'destructive' },
   }
@@ -121,7 +126,7 @@ export function KYCProfileForm({
               <div>
                 <CardTitle>Perfil y validación KYC</CardTitle>
                 <CardDescription>
-                  Cargá tu foto real y completá tus datos para evaluar el perfil crediticio.
+                  Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican solo con Didit, en la pestaña Biometría.
                 </CardDescription>
               </div>
             </div>

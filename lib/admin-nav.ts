@@ -15,6 +15,7 @@ export const ADMIN_TAB_IDS = [
   'cuentas-bancarias',
   'cartera_activa',
   'legales',
+  'reclamos',
   'parametros',
   'tarifas',
   'logs_auditoria',

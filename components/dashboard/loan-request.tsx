@@ -25,6 +25,7 @@ import { Slider } from '@/components/ui/slider'
 import { computeFrenchAmortization, formatARS, formatPercent } from '@/lib/finance'
 import { loanProduct } from '@/lib/db/schema'
 import { useActionState, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
   CheckCircle2,
@@ -59,7 +60,14 @@ function defaultTerm(product?: LoanProduct) {
   return Math.max(product.minTerm, Math.min(12, product.maxTerm))
 }
 
-export function LoanRequestSimulator({ products }: { products: LoanProduct[] }) {
+export function LoanRequestSimulator({
+  products,
+  identityReady = false,
+}: {
+  products: LoanProduct[]
+  identityReady?: boolean
+}) {
+  const router = useRouter()
   const initial = defaultProduct(products)
   const [selectedProductId, setSelectedProductId] = useState<string>(initial?.id ?? '')
   const [amount, setAmount] = useState<number>(
@@ -108,6 +116,7 @@ export function LoanRequestSimulator({ products }: { products: LoanProduct[] }) 
           amount,
           installment: amortization?.installmentAmount,
         })
+        if (res.ok) router.refresh()
         return res
       } catch (err) {
         setResultModal({ ok: false, error: (err as Error).message })
@@ -139,6 +148,19 @@ export function LoanRequestSimulator({ products }: { products: LoanProduct[] }) 
     bueno: 'Bueno',
     regular: 'Regular',
     bajo: 'Bajo',
+  }
+
+  if (!products.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Sin productos activos</CardTitle>
+          <CardDescription>
+            En este momento no hay líneas de crédito publicadas. Escribí a soporte o reintentá más tarde.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
   }
 
   return (
@@ -255,8 +277,13 @@ export function LoanRequestSimulator({ products }: { products: LoanProduct[] }) 
               )}
             </CardContent>
 
-            <CardFooter className="flex items-center justify-end gap-3 border-t">
-              <Button type="submit" size="lg" disabled={isPending || !selectedProduct}>
+            <CardFooter className="flex flex-col items-stretch gap-2 border-t sm:flex-row sm:items-center sm:justify-end">
+              {!identityReady ? (
+                <p className="mr-auto text-xs text-amber-700">
+                  Completá Didit (DNI y prueba de vida) antes de enviar el pedido.
+                </p>
+              ) : null}
+              <Button type="submit" size="lg" disabled={isPending || !selectedProduct || !identityReady}>
                 {isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -316,9 +343,16 @@ export function LoanRequestSimulator({ products }: { products: LoanProduct[] }) 
                   <dd className="font-mono">{formatPercent(amortization.tna)}</dd>
                 </div>
                 <div className="flex justify-between">
+                  <dt className="text-muted-foreground">TEA</dt>
+                  <dd className="font-mono">{formatPercent(amortization.tea)}</dd>
+                </div>
+                <div className="flex justify-between">
                   <dt className="text-muted-foreground">CFT (con IVA)</dt>
                   <dd className="font-mono">{formatPercent(amortization.cft)}</dd>
                 </div>
+                <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  CFT informado = TEA con IVA 21% sobre intereses. No hay seguros ni gastos de otorgamiento.
+                </p>
               </dl>
             ) : (
               <p className="text-sm text-muted-foreground">

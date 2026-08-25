@@ -39,3 +39,5 @@ export function treasuryForClient() {
     conceptHint: 'En el concepto / referencia poné el código de cupón de la cuota.',
   }
 }
+
+export type TreasuryClientView = ReturnType<typeof treasuryForClient>

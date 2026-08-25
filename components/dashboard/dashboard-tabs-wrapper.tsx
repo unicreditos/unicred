@@ -5,6 +5,10 @@ import { KYCProfileForm } from '@/components/dashboard/kyc-profile-form'
 import { BCRAScore } from '@/components/dashboard/bcra-score'
 import { LoanRequestSimulator } from '@/components/dashboard/loan-request'
 import { LoansDashboard } from '@/components/dashboard/loans-dashboard'
+import { ActivityInbox } from '@/components/dashboard/activity-inbox'
+import { AccountSettings } from '@/components/dashboard/account-settings'
+import { ClaimsPanel } from '@/components/dashboard/claims-panel'
+import { DueCalendar } from '@/components/dashboard/due-calendar'
 import {
   DigitalCard,
   SectionCard,
@@ -49,11 +53,9 @@ import {
 import { useMemo, useState, useTransition, useEffect, KeyboardEvent } from 'react'
 import {
   BellRing,
-  CalendarDays,
   CheckCircle2,
   CreditCard,
   FileCheck2,
-  FileClock,
   HelpCircle,
   Inbox,
   Sparkles,
@@ -99,6 +101,7 @@ import { BRAND } from '@/lib/brand'
 import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
 import { asMoraRows, evaluateIntimation, evaluateRefinance, MAX_REFINANCES } from '@/lib/legal/mora'
 import { PayInstallmentDialog } from '@/components/payments/pay-installment-dialog'
+import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
 import Link from 'next/link'
 
 type Profile = typeof profile.$inferSelect
@@ -261,15 +264,15 @@ export function DashboardTabsWrapper({
   const band = getScoreBand(score as any as number)
 
   const nextInstallment = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const pending = upcomingInstallments.filter((i) => i.status === 'pending')
-    if (pending.length === 0) return null
-    const sorted = [...pending].sort(
+    const source = (installmentsAll.length ? installmentsAll : upcomingInstallments).filter(
+      (i) => i.status !== 'paid' && i.status !== 'cancelled',
+    )
+    if (source.length === 0) return null
+    const sorted = [...source].sort(
       (a, b) => new Date(a.dueDate as any).getTime() - new Date(b.dueDate as any).getTime(),
     )
     return sorted[0]
-  }, [upcomingInstallments])
+  }, [installmentsAll, upcomingInstallments])
 
   const nextDueDays = nextInstallment
     ? daysBetween(new Date(nextInstallment.dueDate as any), new Date())
@@ -563,9 +566,10 @@ export function DashboardTabsWrapper({
                 <div className="grid gap-2 p-3">
                   {[
                     { t: 'Pagar cuota', d: 'Checkout Mercado Pago', tab: 'pagos' as TabValue },
+                    { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas' as TabValue },
                     { t: 'Consultar BCRA', d: 'Central de Deudores', tab: 'scoring' as TabValue },
                     { t: 'Cargar cuenta', d: 'CBU / CVU de desembolso', tab: 'bancos' as TabValue },
-                    { t: 'Documentos', d: 'Contrato e informe', tab: 'documentos' as TabValue },
+                    { t: 'Reclamos', d: 'Ley 24.240 · 10 días hábiles', tab: 'reclamos' as TabValue },
                   ].map((a) => (
                     <button
                       key={a.tab}
@@ -583,6 +587,8 @@ export function DashboardTabsWrapper({
                 </div>
               </section>
             </div>
+
+            <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
 
             <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
               <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -638,108 +644,25 @@ export function DashboardTabsWrapper({
         {/* TAB CONTENT · Áreas funcionales */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 space-y-6">
           {activeTab === 'notificaciones' && (
-            <SectionCard
-              title="Actividad"
-              description="Vencimientos y estado de trámites."
-              icon={<BellRing className="h-4.5 w-4.5 text-brand-primary" />}
-            >
-              <div className="space-y-2">
-                {[
-                  ...(nextInstallment
-                    ? [{
-                        icon: CalendarDays,
-                        tone: 'amber' as const,
-                        title: `Tu cuota del ${formatDateShort(nextInstallment.dueDate)} vence ${nextDueDays === 0 ? 'hoy' : nextDueDays && nextDueDays < 0 ? `hace ${Math.abs(nextDueDays)} días` : `en ${nextDueDays} días`}`,
-                        desc: `Monto ${formatARS(nextInstallment.amount)}. Pagala desde Mercado Pago para no acumular atraso.`,
-                        cta: 'Pagar cuota',
-                        goto: 'pagos' as TabValue,
-                        badge: nextDueDays !== null && nextDueDays <= 0 ? 'Urgente' : 'Cuota',
-                      }]
-                    : []),
-                  ...(myKyc?.status === 'approved' || myKyc?.status === 'verified'
-                    ? [{
-                        icon: ShieldCheck,
-                        tone: 'emerald' as const,
-                        title: 'Identidad verificada',
-                        desc: 'Didit validó tu DNI y biometría. Ya podés solicitar crédito.',
-                        cta: 'Ver perfil',
-                        goto: 'kyc_biometrico' as TabValue,
-                        badge: 'KYC',
-                      }]
-                    : []),
-                  ...(bcraReports.length > 0
-                    ? [{
-                        icon: FileClock,
-                        tone: 'primary' as const,
-                        title: 'Informe BCRA disponible',
-                        desc: 'Tenés un informe de Central de Deudores para descargar.',
-                        cta: 'Abrir documentos',
-                        goto: 'documentos' as TabValue,
-                        badge: 'BCRA',
-                      }]
-                    : []),
-                  {
-                    icon: CheckCircle2,
-                    tone: 'emerald' as const,
-                    title: kpis.paid > 0 ? `Cancelaste ${kpis.paid} crédito(s)` : 'Bienvenido a UNICRÉDITOS',
-                    desc: kpis.paid > 0
-                      ? 'El historial de pagos queda en tus comprobantes.'
-                      : 'Completá tu identidad y pedí tu primer crédito.',
-                    cta: 'Completar datos',
-                    goto: 'perfil' as TabValue,
-                    badge: undefined as string | undefined,
-                  },
-                  {
-                    icon: Banknote,
-                    tone: 'primary' as const,
-                    title: kpis.pendingAmount > 0 ? `Saldo vigente · ${formatARS(kpis.pendingAmount)}` : 'Sin deudas vigentes',
-                    desc: 'Revisá el detalle en Mis créditos. Solo los créditos desembolsados generan cuotas.',
-                    cta: 'Ver créditos',
-                    goto: 'cuotas' as TabValue,
-                    badge: undefined as string | undefined,
-                  },
-                ].map((n, i) => (
-                  <div
-                    key={i}
-                    className="group flex items-start gap-4 rounded-xl border border-border/60 bg-background p-4 transition hover:border-brand-primary/30 hover:bg-brand-primary-50/30 hover:-translate-y-0.5"
-                  >
-                    <span
-                      className={
-                        'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ' +
-                        (n.tone === 'amber'
-                          ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
-                          : n.tone === 'emerald'
-                            ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200'
-                            : 'bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary-200')
-                      }
-                    >
-                      <n.icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-bold text-foreground">{n.title}</div>
-                        {n.badge ? (
-                          <span className="rounded-full bg-brand-navy-900/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-navy-800 ring-1 ring-brand-navy-800/10">
-                            {n.badge}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{n.desc}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 shrink-0 gap-1 text-xs"
-                      onClick={() => setActiveTab(n.goto)}
-                    >
-                      {n.cta}
-                      <ArrowRight className="h-3 w-3 opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
+            <ActivityInbox
+              onOpenHref={(href) => {
+                try {
+                  const url = new URL(href, window.location.origin)
+                  const tab = url.searchParams.get('tab')
+                  if (isDashboardTab(tab)) {
+                    setActiveTab(tab)
+                    return
+                  }
+                } catch {
+                  /* href interno */
+                }
+                router.push(href)
+              }}
+            />
           )}
+
+          {activeTab === 'cuenta' && <AccountSettings />}
+          {activeTab === 'reclamos' && <ClaimsPanel />}
 
           {activeTab === 'mis_solicitudes' && (
             <SectionCard
@@ -834,7 +757,7 @@ export function DashboardTabsWrapper({
                   {[
                     { q: '¿Cuánto tarda la aprobación?', a: 'Si Didit y BCRA están en orden, la decisión suele salir el mismo día hábil. Casos con deuda en Central de Deudores pasan a revisión.' },
                     { q: '¿Qué documentos necesito?', a: 'La identidad se valida solo con Didit (DNI vigente y prueba de vida). No se aceptan fotos cargadas a mano. También necesitás CUIL y una cuenta propia (CBU, CVU o alias) para el desembolso.' },
-                    { q: '¿Puedo cancelar el crédito antes?', a: 'Sí. El prepago de capital se calcula sobre el saldo. Los costos están en el contrato (TNA y CFT).' },
+                    { q: '¿Puedo cancelar el crédito antes?', a: 'Sí. En Créditos ves la liquidación de cancelación: se cobra el capital remanente y se deducen intereses no devengados. Pagás con Mercado Pago. Después podés descargar la constancia de libre deuda.' },
                     { q: '¿Puedo arrepentirme?', a: `Sí, ${WITHDRAWAL_DAYS} días corridos desde la aceptación del contrato, si el crédito todavía no se acreditó. El botón está en Documentos.` },
                     { q: '¿Qué pasa si me atraso con una cuota?', a: 'La cuota queda vencida en el cronograma. UNICRÉDITOS no liquida punitorios de oficio. Pagá desde Mercado Pago, tarjeta o transferencia.' },
                     { q: '¿Cómo descargo un comprobante o el informe BCRA?', a: 'En Comprobantes y Documentos. El informe refleja la consulta a la Central de Deudores.' },
@@ -900,18 +823,16 @@ export function DashboardTabsWrapper({
 
                 <SectionCard
                   title="¿No encontraste lo que buscabas?"
-                  description="Escribinos por formulario o email. No hay mesa de tickets ni videos publicados."
+                  description="Presentá un reclamo Ley 24.240. Plazo máximo de respuesta: 10 días hábiles."
                   icon={<FileText className="h-4 w-4 text-brand-primary" />}
                   className="flex-1"
                 >
                   <div className="space-y-3 text-sm">
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Plazo máximo de respuesta a reclamos: 10 días hábiles (Ley 24.240). No publicamos un SLA de minutos.
+                      El expediente queda en tu cuenta. Confirmamos por mail. No hay chat en vivo ni 0800 publicado.
                     </p>
-                    <Button className="w-full gap-1.5 shadow-sm" asChild>
-                      <Link href="/contacto">
-                        <Inbox className="h-4 w-4" /> Ir a contacto
-                      </Link>
+                    <Button className="w-full gap-1.5 shadow-sm" onClick={() => setActiveTab('reclamos')}>
+                      <Inbox className="h-4 w-4" /> Presentar reclamo
                     </Button>
                     <Button variant="outline" className="w-full gap-1.5" asChild>
                       <a href={`mailto:${BRAND.supportEmail}`}>
@@ -934,7 +855,37 @@ export function DashboardTabsWrapper({
               }}
             />
           )}
-          {activeTab === 'solicitar' && <LoanRequestSimulator products={products} />}
+          {activeTab === 'solicitar' && (
+            <>
+              {activeLoansList.length > 0 ? (
+                <DecisionBanner
+                  tone="warn"
+                  title={`Tenés ${activeLoansList.length} crédito${activeLoansList.length === 1 ? '' : 's'} vigente${activeLoansList.length === 1 ? '' : 's'}`}
+                  detail="No se puede originar otro préstamo hasta cancelar o terminar el ciclo actual. Pagá desde Mercado Pago o revisá el cronograma."
+                  action={
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas')}>
+                      Ver créditos
+                    </Button>
+                  }
+                />
+              ) : myKyc?.provider !== 'didit' || myKyc.status !== 'approved' ? (
+                <DecisionBanner
+                  tone="warn"
+                  title="Falta la verificación Didit"
+                  detail="Sin identidad aprobada el simulador no origina crédito. Completá DNI y prueba de vida en Biometría."
+                  action={
+                    <Button size="sm" onClick={() => setActiveTab('kyc_biometrico')}>
+                      Ir a biometría
+                    </Button>
+                  }
+                />
+              ) : null}
+              <LoanRequestSimulator
+                products={products}
+                identityReady={myKyc?.provider === 'didit' && myKyc.status === 'approved'}
+              />
+            </>
+          )}
           {activeTab === 'scoring' && (
             <BCRAScore profile={initialProfile} lastBcraCheck={lastBcraCheck} />
           )}
@@ -948,6 +899,7 @@ export function DashboardTabsWrapper({
             <BancosPanel
               accounts={bankAccounts}
               profile={initialProfile}
+              defaultHolderName={session?.user?.name ?? ''}
               isPending={isPending}
               onCreate={(v) =>
                 startTransition(async () => {
@@ -1016,7 +968,7 @@ export function DashboardTabsWrapper({
               payments={payments}
               savedMethods={savedPaymentMethods}
               isPending={isPending}
-              payerEmail={null}
+              payerEmail={session?.user?.email ?? null}
             />
           )}
 
@@ -1133,9 +1085,12 @@ function kycLabel(s: string | null | undefined) {
     case 'rejected':
       return 'Rechazado'
     case 'reviewing':
+    case 'submitted':
       return 'En revisión'
     case 'pending':
       return 'Pendiente'
+    case 'verified':
+      return 'Verificado'
     default:
       return 'No iniciado'
   }
@@ -1147,6 +1102,8 @@ function kycVariant(s: string | null | undefined) {
     case 'rejected':
       return 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200/60'
     case 'reviewing':
+    case 'submitted':
+    case 'verified':
       return 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-200/60'
     case 'pending':
       return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200/60'
@@ -1167,6 +1124,25 @@ function KYCBiometricPanel({
   const [syncing, setSyncing] = useState(false)
   const router = useRouter()
   const approved = kyc?.status === 'approved' && kyc.provider === 'didit'
+  const capture = useMemo(
+    () => parseDiditCapture(kyc?.ocrData, { sessionId: kyc?.providerReferenceId, status: kyc?.status }),
+    [kyc?.ocrData, kyc?.providerReferenceId, kyc?.status],
+  )
+  const media = useMemo(
+    () =>
+      kycMediaBundle(capture, {
+        front: kyc?.dniFrontImageUrl,
+        back: kyc?.dniBackImageUrl,
+        selfie: kyc?.selfieImageUrl,
+      }),
+    [capture, kyc?.dniFrontImageUrl, kyc?.dniBackImageUrl, kyc?.selfieImageUrl],
+  )
+  const id = capture.ids[0]
+  const shots = [
+    { label: 'DNI frente', url: media.front },
+    { label: 'DNI dorso', url: media.back },
+    { label: 'Selfie / prueba de vida', url: media.selfie },
+  ].filter((s) => s.url)
 
   useEffect(() => {
     void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
@@ -1194,6 +1170,15 @@ function KYCBiometricPanel({
           <p className="text-muted-foreground">
             UNICRÉDITOS no recibe fotos ni videos cargados a mano. El flujo de Didit se abre acá, sin salir de la web.
           </p>
+          {id?.fullName || id?.documentNumber || kyc?.dniNumber ? (
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs">
+              <p className="font-semibold text-foreground">{id?.fullName || 'Documento verificado'}</p>
+              <p className="mt-1 font-mono text-muted-foreground">
+                DNI {id?.documentNumber || kyc?.dniNumber || '—'}
+                {id?.birthDate ? ` · Nac. ${id.birthDate}` : ''}
+              </p>
+            </div>
+          ) : null}
           {kyc?.rejectionReason && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:bg-rose-950/30 dark:border-rose-900 dark:text-rose-300">
               <AlertCircle className="mr-1.5 inline h-3.5 w-3.5" />
@@ -1225,6 +1210,17 @@ function KYCBiometricPanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {shots.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {shots.map((s) => (
+                <figure key={s.label} className="overflow-hidden rounded-lg border bg-muted/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.url!} alt={s.label} className="h-28 w-full object-cover" referrerPolicy="no-referrer" />
+                  <figcaption className="px-2 py-1 text-[10px] text-muted-foreground">{s.label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : null}
           {diditConfigured === null ? (
             <p className="text-sm text-muted-foreground">Comprobando Didit…</p>
           ) : !diditConfigured ? (
@@ -1277,6 +1273,7 @@ function KYCBiometricPanel({
 function BancosPanel({
   accounts,
   profile,
+  defaultHolderName,
   isPending,
   onCreate,
   onUpdate,
@@ -1286,6 +1283,7 @@ function BancosPanel({
 }: {
   accounts: BankAccount[]
   profile: Profile | null
+  defaultHolderName?: string
   isPending: boolean
   onCreate: (v: {
     accountType: 'cbu' | 'cvu' | 'alias' | 'cci'
@@ -1322,7 +1320,9 @@ function BancosPanel({
   const [cvu, setCvu] = useState('')
   const [alias, setAlias] = useState('')
   const [cci, setCci] = useState('')
-  const [holderName, setHolderName] = useState((profile as any)?.fullName ?? (profile as any)?.holderName ?? '')
+  const [holderName, setHolderName] = useState(
+    (profile as any)?.fullName ?? (profile as any)?.holderName ?? defaultHolderName ?? '',
+  )
   const [holderCuil, setHolderCuil] = useState(profile?.cuil ?? '')
   const [primary, setPrimary] = useState(accounts.length === 0)
 
@@ -1334,7 +1334,7 @@ function BancosPanel({
     setCvu('')
     setAlias('')
     setCci('')
-    setHolderName((profile as any)?.fullName ?? '')
+    setHolderName((profile as any)?.fullName ?? defaultHolderName ?? '')
     setHolderCuil(profile?.cuil ?? '')
     setPrimary(accounts.length === 0)
   }
@@ -1665,7 +1665,9 @@ function PagosPanel({
   isPending: boolean
   payerEmail?: string | null
 }) {
-  const pending = installments.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
+  const pending = [...installments]
+    .filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
+    .sort((a, b) => new Date(a.dueDate as any).getTime() - new Date(b.dueDate as any).getTime())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [method, setMethod] = useState<any>('mercado_pago')
   const [payOpen, setPayOpen] = useState(false)
@@ -2275,6 +2277,32 @@ function DocumentosPanel({
                         Cuponera
                       </Button>
                     </Link>
+                    <Link
+                      href={`/dashboard/documentos/cancelacion/${c.loanId}`}
+                      className="inline-flex"
+                    >
+                      <Button size="sm" variant="outline" className="gap-1">
+                        Cancelación
+                      </Button>
+                    </Link>
+                    <Link
+                      href={`/dashboard/documentos/solvencia/${c.loanId}`}
+                      className="inline-flex"
+                    >
+                      <Button size="sm" variant="outline" className="gap-1">
+                        Solvencia
+                      </Button>
+                    </Link>
+                    {(c.loan ?? loans.find((l) => l.id === c.loanId))?.status === 'paid' ? (
+                      <Link
+                        href={`/dashboard/documentos/libre-deuda/${c.loanId}`}
+                        className="inline-flex"
+                      >
+                        <Button size="sm" variant="outline" className="gap-1">
+                          Libre deuda
+                        </Button>
+                      </Link>
+                    ) : null}
                     {evaluateIntimation(
                       asMoraRows(installments.filter((row) => row.loanId === c.loanId)),
                       lastRefinanceFromSignature(c.signatureData),

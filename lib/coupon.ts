@@ -1,12 +1,12 @@
-import { BRAND } from '@/lib/brand'
+import { BRAND, publicBrandWebsite } from '@/lib/brand'
 import { formatARSDecimal } from '@/lib/finance'
 
 export function installmentPayPath(installmentId: string) {
-  return `/dashboard/pagar/${installmentId}`
+  return `/pagar/${installmentId}`
 }
 
 export function installmentPayUrl(installmentId: string, origin?: string) {
-  const base = (origin || process.env.NEXT_PUBLIC_SITE_URL || BRAND.website || '').replace(/\/$/, '')
+  const base = (origin || publicBrandWebsite()).replace(/\/$/, '')
   return `${base}${installmentPayPath(installmentId)}`
 }
 

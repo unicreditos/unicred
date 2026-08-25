@@ -418,3 +418,32 @@ export function kycStatusEmail(input: {
   })
   return { to: input.to, subject, html, text }
 }
+
+export function claimReceivedEmail(input: {
+  to: string
+  name?: string | null
+  caseId: string
+  subjectLine: string
+  panelUrl: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const subject = `Reclamo recibido · ${input.caseId.slice(0, 12)} — ${BRAND.company}`
+  const text = brandedText([
+    `${who},`,
+    '',
+    `Registramos tu reclamo «${input.subjectLine}».`,
+    'Plazo máximo de respuesta: 10 días hábiles (Ley 24.240).',
+    '',
+    input.panelUrl,
+  ])
+  const html = brandedEmailHtml({
+    title: 'Reclamo recibido',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, registramos tu reclamo <strong>${escapeHtml(input.subjectLine)}</strong>.</p>
+      <p style="font-size:14px;line-height:1.6;margin:0 0 24px">El plazo máximo de respuesta es de 10 días hábiles, conforme a la Ley 24.240 de Defensa del Consumidor.</p>
+    `,
+    cta: { href: input.panelUrl, label: 'Ver reclamos' },
+    footerNote: `Expediente ${input.caseId}`,
+  })
+  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
+}

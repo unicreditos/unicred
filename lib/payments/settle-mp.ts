@@ -127,6 +127,7 @@ export async function settleMercadoPagoPayment(input: {
     if (!localPay) return { matched: false as const, credited: 0 }
 
     const previousGateway = (localPay.gatewayResponse as Record<string, unknown>) ?? {}
+    const isEarlySettlement = previousGateway.kind === 'early_settlement'
     const installmentIds = asIdList(
       previousGateway.installment_ids ?? meta.installment_ids ?? (localPay.installmentId ? [localPay.installmentId] : []),
     )
@@ -197,7 +198,7 @@ export async function settleMercadoPagoPayment(input: {
       }
     }
 
-    if (!installmentIds.length) {
+    if (!installmentIds.length && !isEarlySettlement) {
       await tx
         .update(paymentTable)
         .set({
@@ -209,14 +210,18 @@ export async function settleMercadoPagoPayment(input: {
       return { matched: true as const, credited: 0, localPaymentId: localPay.id, localStatus: 'processing' }
     }
 
-    const insts = await tx
-      .select()
-      .from(installment)
-      .where(and(inArray(installment.id, installmentIds), eq(installment.userId, localPay.userId)))
-      .for('update')
+    const insts = installmentIds.length
+      ? await tx
+          .select()
+          .from(installment)
+          .where(and(inArray(installment.id, installmentIds), eq(installment.userId, localPay.userId)))
+          .for('update')
+      : []
 
     const unpaid = insts.filter((i) => i.status !== 'paid')
-    const expected = (unpaid.length ? unpaid : insts).reduce((acc, i) => acc + toNumber(i.amount), 0)
+    const expected = isEarlySettlement
+      ? toNumber(previousGateway.settlementAmount ?? localPay.amount)
+      : (unpaid.length ? unpaid : insts).reduce((acc, i) => acc + toNumber(i.amount), 0)
 
     if (!(paidAmount > 0)) {
       await tx
@@ -231,7 +236,7 @@ export async function settleMercadoPagoPayment(input: {
         localStatus: 'processing',
       }
     }
-    if (unpaid.length && paidAmount + 0.01 < expected) {
+    if ((unpaid.length || isEarlySettlement) && paidAmount + 0.01 < expected) {
       await tx
         .update(paymentTable)
         .set({
@@ -250,7 +255,7 @@ export async function settleMercadoPagoPayment(input: {
       }
     }
 
-    if (!unpaid.length) {
+    if (!unpaid.length && !isEarlySettlement) {
       await tx
         .update(paymentTable)
         .set({
@@ -270,10 +275,109 @@ export async function settleMercadoPagoPayment(input: {
       }
     }
 
-    const loanId = unpaid[0].loanId
+    const loanId = String(previousGateway.loanId ?? unpaid[0]?.loanId ?? localPay.loanId ?? '')
     const [loanRow] = loanId
       ? await tx.select().from(loan).where(eq(loan.id, loanId)).limit(1)
       : [null]
+
+    if (isEarlySettlement) {
+      const loanUnpaid = loanId
+        ? await tx
+            .select()
+            .from(installment)
+            .where(
+              and(
+                eq(installment.loanId, loanId),
+                eq(installment.userId, localPay.userId),
+                inArray(installment.status, ['pending', 'overdue']),
+              ),
+            )
+            .for('update')
+        : unpaid
+
+      if (!loanUnpaid.length) {
+        await tx
+          .update(paymentTable)
+          .set({
+            ...baseUpdate,
+            status: 'paid',
+            paidAt: localPay.paidAt ?? now,
+            notes: 'Cancelación anticipada: el crédito ya estaba saldado.',
+          } as any)
+          .where(eq(paymentTable.id, localPay.id))
+        return {
+          matched: true as const,
+          duplicate: true as const,
+          credited: 0,
+          localPaymentId: localPay.id,
+          userId: localPay.userId,
+          amount: paidAmount,
+          localStatus: 'paid',
+        }
+      }
+
+      for (const inst of loanUnpaid) {
+        await tx.update(installment).set({ status: 'paid', paidAt: now }).where(eq(installment.id, inst.id))
+      }
+      if (loanRow && loanRow.status !== 'paid') {
+        await tx.update(loan).set({ status: 'paid', updatedAt: now }).where(eq(loan.id, loanId))
+      }
+
+      const allInsts = loanId
+        ? await tx.select().from(installment).where(eq(installment.loanId, loanId))
+        : loanUnpaid
+      const principalTotal = allInsts.reduce((a, i) => a + toNumber(i.amount), 0)
+      const totalPaid = allInsts.filter((i) => i.status === 'paid').reduce((a, i) => a + toNumber(i.amount), 0)
+      const receiptNumber = `REC-MP-CAN-${input.mpPaymentId}`
+      const receiptId = crypto.randomUUID()
+      const inserted = await tx
+        .insert(paymentReceipt)
+        .values({
+          id: receiptId,
+          receiptNumber,
+          receiptType: 'early_settlement',
+          userId: localPay.userId,
+          paymentId: localPay.id,
+          loanId: loanId || null,
+          installmentId: loanUnpaid[0]?.id ?? null,
+          amount: String(paidAmount),
+          currency: 'ARS',
+          loanSnapshot: loanRow ? JSON.parse(JSON.stringify(loanRow)) : null,
+          installmentSnapshot: JSON.parse(JSON.stringify(loanUnpaid)),
+          previousBalance: String(principalTotal),
+          newBalance: '0',
+          pendingInstallments: 0,
+          totalPaidToDate: String(totalPaid),
+          method: 'mercado_pago',
+          referenceNumber: localPay.referenceNumber ?? input.mpPaymentId,
+          paidAt: now,
+          issuedAt: now,
+          branding: RECEIPT_BRANDING,
+          createdAt: now,
+        })
+        .onConflictDoNothing({ target: paymentReceipt.receiptNumber })
+        .returning({ id: paymentReceipt.id })
+
+      await tx
+        .update(paymentTable)
+        .set({
+          ...baseUpdate,
+          status: 'paid',
+          paidAt: now,
+          notes: 'Cancelación anticipada acreditada. Crédito saldado.',
+        } as any)
+        .where(eq(paymentTable.id, localPay.id))
+
+      return {
+        matched: true as const,
+        credited: loanUnpaid.length,
+        localPaymentId: localPay.id,
+        userId: localPay.userId,
+        amount: paidAmount,
+        receiptId: inserted[0]?.id ?? receiptId,
+        localStatus: 'paid',
+      }
+    }
 
     for (const inst of unpaid) {
       await tx.update(installment).set({ status: 'paid', paidAt: now }).where(eq(installment.id, inst.id))

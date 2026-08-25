@@ -20,6 +20,7 @@ import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email
 import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
+import { computeEarlySettlement } from '@/lib/legal/settlement'
 
 export type PaymentMethod =
   | 'mercado_pago'
@@ -294,6 +295,392 @@ export async function createPaymentLink(
   }
 }
 
+export async function getCouponInstallment(installmentId: string) {
+  const id = String(installmentId ?? '').trim()
+  if (!id) return null
+  const [row] = await db
+    .select({
+      id: installment.id,
+      number: installment.number,
+      amount: installment.amount,
+      dueDate: installment.dueDate,
+      status: installment.status,
+      paidAt: installment.paidAt,
+      loanId: installment.loanId,
+      userId: installment.userId,
+    })
+    .from(installment)
+    .where(eq(installment.id, id))
+    .limit(1)
+  if (!row) return null
+  const due = new Date(row.dueDate)
+  const [loanRow] = await db
+    .select({ status: loan.status, principal: loan.principal, term: loan.term })
+    .from(loan)
+    .where(eq(loan.id, row.loanId))
+    .limit(1)
+  return {
+    id: row.id,
+    number: row.number,
+    amount: row.amount,
+    dueDate: due.toISOString(),
+    dueLabel: new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(due),
+    status: row.status,
+    paidAt: row.paidAt ? new Date(row.paidAt).toISOString() : null,
+    paidLabel: row.paidAt
+      ? new Intl.DateTimeFormat('es-AR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'America/Argentina/Buenos_Aires',
+        }).format(new Date(row.paidAt))
+      : null,
+    loanId: row.loanId,
+    loanStatus: loanRow?.status ?? null,
+    coupon: couponCode({
+      loanId: row.loanId,
+      number: row.number,
+      dueDate: row.dueDate,
+      amount: row.amount,
+    }),
+    treasury: treasuryForClient(),
+  }
+}
+
+export async function createCouponCheckout(
+  installmentId: string,
+  method: PaymentMethod = 'mercado_pago',
+) {
+  if (method === 'debito_automatico') {
+    throw new Error('El débito automático no está habilitado.')
+  }
+  if (method === 'transferencia_bancaria' || method === 'transferencia_rm') {
+    throw new Error('Para transferir usá el CBU de RM que figura en esta página.')
+  }
+  if (!usesMercadoPagoCheckout(method)) {
+    throw new Error('Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago.')
+  }
+  if (!MP_CONFIG.accessTokenSet) {
+    throw new Error('Mercado Pago no está configurado en este entorno.')
+  }
+
+  const [inst] = await db.select().from(installment).where(eq(installment.id, installmentId)).limit(1)
+  if (!inst) throw new Error('Cuota no encontrada.')
+  if (inst.status === 'paid' || inst.status === 'cancelled') {
+    throw new Error('Esta cuota ya no está abierta.')
+  }
+  const userId = inst.userId
+  const loanId = inst.loanId
+  const [loanRow] = await db
+    .select({ status: loan.status })
+    .from(loan)
+    .where(and(eq(loan.id, loanId), eq(loan.userId, userId)))
+    .limit(1)
+  if (!loanRow || loanRow.status !== 'active') {
+    throw new Error('Solo se puede pagar un crédito vigente, después del desembolso.')
+  }
+
+  const total = Number(inst.amount) || 0
+  if (!Number.isFinite(total) || total <= 0) throw new Error('Importe inválido.')
+
+  const [payer] = await db
+    .select({ email: userTable.email, name: userTable.name })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1)
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const payerFirst = payer?.name?.split(' ')[0]
+  const payerLast = payer?.name?.split(' ').slice(1).join(' ') || undefined
+
+  const existing = await db
+    .select()
+    .from(payment)
+    .where(
+      and(
+        eq(payment.userId, userId),
+        eq(payment.loanId, loanId),
+        eq(payment.gateway, 'mercado_pago'),
+        inArray(payment.status, ['pending', 'processing']),
+        gte(payment.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(payment.createdAt))
+    .limit(12)
+
+  const reusable = existing.find((row) => {
+    if (row.method !== method) return false
+    if (!row.paymentLinkId || !row.paymentLinkUrl) return false
+    return sameInstallmentSet((row.gatewayResponse as { installment_ids?: unknown } | null)?.installment_ids, [
+      inst.id,
+    ])
+  })
+  if (reusable) {
+    return {
+      ok: true as const,
+      paymentId: reusable.id,
+      paymentLinkUrl: reusable.paymentLinkUrl,
+      gateway: reusable.gateway,
+      externalPreferenceId: reusable.paymentLinkId,
+      publicKey: getMercadoPagoPublicKey(),
+      amount: total,
+      coupon: couponCode({
+        loanId,
+        number: inst.number,
+        dueDate: inst.dueDate,
+        amount: inst.amount,
+      }),
+    }
+  }
+
+  const id = crypto.randomUUID()
+  const internalRef = `CUP-${Date.now().toString().slice(-8)}`
+  const siteBase = getSiteBaseUrl()
+  const returnPath = `/pagar/${inst.id}`
+  const res = await createPaymentLinkMP({
+    amount: total,
+    installmentsIds: [inst.id],
+    loanId,
+    userId,
+    externalReference: internalRef,
+    description: `Pago cuota ${inst.number} · Préstamo ${loanId.slice(0, 8)}`,
+    itemsTitle: `UNICRÉDITOS · Cuota #${inst.number}`,
+    payerEmail: payer?.email ?? undefined,
+    payerFirstName: payerFirst,
+    payerLastName: payerLast,
+    payerIdentificationType: prof?.cuil ? 'CUIL' : undefined,
+    payerIdentificationNumber: prof?.cuil ?? undefined,
+    channel: MP_CHANNELS[method] ?? 'all',
+    successUrl: `${siteBase}${returnPath}?mp_status=success`,
+    failureUrl: `${siteBase}${returnPath}?mp_status=failure`,
+    pendingUrl: `${siteBase}${returnPath}?mp_status=pending`,
+  })
+  if (!res.initPoint || !/^https?:\/\//i.test(res.initPoint)) {
+    throw new Error('Mercado Pago no devolvió un link de pago válido.')
+  }
+
+  const [pay] = await db
+    .insert(payment)
+    .values({
+      id,
+      userId,
+      loanId,
+      installmentId: inst.id,
+      amount: String(total),
+      currency: 'ARS',
+      status: 'pending',
+      method,
+      source: 'coupon',
+      gateway: 'mercado_pago',
+      gatewayResponse: {
+        preference_id: res.preferenceId,
+        init_point: res.initPoint,
+        sandbox_init_point: res.sandboxInitPoint,
+        external_reference: res.externalReference,
+        channel: MP_CHANNELS[method] ?? 'all',
+        installment_ids: [inst.id],
+        kind: 'coupon',
+      },
+      externalId: res.preferenceId,
+      paymentLinkId: res.preferenceId,
+      paymentLinkUrl: res.initPoint,
+      referenceNumber: res.externalReference,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 72),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any)
+    .returning()
+
+  return {
+    ok: true as const,
+    paymentId: pay.id,
+    paymentLinkUrl: pay.paymentLinkUrl,
+    gateway: 'mercado_pago',
+    externalPreferenceId: res.preferenceId,
+    publicKey: getMercadoPagoPublicKey(),
+    amount: total,
+    coupon: couponCode({
+      loanId,
+      number: inst.number,
+      dueDate: inst.dueDate,
+      amount: inst.amount,
+    }),
+  }
+}
+
+export async function reportCouponTransfer(installmentId: string, formData: FormData) {
+  return reportBankTransfer([installmentId], formData)
+}
+
+export async function quoteEarlySettlement(loanId: string) {
+  const userId = await assertRole('customer')
+  const [loanRow] = await db
+    .select()
+    .from(loan)
+    .where(and(eq(loan.id, loanId), eq(loan.userId, userId)))
+    .limit(1)
+  if (!loanRow) throw new Error('Crédito no encontrado')
+
+  const insts = await db
+    .select()
+    .from(installment)
+    .where(and(eq(installment.loanId, loanId), eq(installment.userId, userId)))
+    .orderBy(installment.number)
+
+  const unpaid = insts.filter((row) => row.status !== 'paid' && row.status !== 'cancelled')
+  const paidCount = insts.filter((row) => row.status === 'paid').length
+  const settlement = computeEarlySettlement({
+    principal: Number(loanRow.principal) || 0,
+    monthlyRate: Number(loanRow.monthlyRate) || 0,
+    term: loanRow.term,
+    paidCount,
+    unpaidAmounts: unpaid.map((row) => Number(row.amount) || 0),
+  })
+
+  return {
+    ok: true as const,
+    loanId: loanRow.id,
+    loanStatus: loanRow.status,
+    ...settlement,
+    unpaidIds: unpaid.map((row) => row.id),
+  }
+}
+
+export async function createEarlySettlementCheckout(loanId: string) {
+  const userId = await assertRole('customer')
+  const session = await getSession()
+  const quote = await quoteEarlySettlement(loanId)
+  if (quote.loanStatus !== 'active') {
+    throw new Error('Solo se puede cancelar un crédito vigente, después del desembolso.')
+  }
+  if (!quote.unpaidIds.length || quote.settlementAmount <= 0) {
+    throw new Error('Este crédito no tiene saldo de capital para cancelar.')
+  }
+
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const payerFullName = session?.user?.name ?? null
+  const payerFirst = payerFullName?.split(' ')[0] ?? undefined
+  const payerLast = payerFullName?.split(' ').slice(1).join(' ') || undefined
+
+  const existing = await db
+    .select()
+    .from(payment)
+    .where(
+      and(
+        eq(payment.userId, userId),
+        eq(payment.loanId, loanId),
+        eq(payment.gateway, 'mercado_pago'),
+        inArray(payment.status, ['pending', 'processing']),
+        gte(payment.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(payment.createdAt))
+    .limit(8)
+
+  const reusable = existing.find((row) => {
+    const g = (row.gatewayResponse as { kind?: unknown; settlementAmount?: unknown } | null) ?? {}
+    if (g.kind !== 'early_settlement') return false
+    if (!row.paymentLinkId || !row.paymentLinkUrl) return false
+    return Math.abs(Number(g.settlementAmount ?? row.amount) - quote.settlementAmount) < 0.02
+  })
+  if (reusable) {
+    return {
+      ok: true as const,
+      paymentId: reusable.id,
+      paymentLinkUrl: reusable.paymentLinkUrl,
+      gateway: reusable.gateway,
+      externalPreferenceId: reusable.paymentLinkId,
+      publicKey: getMercadoPagoPublicKey(),
+      amount: quote.settlementAmount,
+    }
+  }
+
+  if (!MP_CONFIG.accessTokenSet) {
+    throw new Error(
+      'Mercado Pago no está configurado en este entorno. Pedile a soporte que cargue el Access Token.',
+    )
+  }
+
+  const id = crypto.randomUUID()
+  const internalRef = `CAN-${Date.now().toString().slice(-8)}`
+  const siteBase = getSiteBaseUrl()
+  const res = await createPaymentLinkMP({
+    amount: quote.settlementAmount,
+    installmentsIds: quote.unpaidIds,
+    loanId,
+    userId,
+    externalReference: internalRef,
+    description: `Cancelación anticipada · Crédito ${loanId.slice(0, 8)}`,
+    itemsTitle: 'UNICRÉDITOS · Cancelación anticipada',
+    payerEmail: session?.user?.email ?? undefined,
+    payerFirstName: payerFirst,
+    payerLastName: payerLast,
+    payerIdentificationType: prof?.cuil ? 'CUIL' : undefined,
+    payerIdentificationNumber: prof?.cuil ?? undefined,
+    channel: 'all',
+    kind: 'early_settlement',
+    successUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=success`,
+    failureUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=failure`,
+    pendingUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=pending`,
+  })
+
+  if (!res.initPoint || !/^https?:\/\//i.test(res.initPoint)) {
+    throw new Error('Mercado Pago no devolvió un link de pago válido.')
+  }
+
+  const [pay] = await db
+    .insert(payment)
+    .values({
+      id,
+      userId,
+      loanId,
+      installmentId: quote.unpaidIds[0] ?? null,
+      amount: String(quote.settlementAmount),
+      currency: 'ARS',
+      status: 'pending',
+      method: 'mercado_pago',
+      source: 'web',
+      gateway: 'mercado_pago',
+      gatewayResponse: {
+        kind: 'early_settlement',
+        loanId,
+        settlementAmount: quote.settlementAmount,
+        remainingCapital: quote.remainingCapital,
+        contractualRemaining: quote.contractualRemaining,
+        interestDeduction: quote.interestDeduction,
+        preference_id: res.preferenceId,
+        init_point: res.initPoint,
+        sandbox_init_point: res.sandboxInitPoint,
+        external_reference: res.externalReference,
+        installment_ids: quote.unpaidIds,
+      },
+      externalId: res.preferenceId,
+      paymentLinkId: res.preferenceId,
+      paymentLinkUrl: res.initPoint,
+      referenceNumber: res.externalReference,
+      notes: 'Cancelación anticipada (capital remanente).',
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 72),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any)
+    .returning()
+
+  revalidateCustomer()
+  return {
+    ok: true as const,
+    paymentId: pay.id,
+    paymentLinkUrl: pay.paymentLinkUrl,
+    gateway: 'mercado_pago',
+    externalPreferenceId: res.preferenceId,
+    publicKey: getMercadoPagoPublicKey(),
+    amount: quote.settlementAmount,
+  }
+}
+
 export async function applyPaymentToInstallment(
   paymentId: string,
   installmentId: string,
@@ -559,6 +946,10 @@ export async function saveWalletMethod(input: {
   return { ok: true, id }
 }
 
+export async function getPublicTreasury() {
+  return treasuryForClient()
+}
+
 export async function getCollectionAccount() {
   await assertRole('customer', 'admin')
   return treasuryForClient()
@@ -570,8 +961,18 @@ export async function getCheckoutPublicKey() {
 }
 
 export async function reportBankTransfer(installmentIds: string[], formData: FormData) {
-  const userId = await assertRole('customer')
   if (!installmentIds.length) throw new Error('Elegí al menos una cuota.')
+  const sessionUser = await getSession().then((s) => s?.user?.id ?? null)
+  const [first] = await db
+    .select()
+    .from(installment)
+    .where(eq(installment.id, installmentIds[0]))
+    .limit(1)
+  if (!first) throw new Error('Cuota no encontrada.')
+  if (sessionUser && sessionUser !== first.userId) {
+    throw new Error('Esta cuota no corresponde a tu cuenta.')
+  }
+  const userId = first.userId
 
   const insts = await db
     .select()

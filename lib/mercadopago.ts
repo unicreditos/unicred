@@ -30,6 +30,7 @@ export type MPCreateLinkParams = {
   payerIdentificationType?: string
   payerIdentificationNumber?: string
   channel?: MPPaymentChannel
+  kind?: 'installment' | 'early_settlement'
 }
 
 export type MPLinkResult = {
@@ -82,8 +83,20 @@ function buildRedirectUrl(kind: 'success' | 'failure' | 'pending', custom?: stri
   return `${base}/dashboard?tab=pagos&mp_status=${kind}`
 }
 
-const ALL_TICKET_TYPES = ['credit_card', 'debit_card', 'prepaid_card', 'atm', 'bank_transfer', 'account_money', 'digital_currency']
-const CARD_EXCLUDED_TYPES = ['ticket', 'atm', 'bank_transfer', 'account_money', 'prepaid_card']
+function mercadoPagoNotificationUrl(siteBase: string) {
+  const raw = (process.env.MERCADO_PAGO_NOTIFICATION_URL ?? `${siteBase}/api/webhooks/mercadopago`).trim()
+  try {
+    const u = new URL(raw)
+    if (u.hostname === 'unicreditos.com') u.hostname = 'www.unicreditos.com'
+    if (u.protocol !== 'https:') return undefined
+    return u.toString()
+  } catch {
+    return undefined
+  }
+}
+
+const TICKET_EXCLUDED_TYPES = ['credit_card', 'debit_card', 'prepaid_card', 'atm', 'bank_transfer', 'digital_currency']
+const CARD_EXCLUDED_TYPES = ['ticket', 'atm', 'bank_transfer', 'prepaid_card']
 
 function paymentMethodsForChannel(channel: MPPaymentChannel = 'all') {
   if (channel === 'all') {
@@ -95,21 +108,21 @@ function paymentMethodsForChannel(channel: MPPaymentChannel = 'all') {
   }
   if (channel === 'ticket') {
     return {
-      excluded_payment_types: ALL_TICKET_TYPES.map((id) => ({ id })),
+      excluded_payment_types: TICKET_EXCLUDED_TYPES.map((id) => ({ id })),
       excluded_payment_methods: [] as { id: string }[],
       installments: 1,
     }
   }
   if (channel === 'pago_facil') {
     return {
-      excluded_payment_types: ALL_TICKET_TYPES.map((id) => ({ id })),
+      excluded_payment_types: TICKET_EXCLUDED_TYPES.map((id) => ({ id })),
       excluded_payment_methods: [{ id: 'rapipago' }],
       installments: 1,
     }
   }
   if (channel === 'rapipago') {
     return {
-      excluded_payment_types: ALL_TICKET_TYPES.map((id) => ({ id })),
+      excluded_payment_types: TICKET_EXCLUDED_TYPES.map((id) => ({ id })),
       excluded_payment_methods: [{ id: 'pagofacil' }],
       installments: 1,
     }
@@ -136,7 +149,7 @@ function paymentMethodsForChannel(channel: MPPaymentChannel = 'all') {
     }
   }
   return {
-    excluded_payment_types: ['credit_card', 'debit_card', 'prepaid_card', 'ticket', 'atm', 'account_money'].map((id) => ({ id })),
+    excluded_payment_types: ['credit_card', 'debit_card', 'prepaid_card', 'ticket', 'atm'].map((id) => ({ id })),
     excluded_payment_methods: [] as { id: string }[],
     installments: 1,
   }
@@ -178,8 +191,7 @@ export async function createPaymentLinkMP(params: MPCreateLinkParams): Promise<M
 
     // El webhook se autentica con la firma HMAC de Mercado Pago; el secreto no
     // viaja en la URL para que no quede registrado en logs ni en el panel de MP.
-    const notification_url =
-      process.env.MERCADO_PAGO_NOTIFICATION_URL ?? `${siteBase}/api/webhooks/mercadopago`
+    const notification_url = mercadoPagoNotificationUrl(siteBase)
 
     const channel = params.channel ?? 'all'
     const payment_methods = paymentMethodsForChannel(channel)
@@ -188,9 +200,8 @@ export async function createPaymentLinkMP(params: MPCreateLinkParams): Promise<M
     const body: any = {
       items,
       external_reference: externalReference,
-      notification_url,
       back_urls,
-      statement_descriptor: 'UNICRED PAGO CUOTA',
+      statement_descriptor: params.kind === 'early_settlement' ? 'UNICRED CANCELAC' : 'UNICRED PAGO CUOTA',
       payment_methods,
       metadata: {
         loan_id: params.loanId ?? null,
@@ -198,10 +209,14 @@ export async function createPaymentLinkMP(params: MPCreateLinkParams): Promise<M
         installment_ids: params.installmentsIds ?? [],
         platform: 'unicred-nextjs',
         channel,
+        kind: params.kind ?? 'installment',
       },
       expires: true,
       expiration_date_from: new Date().toISOString(),
       expiration_date_to: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString(),
+    }
+    if (notification_url) {
+      body.notification_url = notification_url
     }
     // auto_return exige back_urls.success HTTPS (Mercado Pago lo rechaza con localhost http).
     if (String(back_urls.success).startsWith('https://')) {
@@ -228,7 +243,7 @@ export async function createPaymentLinkMP(params: MPCreateLinkParams): Promise<M
     if (!pref?.id) {
       throw new Error('Mercado Pago no devolvió preference id')
     }
-    const useSandbox = accessToken.startsWith('TEST-') || process.env.NODE_ENV === 'development'
+    const useSandbox = accessToken.startsWith('TEST-')
     const initPoint =
       (useSandbox && pref.sandbox_init_point ? pref.sandbox_init_point : null) ??
       pref.init_point

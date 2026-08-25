@@ -8,6 +8,7 @@ import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from
 import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
 import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
+import { diditApprovedForUser } from '@/lib/didit'
 import { revalidateCustomer } from '@/lib/revalidate'
 import { assertRole, getOrCreateProfile, newId } from '@/lib/session'
 import { and, desc, eq, inArray } from 'drizzle-orm'
@@ -84,7 +85,7 @@ async function requireCustomerReadyForCredit(userId: string) {
       error: 'Didit rechazó tu verificación. Reintentá la identidad biométrica o contactá a soporte.',
     }
   }
-  if (kyc?.provider !== 'didit' || kyc.status !== 'approved' || prof.kycStatus !== 'approved') {
+  if (!(await diditApprovedForUser(userId))) {
     return {
       ok: false as const,
       error: 'Verificá tu identidad con Didit antes de solicitar un crédito. No se aceptan documentos cargados a mano.',
@@ -488,15 +489,21 @@ export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boole
     })
     .from(installment)
     .innerJoin(loan, eq(installment.loanId, loan.id))
-    .where(eq(installment.userId, userId))
+    .where(
+      upcomingOnly
+        ? and(eq(installment.userId, userId), inArray(installment.status, ['pending', 'overdue']))
+        : eq(installment.userId, userId),
+    )
     .orderBy(installment.dueDate)
-    .limit(50)
+    .limit(upcomingOnly ? 48 : 500)
 
   if (!upcomingOnly) return rows
   return rows.filter((r) => {
-    if (r.status !== 'pending') return false
+    if (r.status === 'paid' || r.status === 'cancelled') return false
     const d = new Date(r.dueDate as any)
-    return d >= today && d <= in60
+    d.setHours(0, 0, 0, 0)
+    if (r.status === 'overdue' || d < today) return true
+    return d <= in60
   })
 }
 

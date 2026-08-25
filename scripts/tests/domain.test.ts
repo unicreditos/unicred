@@ -149,7 +149,7 @@ describe('documentos · hallazgos auditoría', () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
     // publicBrandWebsite lee BRAND.website ya resuelto al import; validamos la función con URL local simulada
     assert.equal(publicBrandWebsite().includes('localhost'), false)
-    assert.match(publicBrandWebsite(), /^https:\/\/unicreditos\.com$/)
+    assert.match(publicBrandWebsite(), /^https:\/\/www\.unicreditos\.com$/)
     process.env.NEXT_PUBLIC_SITE_URL = prev
   })
 })

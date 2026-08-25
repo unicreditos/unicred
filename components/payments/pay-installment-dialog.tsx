@@ -40,7 +40,7 @@ export function PayInstallmentDialog({
   email,
   initialTab = 'mp',
   method = 'mercado_pago',
-  payPathPrefix = '/dashboard/pagar',
+  payPathPrefix = '/pagar',
   returnPath,
   onSettled,
 }: {
@@ -238,6 +238,11 @@ export function PayInstallmentDialog({
                 <p className="text-xs font-medium text-slate-600">
                   Pagá con tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando Mercado Pago confirma el dinero.
                 </p>
+                {session.paymentLinkUrl ? (
+                  <Button type="button" className="w-full" onClick={() => (window.location.href = session.paymentLinkUrl)}>
+                    Abrir Mercado Pago (web o app)
+                  </Button>
+                ) : null}
                 <MercadoPagoCheckoutBrick
                   publicKey={session.publicKey}
                   amount={session.amount}
@@ -263,10 +268,13 @@ export function PayInstallmentDialog({
                   <div className="flex flex-col items-center">
                     <img src={qr} alt="QR de pago Mercado Pago" className="h-36 w-36" />
                     <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-                      <QrCode className="h-3.5 w-3.5" /> QR Mercado Pago
+                      <QrCode className="h-3.5 w-3.5" />{' '}
+                      {session?.paymentLinkUrl && /mercadopago\.com/i.test(session.paymentLinkUrl)
+                        ? 'QR Mercado Pago'
+                        : 'QR de esta cuota'}
                     </p>
                     <p className="max-w-[180px] text-center text-[10px] text-slate-500">
-                      {formatARS(session?.amount ?? total)}. Escaneá desde Mercado Pago u otra billetera.
+                      {formatARS(session?.amount ?? total)}. Escaneá con Mercado Pago u otra billetera, o abrí el checkout en la web.
                     </p>
                   </div>
                 ) : (

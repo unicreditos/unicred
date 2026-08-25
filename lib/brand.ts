@@ -59,9 +59,9 @@ export function legalCuitLabel() {
   return BRAND.cuit
 }
 
-/** URL pública para membretes/impresos. Nunca expone localhost. */
+/** URL pública para membretes/impresos. Nunca expone localhost. En producción Vercel sirve www. */
 export function publicBrandWebsite() {
-  const fallback = `https://${BRAND.domain}`
+  const fallback = 'https://www.unicreditos.com'
   const raw = String(BRAND.website || '').trim()
   if (!raw) return fallback
   try {
@@ -69,6 +69,7 @@ export function publicBrandWebsite() {
     if (u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname.endsWith('.local')) {
       return fallback
     }
+    if (u.hostname === 'unicreditos.com') u.hostname = 'www.unicreditos.com'
     return `${u.protocol}//${u.host}`
   } catch {
     return fallback

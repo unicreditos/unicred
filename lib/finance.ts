@@ -1,5 +1,7 @@
 // Utilidades financieras para el cálculo de préstamos en cuotas (sistema francés).
 
+import { frenchInstallmentSplit } from '@/lib/legal/money-words'
+
 export type Amortization = {
   installmentAmount: number
   totalAmount: number
@@ -57,6 +59,33 @@ export function computeFrenchAmortization(
     cft,
     schedule,
   }
+}
+
+export type AmortizationRow = {
+  number: number
+  installment: number
+  interest: number
+  capital: number
+  balance: number
+}
+
+/** Tabla francesa: capital, interés y saldo por cuota. */
+export function frenchAmortizationSchedule(
+  principal: number,
+  monthlyRatePct: number,
+  term: number,
+): AmortizationRow[] {
+  if (!Number.isFinite(principal) || principal <= 0 || !Number.isInteger(term) || term < 1) return []
+  return Array.from({ length: term }, (_, idx) => {
+    const split = frenchInstallmentSplit(principal, monthlyRatePct, term, idx + 1)
+    return {
+      number: idx + 1,
+      installment: split.installment,
+      interest: split.interest,
+      capital: split.capital,
+      balance: split.balance,
+    }
+  })
 }
 
 /**

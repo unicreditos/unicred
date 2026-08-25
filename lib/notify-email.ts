@@ -12,6 +12,7 @@ import {
   loanRejectedEmail,
   paymentReceivedEmail,
   paymentRejectedEmail,
+  claimReceivedEmail,
   sendEmail,
   type EmailMessage,
 } from '@/lib/email'
@@ -119,6 +120,24 @@ export async function notifyKycDecision(input: { userId: string; status: 'approv
       name: u.name,
       status: input.status,
       panelUrl: `${emailOrigin()}/dashboard?tab=kyc_biometrico`,
+    }),
+  )
+}
+
+export async function notifySupportClaim(input: {
+  userId: string
+  caseId: string
+  subject: string
+}) {
+  const u = await userMail(input.userId)
+  if (!u) return
+  await deliver(
+    claimReceivedEmail({
+      to: u.email,
+      name: u.name,
+      caseId: input.caseId,
+      subjectLine: input.subject,
+      panelUrl: `${emailOrigin()}/dashboard?tab=reclamos`,
     }),
   )
 }

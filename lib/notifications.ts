@@ -6,6 +6,7 @@ import {
   loan,
   merchant,
   payment,
+  supportCase,
   user as userTable,
 } from '@/lib/db/schema'
 import { formatARS } from '@/lib/finance'
@@ -180,6 +181,33 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
     })
   }
 
+  try {
+    const cases = await db
+      .select({
+        id: supportCase.id,
+        subject: supportCase.subject,
+        status: supportCase.status,
+        createdAt: supportCase.createdAt,
+        respondedAt: supportCase.respondedAt,
+      })
+      .from(supportCase)
+      .where(eq(supportCase.userId, userId))
+      .orderBy(desc(supportCase.createdAt))
+      .limit(4)
+    for (const row of cases) {
+      items.push({
+        id: `case-${row.id}`,
+        title: row.status === 'resolved' ? 'Reclamo respondido' : 'Reclamo en curso',
+        detail: row.subject,
+        at: iso(row.respondedAt ?? row.createdAt),
+        href: '/dashboard?tab=reclamos',
+        tone: row.status === 'resolved' ? 'ok' : 'info',
+      })
+    }
+  } catch {
+    /* tabla aún no creada */
+  }
+
   return sortItems(items)
 }
 
@@ -347,6 +375,31 @@ async function adminInbox(): Promise<InboxItem[]> {
       href: '/admin?tab=cartera_activa',
       tone: 'critical',
     })
+  }
+
+  try {
+    const openClaims = await db
+      .select({
+        id: supportCase.id,
+        subject: supportCase.subject,
+        createdAt: supportCase.createdAt,
+      })
+      .from(supportCase)
+      .where(eq(supportCase.status, 'open'))
+      .orderBy(desc(supportCase.createdAt))
+      .limit(6)
+    for (const row of openClaims) {
+      items.push({
+        id: `adm-case-${row.id}`,
+        title: 'Reclamo Ley 24.240',
+        detail: row.subject,
+        at: iso(row.createdAt),
+        href: '/admin?tab=reclamos',
+        tone: 'warn',
+      })
+    }
+  } catch {
+    /* tabla aún no creada */
   }
 
   return sortItems(items)
