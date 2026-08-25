@@ -709,10 +709,15 @@ export function RegisterWizard() {
                 />
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/documentos/constancia-arca" target="_blank">
+                    <Printer /> Constancia ARCA
+                  </Link>
+                </Button>
                 {result.reportId && (
                   <Button asChild variant="outline">
                     <Link href={`/dashboard/documentos/informe-bcra/${result.reportId}`} target="_blank">
-                      <Printer /> Imprimir informe
+                      <Printer /> Informe BCRA
                     </Link>
                   </Button>
                 )}

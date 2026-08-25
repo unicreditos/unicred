@@ -2029,6 +2029,23 @@ function DocumentosPanel({
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5 text-primary" /> Constancia ARCA
+          </CardTitle>
+          <CardDescription>
+            Razón social, domicilio fiscal e impuestos consultados al padrón con el certificado WSAA.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline" className="gap-1.5">
+            <a href="/dashboard/documentos/constancia-arca" target="_blank" rel="noreferrer">
+              <Printer className="h-4 w-4" /> Ver e imprimir constancia
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">

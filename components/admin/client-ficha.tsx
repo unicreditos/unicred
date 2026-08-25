@@ -394,9 +394,18 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                     <p className="text-xs text-slate-500">{doc.source}</p>
                   </div>
                   {doc.ok ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                    <span className="inline-flex items-center gap-2 text-xs font-medium text-emerald-700">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Validado
+                      {doc.href ? (
+                        <a href={doc.href} target="_blank" rel="noreferrer" className="font-medium text-brand-primary hover:underline">
+                          Abrir
+                        </a>
+                      ) : null}
                     </span>
+                  ) : doc.href ? (
+                    <a href={doc.href} target="_blank" rel="noreferrer" className="text-xs font-medium text-brand-primary hover:underline">
+                      Consultar
+                    </a>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-700">
                       <XCircle className="h-3.5 w-3.5" /> Pendiente

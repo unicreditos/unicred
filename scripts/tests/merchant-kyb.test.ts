@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { mapArcaPersona, mergeArcaPersona } from '../../lib/arca/padron'
+import { snapshotFromPersona, parseConstanciaSnapshot } from '../../lib/arca/constancia-snapshot'
 import {
   classifyTaxCondition,
   collectTaxes,
@@ -169,6 +170,16 @@ describe('padrón ARCA: condición fiscal', () => {
     assert.equal(mapped?.province, 'Salta')
     assert.equal(mapped?.postalCode, '4400')
     assert.equal(mapped?.taxCondition, 'responsable_inscripto')
+  })
+
+  it('arma el snapshot de constancia para la ficha', () => {
+    const mapped = mapArcaPersona(riPj, 'a5')
+    assert.ok(mapped)
+    const snap = snapshotFromPersona(mapped)
+    assert.equal(snap.cuil, PJ_CUIT)
+    assert.equal(snap.name, 'RM INTERNATIONAL GROUP S.A.S.')
+    assert.equal(snap.taxConditionLabel, 'IVA Responsable Inscripto')
+    assert.equal(parseConstanciaSnapshot(snap)?.address, 'MAIPU 566')
   })
 
   it('mapea errorConstancia de CUIT limitada y conserva el id', () => {

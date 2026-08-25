@@ -67,9 +67,7 @@ async function safeTrySelectLastCheck(userId: string): Promise<RuntimeBCRACheck 
   }
 }
 
-export async function generateBCRAReport(checkId?: string | null) {
-  const userId = await assertRole('customer')
-
+export async function persistBcraReportForUser(userId: string, checkId?: string | null) {
   let check: RuntimeBCRACheck | null = null
 
   if (checkId && String(checkId).trim().length > 0) {
@@ -155,7 +153,12 @@ export async function generateBCRAReport(checkId?: string | null) {
   }
 
   revalidateCustomer()
-  return { ok: true, reportId: report.id, reportNumber, fromCheckId: checkForReportId }
+  return { ok: true as const, reportId: report.id as string, reportNumber: report.reportNumber as string, fromCheckId: checkForReportId }
+}
+
+export async function generateBCRAReport(checkId?: string | null) {
+  const userId = await assertRole('customer', 'merchant', 'admin')
+  return persistBcraReportForUser(userId, checkId)
 }
 
 export async function getLastBCRAReport() {

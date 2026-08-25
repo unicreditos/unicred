@@ -1,6 +1,7 @@
 'use server'
 
 import { persistBcraConsultation } from '@/lib/bcra-persist'
+import { snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
@@ -57,23 +58,7 @@ function kybFields(evaluation: ReturnType<typeof evaluateMerchantKyb>, padron: A
     titularMatch: evaluation.titularMatch,
     kybStatus: evaluation.kybStatus,
     kybBlockers: evaluation.blockers,
-    afipSnapshot: padron
-      ? {
-          cuil: padron.cuil,
-          name: padron.name,
-          personType: padron.personType,
-          taxStatus: padron.taxStatus,
-          taxCondition: padron.taxCondition,
-          monotributoCategory: padron.monotributoCategory,
-          taxes: padron.taxes,
-          activities: padron.activities,
-          address: padron.address,
-          city: padron.city,
-          province: padron.province,
-          postalCode: padron.postalCode,
-          service: padron.service,
-        }
-      : null,
+    afipSnapshot: padron ? snapshotFromPersona(padron) : null,
     afipLookedUpAt: new Date(),
   }
 }

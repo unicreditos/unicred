@@ -5,17 +5,20 @@ import { db } from '@/lib/db'
 import {
   bankAccount,
   bcraCheck,
+  bcraReport,
   diditSession,
   disbursement,
   installment,
   kycVerification,
   loan,
   loanContract,
+  merchant,
   payment,
   paymentReceipt,
   profile,
   user as userTable,
 } from '@/lib/db/schema'
+import { parseConstanciaSnapshot } from '@/lib/arca/constancia-snapshot'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
 import { parseDiditCapture, type DiditCapture } from '@/lib/didit-capture'
 import { applyDiditDecision, getDiditDecision, isDiditConfigured } from '@/lib/didit'
@@ -132,7 +135,7 @@ export type ClientFicha = {
     reviewedAt: string | null
   }
   didit: DiditCapture
-  documents: Array<{ key: string; label: string; ok: boolean; source: string }>
+  documents: Array<{ key: string; label: string; ok: boolean; source: string; href?: string | null }>
   credits: ClientFichaCredit[]
   expediente: FichaDocRow[]
   payments: FichaPaymentRow[]
@@ -444,12 +447,35 @@ export async function getAdminClientFicha(userId: string, opts?: { refreshDidit?
   const liveOk = didit.liveness.some((item) => item.status === 'Approved')
   const addressOk = Boolean(prof?.address && prof.city && prof.province)
   const incomeOk = money(prof?.monthlyIncome) > 0
+  const banks = await db.select().from(bankAccount).where(eq(bankAccount.userId, userId))
+  const [[lastBcra], [lastReport], [shop]] = await Promise.all([
+    db.select().from(bcraCheck).where(eq(bcraCheck.userId, userId)).orderBy(desc(bcraCheck.createdAt)).limit(1),
+    db.select({ id: bcraReport.id }).from(bcraReport).where(eq(bcraReport.userId, userId)).orderBy(desc(bcraReport.createdAt)).limit(1),
+    db.select({ afipSnapshot: merchant.afipSnapshot }).from(merchant).where(eq(merchant.userId, userId)).limit(1),
+  ])
+  const arcaSnapshot =
+    parseConstanciaSnapshot(shop?.afipSnapshot) ||
+    parseConstanciaSnapshot((freshKyc?.ocrData as Record<string, unknown> | null)?.arcaPadron)
   const documents = [
     { key: 'dni', label: 'DNI validado por Didit', ok: idOk, source: 'Didit OCR' },
     { key: 'liveness', label: 'Prueba de vida', ok: liveOk, source: 'Didit liveness' },
     { key: 'face', label: 'Coincidencia facial', ok: faceOk, source: 'Didit face match' },
     { key: 'domicilio', label: 'Domicilio en ficha UNICRÉDITOS', ok: addressOk, source: 'Perfil / padrón' },
     { key: 'ingresos', label: 'Ingresos declarados', ok: incomeOk, source: 'Perfil UNICRÉDITOS' },
+    {
+      key: 'arca',
+      label: 'Constancia de inscripción ARCA',
+      ok: Boolean(arcaSnapshot?.cuil),
+      source: 'Padrón ARCA (WSAA)',
+      href: `/dashboard/documentos/constancia-arca/${userId}`,
+    },
+    {
+      key: 'bcra',
+      label: 'Informe crediticio BCRA',
+      ok: Boolean(lastReport?.id || lastBcra),
+      source: 'Central de Deudores',
+      href: lastReport?.id ? `/dashboard/documentos/informe-bcra/${lastReport.id}` : null,
+    },
   ]
 
   const overdueCount = credits.reduce((sum, item) => sum + item.overdueCount, 0)
@@ -458,14 +484,6 @@ export async function getAdminClientFicha(userId: string, opts?: { refreshDidit?
   const allPaid = credits.length > 0 && credits.every((item) => item.chip === 'finalizado')
   const chip: ClientFichaStatus =
     overdueCount > 0 ? 'vencido' : kycStatus !== 'approved' ? 'pendiente' : allPaid ? 'finalizado' : 'al_dia'
-
-  const banks = await db.select().from(bankAccount).where(eq(bankAccount.userId, userId))
-  const [lastBcra] = await db
-    .select()
-    .from(bcraCheck)
-    .where(eq(bcraCheck.userId, userId))
-    .orderBy(desc(bcraCheck.createdAt))
-    .limit(1)
 
   return {
     user: {

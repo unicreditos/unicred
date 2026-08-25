@@ -14,6 +14,7 @@ export type DocumentKind =
   | 'solvencia'
   | 'libre_deuda'
   | 'cancelacion'
+  | 'constancia'
 
 const KIND_LABEL: Record<DocumentKind, string> = {
   contrato: 'Contrato',
@@ -26,6 +27,7 @@ const KIND_LABEL: Record<DocumentKind, string> = {
   solvencia: 'Solvencia',
   libre_deuda: 'Libre deuda',
   cancelacion: 'Cancelación',
+  constancia: 'Constancia',
 }
 
 export function DocumentSheet({

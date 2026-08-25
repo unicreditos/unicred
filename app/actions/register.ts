@@ -1,8 +1,9 @@
 'use server'
 
-import { generateBCRAReport } from '@/app/actions/documents'
+import { persistBcraReportForUser } from '@/app/actions/documents'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
+import { snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { kycVerification, merchant, profile, user } from '@/lib/db/schema'
@@ -197,6 +198,9 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   await db.update(user).set({ role: accountRole, updatedAt: now }).where(eq(user.id, userId))
 
   const [existingKyc] = await db.select().from(kycVerification).where(eq(kycVerification.userId, userId)).limit(1)
+  const personPadron = arcaConfigured() ? await lookupPersonaByCuit(cuil) : null
+  const personSnapshot = personPadron ? snapshotFromPersona(personPadron) : null
+  const prevOcr = (existingKyc?.ocrData as Record<string, unknown> | null) ?? {}
   const kycValues = {
     dniNumber: dni,
     cuilVerified: true,
@@ -205,9 +209,11 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     provider: 'didit',
     providerReferenceId: diditSessionId,
     ocrData: {
+      ...prevOcr,
       accountType: input.accountType,
       sources: input.identity?.sources ?? [],
       nameConfirmed: input.name.trim(),
+      ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
     },
     updatedAt: now,
   }
@@ -264,23 +270,7 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       titularMatch: evaluation.titularMatch,
       kybStatus: evaluation.kybStatus,
       kybBlockers: evaluation.blockers,
-      afipSnapshot: padron
-        ? {
-            cuil: padron.cuil,
-            name: padron.name,
-            personType: padron.personType,
-            taxStatus: padron.taxStatus,
-            taxCondition: padron.taxCondition,
-            monotributoCategory: padron.monotributoCategory,
-            taxes: padron.taxes,
-            activities: padron.activities,
-            address: padron.address,
-            city: padron.city,
-            province: padron.province,
-            postalCode: padron.postalCode,
-            service: padron.service,
-          }
-        : null,
+      afipSnapshot: padron ? snapshotFromPersona(padron) : null,
       afipLookedUpAt: now,
       updatedAt: now,
     }
@@ -316,31 +306,41 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   }
 
   const bcra = await persistBcraConsultation({ userId, cuil, monthlyIncome: income })
-  if (!bcra.ok) {
+  const merchantBcra =
+    input.accountType === 'comercio' && merchantCuit && merchantCuit !== cuil
+      ? await persistBcraConsultation({ userId, cuil: merchantCuit, monthlyIncome: income })
+      : null
+  if (!bcra.ok && !(merchantBcra && merchantBcra.ok)) {
     return {
       ok: true as const,
       score: null,
       reportId: null,
       dashboardUrl: input.accountType === 'comercio' ? '/merchant' : '/dashboard?tab=scoring',
-      warning: bcra.error,
+      warning: bcra.ok ? null : bcra.error,
       diditConfigured: true,
     }
   }
 
   let reportId: string | null = null
   try {
-    const report = await generateBCRAReport(bcra.checkId)
-    reportId = report.reportId
+    if (bcra.ok) {
+      const report = await persistBcraReportForUser(userId, bcra.checkId)
+      reportId = report.reportId
+    }
+    if (merchantBcra && merchantBcra.ok) {
+      const companyReport = await persistBcraReportForUser(userId, merchantBcra.checkId)
+      reportId = reportId || companyReport.reportId
+    }
   } catch {
-    reportId = null
+    /* se conserva el informe que sí se haya podido guardar */
   }
 
   return {
     ok: true as const,
-    score: bcra.score,
+    score: bcra.ok ? bcra.score : merchantBcra && merchantBcra.ok ? merchantBcra.score : null,
     reportId,
     dashboardUrl: input.accountType === 'comercio' ? '/merchant' : '/dashboard?tab=scoring',
-    warning: null as string | null,
+    warning: bcra.ok ? null : bcra.error,
     diditConfigured: true,
   }
 }
