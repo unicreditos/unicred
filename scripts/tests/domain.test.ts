@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { parseAdminTab } from '../../lib/admin-nav'
 import { computeFrenchAmortization, IVA_INTERESES, maxPrincipalFromInstallment } from '../../lib/finance'
-import { canTransition } from '../../lib/loan-state'
+import { allowedAdminTransitions, canAdminTransition, canTransition } from '../../lib/loan-state'
 import { LOAN_CATALOG } from '../../lib/loan-catalog'
 import { computeCreditOffer, FIRST_CREDIT_HARD_CAP } from '../../lib/loan-underwriting'
 import { LEGAL_COPY } from '../../lib/legal/copy'
@@ -95,6 +95,16 @@ describe('máquina de estados', () => {
     assert.equal(canTransition('active', 'paid'), true)
     assert.equal(canTransition('paid', 'active'), false)
     assert.equal(canTransition('rejected', 'approved'), false)
+  })
+
+  it('la mesa de crédito puede aprobar a mano un rechazo', () => {
+    assert.equal(canAdminTransition('rejected', 'approved'), true)
+    assert.equal(canAdminTransition('cancelled', 'approved'), true)
+    assert.equal(canAdminTransition('pending', 'approved'), true)
+    assert.equal(canAdminTransition('pending', 'active'), false)
+    assert.equal(canAdminTransition('approved', 'paid'), false)
+    assert.ok(allowedAdminTransitions('rejected').includes('approved'))
+    assert.equal(allowedAdminTransitions('rejected').includes('active'), false)
   })
 })
 

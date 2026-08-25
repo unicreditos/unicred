@@ -1,5 +1,6 @@
 'use client'
 
+import { approveLoan, rejectLoan } from '@/app/actions/admin'
 import { refreshAdminClientFicha, type ClientFicha, type ClientFichaStatus } from '@/app/actions/admin-ficha'
 import { ClientFichaExpediente } from '@/components/admin/client-ficha-expediente'
 import { Button } from '@/components/ui/button'
@@ -15,12 +16,13 @@ import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell
 import { adminUrl } from '@/lib/admin-nav'
 import { groupDni, initials } from '@/lib/didit-capture'
 import { formatARS } from '@/lib/finance'
-import { paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
+import { loanStatusLabel, paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, CheckCircle2, RefreshCw, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 const CHIP: Record<ClientFichaStatus, { label: string; className: string; dot: string }> = {
   al_dia: {
@@ -143,6 +145,53 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
       router.refresh()
     } catch (err) {
       setError((err as Error).message || 'No se pudo actualizar Didit.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function approveCredit(creditId: string) {
+    if (!window.confirm('¿Calificar este crédito con las condiciones actuales? El cliente va a recibir el contrato para firmar.')) {
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await approveLoan(creditId)
+      if (!r.ok) {
+        toast.error(r.error)
+        setError(r.error)
+        return
+      }
+      toast.success('Crédito calificado. El cliente puede firmar el contrato.')
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo aprobar el crédito'
+      toast.error(msg)
+      setError(msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function rejectCredit(creditId: string) {
+    const reason = window.prompt('Motivo del rechazo (lo ve el cliente):', 'Score o capacidad de pago insuficiente')
+    if (!reason || !reason.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await rejectLoan(creditId, reason.trim())
+      if (!r.ok) {
+        toast.error(r.error)
+        setError(r.error)
+        return
+      }
+      toast.success('Crédito rechazado')
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo rechazar el crédito'
+      toast.error(msg)
+      setError(msg)
     } finally {
       setBusy(false)
     }
@@ -532,10 +581,40 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                   hint={`Otorgado ${fmtDate(credit.createdAt)}`}
                 >
                   <div className="space-y-4 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <StatusChip status={credit.chip} />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <StatusChip status={credit.chip} />
+                        <span className="text-xs font-medium text-slate-600">{loanStatusLabel(credit.status)}</span>
+                      </div>
                       <p className="text-xs text-slate-500">{credit.paidCount}/{credit.term} cuotas</p>
                     </div>
+                    {credit.status === 'pending' || credit.status === 'rejected' || credit.status === 'cancelled' ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 bg-emerald-600 hover:bg-emerald-700"
+                          disabled={busy}
+                          onClick={() => void approveCredit(credit.id)}
+                        >
+                          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          Aprobar crédito
+                        </Button>
+                        {credit.status !== 'rejected' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="h-8"
+                            disabled={busy}
+                            onClick={() => void rejectCredit(credit.id)}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Rechazar
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="grid gap-3 sm:grid-cols-3">
                       <Field label="Capital" value={formatARS(credit.principal)} />
                       <Field label="Cuota" value={formatARS(credit.installmentAmount)} />

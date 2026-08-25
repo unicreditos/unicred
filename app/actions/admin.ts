@@ -20,7 +20,7 @@ import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
-import { assertTransition } from '@/lib/loan-state'
+import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
 import { ensureLoanContract, notifyContractReady, requireAcceptedContract, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
@@ -33,6 +33,26 @@ import {
 } from '@/lib/merchant-kyb'
 import { syncBcraVariablesFromApi } from '@/app/actions/bcra'
 import { notifyLoanRejected } from '@/lib/notify-email'
+
+type ActionFail = { ok: false; error: string }
+
+function actionFail(err: unknown): ActionFail {
+  const msg = err instanceof Error ? err.message : 'No se pudo completar la operación'
+  if (/Server Components render|Minified React error #441|digest/i.test(msg)) {
+    return {
+      ok: false,
+      error:
+        'El servidor rechazó el cambio de estado. Un crédito rechazado se puede aprobar a mano; para ponerlo vigente hay que acreditar el desembolso en Tesorería.',
+    }
+  }
+  return { ok: false, error: msg }
+}
+
+function isoDate(value: Date | string | null | undefined) {
+  if (!value) return null
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
 
 export async function requireAdmin() {
   const session = await getSession()
@@ -95,7 +115,15 @@ export async function getAllLoans() {
   return rows.map((r) => {
     const c = byLoan.get(r.id)
     return {
-      ...r,
+      id: r.id,
+      userId: r.userId,
+      principal: r.principal,
+      term: r.term,
+      status: r.status,
+      scoreAtApproval: r.scoreAtApproval,
+      monthlyRate: r.monthlyRate,
+      rejectionReason: r.rejectionReason,
+      createdAt: isoDate(r.createdAt) ?? new Date().toISOString(),
       contractId: c?.id ?? null,
       contractStatus: c?.status ?? null,
     }
@@ -237,10 +265,11 @@ export async function approveLoan(
     notes?: string
   },
 ) {
+  try {
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
-  assertTransition(existing.status, 'approved')
+  assertAdminTransition(existing.status, 'approved')
 
   // Las condiciones finales las fija el admin; si cambian, el plan de cuotas se recalcula.
   const principal =
@@ -319,15 +348,19 @@ export async function approveLoan(
 
   revalidatePath('/admin')
   revalidatePath('/dashboard')
-  return { ok: true, approvedBy: adminUserId }
+  return { ok: true as const, approvedBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function rejectLoan(id: string, reason: string) {
+  try {
   const adminUserId = await requireAdmin()
   if (!reason || !reason.trim()) throw new Error('Motivo de rechazo obligatorio')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
-  assertTransition(existing.status, 'rejected')
+  assertAdminTransition(existing.status, 'rejected')
 
   await db.transaction(async (tx) => {
     await tx
@@ -358,7 +391,10 @@ export async function rejectLoan(id: string, reason: string) {
 
   revalidatePath('/admin')
   revalidatePath('/dashboard')
-  return { ok: true, rejectedBy: adminUserId }
+  return { ok: true as const, rejectedBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function updateLoanManual(
@@ -366,13 +402,14 @@ export async function updateLoanManual(
   opts: {
     principal?: string
     term?: number
-    status?: 'pending' | 'approved' | 'rejected' | 'active' | 'paid'
+    status?: 'pending' | 'approved' | 'rejected' | 'active' | 'paid' | 'cancelled'
     monthlyRate?: string
     scoreAtApproval?: number
     rejectionReason?: string
     disbursedAt?: string
   },
 ) {
+  try {
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -388,8 +425,9 @@ export async function updateLoanManual(
         'No se puede marcar “activo” desde edición manual. Usá Tesorería → acreditar desembolso (requiere contrato firmado).',
       )
     }
-    assertTransition(existing.status, opts.status)
+    assertAdminTransition(existing.status, opts.status)
     updates.status = opts.status
+    if (opts.status === 'approved') updates.rejectionReason = null
   }
   if (opts.monthlyRate !== undefined && opts.monthlyRate !== null && opts.monthlyRate !== '') {
     updates.monthlyRate = String(opts.monthlyRate)
@@ -418,6 +456,7 @@ export async function updateLoanManual(
   }
 
   const nextStatus = (updates.status ?? existing.status) as string
+  let contractId: string | null = null
 
   await db.transaction(async (tx) => {
     await tx.update(loan).set(updates).where(eq(loan.id, id))
@@ -426,17 +465,26 @@ export async function updateLoanManual(
       return
     }
     if (nextStatus === 'approved') {
-      // Solo contrato. Cuotas/desembolso se crean al firmar (acceptLoanContract).
       if (termsChanged) {
         await tx.delete(installment).where(eq(installment.loanId, id))
       }
-      await ensureLoanContract(
+      const contract = await ensureLoanContract(
         tx,
         { id, userId: existing.userId, type: existing.type, status: 'approved' },
         { generatedBy: adminUserId },
       )
+      contractId = contract?.id ?? null
     }
   })
+
+  if (contractId && existing.status !== 'approved') {
+    await notifyContractReady({
+      userId: existing.userId,
+      contractId,
+      principal: nextPrincipal,
+      term: nextTerm,
+    })
+  }
 
   await recordAudit({
     actorUserId: adminUserId,
@@ -450,10 +498,14 @@ export async function updateLoanManual(
   })
 
   revalidatePath('/admin')
-  return { ok: true, updatedBy: adminUserId }
+  return { ok: true as const, updatedBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function markLoanAsActive(id: string) {
+  try {
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -496,10 +548,14 @@ export async function markLoanAsActive(id: string) {
   })
 
   revalidatePath('/admin')
-  return { ok: true, activatedBy: adminUserId }
+  return { ok: true as const, activatedBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function markLoanAsPaid(id: string) {
+  try {
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -528,10 +584,14 @@ export async function markLoanAsPaid(id: string) {
   })
 
   revalidatePath('/admin')
-  return { ok: true, markedPaidBy: adminUserId }
+  return { ok: true as const, markedPaidBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function ensureLoanExpediente(loanId: string) {
+  try {
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -589,7 +649,10 @@ export async function ensureLoanExpediente(loanId: string) {
 
   revalidatePath('/admin')
   revalidatePath('/dashboard')
-  return { ok: true, contractId }
+  return { ok: true as const, contractId }
+  } catch (err) {
+    return actionFail(err)
+  }
 }
 
 export async function updateBcraVariable(

@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatARS } from '@/lib/finance'
+import { allowedAdminTransitions, LOAN_STATUS_LABELS, type LoanStatus } from '@/lib/loan-state'
 import { cn } from '@/lib/utils'
 import { Check, CheckCircle2, Clock, Edit3, FileText, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -45,9 +46,16 @@ function statusBadge(status: string) {
     active: { label: 'Activo', variant: 'default' },
     rejected: { label: 'Rechazado', variant: 'destructive' },
     paid: { label: 'Pagado', variant: 'outline' },
+    cancelled: { label: 'Anulado', variant: 'outline' },
   }
-  const cfg = map[status] ?? { label: status, variant: 'outline' as const }
+  const cfg = map[status] ?? { label: LOAN_STATUS_LABELS[status as LoanStatus] ?? status, variant: 'outline' as const }
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+}
+
+function actionError(err: unknown, fallback: string) {
+  const msg = err instanceof Error ? err.message : ''
+  if (!msg || /Server Components render|Minified React error #441|digest/i.test(msg)) return fallback
+  return msg
 }
 
 function shortId(id: string) {
@@ -129,14 +137,16 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await approveLoan(activeLoan.id, opts)
-        if (r.ok) {
-          toast.success(`Crédito aprobado · ID ${shortId(activeLoan.id)}`)
-          setApproveOpen(false)
-          setActiveLoan(null)
-          router.refresh()
+        if (!r.ok) {
+          toast.error(r.error)
+          return
         }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error al aprobar crédito')
+        toast.success(`Crédito aprobado · ID ${shortId(activeLoan.id)}`)
+        setApproveOpen(false)
+        setActiveLoan(null)
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo aprobar el crédito'))
       }
     })
   }
@@ -147,14 +157,16 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await rejectLoan(activeLoan.id, rejectReason)
-        if (r.ok) {
-          toast.success(`Crédito rechazado · ${shortId(activeLoan.id)}`)
-          setRejectOpen(false)
-          setActiveLoan(null)
-          router.refresh()
+        if (!r.ok) {
+          toast.error(r.error)
+          return
         }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error al rechazar crédito')
+        toast.success(`Crédito rechazado · ${shortId(activeLoan.id)}`)
+        setRejectOpen(false)
+        setActiveLoan(null)
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo rechazar el crédito'))
       }
     })
   }
@@ -173,14 +185,16 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await updateLoanManual(activeLoan.id, opts)
-        if (r.ok) {
-          toast.success(`Préstamo actualizado · ${shortId(activeLoan.id)}`)
-          setEditOpen(false)
-          setActiveLoan(null)
-          router.refresh()
+        if (!r.ok) {
+          toast.error(r.error)
+          return
         }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error al actualizar préstamo')
+        toast.success(`Préstamo actualizado · ${shortId(activeLoan.id)}`)
+        setEditOpen(false)
+        setActiveLoan(null)
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo actualizar el préstamo'))
       }
     })
   }
@@ -190,9 +204,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await markLoanAsActive(l.id)
-        if (r.ok) { toast.success('Préstamo marcado como activo'); router.refresh() }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error')
+        if (!r.ok) {
+          toast.error(r.error)
+          return
+        }
+        toast.success('Préstamo marcado como activo')
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'Acreditá el desembolso en Tesorería antes de activar'))
       }
     })
   }
@@ -204,8 +223,8 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
         const r = await issueIntimation(l.contractId as string)
         toast.success(`Intimación ${r.noticeNumber} emitida`)
         router.refresh()
-      } catch (err: any) {
-        toast.error(err?.message ?? 'No se pudo emitir la intimación')
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo emitir la intimación'))
       }
     })
   }
@@ -214,12 +233,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await ensureLoanExpediente(l.id)
-        if (r.ok) {
-          toast.success('Expediente emitido. El cliente puede firmar.')
-          router.refresh()
+        if (!r.ok) {
+          toast.error(r.error)
+          return
         }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error al emitir el expediente')
+        toast.success('Expediente emitido. El cliente puede firmar.')
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo emitir el expediente'))
       }
     })
   }
@@ -229,9 +250,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     startTransition(async () => {
       try {
         const r = await markLoanAsPaid(l.id)
-        if (r.ok) { toast.success('Préstamo marcado como pagado'); router.refresh() }
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Error')
+        if (!r.ok) {
+          toast.error(r.error)
+          return
+        }
+        toast.success('Préstamo marcado como pagado')
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo marcar como pagado'))
       }
     })
   }
@@ -269,8 +295,12 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     if (l.status === 'rejected') {
       return (
         <div className="flex flex-wrap justify-end gap-1.5">
+          <Button size="sm" variant="default" disabled={isPending} className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => openApprove(l)}>
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            Aprobar
+          </Button>
           <Button size="sm" variant="outline" disabled={isPending} className="gap-1 text-amber-700 border-amber-200 hover:bg-amber-50" onClick={() => openEdit(l)}>
-            <Edit3 className="h-3.5 w-3.5" /> Reconsiderar / Editar
+            <Edit3 className="h-3.5 w-3.5" /> Editar
           </Button>
         </div>
       )
@@ -420,7 +450,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
               <CheckCircle2 className="h-5 w-5" /> Aprobar solicitud de crédito
             </DialogTitle>
             <DialogDescription>
-              Confirmá los parámetros finales antes de aprobar. Podés ajustar monto, plazo, tasa y score de aprobación manualmente.
+              Confirmá monto, plazo, tasa y score. Si el crédito estaba rechazado, esta acción lo vuelve a calificar y emite el contrato.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -543,7 +573,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
               <Edit3 className="h-5 w-5 text-primary" /> Edición manual · Préstamo {activeLoan ? shortId(activeLoan.id) : ''}
             </DialogTitle>
             <DialogDescription>
-              Modo administración avanzada. Cualquier cambio se aplica inmediatamente y queda registrado con la fecha de actualización.
+              Solo aparecen los estados que la mesa puede aplicar. Para ponerlo vigente hay que acreditar el desembolso en Tesorería.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -571,16 +601,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
                   value={editForm.status}
                   onChange={(e) => setEditForm({ ...editForm, status: e.target.value as LoanRow['status'] })}
                 >
-                  <option value="pending">Pendiente de aprobación</option>
-                  <option value="approved">Aprobado (sin desembolsar)</option>
-                  {editForm.status === 'active' ? (
-                    <option value="active">Activo (solo lectura — usá Tesorería)</option>
-                  ) : null}
-                  <option value="rejected">Rechazado</option>
-                  <option value="paid">Pagado / Cancelado</option>
+                  {(activeLoan ? allowedAdminTransitions(activeLoan.status) : [editForm.status]).map((status) => (
+                    <option key={status} value={status}>
+                      {LOAN_STATUS_LABELS[status as LoanStatus] ?? status}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-[11px] text-muted-foreground">
-                  Para pasar a vigente hay que acreditar el desembolso en Tesorería (contrato firmado).
+                  Un rechazo se puede volver a calificar. El paso a vigente no está acá: va por Tesorería, con contrato firmado.
                 </p>
               </div>
               <div className="space-y-1.5 col-span-2">
