@@ -1,11 +1,20 @@
 'use client'
 
-import { adminRegisterCollection, type AdminOpsDesk, type OpsInstallment } from '@/app/actions/admin-ops'
+import {
+  adminCancelNetworkTicket,
+  adminCancelOpenNetworkTickets,
+  adminReconcileMercadoPago,
+  adminRegisterCollection,
+  type AdminOpsDesk,
+  type OpsInstallment,
+  type OpsOpenTicket,
+} from '@/app/actions/admin-ops'
 import { TransferReviews } from '@/components/admin/transfer-reviews'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
 import { adminUrl } from '@/lib/admin-nav'
+import { formatOperationNumber } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
 import { installmentStatusLabel, loanStatusLabel, paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
@@ -102,6 +111,159 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
   )
 }
 
+function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [confirmAll, setConfirmAll] = useState(false)
+  const tickets = desk.openTickets
+
+  function run(label: string, task: () => Promise<{ message: string }>) {
+    setBusy(label)
+    void task()
+      .then((res) => {
+        toast.success(res.message)
+        router.refresh()
+      })
+      .catch((err) => toast.error((err as Error).message))
+      .finally(() => {
+        setBusy(null)
+        setConfirmAll(false)
+      })
+  }
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-brand-navy-900">Cupones de Pago Fácil / Rapipago</h2>
+          <p className="text-xs text-slate-500">
+            Códigos de barras y Nº de operación ya emitidos, todavía no cobrados. Mercado Pago avisa solo cuando el cliente paga; también podés conciliar ahora. Anular invalida el talón impreso.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={busy !== null}
+            onClick={() =>
+              run('reconcile', async () => {
+                const res = await adminReconcileMercadoPago()
+                return {
+                  message:
+                    res.credited > 0
+                      ? `Conciliación lista · ${res.credited} cobro${res.credited === 1 ? '' : 's'} acreditado${res.credited === 1 ? '' : 's'} de ${res.scanned} revisados`
+                      : `Conciliación lista · ningún cobro nuevo en ${res.scanned} pendientes`,
+                }
+              })
+            }
+          >
+            {busy === 'reconcile' ? 'Conciliando…' : 'Conciliar Mercado Pago ahora'}
+          </Button>
+          {tickets.length > 0 ? (
+            <Button size="sm" variant="outline" className="h-8 text-rose-700" disabled={busy !== null} onClick={() => setConfirmAll(true)}>
+              Anular todos los cupones abiertos
+            </Button>
+          ) : null}
+        </div>
+      </header>
+      {confirmAll ? (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-950">
+            Vas a anular {tickets.length} cupón{tickets.length === 1 ? '' : 'es'} de red.
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Los códigos de barras, Nº de operación y tickets de Pago Fácil / Rapipago impresos dejan de servir. Los recibos ya cobrados no se tocan. Si Mercado Pago ya acreditó alguno, se concilia en vez de anularlo.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmAll(false)} disabled={busy !== null}>
+              Volver
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-rose-700 hover:bg-rose-800"
+              disabled={busy !== null}
+              onClick={() =>
+                run('cancel-all', async () => {
+                  const res = await adminCancelOpenNetworkTickets()
+                  const parts = [`${res.cancelled} anulado${res.cancelled === 1 ? '' : 's'}`]
+                  if (res.settled) parts.push(`${res.settled} ya estaba cobrado y se acreditó`)
+                  if (res.errors) parts.push(`${res.errors} no se pudieron anular`)
+                  return { message: parts.join(' · ') }
+                })
+              }
+            >
+              {busy === 'cancel-all' ? 'Anulando…' : 'Sí, anular cupones abiertos'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-2">Cliente</th>
+              <th className="px-4 py-2">Red</th>
+              <th className="px-4 py-2">Nº de operación</th>
+              <th className="px-4 py-2 text-right">Monto</th>
+              <th className="px-4 py-2">Vence</th>
+              <th className="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {tickets.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                  No hay cupones de Pago Fácil / Rapipago pendientes. Los cobros reales aparecen en Movimientos cuando Mercado Pago confirma el pago.
+                </td>
+              </tr>
+            ) : (
+              tickets.slice(0, 200).map((row: OpsOpenTicket) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3">
+                    <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
+                      {row.customerName}
+                    </Link>
+                    <p className="font-mono text-[11px] text-slate-400">{shortLoan(row.loanId)}</p>
+                  </td>
+                  <td className="px-4 py-3 text-xs">{paymentMethodLabel(row.method)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {row.operationNumber ? formatOperationNumber(row.operationNumber) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
+                  <td className="px-4 py-3 text-xs">{fmtDate(row.expiresAt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-rose-700"
+                      disabled={busy !== null}
+                      onClick={() =>
+                        run(row.id, async () => {
+                          const res = await adminCancelNetworkTicket(row.id)
+                          return {
+                            message:
+                              res.outcome === 'settled'
+                                ? 'Ese cupón ya estaba cobrado en Mercado Pago: se acreditó en tesorería'
+                                : 'Cupón anulado. El código de barras y el Nº de operación dejan de servir.',
+                          }
+                        })
+                      }
+                    >
+                      {busy === row.id ? 'Anulando…' : 'Anular'}
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
 export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
   const router = useRouter()
   const [filter, setFilter] = useState<'overdue' | 'due7' | 'paid' | 'all'>('overdue')
@@ -121,14 +283,17 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
       <DecisionBanner
         tone={desk.kpis.overdueCount ? 'warn' : 'ok'}
         title={desk.kpis.overdueCount ? `${desk.kpis.overdueCount} cuotas en mora` : 'Cartera al día'}
-        detail={`${desk.kpis.pendingReview} transferencias a verificar · ${desk.kpis.due7Count} vencen en 7 días · mercado Argentina / ARS`}
+        detail={`${desk.kpis.pendingReview} transferencias a verificar · ${desk.kpis.openTickets} cupones de red abiertos · ${desk.kpis.due7Count} vencen en 7 días · mercado Argentina / ARS`}
       />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricTile label="Mora" value={formatARS(desk.kpis.overdueAmount)} hint={`${desk.kpis.overdueCount} cuotas`} tone={desk.kpis.overdueCount ? 'critical' : 'ok'} />
         <MetricTile label="Vence en 7 días" value={formatARS(desk.kpis.due7Amount)} hint={`${desk.kpis.due7Count} cuotas`} tone={desk.kpis.due7Count ? 'warn' : 'ok'} />
         <MetricTile label="Cobrado este mes" value={formatARS(desk.kpis.collectedMonth)} hint={`${desk.kpis.receiptsMonth} recibos`} />
         <MetricTile label="A verificar" value={String(desk.kpis.pendingReview)} hint="Transferencias RM / Brubank" tone={desk.kpis.pendingReview ? 'warn' : 'ok'} />
+        <MetricTile label="Cupones abiertos" value={String(desk.kpis.openTickets)} hint="Pago Fácil / Rapipago pendientes" tone={desk.kpis.openTickets ? 'warn' : 'ok'} />
       </div>
+
+      <OpenNetworkTickets desk={desk} />
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-brand-navy-900">Transferencias informadas</h2>
@@ -304,7 +469,7 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
       <DecisionBanner
         tone="info"
         title="Cuenta corriente operativa"
-        detail="Pagos, desembolsos y cuotas vencidas de toda la cartera en Argentina. Para el detalle de una persona, abrí su ficha."
+        detail="Solo cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de Pago Fácil / Rapipago pendientes no son un movimiento: viven en Cobranzas hasta que el cliente paga o tesorería los anula."
       />
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <header className="border-b border-slate-100 px-4 py-3">

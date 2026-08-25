@@ -7,7 +7,7 @@ import { db } from '@/lib/db'
 import { installment, loan, payment as paymentTable, paymentReceipt } from '@/lib/db/schema'
 import { receiptBranding } from '@/lib/brand'
 import { getPaymentMP } from '@/lib/mercadopago'
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, or } from 'drizzle-orm'
 
 const RECEIPT_BRANDING = receiptBranding()
 
@@ -477,6 +477,7 @@ export async function reconcileOpenMercadoPagoPayments(limit = 40) {
     })
     .from(paymentTable)
     .where(inArray(paymentTable.status, ['pending', 'processing']))
+    .orderBy(desc(paymentTable.createdAt))
     .limit(limit)
 
   const results: SettleResult[] = []

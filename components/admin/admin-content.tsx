@@ -424,7 +424,7 @@ export function AdminContent({
               Abrir mesa de cobro
             </Button>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-3">
               <p className="text-[11px] font-medium text-rose-700">Mora</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{formatARS(opsDesk.kpis.overdueAmount)}</p>
@@ -444,6 +444,11 @@ export function AdminContent({
               <p className="text-[11px] font-medium text-slate-600">A verificar</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{opsDesk.kpis.pendingReview}</p>
               <p className="text-[11px] text-slate-500">Transferencias RM</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[11px] font-medium text-slate-600">Cupones abiertos</p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{opsDesk.kpis.openTickets}</p>
+              <p className="text-[11px] text-slate-500">Pago Fácil / Rapipago</p>
             </div>
           </div>
         </section>

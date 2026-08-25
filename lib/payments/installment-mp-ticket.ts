@@ -6,7 +6,7 @@ import {
   mpApiFetch,
   type MpOfflineTicketNetwork,
 } from '@/lib/mercadopago'
-import { and, desc, eq, gte, inArray } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray } from 'drizzle-orm'
 
 const TICKET_GRACE_DAYS = 20
 const TICKET_MAX_DAYS = 30
@@ -203,6 +203,17 @@ async function ensureInstallmentNetworkTicket(opts: {
   const id = crypto.randomUUID()
   const until = ticketValidUntil(opts.dueDate)
   const compact = opts.installmentId.replace(/[^A-Za-z0-9]/g, '').slice(0, 16)
+  const [prior] = await db
+    .select({ n: count() })
+    .from(payment)
+    .where(
+      and(
+        eq(payment.installmentId, opts.installmentId),
+        eq(payment.method, methodFor(opts.network)),
+        inArray(payment.status, ['cancelled', 'failed']),
+      ),
+    )
+  const generation = Number(prior?.n ?? 0)
   const ticket = await createOfflineTicketPayment({
     amount: opts.amount,
     network: opts.network,
@@ -221,7 +232,7 @@ async function ensureInstallmentNetworkTicket(opts: {
       kind: 'coupon_ticket',
       network: opts.network,
     },
-    idempotencyKey: `ticket-${opts.network}-${opts.installmentId}`,
+    idempotencyKey: `ticket-${opts.network}-${opts.installmentId}-g${generation}`,
   })
 
   const expiresAt = ticket.expiresAt ? new Date(ticket.expiresAt) : until

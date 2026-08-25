@@ -285,6 +285,28 @@ export async function getPaymentMP(id: string | number) {
   }
 }
 
+export async function cancelMercadoPagoPayment(mpPaymentId: string) {
+  const id = String(mpPaymentId ?? '').replace(/\D/g, '')
+  if (!id) return { ok: false as const, reason: 'sin_id' }
+  const res = await mpApiFetch<Record<string, unknown>>(`/v1/payments/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status: 'cancelled' }),
+  })
+  const status = String((res.data as { status?: string } | null)?.status ?? '')
+  if (res.ok && (status === 'cancelled' || status === 'rejected')) {
+    return { ok: true as const, status }
+  }
+  const current = await getPaymentMP(id)
+  const currentStatus = String((current as { status?: string } | null)?.status ?? '')
+  if (currentStatus === 'cancelled' || currentStatus === 'rejected') {
+    return { ok: true as const, status: currentStatus }
+  }
+  if (currentStatus === 'approved') {
+    return { ok: false as const, reason: 'already_paid', status: currentStatus }
+  }
+  return { ok: false as const, reason: status || `http_${res.status}`, status: currentStatus || null }
+}
+
 export function validateWebhookSecret(querySecret?: string) {
   if (!webhookSecret || !querySecret) return false
   try {

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
-  const results = await reconcileOpenMercadoPagoPayments()
+  const results = await reconcileOpenMercadoPagoPayments(120)
   const credited = results.filter((r) => r.credited > 0).length
   return NextResponse.json({ ok: true, scanned: results.length, credited })
 }

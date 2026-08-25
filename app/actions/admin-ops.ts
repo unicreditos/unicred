@@ -14,9 +14,12 @@ import {
 } from '@/lib/db/schema'
 import { paymentMethodLabel } from '@/lib/labels'
 import { syncOverdueInstallments } from '@/lib/legal/expediente'
+import { cancelMercadoPagoPayment } from '@/lib/mercadopago'
+import { isOpenNetworkCoupon, mercadoPagoNumericId } from '@/lib/payments/network-coupon'
+import { reconcileOpenMercadoPagoPayments, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { revalidateOps } from '@/lib/revalidate'
 import { assertAdmin, newId } from '@/lib/session'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray, or } from 'drizzle-orm'
 
 function money(value: unknown) {
   const n = Number(value)
@@ -92,6 +95,20 @@ export type OpsContract = {
   pagareHref: string
 }
 
+export type OpsOpenTicket = {
+  id: string
+  userId: string
+  customerName: string
+  loanId: string | null
+  method: string
+  amount: number
+  status: string
+  createdAt: string
+  expiresAt: string | null
+  operationNumber: string | null
+  mpPaymentId: string | null
+}
+
 export type AdminOpsDesk = {
   generatedAt: string
   market: { country: string; currency: string }
@@ -103,10 +120,12 @@ export type AdminOpsDesk = {
     collectedMonth: number
     receiptsMonth: number
     pendingReview: number
+    openTickets: number
   }
   installments: OpsInstallment[]
   receipts: OpsReceipt[]
   movements: OpsMovement[]
+  openTickets: OpsOpenTicket[]
   contracts: OpsContract[]
 }
 
@@ -114,7 +133,7 @@ export async function getAdminOpsDesk(): Promise<AdminOpsDesk> {
   await assertAdmin()
   await syncOverdueInstallments()
 
-  const [instRows, payRows, receiptRows, disbRows, contractRows] = await Promise.all([
+  const [instRows, payRows, ticketRows, receiptRows, disbRows, contractRows] = await Promise.all([
     db
       .select({
         inst: installment,
@@ -133,8 +152,24 @@ export async function getAdminOpsDesk(): Promise<AdminOpsDesk> {
       })
       .from(payment)
       .innerJoin(userTable, eq(userTable.id, payment.userId))
+      .where(inArray(payment.status, ['paid', 'pending_review', 'refunded', 'failed']))
       .orderBy(desc(payment.createdAt))
       .limit(400),
+    db
+      .select({
+        pay: payment,
+        customerName: userTable.name,
+      })
+      .from(payment)
+      .innerJoin(userTable, eq(userTable.id, payment.userId))
+      .where(
+        and(
+          inArray(payment.status, ['pending', 'processing']),
+          or(inArray(payment.method, ['pago_facil', 'rapipago', 'ticket']), eq(payment.source, 'coupon_book')),
+        ),
+      )
+      .orderBy(desc(payment.createdAt))
+      .limit(500),
     db
       .select({
         rec: paymentReceipt,
@@ -290,6 +325,33 @@ export async function getAdminOpsDesk(): Promise<AdminOpsDesk> {
     pagareHref: `/dashboard/documentos/pagare/${row.contract.id}`,
   }))
 
+  const openTickets: OpsOpenTicket[] = ticketRows
+    .filter((row) => isOpenNetworkCoupon(row.pay))
+    .map((row) => {
+      const g =
+        row.pay.gatewayResponse && typeof row.pay.gatewayResponse === 'object'
+          ? (row.pay.gatewayResponse as Record<string, unknown>)
+          : {}
+      const operation =
+        (typeof g.operation_number === 'string' && g.operation_number.trim()) ||
+        (typeof row.pay.referenceNumber === 'string' && /^\d{8,16}$/.test(row.pay.referenceNumber.replace(/\s+/g, ''))
+          ? row.pay.referenceNumber
+          : null)
+      return {
+        id: row.pay.id,
+        userId: row.pay.userId,
+        customerName: row.customerName,
+        loanId: row.pay.loanId,
+        method: row.pay.method,
+        amount: money(row.pay.amount),
+        status: row.pay.status,
+        createdAt: iso(row.pay.createdAt) || '',
+        expiresAt: iso(row.pay.expiresAt),
+        operationNumber: operation,
+        mpPaymentId: mercadoPagoNumericId(row.pay),
+      }
+    })
+
   return {
     generatedAt: now.toISOString(),
     market: { country: 'Argentina', currency: 'ARS' },
@@ -301,10 +363,12 @@ export async function getAdminOpsDesk(): Promise<AdminOpsDesk> {
       collectedMonth: paidThisMonth.reduce((sum, row) => sum + money(row.pay.amount), 0),
       receiptsMonth: receiptsMonth.length,
       pendingReview: payRows.filter((row) => row.pay.status === 'pending_review').length,
+      openTickets: openTickets.length,
     },
     installments,
     receipts,
     movements,
+    openTickets,
     contracts,
   }
 }
@@ -351,4 +415,105 @@ export async function adminRegisterCollection(input: {
   })
   revalidateOps()
   return result
+}
+
+function gatewayRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+async function cancelOneOpenTicket(adminId: string, paymentId: string) {
+  const [row] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
+  if (!row) throw new Error('Cupón no encontrado.')
+  if (!isOpenNetworkCoupon(row)) throw new Error('Ese cupón ya no está abierto. Los cobros acreditados no se anulan.')
+
+  const mpId = mercadoPagoNumericId(row)
+  if (mpId) {
+    const cancel = await cancelMercadoPagoPayment(mpId)
+    if (!cancel.ok && cancel.reason === 'already_paid') {
+      const settled = await settleMercadoPagoPayment({ mpPaymentId: mpId, localPaymentId: row.id })
+      return { id: row.id, outcome: 'settled' as const, credited: settled.credited }
+    }
+    if (!cancel.ok) {
+      throw new Error(`Mercado Pago no pudo anular el cupón (${cancel.reason}).`)
+    }
+  }
+
+  const g = gatewayRecord(row.gatewayResponse)
+  await db
+    .update(payment)
+    .set({
+      status: 'cancelled',
+      failureReason: 'Cupón anulado por tesorería',
+      processedBy: adminId,
+      notes: [row.notes, 'Anulado: el código de barras y el Nº de operación dejan de servir.']
+        .filter(Boolean)
+        .join(' · '),
+      gatewayResponse: {
+        ...g,
+        cancelled_by: adminId,
+        cancelled_at: new Date().toISOString(),
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(payment.id, row.id))
+
+  await recordAudit({
+    actorUserId: adminId,
+    action: 'NETWORK_TICKET_CANCELLED',
+    entityType: 'payment',
+    entityId: row.id,
+    targetUserId: row.userId,
+    summary: `Cupón ${paymentMethodLabel(row.method)} anulado · ${money(row.amount).toFixed(2)} ARS`,
+  })
+
+  return { id: row.id, outcome: 'cancelled' as const, credited: 0 }
+}
+
+export async function adminCancelNetworkTicket(paymentId: string) {
+  const adminId = await assertAdmin()
+  const result = await cancelOneOpenTicket(adminId, paymentId)
+  revalidateOps()
+  return result
+}
+
+export async function adminCancelOpenNetworkTickets() {
+  const adminId = await assertAdmin()
+  const rows = await db
+    .select({ id: payment.id })
+    .from(payment)
+    .where(
+      and(
+        inArray(payment.status, ['pending', 'processing']),
+        inArray(payment.method, ['pago_facil', 'rapipago', 'ticket']),
+      ),
+    )
+    .limit(500)
+
+  const cancelled: string[] = []
+  const settled: string[] = []
+  const errors: { id: string; message: string }[] = []
+
+  for (const row of rows) {
+    try {
+      const result = await cancelOneOpenTicket(adminId, row.id)
+      if (result.outcome === 'settled') settled.push(row.id)
+      else cancelled.push(row.id)
+    } catch (err) {
+      errors.push({ id: row.id, message: err instanceof Error ? err.message : 'Error' })
+    }
+  }
+
+  revalidateOps()
+  return { cancelled: cancelled.length, settled: settled.length, errors: errors.length, errorSamples: errors.slice(0, 8) }
+}
+
+export async function adminReconcileMercadoPago() {
+  await assertAdmin()
+  const results = await reconcileOpenMercadoPagoPayments(120)
+  const credited = results.filter((row) => row.credited > 0).length
+  const scanned = results.length
+  revalidateOps()
+  return { scanned, credited }
 }

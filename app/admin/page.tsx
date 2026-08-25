@@ -86,10 +86,12 @@ export default async function AdminPage({
           collectedMonth: 0,
           receiptsMonth: 0,
           pendingReview: 0,
+          openTickets: 0,
         },
         installments: [],
         receipts: [],
         movements: [],
+        openTickets: [],
         contracts: [],
       }
     }),
