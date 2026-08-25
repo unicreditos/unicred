@@ -10,6 +10,7 @@ import {
   applyDiditDecision,
   attachDiditSessionToUser,
   createDiditSession,
+  diditApprovedForUser,
   diditCookieOptions,
   DIDIT_SESSION_COOKIE,
   getDiditDecision,
@@ -21,6 +22,12 @@ import { getRoleForUser, getSession, newId, requireUserId } from '@/lib/session'
 
 export async function getDiditPublicConfig() {
   return { configured: isDiditConfigured() }
+}
+
+export async function getMyDiditApproved() {
+  const session = await getSession()
+  if (!session?.user?.id) return false
+  return diditApprovedForUser(session.user.id)
 }
 
 function signupVendorData() {

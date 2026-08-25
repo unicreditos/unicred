@@ -68,6 +68,22 @@ export function isDiditConfigured() {
   return Boolean(process.env.DIDIT_API_KEY?.trim())
 }
 
+export async function diditApprovedForUser(userId: string) {
+  if (!userId) return false
+  const [kyc] = await db
+    .select({ status: kycVerification.status, provider: kycVerification.provider })
+    .from(kycVerification)
+    .where(eq(kycVerification.userId, userId))
+    .limit(1)
+  if (kyc?.provider !== 'didit' || kyc.status !== 'approved') return false
+  const [prof] = await db
+    .select({ kycStatus: profile.kycStatus })
+    .from(profile)
+    .where(eq(profile.userId, userId))
+    .limit(1)
+  return prof?.kycStatus === 'approved'
+}
+
 function humanizeDiditApiError(status: number, detail: string) {
   if (/enough credits|top up/i.test(detail)) {
     return 'Didit no tiene créditos disponibles. Recargá en business.didit.me; la verificación se abre dentro de UNICRÉDITOS.'
