@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession, requireMerchant } from "@/lib/session"
-import { getMyMerchant, getMerchantSales } from "@/app/actions/merchant"
+import { getMyMerchant, getMerchantSales, getMyMerchantDocuments } from "@/app/actions/merchant"
+import { getMyDiditApproved } from "@/app/actions/didit"
 import { MerchantTabsClient } from "@/app/merchant/_client"
 
 export default async function MerchantPage() {
@@ -10,6 +11,8 @@ export default async function MerchantPage() {
 
   const merchant = await getMyMerchant()
   const sales = await getMerchantSales()
+  const documents = await getMyMerchantDocuments()
+  const titularDiditApproved = await getMyDiditApproved()
 
   const user = {
     name: session.user.name ?? session.user.email ?? "Usuario",
@@ -26,6 +29,8 @@ export default async function MerchantPage() {
       merchant={merchant as any}
       sales={sales as any}
       defaultTab={defaultTab}
+      titularDiditApproved={titularDiditApproved}
+      documents={documents as any}
     />
   )
 }

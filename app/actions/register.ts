@@ -2,6 +2,7 @@
 
 import { generateBCRAReport } from '@/app/actions/documents'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
+import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { kycVerification, merchant, profile, user } from '@/lib/db/schema'
@@ -14,6 +15,7 @@ import {
   getDiditDecision,
   isDiditConfigured,
 } from '@/lib/didit'
+import { evaluateMerchantKyb, type RepresentativeRole } from '@/lib/merchant-kyb'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { getOrCreateProfile, getSession, newId } from '@/lib/session'
 import { eq } from 'drizzle-orm'
@@ -95,6 +97,8 @@ export type CompleteRegistrationInput = {
   employmentStatus: string
   businessName?: string
   category?: string
+  merchantCuit?: string
+  representativeRole?: RepresentativeRole
   confirmedIdentity: boolean
   acceptedTerms: boolean
   identity?: IdentityMatch | null
@@ -129,6 +133,16 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   }
   if (input.accountType === 'comercio' && !String(input.businessName ?? '').trim()) {
     return { ok: false as const, error: 'Indicá la razón social del comercio.' }
+  }
+
+  const merchantCuit = normalizeCuit(input.merchantCuit || (input.accountType === 'comercio' ? cuil : ''))
+  if (input.accountType === 'comercio') {
+    if (!isValidCuit(merchantCuit)) {
+      return { ok: false as const, error: 'CUIT del comercio inválido.' }
+    }
+    if (!arcaConfigured()) {
+      return { ok: false as const, error: 'El padrón ARCA no está disponible. No se da de alta un comercio sin constancia oficial.' }
+    }
   }
 
   const taken = await isIdentifierTaken(cuil)
@@ -209,15 +223,65 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   }
 
   if (input.accountType === 'comercio') {
+    const padron = await lookupPersonaByCuit(merchantCuit)
+    const evaluation = evaluateMerchantKyb({
+      declaredCuit: merchantCuit,
+      padron,
+      padronConfigured: arcaConfigured(),
+      titular: {
+        diditApproved: true,
+        dni,
+        cuil,
+      },
+      representativeRole: input.representativeRole || 'titular',
+      uploadedDocTypes: [],
+    })
+    if (!evaluation.canPersist) {
+      return { ok: false as const, error: evaluation.blockers[0] || 'El CUIT del comercio no supera el control ARCA.' }
+    }
+
     const [existingMerchant] = await db.select().from(merchant).where(eq(merchant.userId, userId)).limit(1)
+    const [taken] = await db.select({ id: merchant.id, userId: merchant.userId }).from(merchant).where(eq(merchant.cuit, merchantCuit)).limit(1)
+    if (taken && taken.userId !== userId) {
+      return { ok: false as const, error: 'Ese CUIT ya está adherido a otro comercio UNICRÉDITOS.' }
+    }
+
+    const legalName = evaluation.legalName || String(input.businessName).trim()
     const merchantValues = {
-      businessName: String(input.businessName).trim(),
-      cuit: cuil,
+      businessName: legalName,
+      cuit: merchantCuit,
       category: String(input.category ?? '').trim() || 'general',
-      province: input.province.trim(),
-      city: input.city.trim(),
-      address: input.address.trim(),
+      province: evaluation.province || input.province.trim(),
+      city: evaluation.city || input.city.trim(),
+      address: evaluation.address || input.address.trim(),
       phone: input.phone.trim(),
+      representativeRole: input.representativeRole || 'titular',
+      personType: evaluation.personType,
+      taxCondition: evaluation.taxCondition,
+      taxStatus: evaluation.taxStatus,
+      legalName: evaluation.legalName || null,
+      monotributoCategory: evaluation.monotributoCategory || null,
+      titularMatch: evaluation.titularMatch,
+      kybStatus: evaluation.kybStatus,
+      kybBlockers: evaluation.blockers,
+      afipSnapshot: padron
+        ? {
+            cuil: padron.cuil,
+            name: padron.name,
+            personType: padron.personType,
+            taxStatus: padron.taxStatus,
+            taxCondition: padron.taxCondition,
+            monotributoCategory: padron.monotributoCategory,
+            taxes: padron.taxes,
+            activities: padron.activities,
+            address: padron.address,
+            city: padron.city,
+            province: padron.province,
+            postalCode: padron.postalCode,
+            service: padron.service,
+          }
+        : null,
+      afipLookedUpAt: now,
       updatedAt: now,
     }
     if (existingMerchant) {

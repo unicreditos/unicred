@@ -18,6 +18,7 @@ import {
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { authClient } from '@/lib/auth-client'
 import type { AccountKind, IdentityMatch } from '@/lib/identity'
+import type { RepresentativeRole } from '@/lib/merchant-kyb'
 import {
   Building2,
   CheckCircle2,
@@ -79,6 +80,9 @@ export function RegisterWizard() {
   const [monthlyIncome, setMonthlyIncome] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [category, setCategory] = useState('')
+  const [merchantCuit, setMerchantCuit] = useState('')
+  const [representativeRole, setRepresentativeRole] = useState<RepresentativeRole>('titular')
+  const [titularCuil, setTitularCuil] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -157,9 +161,6 @@ export function RegisterWizard() {
 
   function applyMatch(match: IdentityMatch) {
     setIdentity(match)
-    setName(match.name)
-    setCuil(match.cuil)
-    setDni(match.dni ?? identifier.replace(/\D/g, '').slice(0, 8))
     setGeo((prev) => ({
       province: match.province || prev.province,
       department: prev.department,
@@ -167,7 +168,25 @@ export function RegisterWizard() {
       postalCode: match.postalCode || prev.postalCode,
     }))
     setAddress(match.address || address)
-    if (accountType === 'comercio' && match.name) setBusinessName(match.name)
+    if (accountType === 'comercio') {
+      setMerchantCuit(match.cuil)
+      if (match.name) setBusinessName(match.name)
+      if (match.personType === 'JURIDICA') {
+        setName('')
+        setCuil(titularCuil)
+        setDni('')
+        setRepresentativeRole('presidente')
+      } else {
+        setName(match.name)
+        setCuil(match.cuil)
+        setDni(match.dni ?? identifier.replace(/\D/g, '').slice(0, 8))
+        setRepresentativeRole('titular')
+      }
+      return
+    }
+    setName(match.name)
+    setCuil(match.cuil)
+    setDni(match.dni ?? identifier.replace(/\D/g, '').slice(0, 8))
   }
 
   async function handleCreate() {
@@ -207,6 +226,8 @@ export function RegisterWizard() {
       employmentStatus,
       businessName,
       category,
+      merchantCuit: accountType === 'comercio' ? merchantCuit || identity.cuil : undefined,
+      representativeRole: accountType === 'comercio' ? representativeRole : undefined,
       confirmedIdentity,
       acceptedTerms,
       identity,
@@ -241,7 +262,7 @@ export function RegisterWizard() {
             cuenta no garantiza un préstamo: cada solicitud se evalúa por separado.
           </p>
           <ul className="space-y-2 text-sm text-sidebar-foreground/65">
-            <li>Validamos CUIT/CUIL y completamos nombre y domicilio fiscal desde el padrón ARCA.</li>
+            <li>Validamos CUIT/CUIL, condición IVA (monotributo, RI o exento) y domicilio fiscal desde el padrón ARCA.</li>
             <li>El domicilio se completa con el catálogo oficial de provincias y departamentos.</li>
             <li>La identidad se valida en UNICRÉDITOS con Didit: DNI, prueba de vida y coincidencia facial, sin salir de la web.</li>
           </ul>
@@ -339,7 +360,7 @@ export function RegisterWizard() {
                     <p className="text-xs text-muted-foreground">Otras claves posibles para ese DNI:</p>
                     <div className="flex flex-wrap gap-2">
                       {[identity, ...alternatives].map((alt) => (
-                        <Button key={alt.cuil} type="button" size="sm" variant={alt.cuil === cuil ? 'default' : 'outline'} onClick={() => applyMatch(alt)}>
+                        <Button key={alt.cuil} type="button" size="sm" variant={alt.cuil === (merchantCuit || cuil) ? 'default' : 'outline'} onClick={() => applyMatch(alt)}>
                           {alt.cuil}
                           {alt.name ? ` · ${alt.name}` : ''}
                         </Button>
@@ -347,17 +368,69 @@ export function RegisterWizard() {
                     </div>
                   </div>
                 )}
-                <Field label="Nombre / denominación" value={name} onChange={setName} />
-                <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>CUIT / CUIL</Label>
-                    <Input value={cuil} readOnly className="font-mono" />
+                {accountType === 'comercio' ? (
+                  <div className="mb-3 grid gap-1 rounded-md border bg-background/70 p-3 text-xs">
+                    <p><span className="text-muted-foreground">Tipo: </span>{identity.personType === 'JURIDICA' ? 'Persona jurídica' : identity.personType === 'FISICA' ? 'Persona física' : 'Sin clasificar'}</p>
+                    <p><span className="text-muted-foreground">Condición ARCA: </span>{identity.taxConditionLabel || identity.taxStatus || 'Sin dato'}</p>
+                    {identity.monotributoCategory ? <p><span className="text-muted-foreground">Categoría monotributo: </span>{identity.monotributoCategory}</p> : null}
+                    <p className="font-mono">{merchantCuit || identity.cuil}</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>DNI del titular *</Label>
-                    <Input inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))} />
+                ) : null}
+                <Field
+                  label={identity.personType === 'JURIDICA' ? 'Nombre y apellido del representante *' : 'Nombre / denominación'}
+                  value={name}
+                  onChange={setName}
+                />
+                {identity.personType === 'JURIDICA' && accountType === 'comercio' ? (
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>CUIT de la sociedad (ARCA)</Label>
+                      <Input value={merchantCuit} readOnly className="font-mono" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Rol del firmante *</Label>
+                      <Select value={representativeRole} onValueChange={(v) => setRepresentativeRole((v as RepresentativeRole) || 'presidente')}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="presidente">Presidente / representante legal</SelectItem>
+                          <SelectItem value="socio_gerente">Socio gerente</SelectItem>
+                          <SelectItem value="administrador">Administrador</SelectItem>
+                          <SelectItem value="apoderado">Apoderado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>CUIL del representante *</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={cuil}
+                        onChange={(e) => {
+                          setCuil(e.target.value.replace(/\D/g, '').slice(0, 11))
+                          setTitularCuil(e.target.value.replace(/\D/g, '').slice(0, 11))
+                        }}
+                        placeholder="20-12345678-6"
+                        className="font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>DNI del representante *</Label>
+                      <Input inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))} />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>CUIT / CUIL</Label>
+                      <Input value={cuil} readOnly className="font-mono" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>DNI del titular *</Label>
+                      <Input inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))} />
+                    </div>
+                  </div>
+                )}
                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                   {identity.sources.map((s) => (
                     <li key={s.id}>
@@ -380,7 +453,7 @@ export function RegisterWizard() {
                 <Button variant="outline" onClick={() => go('id')}>
                   Volver
                 </Button>
-                <Button className="flex-1" disabled={!confirmedIdentity || !name.trim() || dni.length < 7} onClick={() => go('datos')}>
+                <Button className="flex-1" disabled={!confirmedIdentity || !name.trim() || dni.length < 7 || (identity.personType === 'JURIDICA' && accountType === 'comercio' && cuil.replace(/\D/g, '').length !== 11)} onClick={() => go('datos')}>
                   Confirmar y continuar
                 </Button>
               </div>
@@ -408,8 +481,8 @@ export function RegisterWizard() {
               {accountType === 'comercio' ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Razón social *</Label>
-                    <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+                    <Label>Razón social (padrón ARCA)</Label>
+                    <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} readOnly={Boolean(identity?.name)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Rubro</Label>

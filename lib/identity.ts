@@ -1,4 +1,5 @@
 import { arcaConfigured, lookupCuitsByDocumento, lookupPersonaByCuit } from '@/lib/arca/padron'
+import { taxConditionLabel, type TaxCondition } from '@/lib/arca/tax-condition'
 import { getDeudas, getDeudasHistoricas, isValidCuit, normalizeCuit } from '@/lib/bcra'
 
 export type AccountKind = 'persona' | 'comercio'
@@ -20,6 +21,9 @@ export type IdentityMatch = {
   province: string
   postalCode: string
   taxStatus: string
+  taxCondition: TaxCondition | ''
+  taxConditionLabel: string
+  monotributoCategory: string
   sources: IdentitySource[]
 }
 
@@ -69,6 +73,9 @@ function emptyMatch(cuil: string): IdentityMatch {
     province: '',
     postalCode: '',
     taxStatus: '',
+    taxCondition: '',
+    taxConditionLabel: '',
+    monotributoCategory: '',
     sources: [],
   }
 }
@@ -85,6 +92,9 @@ async function lookupArcaPadron(cuit: string): Promise<Partial<IdentityMatch> | 
     province: persona.province,
     postalCode: persona.postalCode,
     taxStatus: persona.taxStatus,
+    taxCondition: persona.taxCondition,
+    taxConditionLabel: taxConditionLabel(persona.taxCondition),
+    monotributoCategory: persona.monotributoCategory,
     dni: persona.dni,
   }
 }
@@ -107,12 +117,17 @@ async function enrichFromPublicApis(cuit: string): Promise<IdentityMatch> {
     match.province = arca.province || match.province
     match.postalCode = arca.postalCode || match.postalCode
     match.taxStatus = arca.taxStatus || match.taxStatus
+    match.taxCondition = arca.taxCondition || match.taxCondition
+    match.taxConditionLabel = arca.taxConditionLabel || match.taxConditionLabel
+    match.monotributoCategory = arca.monotributoCategory || match.monotributoCategory
     match.dni = arca.dni || match.dni
     match.sources.push({
       id: 'arca',
       ok: Boolean(arca.name),
       label: 'ARCA',
-      detail: arca.name ? 'Padrón de contribuyentes.' : 'Sin datos nominativos en el padrón configurado.',
+      detail: arca.name
+        ? `Padrón de contribuyentes. ${arca.taxConditionLabel || arca.taxStatus || ''}`.trim()
+        : 'Sin datos nominativos en el padrón configurado.',
     })
   } else {
     match.sources.push({
@@ -158,7 +173,7 @@ export async function lookupIdentity(raw: string, kind: AccountKind): Promise<Id
 
   if (digits.length >= 7 && digits.length <= 8) {
     const fromPadron = await lookupCuitsByDocumento(digits)
-    const prefixes = kind === 'comercio' ? COMPANY_PREFIXES : PERSON_PREFIXES
+    const prefixes = kind === 'comercio' ? [...PERSON_PREFIXES, ...COMPANY_PREFIXES] : PERSON_PREFIXES
     const guessed = prefixes.map((prefix) => buildCuit(prefix, digits))
     const candidates = Array.from(new Set(fromPadron.length ? fromPadron : guessed))
     const enriched = await Promise.all(candidates.map((cuit) => enrichFromPublicApis(cuit)))

@@ -115,12 +115,40 @@ export const merchant = pgTable('merchant', {
   address: text('address'),
   phone: text('phone'),
   status: text('status').notNull().default('pending'),
+  personType: text('personType'),
+  taxCondition: text('taxCondition'),
+  taxStatus: text('taxStatus'),
+  legalName: text('legalName'),
+  monotributoCategory: text('monotributoCategory'),
+  titularMatch: text('titularMatch'),
+  representativeRole: text('representativeRole').notNull().default('titular'),
+  kybStatus: text('kybStatus').notNull().default('incomplete'),
+  kybBlockers: jsonb('kybBlockers').$type<string[]>(),
+  afipSnapshot: jsonb('afipSnapshot'),
+  afipLookedUpAt: tsCol('afipLookedUpAt'),
   commissionRate: numeric('commissionRate', { precision: 5, scale: 2 })
     .notNull()
     .default('8.00'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
 })
+
+export const merchantDocument = pgTable('merchant_document', {
+  id: text('id').primaryKey(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  fileName: text('fileName').notNull(),
+  mime: text('mime').notNull(),
+  size: integer('size').notNull(),
+  sha256: text('sha256').notNull(),
+  content: text('content').notNull(),
+  status: text('status').notNull().default('uploaded'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('merchant_document_merchant_idx').on(t.merchantId),
+])
 
 export const loanProduct = pgTable('loan_product', {
   id: text('id').primaryKey(),
@@ -539,6 +567,24 @@ export const bankDirectory = pgTable('bank_directory', {
   uniqueIndex('bank_directory_ident_unique').on(t.identifierType, t.identifier),
   index('bank_directory_tax_idx').on(t.taxId),
   index('bank_directory_cbu_idx').on(t.cbu),
+])
+
+export const supportCase = pgTable('support_case', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('open'),
+  channel: text('channel').notNull().default('dashboard'),
+  lawRef: text('lawRef').notNull().default('Ley 24.240'),
+  response: text('response'),
+  respondedAt: tsCol('respondedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('support_case_user_idx').on(t.userId),
+  index('support_case_status_idx').on(t.status),
 ])
 
 /**

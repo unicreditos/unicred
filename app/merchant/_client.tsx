@@ -41,8 +41,14 @@ import {
 } from "@/lib/finance"
 import { catalogByType } from "@/lib/loan-catalog"
 import { BRAND } from "@/lib/brand"
+import {
+  MERCHANT_DOC_LABELS,
+  type MerchantDocType,
+  type RepresentativeRole,
+} from "@/lib/merchant-kyb"
+import { TAX_CONDITION_LABELS } from "@/lib/arca/tax-condition"
 import { getDiditPublicConfig } from "@/app/actions/didit"
-import { registerMerchant, createMerchantSale } from "@/app/actions/merchant"
+import { registerMerchant, lookupMerchantAfip, createMerchantSale } from "@/app/actions/merchant"
 import { DiditVerifyButton } from "@/components/didit-verify-button"
 import { cn } from "@/lib/utils"
 import {
@@ -103,9 +109,28 @@ type MerchantType = {
   address: string | null
   phone: string | null
   status: string
+  personType?: string | null
+  taxCondition?: string | null
+  taxStatus?: string | null
+  legalName?: string | null
+  monotributoCategory?: string | null
+  titularMatch?: string | null
+  representativeRole?: string | null
+  kybStatus?: string | null
+  kybBlockers?: string[] | null
   commissionRate: string | number
   createdAt: Date
   updatedAt: Date
+}
+
+type MerchantDocRow = {
+  id: string
+  type: string
+  fileName: string
+  mime: string
+  size: number
+  status: string
+  createdAt: Date
 }
 
 type SaleType = {
@@ -202,11 +227,15 @@ export function MerchantTabsClient({
   merchant,
   sales,
   defaultTab,
+  titularDiditApproved = false,
+  documents = [],
 }: {
   user: { name: string; email: string }
   merchant: MerchantType | null
   sales: SaleType[]
   defaultTab?: string
+  titularDiditApproved?: boolean
+  documents?: MerchantDocRow[]
 }) {
   const { data: session } = useSession()
 
@@ -295,17 +324,21 @@ export function MerchantTabsClient({
                   <CardHeader>
                     <CardTitle>Registro / Perfil de Comercio</CardTitle>
                     <CardDescription>
-                      Completá los datos de tu comercio. La aprobación es manual por parte de UNICRÉDITOS.
+                      El CUIT se valida en el padrón ARCA (monotributo, RI o exento). Didit verifica a la persona titular o representante. La constancia no se sube a mano.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <MerchantProfileForm existing={merchant} />
+                    <MerchantProfileForm
+                      existing={merchant}
+                      titularDiditApproved={titularDiditApproved}
+                      documents={documents}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
               <TabsContent value="venta_rapida">
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <VentaRapidaTab merchant={merchant} onCreated={() => { /* refresh handled by router.refresh in parent init, fallback noop */ }} />
+                  <VentaRapidaTab merchant={merchant} titularDiditApproved={titularDiditApproved} onCreated={() => { /* refresh handled by router.refresh in parent init, fallback noop */ }} />
                 </div>
               </TabsContent>
               <TabsContent value="sales">
@@ -317,7 +350,7 @@ export function MerchantTabsClient({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <SaleForm merchant={merchant} />
+                    <SaleForm merchant={merchant} titularDiditApproved={titularDiditApproved} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -582,16 +615,37 @@ function MerchantOverview({
 
 type MerchantTotals = any
 
-function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
+function MerchantProfileForm({
+  existing,
+  titularDiditApproved = false,
+  documents = [],
+}: {
+  existing: MerchantType | null
+  titularDiditApproved?: boolean
+  documents?: MerchantDocRow[]
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [looking, setLooking] = useState(false)
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [diditOk, setDiditOk] = useState(titularDiditApproved)
   const [diditConfigured, setDiditConfigured] = useState<boolean | null>(null)
   const [diditError, setDiditError] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null)
-
-  useEffect(() => {
-    void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
-  }, [])
+  const [evaluation, setEvaluation] = useState<{
+    personType: string
+    taxCondition: string
+    taxConditionLabel: string
+    taxStatus: string
+    legalName: string
+    blockers: string[]
+    warnings: string[]
+    requiredDocuments: MerchantDocType[]
+    canSubmit: boolean
+    canPersist: boolean
+    titularMatch: string
+    monotributoCategory: string
+  } | null>(null)
   const [form, setForm] = useState({
     businessName: existing?.businessName ?? "",
     cuit: existing?.cuit ?? "",
@@ -600,14 +654,58 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
     city: existing?.city ?? "",
     address: existing?.address ?? "",
     phone: existing?.phone ?? "",
+    representativeRole: (existing?.representativeRole as RepresentativeRole) || "titular",
   })
+
+  useEffect(() => {
+    void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
+  }, [])
 
   function upd<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm((f) => ({ ...f, [k]: v }))
   }
 
+  async function consultarArca() {
+    setLooking(true)
+    setMsg(null)
+    try {
+      const res = await lookupMerchantAfip(form.cuit)
+      if (!res.ok) {
+        setMsg({ type: "err", text: res.error })
+        setEvaluation(null)
+        return
+      }
+      setEvaluation(res.evaluation)
+      if (res.padron) {
+        setForm((f) => ({
+          ...f,
+          businessName: res.padron?.name || f.businessName,
+          cuit: res.padron?.cuil || f.cuit,
+          province: res.padron?.province || f.province,
+          city: res.padron?.city || f.city,
+          address: res.padron?.address || f.address,
+          representativeRole:
+            res.padron?.personType === "JURIDICA" && f.representativeRole === "titular"
+              ? "presidente"
+              : f.representativeRole,
+        }))
+      }
+      if (res.evaluation.blockers.length && !res.evaluation.canPersist) {
+        setMsg({ type: "err", text: res.evaluation.blockers[0] })
+      }
+    } catch (err: any) {
+      setMsg({ type: "err", text: err?.message ?? "No se pudo consultar ARCA." })
+    } finally {
+      setLooking(false)
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!diditOk) {
+      setMsg({ type: "err", text: "Verificá la identidad del titular con Didit antes de registrar el comercio." })
+      return
+    }
     setLoading(true)
     setMsg(null)
     try {
@@ -619,13 +717,15 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
         city: form.city,
         address: form.address,
         phone: form.phone,
+        representativeRole: form.representativeRole,
       })
       if (res.ok) {
+        setEvaluation(res.evaluation)
         setMsg({
           type: "ok",
-          text: existing
-            ? "Perfil actualizado correctamente."
-            : "Comercio registrado. Quedará pendiente de aprobación.",
+          text: res.evaluation.canSubmit
+            ? "Comercio enviado a revisión. ARCA y Didit ya están cruzados."
+            : res.evaluation.blockers[0] || "Datos ARCA guardados. Completá el expediente societario.",
         })
         router.refresh()
       }
@@ -636,31 +736,112 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
     }
   }
 
+  async function uploadDoc(type: MerchantDocType, file: File) {
+    setUploading(type)
+    setMsg(null)
+    try {
+      const data = new FormData()
+      data.set("type", type)
+      data.set("file", file)
+      const res = await fetch("/api/merchant/documents", { method: "POST", body: data })
+      const json = await res.json()
+      if (!json.ok) {
+        setMsg({ type: "err", text: json.error || "No se pudo adjuntar el archivo." })
+        return
+      }
+      router.refresh()
+    } catch (err: any) {
+      setMsg({ type: "err", text: err?.message ?? "No se pudo adjuntar el archivo." })
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  async function removeDoc(id: string) {
+    setMsg(null)
+    const res = await fetch(`/api/merchant/documents?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+    const json = await res.json()
+    if (!json.ok) {
+      setMsg({ type: "err", text: json.error || "No se pudo borrar el archivo." })
+      return
+    }
+    router.refresh()
+  }
+
+  const personType = evaluation?.personType || existing?.personType
+  const taxLabel =
+    evaluation?.taxConditionLabel ||
+    (existing?.taxCondition ? TAX_CONDITION_LABELS[existing.taxCondition as keyof typeof TAX_CONDITION_LABELS] : "")
+  const requiredDocs = evaluation?.requiredDocuments?.length
+    ? evaluation.requiredDocuments
+    : personType === "JURIDICA"
+      ? (form.representativeRole === "apoderado"
+          ? (["estatuto_contrato_social", "poder"] as MerchantDocType[])
+          : (["estatuto_contrato_social", "acta_designacion"] as MerchantDocType[]))
+      : []
+  const lockedFromAfip = Boolean(evaluation?.legalName || existing?.legalName)
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="businessName">Razón Social</Label>
+              <Label htmlFor="cuit">CUIT del comercio</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="cuit"
+                  value={form.cuit}
+                  onChange={(e) => upd("cuit", e.target.value)}
+                  placeholder="30-12345678-9"
+                  required
+                />
+                <Button type="button" variant="outline" disabled={looking || !form.cuit} onClick={() => void consultarArca()}>
+                  {looking ? "Consultando…" : "Consultar ARCA"}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="businessName">Razón social (padrón)</Label>
               <Input
                 id="businessName"
                 value={form.businessName}
                 onChange={(e) => upd("businessName", e.target.value)}
-                placeholder="Mi SRL"
+                placeholder="Consultá el CUIT"
                 required
+                readOnly={lockedFromAfip}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cuit">CUIT</Label>
-              <Input
-                id="cuit"
-                value={form.cuit}
-                onChange={(e) => upd("cuit", e.target.value)}
-                placeholder="30-12345678-9"
-                required
-              />
-            </div>
+            {personType ? (
+              <div className="sm:col-span-2 grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                <p><span className="text-muted-foreground">Persona: </span>{personType === "JURIDICA" ? "Jurídica" : personType === "FISICA" ? "Física" : personType}</p>
+                <p><span className="text-muted-foreground">Condición fiscal: </span>{taxLabel || existing?.taxCondition || "—"}</p>
+                {(evaluation?.monotributoCategory || existing?.monotributoCategory) ? (
+                  <p><span className="text-muted-foreground">Categoría monotributo: </span>{evaluation?.monotributoCategory || existing?.monotributoCategory}</p>
+                ) : null}
+                <p><span className="text-muted-foreground">Clave fiscal: </span>{evaluation?.taxStatus || existing?.taxStatus || "—"}</p>
+                <p><span className="text-muted-foreground">Cruce titular: </span>{evaluation?.titularMatch || existing?.titularMatch || "—"}</p>
+              </div>
+            ) : null}
+            {personType === "JURIDICA" ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Rol del representante</Label>
+                <Select
+                  value={form.representativeRole}
+                  onValueChange={(v) => upd("representativeRole", (v as RepresentativeRole) || "presidente")}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="presidente">Presidente / representante legal</SelectItem>
+                    <SelectItem value="socio_gerente">Socio gerente</SelectItem>
+                    <SelectItem value="administrador">Administrador</SelectItem>
+                    <SelectItem value="apoderado">Apoderado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="phone">Teléfono</Label>
               <Input
@@ -670,7 +851,7 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
                 placeholder="+54 11 1234-5678"
               />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5">
               <Label htmlFor="category">Categoría</Label>
               <Select
                 value={form.category || "none"}
@@ -715,18 +896,73 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
                 value={form.city}
                 onChange={(e) => upd("city", e.target.value)}
                 placeholder="Córdoba"
+                readOnly={lockedFromAfip}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="address">Domicilio</Label>
+              <Label htmlFor="address">Domicilio fiscal</Label>
               <Input
                 id="address"
                 value={form.address}
                 onChange={(e) => upd("address", e.target.value)}
-                placeholder="Av. Rivadavia 1234, Piso 2"
+                placeholder="Sale del padrón ARCA"
+                readOnly={lockedFromAfip}
               />
             </div>
           </div>
+
+          {requiredDocs.length > 0 ? (
+            <div className="space-y-3 rounded-lg border p-4">
+              <p className="text-sm font-medium">Expediente de persona jurídica</p>
+              <p className="text-xs text-muted-foreground">
+                La constancia de inscripción no se adjunta: se lee del padrón ARCA. Subí estatuto y el instrumento de representación (PDF o imagen, hasta 4 MB).
+              </p>
+              {requiredDocs.map((type) => {
+                const current = documents.find((d) => d.type === type)
+                return (
+                  <div key={type} className="flex flex-col gap-2 rounded-md bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{MERCHANT_DOC_LABELS[type]}</p>
+                      {current ? (
+                        <p className="text-xs text-muted-foreground">{current.fileName} · {Math.round(current.size / 1024)} KB</p>
+                      ) : (
+                        <p className="text-xs text-amber-700">Pendiente</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png,image/webp"
+                        disabled={uploading === type}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) void uploadDoc(type, file)
+                          e.currentTarget.value = ""
+                        }}
+                      />
+                      {current ? (
+                        <Button type="button" variant="outline" size="sm" onClick={() => void removeDoc(current.id)}>
+                          Quitar
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Monotributo, RI o exento persona física: no se piden estatutos. La constancia sale de ARCA y la identidad del titular de Didit.
+            </p>
+          )}
+
+          {evaluation?.warnings?.length ? (
+            <ul className="list-disc pl-4 text-xs text-muted-foreground">
+              {evaluation.warnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
 
           {msg && (
             <div
@@ -741,9 +977,12 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
           )}
 
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Guardando…" : existing ? "Guardar cambios" : "Registrar comercio"}
+            <Button type="submit" disabled={loading || !diditOk}>
+              {loading ? "Guardando…" : existing ? "Guardar y revalidar ARCA" : "Registrar comercio"}
             </Button>
+            {!diditOk ? (
+              <p className="text-xs text-amber-700">Completá Didit del titular (derecha) antes de enviar el alta.</p>
+            ) : null}
           </div>
         </form>
       </div>
@@ -754,7 +993,7 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
             <CardTitle className="flex items-center gap-2">
               <Store className="h-4 w-4 text-primary" /> Estado
             </CardTitle>
-            <CardDescription>Tu estado actual en UNICRÉDITOS</CardDescription>
+            <CardDescription>Adhesión y expediente fiscal</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
@@ -762,21 +1001,30 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
               <StatusBadge status={existing?.status ?? "pending"} />
             </div>
             <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">KYB</span>
+              <span className="text-xs font-medium">{existing?.kybStatus ?? "incomplete"}</span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Comisión</span>
               <span className="font-mono text-sm font-semibold">
                 {formatPercent(existing?.commissionRate ?? 8)}
               </span>
             </div>
+            {Array.isArray(existing?.kybBlockers) && existing.kybBlockers.length > 0 && (
+              <ul className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+                {existing.kybBlockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
             {existing?.status === "pending" && (
               <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-                Tu solicitud está en revisión. Te contactaremos cuando sea aprobada para que
-                comiences a vender en cuotas.
+                Queda pendiente de habilitación. Admin no puede activar si ARCA, Didit o el expediente societario no cierran.
               </p>
             )}
             {existing?.status === "rejected" && (
               <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">
-                Solicitud rechazada. Por favor contactá a soporte para revisar los datos
-                presentados.
+                Solicitud rechazada. Corregí CUIT o expediente y volvé a consultar ARCA.
               </p>
             )}
           </CardContent>
@@ -785,7 +1033,7 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
           <CardHeader>
             <CardTitle>Identidad Didit</CardTitle>
             <CardDescription>
-              El titular se valida con Didit dentro de UNICRÉDITOS. No se aceptan documentos cargados a mano.
+              Persona física: DNI + selfie. Persona jurídica: el representante. La sociedad se valida con ARCA.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -801,7 +1049,10 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
                 phone={form.phone}
                 className="w-full"
                 onError={setDiditError}
-                onCompleted={() => router.refresh()}
+                onCompleted={(status) => {
+                  if (status === "Approved" || status === "approved") setDiditOk(true)
+                  router.refresh()
+                }}
               />
             )}
             {diditError && <p className="text-sm text-destructive">{diditError}</p>}
@@ -812,9 +1063,15 @@ function MerchantProfileForm({ existing }: { existing: MerchantType | null }) {
   )
 }
 
-function SaleForm({ merchant }: { merchant: MerchantType | null }) {
+function SaleForm({
+  merchant,
+  titularDiditApproved = false,
+}: {
+  merchant: MerchantType | null
+  titularDiditApproved?: boolean
+}) {
   const router = useRouter()
-  const disabled = !merchant || merchant.status !== "active"
+  const disabled = !merchant || merchant.status !== "active" || !titularDiditApproved
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<
     | { type: "ok" | "err"; text: string; data?: { loanId: string; installmentAmount: number } }
@@ -1299,9 +1556,17 @@ function StatCard({
   )
 }
 
-function VentaRapidaTab({ merchant, onCreated }: { merchant: MerchantType | null; onCreated: () => void }) {
+function VentaRapidaTab({
+  merchant,
+  onCreated,
+  titularDiditApproved = false,
+}: {
+  merchant: MerchantType | null
+  onCreated: () => void
+  titularDiditApproved?: boolean
+}) {
   const router = useRouter()
-  const disabled = !merchant || merchant.status !== "active"
+  const disabled = !merchant || merchant.status !== "active" || !titularDiditApproved
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string; data?: { loanId: string; installmentAmount: number } }>(null)
   const [amount, setAmount] = useState<string>("250000")
@@ -1957,7 +2222,7 @@ function AyudaTab() {
     { q: "¿Cuándo se acredita el dinero de mi venta?", a: "Tesorería transfiere cuando confirma el desembolso del crédito del cliente. No hay plazo fijo de 24 a 48 horas." },
     { q: "¿Qué comisión cobra UNICRÉDITOS?", a: "La comisión por operación se acuerda comercialmente. La ves en Datos del Comercio y en cada liquidación." },
     { q: "¿Puedo cancelar una venta?", a: "No hay anulación automática desde el panel. Pedí a soporte antes del desembolso del cliente." },
-    { q: "¿Qué documentos necesito para dar de alta mi comercio?", a: "CUIT, DNI del titular, CBU a nombre del comercio y constancia de AFIP (IIBB / Monotributo)." },
+    { q: "¿Qué documentos necesito para dar de alta mi comercio?", a: "El CUIT se consulta en el padrón ARCA: sale razón social, domicilio fiscal y si sos monotributista, IVA responsable inscripto o exento. La identidad del titular o representante se valida con Didit (DNI + selfie). Si el CUIT es de persona jurídica hay que adjuntar estatuto y acta de designación o poder. No se acepta una constancia AFIP subida a mano." },
     { q: "¿Hay límite de monto por operación?", a: "El crédito de consumo tiene tope de catálogo. El cliente también tiene que tener cuenta UNICRÉDITOS, KYC Didit e ingresos declarados." },
   ]
   const [open, setOpen] = useState<number | null>(0)

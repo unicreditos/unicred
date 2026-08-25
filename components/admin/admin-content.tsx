@@ -9,6 +9,7 @@ import { BankAccountsTable } from '@/components/admin/bank-accounts-table'
 import { UsersTable } from '@/components/admin/users-table'
 import { ClientFicha } from '@/components/admin/client-ficha'
 import { CobranzasDesk, ComprobantesDesk, LegalesDesk, MovimientosDesk } from '@/components/admin/ops-desks'
+import { AdminClaimsDesk } from '@/components/admin/claims-desk'
 import { type StatsData } from '@/components/admin/summary-cards'
 import type { ClientFicha as ClientFichaData } from '@/app/actions/admin-ficha'
 import type { AdminOpsDesk } from '@/app/actions/admin-ops'
@@ -91,6 +92,13 @@ type MerchantRow = {
   category: string | null
   status: string
   createdAt?: Date | string
+  personType?: string | null
+  taxCondition?: string | null
+  taxStatus?: string | null
+  kybStatus?: string | null
+  titularMatch?: string | null
+  legalName?: string | null
+  kybBlockers?: string[] | null
 }
 
 type VariableBCRA = {
@@ -1057,6 +1065,10 @@ export function AdminContent({
 
   if (activeTab === 'legales') {
     return <LegalesDesk desk={opsDesk} />
+  }
+
+  if (activeTab === 'reclamos') {
+    return <AdminClaimsDesk />
   }
 
   if (activeTab === 'cobros') {

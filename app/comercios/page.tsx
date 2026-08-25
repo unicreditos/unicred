@@ -52,9 +52,11 @@ export default function ComerciosPage() {
         <PageSection eyebrow="Requisitos adhesión" title="Qué pedimos al comercio">
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              'CUIT y datos del titular',
+              'CUIT consultado en el padrón ARCA (monotributo, IVA RI o exento, clave activa)',
+              'Didit del titular o representante: DNI + prueba de vida. No se sube constancia a mano',
+              'Si es persona jurídica: estatuto y acta de designación o poder',
               'CBU o CVU a nombre del comercio',
-              'Alta en la plataforma y aprobación admin',
+              'Habilitación de UNICRÉDITOS después de cruzar ARCA y Didit',
               'El comprador debe registrarse en UNICRÉDITOS',
             ].map((r) => (
               <li key={r} className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-white p-4 text-sm leading-relaxed text-slate-700">
@@ -67,8 +69,8 @@ export default function ComerciosPage() {
         <PageSection eyebrow="Alta" title="Tres pasos">
           <ol className="space-y-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
             {[
-              { t: '1 · Creás la cuenta comercio', d: 'Email, CUIT y CBU. Queda pendiente de activación.' },
-              { t: '2 · UNICRÉDITOS valida', d: 'Un administrador activa el comercio. No hay plazo publicado.' },
+              { t: '1 · Creás la cuenta comercio', d: 'CUIT en ARCA, Didit del titular y, si es sociedad, el expediente. Queda pendiente.' },
+              { t: '2 · UNICRÉDITOS valida', d: 'Se vuelve a consultar ARCA. Sin Didit, clave inactiva o expediente incompleto no se habilita.' },
               { t: '3 · Cargás el CUIL del cliente', d: 'Si califica, se origina el crédito a su nombre.' },
             ].map((s) => (
               <li key={s.t} className="rounded-2xl border border-slate-200/70 bg-white p-5">

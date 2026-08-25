@@ -1,4 +1,17 @@
 import { applyEmitiaAfipEnv } from '@/lib/arca/emitia-certs'
+import {
+  asArray,
+  classifyTaxCondition,
+  collectActivities,
+  collectTaxes,
+  dniFromPersonCuit,
+  monotributoCategoryFromRaw,
+  personTypeFromCuit,
+  type ArcaActivity,
+  type ArcaPersonType,
+  type ArcaTax,
+  type TaxCondition,
+} from '@/lib/arca/tax-condition'
 import { getAFIPCredentials, getTicketAcceso } from '@/lib/arca/wsaa'
 
 try {
@@ -53,22 +66,22 @@ export type ArcaPersona = {
   cuil: string
   dni: string | null
   name: string
-  personType: 'FISICA' | 'JURIDICA' | 'DESCONOCIDA'
+  personType: ArcaPersonType
   address: string
   city: string
   province: string
   postalCode: string
+  /** Estado de la clave fiscal (ACTIVO, INACTIVO, …). */
   taxStatus: string
+  taxCondition: TaxCondition
+  monotributoCategory: string
+  taxes: ArcaTax[]
+  activities: ArcaActivity[]
   service: 'a13' | 'a5' | 'a4'
 }
 
-function asArray<T>(value: T | T[] | undefined | null): T[] {
-  if (!value) return []
-  return Array.isArray(value) ? value : [value]
-}
-
 function pickDomicilio(raw: any) {
-  const list = asArray(raw?.domicilio ?? raw?.domicilioFiscal)
+  const list = asArray(raw?.domicilio ?? raw?.domicilioFiscal ?? raw?.datosGenerales?.domicilioFiscal)
   if (!list.length) return null
   return (
     list.find((d) => String(d?.tipoDomicilio || '').toUpperCase() === 'FISCAL') ??
@@ -76,29 +89,88 @@ function pickDomicilio(raw: any) {
   )
 }
 
-function mapPersona(raw: any, service: ArcaPersona['service']): ArcaPersona | null {
-  const persona = raw?.persona ?? raw?.datosGenerales ?? raw
+function unwrapConstancia(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw
+  return (
+    raw.personaReturn ??
+    raw.getPersonaReturn ??
+    raw.getPersona_v2Return ??
+    raw.persona ??
+    raw
+  )
+}
+
+function generalBlock(raw: any): any {
+  if (!raw || typeof raw !== 'object') return {}
+  return raw.datosGenerales ?? raw.persona ?? raw
+}
+
+export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5'): ArcaPersona | null {
+  const body = unwrapConstancia(raw)
+  const persona = generalBlock(body)
   if (!persona || typeof persona !== 'object') return null
-  const cuil = String(persona.idPersona ?? persona.cuit ?? '').replace(/\D/g, '')
+  const cuil = String(persona.idPersona ?? persona.cuit ?? body?.idPersona ?? '').replace(/\D/g, '')
   if (!/^\d{11}$/.test(cuil)) return null
   const name =
-    String(persona.razonSocial || '').trim() ||
+    String(persona.razonSocial || body?.razonSocial || '').trim() ||
     [persona.apellido, persona.nombre].filter(Boolean).join(', ').trim() ||
     String(persona.denominacion || '').trim()
-  const dom = pickDomicilio(persona)
-  const doc = String(persona.numeroDocumento ?? persona.nroDocumento ?? '').replace(/\D/g, '')
-  const tipo = String(persona.tipoPersona || '').toUpperCase()
+  const dom = pickDomicilio(persona) ?? pickDomicilio(body)
+  const doc = String(persona.numeroDocumento ?? persona.nroDocumento ?? body?.numeroDocumento ?? '').replace(/\D/g, '')
+  const tipo = String(persona.tipoPersona || body?.tipoPersona || '').toUpperCase()
+  const personType: ArcaPersonType =
+    tipo === 'JURIDICA' ? 'JURIDICA' : tipo === 'FISICA' ? 'FISICA' : personTypeFromCuit(cuil)
+  const taxStatus = String(persona.estadoClave ?? persona.estadoClaveFiscal ?? body?.estadoClave ?? '')
+  const taxes = collectTaxes(body)
+  const activities = collectActivities(body)
+  const monotributoCategory = monotributoCategoryFromRaw(body)
+  const dni =
+    doc.length >= 7 && doc.length <= 8 ? doc : dniFromPersonCuit(cuil)
   return {
     cuil,
-    dni: doc.length >= 7 && doc.length <= 8 ? doc : null,
+    dni,
     name,
-    personType: tipo === 'JURIDICA' ? 'JURIDICA' : tipo === 'FISICA' ? 'FISICA' : 'DESCONOCIDA',
+    personType,
     address: String(dom?.direccion ?? ''),
     city: String(dom?.localidad ?? ''),
     province: AFIP_PROVINCIAS[String(dom?.idProvincia ?? '')] || String(dom?.descripcionProvincia ?? ''),
     postalCode: String(dom?.codPostal ?? dom?.codigoPostal ?? ''),
-    taxStatus: String(persona.estadoClave ?? persona.estadoClaveFiscal ?? ''),
+    taxStatus,
+    taxCondition: classifyTaxCondition({
+      keyStatus: taxStatus,
+      taxes,
+      monotributoCategory,
+      raw: body,
+    }),
+    monotributoCategory,
+    taxes,
+    activities,
     service,
+  }
+}
+
+function richer(a: ArcaPersona, b: ArcaPersona): ArcaPersona {
+  const rank = (p: ArcaPersona) =>
+    (p.taxCondition !== 'desconocida' ? 4 : 0) +
+    (p.taxes.length ? 2 : 0) +
+    (p.name ? 1 : 0) +
+    (p.service === 'a5' ? 1 : 0)
+  const base = rank(b) > rank(a) ? b : a
+  const other = base === a ? b : a
+  return {
+    ...base,
+    name: base.name || other.name,
+    dni: base.dni || other.dni,
+    address: base.address || other.address,
+    city: base.city || other.city,
+    province: base.province || other.province,
+    postalCode: base.postalCode || other.postalCode,
+    taxStatus: base.taxStatus || other.taxStatus,
+    taxCondition: base.taxCondition === 'desconocida' ? other.taxCondition : base.taxCondition,
+    monotributoCategory: base.monotributoCategory || other.monotributoCategory,
+    taxes: base.taxes.length ? base.taxes : other.taxes,
+    activities: base.activities.length ? base.activities : other.activities,
+    personType: base.personType === 'DESCONOCIDA' ? other.personType : base.personType,
   }
 }
 
@@ -131,32 +203,31 @@ export async function lookupPersonaByCuit(cuit: string): Promise<ArcaPersona | n
   if (!/^\d{11}$/.test(idPersona)) return null
 
   const attempts: Array<{ service: string; kind: keyof typeof WSDL; method: string }> = [
-    { service: 'ws_sr_padron_a13', kind: 'a13', method: 'getPersona' },
     { service: 'ws_sr_constancia_inscripcion', kind: 'a5', method: 'getPersona_v2' },
     { service: 'ws_sr_padron_a5', kind: 'a5', method: 'getPersona_v2' },
+    { service: 'ws_sr_padron_a13', kind: 'a13', method: 'getPersona' },
     { service: 'ws_sr_padron_a4', kind: 'a4', method: 'getPersona' },
   ]
 
   let lastError = ''
+  let merged: ArcaPersona | null = null
   for (const attempt of attempts) {
     try {
       const client = await soapClient(attempt.kind)
       const payload = { ...(await auth(attempt.service)), idPersona }
       const [result] = await client[`${attempt.method}Async`](payload)
-      const body =
-        result?.personaReturn ??
-        result?.getPersonaReturn ??
-        result?.getPersona_v2Return ??
-        result
-      const mapped = mapPersona(body, attempt.kind === 'a5' ? 'a5' : attempt.kind)
-      if (mapped) return mapped
+      const mapped = mapArcaPersona(result, attempt.kind === 'a5' ? 'a5' : attempt.kind)
+      if (mapped) merged = merged ? richer(merged, mapped) : mapped
+      if (merged?.taxCondition && merged.taxCondition !== 'desconocida' && merged.name) {
+        return merged
+      }
     } catch (err) {
       lastError = (err as Error).message ?? String(err)
       console.warn(`[arca] ${attempt.service} falló:`, lastError.slice(0, 180))
     }
   }
-  if (lastError) console.warn('[arca] padrón sin resultado:', lastError.slice(0, 180))
-  return null
+  if (!merged && lastError) console.warn('[arca] padrón sin resultado:', lastError.slice(0, 180))
+  return merged
 }
 
 export async function lookupCuitsByDocumento(documento: string): Promise<string[]> {

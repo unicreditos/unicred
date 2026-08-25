@@ -6,6 +6,7 @@ import {
   loan,
   installment,
   merchant,
+  merchantDocument,
   profile,
   bcraVariable,
   bankAccount,
@@ -23,6 +24,13 @@ import { assertTransition } from '@/lib/loan-state'
 import { ensureLoanContract, notifyContractReady, requireAcceptedContract, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
+import { diditApprovedForUser } from '@/lib/didit'
+import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
+import {
+  evaluateMerchantKyb,
+  type MerchantDocType,
+  type RepresentativeRole,
+} from '@/lib/merchant-kyb'
 import { syncBcraVariablesFromApi } from '@/app/actions/bcra'
 import { notifyLoanRejected } from '@/lib/notify-email'
 
@@ -103,8 +111,57 @@ export async function setMerchantStatus(id: string, status: 'active' | 'rejected
   const adminUserId = await requireAdmin()
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
+  if (status === 'active') {
+    if (!(await diditApprovedForUser(existing.userId))) {
+      throw new Error('El titular no tiene Didit aprobado. No se puede habilitar el comercio.')
+    }
+    const [prof] = await db
+      .select({ cuil: profile.cuil, dni: profile.dni })
+      .from(profile)
+      .where(eq(profile.userId, existing.userId))
+      .limit(1)
+    const docs = await db
+      .select({ type: merchantDocument.type })
+      .from(merchantDocument)
+      .where(eq(merchantDocument.merchantId, existing.id))
+    const configured = arcaConfigured()
+    const padron = configured ? await lookupPersonaByCuit(existing.cuit) : null
+    const evaluation = evaluateMerchantKyb({
+      declaredCuit: existing.cuit,
+      padron,
+      padronConfigured: configured,
+      titular: {
+        diditApproved: true,
+        dni: prof?.dni ?? null,
+        cuil: prof?.cuil ?? null,
+      },
+      representativeRole: (existing.representativeRole as RepresentativeRole) || 'titular',
+      uploadedDocTypes: docs.map((d) => d.type as MerchantDocType),
+    })
+    if (!evaluation.canActivate) {
+      throw new Error(evaluation.blockers[0] || 'El comercio no supera el control ARCA / expediente.')
+    }
+    await db
+      .update(merchant)
+      .set({
+        status: 'active',
+        kybStatus: 'approved',
+        kybBlockers: [],
+        taxCondition: evaluation.taxCondition,
+        taxStatus: evaluation.taxStatus,
+        personType: evaluation.personType,
+        legalName: evaluation.legalName || existing.legalName,
+        titularMatch: evaluation.titularMatch,
+        updatedAt: new Date(),
+      })
+      .where(eq(merchant.id, id))
+  } else {
+    await db
+      .update(merchant)
+      .set({ status: 'rejected', kybStatus: 'rejected', updatedAt: new Date() })
+      .where(eq(merchant.id, id))
+  }
 
-  await db.update(merchant).set({ status, updatedAt: new Date() }).where(eq(merchant.id, id))
   await syncUserRole(existing.userId, status === 'active' ? 'merchant' : 'customer')
 
   await recordAudit({
@@ -120,6 +177,22 @@ export async function setMerchantStatus(id: string, status: 'active' | 'rejected
 
   revalidatePath('/admin')
   return { ok: true, updatedBy: adminUserId }
+}
+
+export async function getMerchantDocumentsForAdmin(merchantId: string) {
+  await requireAdmin()
+  return db
+    .select({
+      id: merchantDocument.id,
+      type: merchantDocument.type,
+      fileName: merchantDocument.fileName,
+      mime: merchantDocument.mime,
+      size: merchantDocument.size,
+      status: merchantDocument.status,
+      createdAt: merchantDocument.createdAt,
+    })
+    .from(merchantDocument)
+    .where(eq(merchantDocument.merchantId, merchantId))
 }
 
 export async function getBcraVariables() {

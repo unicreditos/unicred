@@ -138,6 +138,28 @@ async function main() {
         fixes.push(`CREATE UNIQUE INDEX IF NOT EXISTS "didit_webhook_log_dedupe_unique" ON "didit_webhook_log" ("dedupeKey");`)
         fixes.push(`CREATE INDEX IF NOT EXISTS "didit_webhook_log_session_idx" ON "didit_webhook_log" ("sessionId");`)
         fixes.push(`CREATE INDEX IF NOT EXISTS "didit_webhook_log_type_idx" ON "didit_webhook_log" ("webhookType");`)
+      } else if (name === 'merchant_document') {
+        fixes.push(`CREATE TABLE IF NOT EXISTS "merchant_document" (
+  "id" text PRIMARY KEY NOT NULL,
+  "merchantId" text NOT NULL,
+  "userId" text NOT NULL,
+  "type" text NOT NULL,
+  "fileName" text NOT NULL,
+  "mime" text NOT NULL,
+  "size" integer NOT NULL,
+  "sha256" text NOT NULL,
+  "content" text NOT NULL,
+  "status" text DEFAULT 'uploaded' NOT NULL,
+  "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+  "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);`)
+        fixes.push(
+          `ALTER TABLE "merchant_document" ADD CONSTRAINT "merchant_document_merchantId_merchant_id_fk" FOREIGN KEY ("merchantId") REFERENCES "merchant"("id") ON DELETE cascade;`,
+        )
+        fixes.push(
+          `ALTER TABLE "merchant_document" ADD CONSTRAINT "merchant_document_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE cascade;`,
+        )
+        fixes.push(`CREATE INDEX IF NOT EXISTS "merchant_document_merchant_idx" ON "merchant_document" ("merchantId");`)
       } else {
         problems.push(`  → ejecutá npm run db:push para crear ${name}`)
       }

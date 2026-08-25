@@ -1,6 +1,6 @@
 'use client'
 
-import { setMerchantStatus } from '@/app/actions/admin'
+import { getMerchantDocumentsForAdmin, setMerchantStatus } from '@/app/actions/admin'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,8 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TAX_CONDITION_LABELS } from '@/lib/arca/tax-condition'
+import { MERCHANT_DOC_LABELS } from '@/lib/merchant-kyb'
 import { Check, Loader2, X } from 'lucide-react'
-import { useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 type MerchantRow = {
@@ -21,6 +23,13 @@ type MerchantRow = {
   cuit: string
   category: string | null
   status: string
+  personType?: string | null
+  taxCondition?: string | null
+  taxStatus?: string | null
+  kybStatus?: string | null
+  titularMatch?: string | null
+  legalName?: string | null
+  kybBlockers?: string[] | null
 }
 
 function statusBadge(status: string) {
@@ -41,11 +50,36 @@ function formatCUIT(v: string) {
 
 export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
   const [isPending, startTransition] = useTransition()
+  const [docsByMerchant, setDocsByMerchant] = useState<Record<string, { id: string; type: string; fileName: string }[]>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const entries = await Promise.all(
+        merchants
+          .filter((m) => m.personType === 'JURIDICA')
+          .map(async (m) => {
+            try {
+              const docs = await getMerchantDocumentsForAdmin(m.id)
+              return [m.id, docs] as const
+            } catch {
+              return [m.id, []] as const
+            }
+          }),
+      )
+      if (cancelled) return
+      setDocsByMerchant(Object.fromEntries(entries))
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [merchants])
 
   const handleStatus = (id: string, name: string, status: 'active' | 'rejected') => {
     const verb = status === 'active' ? 'aprobar' : 'rechazar'
     const confirmed = window.confirm(
-      `¿Estás seguro de ${verb} el comercio "${name}"? Esta acción no se puede deshacer.`,
+      `¿Estás seguro de ${verb} el comercio "${name}"? La aprobación vuelve a consultar ARCA.`,
     )
     if (!confirmed) return
 
@@ -57,8 +91,8 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
             status === 'active' ? 'Comercio aprobado correctamente.' : 'Comercio rechazado.',
           )
         }
-      } catch {
-        toast.error('No se pudo actualizar el estado del comercio.')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'No se pudo actualizar el estado del comercio.')
       }
     })
   }
@@ -69,8 +103,8 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Nombre / Razón Social</TableHead>
-            <TableHead>CUIT</TableHead>
-            <TableHead>Categoría</TableHead>
+            <TableHead>CUIT / ARCA</TableHead>
+            <TableHead>KYB</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
@@ -85,10 +119,35 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
           )}
           {merchants.map((m) => (
             <TableRow key={m.id}>
-              <TableCell className="font-medium">{m.businessName}</TableCell>
-              <TableCell className="font-mono text-sm">{formatCUIT(m.cuit)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {m.category ?? 'Sin categoría'}
+              <TableCell className="font-medium">
+                <div>{m.legalName || m.businessName}</div>
+                <div className="text-xs text-muted-foreground">{m.category ?? 'Sin rubro'}</div>
+              </TableCell>
+              <TableCell className="text-sm">
+                <div className="font-mono">{formatCUIT(m.cuit)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {m.personType === 'JURIDICA' ? 'Persona jurídica' : m.personType === 'FISICA' ? 'Persona física' : '—'}
+                  {m.taxCondition ? ` · ${TAX_CONDITION_LABELS[m.taxCondition as keyof typeof TAX_CONDITION_LABELS] || m.taxCondition}` : ''}
+                </div>
+                {m.taxStatus ? <div className="text-xs text-muted-foreground">Clave {m.taxStatus}</div> : null}
+              </TableCell>
+              <TableCell>
+                <div className="text-xs">{m.kybStatus ?? '—'}</div>
+                {m.titularMatch ? <div className="text-xs text-muted-foreground">Titular {m.titularMatch}</div> : null}
+                {Array.isArray(m.kybBlockers) && m.kybBlockers.length > 0 ? (
+                  <div className="mt-1 text-xs text-amber-700">{m.kybBlockers[0]}</div>
+                ) : null}
+                {(docsByMerchant[m.id] ?? []).map((d) => (
+                  <a
+                    key={d.id}
+                    className="mt-1 block text-xs text-primary underline"
+                    href={`/api/admin/merchant-documents/${d.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {MERCHANT_DOC_LABELS[d.type as keyof typeof MERCHANT_DOC_LABELS] || d.fileName}
+                  </a>
+                ))}
               </TableCell>
               <TableCell>{statusBadge(m.status)}</TableCell>
               <TableCell className="text-right">
@@ -97,7 +156,7 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
                     <Button
                       variant="default"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || m.kybStatus === 'incomplete'}
                       onClick={() => handleStatus(m.id, m.businessName, 'active')}
                     >
                       {isPending ? (
