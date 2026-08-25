@@ -1,6 +1,6 @@
 'use client'
 
-import { approveLoan, rejectLoan } from '@/app/actions/admin'
+import { approveLoan, markLoanAsActive, rejectLoan } from '@/app/actions/admin'
 import { refreshAdminClientFicha, type ClientFicha, type ClientFichaStatus } from '@/app/actions/admin-ficha'
 import { ClientFichaExpediente } from '@/components/admin/client-ficha-expediente'
 import { Button } from '@/components/ui/button'
@@ -167,6 +167,37 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
       router.refresh()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No se pudo aprobar el crédito'
+      toast.error(msg)
+      setError(msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function disburseCredit(creditId: string, signed: boolean) {
+    const ok = window.confirm(
+      signed
+        ? '¿Acreditar el desembolso y dejar el crédito vigente?'
+        : 'El contrato todavía no está firmado. ¿Acreditar el desembolso igual y dejar el crédito vigente?',
+    )
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await markLoanAsActive(creditId)
+      if (!r.ok) {
+        toast.error(r.error)
+        setError(r.error)
+        return
+      }
+      toast.success(
+        'receiptNumber' in r && r.receiptNumber
+          ? `Desembolso acreditado · ${r.receiptNumber}`
+          : 'Crédito vigente y desembolso acreditado',
+      )
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo desembolsar el crédito'
       toast.error(msg)
       setError(msg)
     } finally {
@@ -588,6 +619,20 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                       </div>
                       <p className="text-xs text-slate-500">{credit.paidCount}/{credit.term} cuotas</p>
                     </div>
+                    {credit.status === 'approved' ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 bg-sky-600 hover:bg-sky-700"
+                          disabled={busy}
+                          onClick={() => void disburseCredit(credit.id, credit.contractStatus === 'accepted')}
+                        >
+                          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          Acreditar desembolso
+                        </Button>
+                      </div>
+                    ) : null}
                     {credit.status === 'pending' || credit.status === 'rejected' || credit.status === 'cancelled' ? (
                       <div className="flex flex-wrap gap-2">
                         <Button

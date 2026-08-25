@@ -200,7 +200,13 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
   }
 
   const handleMarkActive = (l: LoanRow) => {
-    if (!window.confirm(`¿Marcar el préstamo ${shortId(l.id)} como ACTIVO (desembolsado)?`)) return
+    const signed = l.contractStatus === 'accepted'
+    const ok = window.confirm(
+      signed
+        ? `¿Acreditar el desembolso de ${shortId(l.id)} y dejar el crédito vigente?`
+        : `El contrato todavía no está firmado. ¿Acreditar el desembolso de ${shortId(l.id)} igual y dejar el crédito vigente? Queda en la auditoría.`,
+    )
+    if (!ok) return
     startTransition(async () => {
       try {
         const r = await markLoanAsActive(l.id)
@@ -208,10 +214,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
           toast.error(r.error)
           return
         }
-        toast.success('Préstamo marcado como activo')
+        toast.success(
+          'receiptNumber' in r && r.receiptNumber
+            ? `Desembolso acreditado · ${r.receiptNumber}`
+            : 'Crédito vigente y desembolso acreditado',
+        )
         router.refresh()
       } catch (err: unknown) {
-        toast.error(actionError(err, 'Acreditá el desembolso en Tesorería antes de activar'))
+        toast.error(actionError(err, 'No se pudo acreditar el desembolso'))
       }
     })
   }

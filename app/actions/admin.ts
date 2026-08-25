@@ -10,7 +10,6 @@ import {
   profile,
   bcraVariable,
   bankAccount,
-  disbursement,
   loanContract,
   user as userTable,
 } from '@/lib/db/schema'
@@ -21,7 +20,7 @@ import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
-import { ensureLoanContract, notifyContractReady, requireAcceptedContract, syncOverdueInstallments } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { diditApprovedForUser } from '@/lib/didit'
@@ -33,6 +32,7 @@ import {
 } from '@/lib/merchant-kyb'
 import { syncBcraVariablesFromApi } from '@/app/actions/bcra'
 import { notifyLoanRejected } from '@/lib/notify-email'
+import { disburseAndActivateLoan } from '@/app/actions/banking'
 
 type ActionFail = { ok: false; error: string }
 
@@ -505,53 +505,7 @@ export async function updateLoanManual(
 }
 
 export async function markLoanAsActive(id: string) {
-  try {
-  const adminUserId = await requireAdmin()
-  const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
-  if (!existing) throw new Error('Préstamo no encontrado')
-  assertTransition(existing.status, 'active')
-
-  const [funded] = await db
-    .select({ id: disbursement.id, status: disbursement.status })
-    .from(disbursement)
-    .where(eq(disbursement.loanId, id))
-    .limit(1)
-  if (!funded || funded.status !== 'credited') {
-    throw new Error('Acreditá el desembolso antes de poner el crédito en curso.')
-  }
-  await requireAcceptedContract(id)
-
-  const now = new Date()
-  await db.transaction(async (tx) => {
-    await ensureInstallmentPlan(tx, {
-      loanId: id,
-      userId: existing.userId,
-      principal: Number(existing.principal),
-      term: existing.term,
-      monthlyRate: Number(existing.monthlyRate),
-      from: now,
-    })
-    await tx
-      .update(loan)
-      .set({ status: 'active', disbursedAt: existing.disbursedAt ?? now, updatedAt: now })
-      .where(eq(loan.id, id))
-  })
-
-  await recordAudit({
-    actorUserId: adminUserId,
-    action: 'LOAN_ACTIVATED',
-    entityType: 'loan',
-    entityId: id,
-    targetUserId: existing.userId,
-    summary: 'Crédito puesto en curso',
-    changes: diffFields(existing as any, { status: 'active' }),
-  })
-
-  revalidatePath('/admin')
-  return { ok: true as const, activatedBy: adminUserId }
-  } catch (err) {
-    return actionFail(err)
-  }
+  return disburseAndActivateLoan(id)
 }
 
 export async function markLoanAsPaid(id: string) {

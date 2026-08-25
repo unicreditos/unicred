@@ -12,8 +12,8 @@ import {
 import { assertRole, requireAdmin } from '@/lib/session'
 import { receiptBranding } from '@/lib/brand'
 import { recordAudit } from '@/lib/audit'
-import { requireAcceptedContract } from '@/lib/legal/expediente'
-import { activateLoanAfterDisbursement } from '@/lib/loan-schedule'
+import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
+import { activateLoanAfterDisbursement, ensurePendingDisbursement } from '@/lib/loan-schedule'
 import { revalidateOps } from '@/lib/revalidate'
 import { notifyDisbursementCredited } from '@/lib/notify-email'
 import { and, eq, sql, desc, ne } from 'drizzle-orm'
@@ -520,6 +520,7 @@ export async function validateBankAccountLive(id: string) {
 export async function markDisbursementAsCredited(
   disbursementId: string,
   externalRef?: string,
+  opts?: { requireSignedContract?: boolean },
 ) {
   const adminUserId = await requireAdmin()
 
@@ -562,7 +563,7 @@ export async function markDisbursementAsCredited(
   if (loan && loan.status === 'pending') {
     throw new Error('Aprobá el crédito antes de acreditar el desembolso.')
   }
-  if (loan) {
+  if (loan && opts?.requireSignedContract !== false) {
     await requireAcceptedContract(loan.id)
   }
 
@@ -656,7 +657,66 @@ export async function markDisbursementAsCredited(
   })
 
   revalidateOps()
-  return { ok: true, receiptNumber, creditedAt: now.toISOString() }
+  return { ok: true as const, receiptNumber, creditedAt: now.toISOString() }
+}
+
+export async function disburseAndActivateLoan(loanId: string) {
+  try {
+    const adminUserId = await requireAdmin()
+    const [existing] = await db.select().from(loansTable).where(eq(loansTable.id, loanId)).limit(1)
+    if (!existing) throw new Error('Préstamo no encontrado')
+    if (existing.status === 'rejected' || existing.status === 'cancelled' || existing.status === 'paid') {
+      throw new Error('Este crédito no puede desembolsarse en su estado actual.')
+    }
+    if (existing.status === 'pending') {
+      throw new Error('Aprobá el crédito antes de desembolsar.')
+    }
+
+    const now = new Date()
+    await db.transaction(async (tx) => {
+      await ensureLoanContract(
+        tx,
+        {
+          id: loanId,
+          userId: existing.userId,
+          type: existing.type,
+          status: existing.status === 'active' ? 'active' : 'approved',
+        },
+        { generatedBy: adminUserId, now },
+      )
+      await ensurePendingDisbursement(tx, {
+        loanId,
+        userId: existing.userId,
+        amount: Number(existing.principal),
+        now,
+      })
+    })
+
+    const [d] = await db.select().from(disbursement).where(eq(disbursement.loanId, loanId)).limit(1)
+    if (!d) throw new Error('No se pudo crear la orden de desembolso.')
+
+    if (d.status === 'credited') {
+      if (existing.status !== 'active') {
+        await db.transaction(async (tx) => {
+          await activateLoanAfterDisbursement(tx, {
+            loanId,
+            userId: existing.userId,
+            principal: Number(existing.principal),
+            term: existing.term,
+            monthlyRate: Number(existing.monthlyRate),
+            now,
+          })
+        })
+      }
+      revalidateOps()
+      return { ok: true as const, receiptNumber: d.receiptNumber, alreadyCredited: true }
+    }
+
+    return await markDisbursementAsCredited(d.id, undefined, { requireSignedContract: false })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'No se pudo desembolsar el crédito'
+    return { ok: false as const, error: msg }
+  }
 }
 
 export async function getAllDisbursements(limit = 100) {
