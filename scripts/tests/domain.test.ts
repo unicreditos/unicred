@@ -176,4 +176,13 @@ describe('AFIP en serverless', () => {
     assert.doesNotThrow(() => getAFIPCredentials())
     process.env.VERCEL = prev
   })
+
+  it('tampoco tira si VERCEL no está definido', async () => {
+    const prev = process.env.VERCEL
+    delete process.env.VERCEL
+    const { getAFIPCredentials } = await import('../../lib/arca/wsaa')
+    assert.doesNotThrow(() => getAFIPCredentials())
+    if (prev === undefined) delete process.env.VERCEL
+    else process.env.VERCEL = prev
+  })
 })
