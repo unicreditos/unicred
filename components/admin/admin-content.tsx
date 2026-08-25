@@ -58,6 +58,7 @@ import {
   Percent,
   Receipt as ReceiptIcon,
   RefreshCw,
+  Search,
   ShieldCheck,
   Target,
   TrendingUp,
@@ -66,7 +67,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
-import { setKYCStatus } from '@/app/actions/kyc'
+import { KYCReviewCard, type KYCAdminRow } from '@/components/admin/kyc-review-card'
 import { markDisbursementAsCredited } from '@/app/actions/banking'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -99,23 +100,7 @@ type VariableBCRA = {
   valor: number
 }
 
-type KYCRow = {
-  id: string
-  userId: string
-  dniFrontImageUrl: string | null
-  dniBackImageUrl: string | null
-  selfieImageUrl: string | null
-  dniNumber: string | null
-  verificationLevel: string | null
-  status: string
-  faceMatchScore: string | number | null
-  provider: string | null
-  providerReferenceId?: string | null
-  rejectionReason: string | null
-  createdAt: Date | string
-  updatedAt: Date | string
-  user: { fullName: string | null; cuil: string | null; email: string | null; phone: string | null } | null
-}
+type KYCRow = KYCAdminRow
 
 type DisbursementRow = {
   id: string
@@ -272,7 +257,8 @@ export function AdminContent({
   const [loanFilter, setLoanFilter] = useState<string>('all')
   const [loanSearch, setLoanSearch] = useState('')
   const [merchantFilter, setMerchantFilter] = useState<string>('all')
-  const [kycFilter, setKycFilter] = useState<string>('pending_review')
+  const [kycFilter, setKycFilter] = useState<string>('all')
+  const [kycSearch, setKycSearch] = useState('')
   const [disbFilter, setDisbFilter] = useState<string>('pending')
 
   const filteredLoans = useMemo(() => {
@@ -300,7 +286,9 @@ export function AdminContent({
   if (activeTab === 'overview') {
     const pendingLoans = loans.filter((l) => l.status === 'pending')
     const pendingMerchants = merchants.filter((m) => m.status === 'pending')
-    const pendingKyc = kycList.filter((k) => k.status === 'pending_review' || k.status === 'pending' || k.status === 'reviewing')
+    const pendingKyc = kycList.filter((k) =>
+      ['pending_review', 'pending', 'reviewing', 'submitted', 'in_review'].includes(k.status),
+    )
     const pendingDisb = disbursementList.filter((d) => d.status === 'pending' || d.status === 'processing')
     const totalProcessed = (stats.loans.active ?? 0) + (stats.loans.paid ?? 0)
     const approvalPct = stats.loans.total ? Math.round((totalProcessed / stats.loans.total) * 100) : 0
@@ -729,10 +717,31 @@ export function AdminContent({
       if (oa !== ob) return oa - ob
       return new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime()
     })
+    const q = kycSearch.trim().toLowerCase()
     const filteredKyc = (() => {
-      if (kycFilter === 'all') return sortedKyc
-      if (kycFilter === 'pending_review') return sortedKyc.filter((k) => k.status === 'reviewing' || k.status === 'pending')
-      return sortedKyc.filter((k) => k.status === kycFilter)
+      let list = sortedKyc
+      if (kycFilter === 'pending_review') {
+        list = sortedKyc.filter((k) => ['reviewing', 'pending', 'submitted', 'in_review'].includes(k.status))
+      } else if (kycFilter !== 'all') {
+        list = sortedKyc.filter((k) => k.status === kycFilter)
+      }
+      if (!q) return list
+      return list.filter((k) => {
+        const hay = [
+          k.user?.fullName,
+          k.user?.email,
+          k.user?.cuil,
+          k.user?.dni,
+          k.dniNumber,
+          k.providerReferenceId,
+          k.ocr?.fullName,
+          k.id,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        return hay.includes(q)
+      })
     })()
 
     return (
@@ -787,46 +796,30 @@ export function AdminContent({
           </Tabs>
         </div>
 
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={kycSearch}
+            onChange={(e) => setKycSearch(e.target.value)}
+            placeholder="Buscar por nombre, CUIL, DNI, email o sesión Didit"
+            className="pl-9"
+          />
+        </div>
+
         {filteredKyc.length === 0 ? (
           <Card>
             <CardContent className="py-16 flex flex-col items-center justify-center text-center gap-3">
               <UserCheck className="h-10 w-10 text-emerald-600" />
-              <p className="font-medium">Sin solicitudes en cola</p>
+              <p className="font-medium">Nada para mostrar</p>
               <p className="max-w-sm text-xs text-muted-foreground">
-                No hay validaciones de identidad pendientes en este momento.
+                No hay validaciones en este filtro. Cambiá a «Todos» o buscá por nombre, CUIL o DNI.
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
             {filteredKyc.map((k) => (
-              <KYCReviewCard
-                key={k.id}
-                kyc={k}
-                isPending={isPending}
-                onApprove={() =>
-                  startTransition(async () => {
-                    try {
-                      await setKYCStatus(k.id, 'approved')
-                      showToast('ok', `KYC aprobado · ${k.user?.fullName ?? k.id.slice(0, 8)}`)
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'Error al aprobar')
-                    }
-                  })
-                }
-                onReject={(reason) =>
-                  startTransition(async () => {
-                    try {
-                      await setKYCStatus(k.id, 'rejected', reason)
-                      showToast('ok', 'KYC rechazado. El cliente será notificado.')
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'Error al rechazar')
-                    }
-                  })
-                }
-              />
+              <KYCReviewCard key={k.id} kyc={k} />
             ))}
           </div>
         )}
@@ -1745,207 +1738,3 @@ function ToastFloating({
   )
 }
 
-function KYCReviewCard({
-  kyc,
-  isPending,
-  onApprove,
-  onReject,
-}: {
-  kyc: KYCRow
-  isPending: boolean
-  onApprove: () => void
-  onReject: (reason: string) => void
-}) {
-  const [reason, setReason] = useState('Documentos ilegibles / datos no coincidentes')
-  const [open, setOpen] = useState(false)
-
-  const statusBadge = (s: string) => {
-    const map: Record<string, { label: string; cls: string }> = {
-      pending: { label: 'Pendiente', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200/60' },
-      reviewing: { label: 'En revisión', cls: 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-200/60' },
-      approved: { label: 'Aprobado', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200/60' },
-      rejected: { label: 'Rechazado', cls: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200/60' },
-    }
-    const cfg = map[s] ?? map.pending
-    return <Badge variant="outline" className={cn('border text-[11px]', cfg.cls)}>{cfg.label}</Badge>
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-              <UserCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-base">
-                  {kyc.user?.fullName ?? `Cliente #${kyc.userId.slice(0, 8)}`}
-                </CardTitle>
-                {statusBadge(kyc.status)}
-                <Badge variant="outline" className="text-[10px]">
-                  Nivel: {kyc.verificationLevel ?? 'básico'}
-                </Badge>
-              </div>
-              <CardDescription className="mt-1">
-                {kyc.user?.cuil && <>CUIL <span className="font-mono font-medium">{kyc.user.cuil}</span> · </>}
-                {kyc.dniNumber && <>DNI <span className="font-mono font-medium">{kyc.dniNumber}</span> · </>}
-                {kyc.user?.email && <span className="truncate">{kyc.user.email}</span>}
-                {kyc.user?.phone && <> · <span className="font-mono">{kyc.user.phone}</span></>}
-              </CardDescription>
-            </div>
-          </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <div className="font-mono">Solicitud #{kyc.id.slice(0, 10)}</div>
-            <div>Enviado {formatDate(kyc.createdAt)}</div>
-            {kyc.faceMatchScore !== null && kyc.faceMatchScore !== undefined && (
-              <div className="font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
-                Face match: {kyc.faceMatchScore}%
-              </div>
-            )}
-            {kyc.provider && <div className="text-[10px] uppercase">Provider: {kyc.provider}</div>}
-            {kyc.providerReferenceId && (
-              <div className="max-w-[14rem] truncate font-mono text-[10px]">Didit {kyc.providerReferenceId}</div>
-            )}
-            <Link href={adminUrl('usuarios', kyc.userId)} className="mt-2 inline-flex text-[11px] font-medium text-brand-primary hover:underline">
-              Ver ficha
-            </Link>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-3">
-        <DocImg label="DNI · Frente" url={kyc.dniFrontImageUrl} icon={<CreditCard className="h-5 w-5" />} />
-        <DocImg label="DNI · Reverso" url={kyc.dniBackImageUrl} icon={<CreditCard className="h-5 w-5 rotate-180" />} />
-        <DocImg label="Selfie biométrico" url={kyc.selfieImageUrl} icon={<UserIcon className="h-5 w-5" />} />
-      </CardContent>
-      {kyc.rejectionReason && kyc.status === 'rejected' && (
-        <CardContent className="pt-0">
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:bg-rose-950/30 dark:border-rose-900 dark:text-rose-300">
-            <strong>Motivo rechazo anterior:</strong> {kyc.rejectionReason}
-          </div>
-        </CardContent>
-      )}
-      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 pt-4">
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {kyc.provider === 'didit' ? (
-            <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
-              <FileCheck2 className="h-3.5 w-3.5" /> Identidad vía Didit
-            </span>
-          ) : (
-            <Badge variant="outline" className="text-[10px] border-amber-300/60 text-amber-700">
-              Sin sesión Didit
-            </Badge>
-          )}
-        </div>
-        {(kyc.status === 'pending' || kyc.status === 'reviewing') && (
-          <div className="flex flex-wrap gap-2">
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 text-rose-700 dark:text-rose-400 border-rose-200/60 hover:bg-rose-50 dark:hover:bg-rose-950/30">
-                  <XCircle className="h-4 w-4" /> Rechazar
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <XCircle className="h-5 w-5 text-rose-600" />
-                    Rechazar validación de identidad
-                  </DialogTitle>
-                  <DialogDescription>
-                    El cliente recibirá una notificación con el motivo. Deberá reintentar la verificación con Didit.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 py-2">
-                  <div className="space-y-1.5">
-                    <Label>Motivo del rechazo</Label>
-                    <Textarea
-                      value={reason}
-                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReason(e.target.value)}
-                      rows={4}
-                      placeholder="Ej: DNI ilegible, selfie borrosa, datos no coincidentes con CUIL..."
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="flex-col-reverse sm:flex-row">
-                  <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    disabled={isPending || !reason.trim()}
-                    onClick={() => {
-                      onReject(reason.trim())
-                      setOpen(false)
-                    }}
-                    className="gap-1"
-                  >
-                    <XCircle className="h-4 w-4" /> Confirmar rechazo
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Button
-              size="sm"
-              disabled={isPending || (kyc.provider !== 'didit' && (!kyc.dniFrontImageUrl || !kyc.dniBackImageUrl || !kyc.selfieImageUrl))}
-              className="gap-1 bg-emerald-600 hover:bg-emerald-600"
-              onClick={onApprove}
-            >
-              <CheckCircle2 className="h-4 w-4" /> Aprobar validación
-            </Button>
-          </div>
-        )}
-        {kyc.status === 'approved' && (
-          <Badge variant="outline" className="gap-1 border-emerald-300/60 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 px-3 py-1 text-[11px]">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Verificación completada el {formatDate(kyc.updatedAt)}
-          </Badge>
-        )}
-      </CardFooter>
-    </Card>
-  )
-}
-
-function DocImg({
-  label,
-  url,
-  icon,
-}: {
-  label: string
-  url: string | null
-  icon: React.ReactNode
-}) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-xs">{label}</Label>
-      <div className="relative overflow-hidden rounded-xl border border-dashed border-border bg-muted/30 aspect-[4/3]">
-        {url ? (
-          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/10 via-muted to-primary/5">
-            <div className="flex flex-col items-center gap-2 text-center px-4 max-w-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary shrink-0">
-                {icon}
-              </div>
-              <p className="text-[11px] font-medium text-foreground line-clamp-3 break-all">{url}</p>
-              <Badge variant="outline" className="gap-1 border-emerald-300/60 text-emerald-700 dark:text-emerald-400 shrink-0">
-                <CheckCircle2 className="h-3 w-3" /> Cargado
-              </Badge>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-center px-4 text-muted-foreground">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">{icon}</div>
-              <p className="text-[11px] font-medium">No cargado</p>
-            </div>
-          </div>
-        )}
-      </div>
-      {url && (
-        <Link href={url} target="_blank" rel="noopener noreferrer" className="block">
-          <Button variant="outline" size="sm" className="w-full gap-1 text-[11px] h-8">
-            <Eye className="h-3.5 w-3.5" /> Abrir imagen
-          </Button>
-        </Link>
-      )}
-    </div>
-  )
-}

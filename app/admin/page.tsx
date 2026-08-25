@@ -66,7 +66,7 @@ export default async function AdminPage({
     getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
     getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
     getBcraVariables().catch((e) => { console.error('[admin] getBcraVariables failed:', e.message); return [] as any[] }),
-    getAllKYCReviews(100).catch((e) => { console.error('[admin] getAllKYCReviews failed:', e.message); return [] as any[] }),
+    getAllKYCReviews(500).catch((e) => { console.error('[admin] getAllKYCReviews failed:', e.message); return [] as any[] }),
     getAllDisbursements(100).catch((e) => { console.error('[admin] getAllDisbursements failed:', e.message); return [] as any[] }),
     getAllBankAccounts().catch((e) => { console.error('[admin] getAllBankAccounts failed:', e.message); return [] as any[] }),
     getAllUsers().catch((e) => { console.error('[admin] getAllUsers failed:', e.message); return [] as any[] }),

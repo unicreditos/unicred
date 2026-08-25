@@ -39,6 +39,7 @@ const INSTALLMENT_STATUS_LABELS: Record<string, string> = {
 const KYC_STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
   submitted: 'Enviado',
+  reviewing: 'En revisión',
   in_review: 'En revisión',
   approved: 'Aprobado',
   verified: 'Verificado',

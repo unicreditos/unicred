@@ -185,6 +185,31 @@ export function parseDiditCapture(raw: unknown, fallback?: { sessionId?: string 
   }
 }
 
+function pickUrl(items: DiditMedia[], ...needles: string[]) {
+  const hit = items.find((item) => needles.some((n) => item.label.toLowerCase().includes(n)))
+  return hit?.url ?? null
+}
+
+export function kycMediaBundle(
+  capture: DiditCapture,
+  fallback?: { front?: string | null; back?: string | null; selfie?: string | null },
+) {
+  const idMedia = capture.ids[0]?.media ?? []
+  const liveMedia = capture.liveness[0]?.media ?? []
+  const faceMedia = capture.faces[0]?.media ?? []
+  return {
+    front: fallback?.front || pickUrl(idMedia, 'frente') || idMedia[0]?.url || null,
+    back: fallback?.back || pickUrl(idMedia, 'dorso') || idMedia[1]?.url || null,
+    selfie:
+      fallback?.selfie ||
+      pickUrl(liveMedia, 'selfie', 'liveness') ||
+      pickUrl(faceMedia, 'origen', 'destino') ||
+      liveMedia[0]?.url ||
+      null,
+    all: [...idMedia, ...liveMedia, ...faceMedia],
+  }
+}
+
 export function groupDni(value: string | null | undefined) {
   const digits = String(value || '').replace(/\D/g, '')
   if (!digits) return '— — — —'
