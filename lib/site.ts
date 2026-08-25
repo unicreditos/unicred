@@ -1,11 +1,14 @@
 /**
  * Dominios de UNICRÉDITOS. El canónico es unicreditos.com.
  * .com.ar, .store y .online son alias de marca y redirigen al canónico.
+ *
+ * www.unicreditos.com NO se redirige desde la app: Vercel ya manda el apex a www.
+ * Si la app redirige www → apex, el navegador entra en un loop 308 y no se ve nada.
  */
 export const CANONICAL_HOST = 'unicreditos.com'
+export const WWW_HOST = 'www.unicreditos.com'
 
 export const SITE_ALIASES = [
-  'www.unicreditos.com',
   'unicreditos.com.ar',
   'www.unicreditos.com.ar',
   'unicreditos.store',
@@ -14,7 +17,7 @@ export const SITE_ALIASES = [
   'www.unicreditos.online',
 ] as const
 
-export const BRAND_HOSTS = [CANONICAL_HOST, ...SITE_ALIASES] as const
+export const BRAND_HOSTS = [CANONICAL_HOST, WWW_HOST, ...SITE_ALIASES] as const
 
 /** Orígenes extra mientras convive el dominio anterior. */
 export const LEGACY_HOSTS = ['unipagos.com.ar', 'www.unipagos.com.ar'] as const

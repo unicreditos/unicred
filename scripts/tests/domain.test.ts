@@ -102,7 +102,7 @@ describe('sitio y admin', () => {
   it('canónico unicreditos.com y alias redirigen', () => {
     assert.equal(CANONICAL_HOST, 'unicreditos.com')
     assert.equal(shouldRedirectHost('unicreditos.com'), false)
-    assert.equal(shouldRedirectHost('www.unicreditos.com'), true)
+    assert.equal(shouldRedirectHost('www.unicreditos.com'), false)
     assert.equal(shouldRedirectHost('unicreditos.com.ar'), true)
     assert.equal(shouldRedirectHost('unicreditos.store'), true)
     assert.equal(shouldRedirectHost('unipagos.com.ar'), true)
@@ -113,6 +113,7 @@ describe('sitio y admin', () => {
   it('orígenes de auth incluyen la marca', () => {
     const origins = trustedOrigins()
     assert.ok(origins.includes('https://unicreditos.com'))
+    assert.ok(origins.includes('https://www.unicreditos.com'))
     assert.ok(origins.includes('https://unicreditos.com.ar'))
   })
 
