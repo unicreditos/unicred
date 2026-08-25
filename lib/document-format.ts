@@ -1,4 +1,18 @@
 const TZ = 'America/Argentina/Buenos_Aires'
+const MONTHS_ES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+] as const
 
 function asDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null
@@ -6,29 +20,49 @@ function asDate(value: Date | string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+function calendarInArgentina(d: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+  const month = Number(get('month'))
+  let hour = get('hour')
+  if (hour === '24') hour = '00'
+  return {
+    year: get('year'),
+    month,
+    day: String(Number(get('day'))),
+    hour,
+    minute: get('minute'),
+  }
+}
+
+function formatDocDate(d: Date) {
+  const p = calendarInArgentina(d)
+  const monthName = MONTHS_ES[p.month - 1]
+  if (!monthName) return '—'
+  return `${p.day} de ${monthName} de ${p.year}`
+}
+
 export function docDate(value: Date | string | null | undefined): string {
   const d = asDate(value)
   if (!d) return '—'
-  return new Intl.DateTimeFormat('es-AR', {
-    timeZone: TZ,
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(d)
+  return formatDocDate(d)
 }
 
 export function docDateTime(value: Date | string | null | undefined): string {
   const d = asDate(value)
   if (!d) return '—'
-  return new Intl.DateTimeFormat('es-AR', {
-    timeZone: TZ,
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(d)
+  const p = calendarInArgentina(d)
+  return `${formatDocDate(d)}, ${p.hour}:${p.minute}`
 }
 
 export function docShortId(id: string | null | undefined, length = 10): string {

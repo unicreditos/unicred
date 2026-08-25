@@ -151,11 +151,34 @@ export default async function DocumentPreviewPage({
                 denominacion: 'Ana Cliente Demo',
                 periodo: '202607',
                 entidades: [
-                  { entidad: 'Banco Nación', situacion: 1, monto: 80000, diasAtrasoPago: 0 },
-                  { entidad: 'Banco Provincia', situacion: 1, monto: 45000, diasAtrasoPago: 0 },
+                  {
+                    entidad: 'Banco de la Nación Argentina — sucursal Casa Central',
+                    situacion: 1,
+                    monto: 80000,
+                    diasAtrasoPago: 0,
+                    fechaSit1: '2024-03-01',
+                  },
+                  {
+                    entidad: 'Banco de la Provincia de Buenos Aires',
+                    situacion: 1,
+                    monto: 45000,
+                    diasAtrasoPago: 0,
+                    refinanciaciones: true,
+                  },
                 ],
               },
-              historicas: { periodos: [] },
+              historicas: {
+                periodos: [
+                  {
+                    periodo: '202606',
+                    worstSituation: 1,
+                    totalDebt: 118000,
+                    entidades: [
+                      { entidad: 'Banco de la Nación Argentina — sucursal Casa Central', situacion: 1, monto: 78000 },
+                    ],
+                  },
+                ],
+              },
               chequesRechazados: { cheques: [] },
             },
           }}

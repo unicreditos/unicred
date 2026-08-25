@@ -105,7 +105,7 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
             {meta.amountLabel} · {receipt.currency || 'ARS'}
           </p>
-          <p className="mt-1 font-mono text-4xl font-semibold tracking-tight text-slate-900">
+          <p className="doc-amount mt-1 font-mono font-semibold tracking-tight text-slate-900">
             {money(receipt.amount)}
           </p>
           <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-600">{meta.note}</p>
@@ -153,7 +153,7 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
 
       {isPayment && (loan.principal != null || inst.amount != null) ? (
         <DocumentSection number="03" title="Préstamo e imputación">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="doc-split gap-4">
             <table className="doc-table">
               <thead>
                 <tr>

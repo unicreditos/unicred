@@ -24,7 +24,7 @@ function sitTone(n?: number | null) {
   return 'destructive' as const
 }
 
-function Flags({ e }: { e: BcraDeudaEntidad }) {
+function flagBits(e: BcraDeudaEntidad) {
   const bits: string[] = []
   if (e.refinanciaciones) bits.push('Refinanciado')
   if (e.recategorizacionOblig) bits.push('Recategorizado')
@@ -32,7 +32,15 @@ function Flags({ e }: { e: BcraDeudaEntidad }) {
   if (e.irrecDisposicionTecnica) bits.push('Irrec. disp. técnica')
   if (e.enRevision) bits.push('En revisión')
   if (e.procesoJud) bits.push('En juicio')
-  if (!bits.length) return <span className="text-slate-400">—</span>
+  return bits
+}
+
+function Flags({ e, compact }: { e: BcraDeudaEntidad; compact?: boolean }) {
+  const bits = flagBits(e)
+  if (!bits.length) return compact ? null : <span className="text-slate-400">—</span>
+  if (compact) {
+    return <span className="doc-flag"> · {bits.join(' · ')}</span>
+  }
   return (
     <span className="flex flex-wrap gap-1">
       {bits.map((b) => (
@@ -44,9 +52,41 @@ function Flags({ e }: { e: BcraDeudaEntidad }) {
   )
 }
 
-function EntidadesTable({ rows }: { rows: BcraDeudaEntidad[] }) {
+function EntidadesTable({ rows, compact }: { rows: BcraDeudaEntidad[]; compact?: boolean }) {
   if (!rows.length) {
     return <p className="px-4 py-6 text-center text-sm text-slate-500">Sin entidades en este informe.</p>
+  }
+  if (compact) {
+    return (
+      <table className="doc-table">
+        <thead>
+          <tr>
+            <th>Entidad</th>
+            <th>Situación</th>
+            <th className="num">Monto</th>
+            <th className="num">Atraso</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((e, i) => (
+            <tr key={`${e.entidad}-${i}`}>
+              <td>
+                {e.entidad}
+                {e.fechaSit1 ? (
+                  <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                    Sit. 1 desde {formatDateArg(e.fechaSit1)}
+                  </span>
+                ) : null}
+                <Flags e={e} compact />
+              </td>
+              <td>{sitLabel(e.situacion)}</td>
+              <td className="num font-mono text-xs">{formatARS(e.monto)}</td>
+              <td className="num font-mono text-xs">{e.diasAtrasoPago ?? 0} d</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
   }
   return (
     <Table>
@@ -78,9 +118,33 @@ function EntidadesTable({ rows }: { rows: BcraDeudaEntidad[] }) {
   )
 }
 
-function PeriodosTable({ rows }: { rows: BcraPeriodoResumen[] }) {
+function PeriodosTable({ rows, compact }: { rows: BcraPeriodoResumen[]; compact?: boolean }) {
   if (!rows.length) {
     return <p className="px-4 py-6 text-center text-sm text-slate-500">Sin informes históricos.</p>
+  }
+  if (compact) {
+    return (
+      <table className="doc-table">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Peor situación</th>
+            <th className="num">Entidades</th>
+            <th className="num">Deuda</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p) => (
+            <tr key={p.periodo}>
+              <td className="font-mono text-xs">{formatPeriodoBcra(p.periodo)}</td>
+              <td>{sitLabel(p.worstSituation)}</td>
+              <td className="num font-mono text-xs">{p.entidades.length}</td>
+              <td className="num font-mono text-xs">{formatARS(p.totalDebt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
   }
   return (
     <Table>
@@ -132,7 +196,7 @@ export function BcraExtract({
           {titular ? <p className="text-sm text-slate-500">{titular}</p> : null}
         </CardHeader>
         <CardContent className="p-0">
-          <EntidadesTable rows={vigentes} />
+          <EntidadesTable rows={vigentes} compact={isDoc} />
         </CardContent>
       </Card>
 
@@ -141,7 +205,7 @@ export function BcraExtract({
           <CardTitle className="text-sm">Informes históricos ({historicos.length} períodos)</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <PeriodosTable rows={historicos} />
+          <PeriodosTable rows={historicos} compact={isDoc} />
         </CardContent>
       </Card>
 
@@ -151,32 +215,60 @@ export function BcraExtract({
             <CardTitle className="text-sm">Créditos por período histórico</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Período</TableHead>
-                  <TableHead>Entidad</TableHead>
-                  <TableHead>Situación</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead>Observaciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {historicos.flatMap((p) =>
-                  p.entidades.map((e, i) => (
-                    <TableRow key={`${p.periodo}-${e.entidad}-${i}`}>
-                      <TableCell className="font-mono text-xs">{formatPeriodoBcra(p.periodo)}</TableCell>
-                      <TableCell className="max-w-[220px] text-sm">{e.entidad}</TableCell>
-                      <TableCell>
-                        <Badge variant={sitTone(e.situacion)}>{sitLabel(e.situacion)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-xs">{formatARS(e.monto)}</TableCell>
-                      <TableCell><Flags e={e} /></TableCell>
-                    </TableRow>
-                  )),
-                )}
-              </TableBody>
-            </Table>
+            {isDoc ? (
+              <table className="doc-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Entidad</th>
+                    <th>Situación</th>
+                    <th className="num">Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historicos.flatMap((p) =>
+                    p.entidades.map((e, i) => (
+                      <tr key={`${p.periodo}-${e.entidad}-${i}`}>
+                        <td className="font-mono text-xs">{formatPeriodoBcra(p.periodo)}</td>
+                        <td>
+                          {e.entidad}
+                          <Flags e={e} compact />
+                        </td>
+                        <td>{sitLabel(e.situacion)}</td>
+                        <td className="num font-mono text-xs">{formatARS(e.monto)}</td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Período</TableHead>
+                    <TableHead>Entidad</TableHead>
+                    <TableHead>Situación</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead>Observaciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historicos.flatMap((p) =>
+                    p.entidades.map((e, i) => (
+                      <TableRow key={`${p.periodo}-${e.entidad}-${i}`}>
+                        <TableCell className="max-w-[220px] text-sm">{formatPeriodoBcra(p.periodo)}</TableCell>
+                        <TableCell className="max-w-[220px] text-sm">{e.entidad}</TableCell>
+                        <TableCell>
+                          <Badge variant={sitTone(e.situacion)}>{sitLabel(e.situacion)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">{formatARS(e.monto)}</TableCell>
+                        <TableCell><Flags e={e} /></TableCell>
+                      </TableRow>
+                    )),
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       ) : null}
@@ -188,6 +280,34 @@ export function BcraExtract({
         <CardContent className="p-0">
           {!cheques.length ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">Sin cheques rechazados informados.</p>
+          ) : isDoc ? (
+            <table className="doc-table">
+              <thead>
+                <tr>
+                  <th>Cheque</th>
+                  <th>Entidad</th>
+                  <th>Causal</th>
+                  <th className="num">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cheques.map((c, i) => (
+                  <tr key={`${c.nroCheque}-${i}`}>
+                    <td className="font-mono text-xs">{c.nroCheque ?? '—'}</td>
+                    <td>
+                      {c.entidad ?? '—'}
+                      <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                        {c.fechaRechazo ? `Rechazo ${formatDateArg(c.fechaRechazo)}` : 'Rechazo s/d'}
+                        {c.fechaPago ? ` · Pago ${formatDateArg(c.fechaPago)}` : ''}
+                        {c.procesoJud ? ' · En juicio' : c.enRevision ? ' · En revisión' : ''}
+                      </span>
+                    </td>
+                    <td>{c.causal ?? '—'}</td>
+                    <td className="num font-mono text-xs">{c.monto != null ? formatARS(c.monto) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : (
             <Table>
               <TableHeader>

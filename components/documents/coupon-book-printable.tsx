@@ -82,8 +82,8 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
           {coupons.map(({ row, code, qr }) => {
             const closed = !isOpenCoupon(row.status)
             return (
-              <div key={row.number} className="break-inside-avoid rounded border border-slate-200 p-3">
-                <div className="mb-2 grid grid-cols-5 gap-2 text-[12px]">
+              <div key={row.number} className="doc-coupon-ticket break-inside-avoid rounded border border-slate-200 p-3">
+                <div className="doc-coupon-meta mb-2 text-[12px]">
                   <div>
                     <p className="text-[10px] uppercase text-slate-500">Cuota</p>
                     <p className="font-semibold">{String(row.number).padStart(2, '0')}</p>

@@ -56,7 +56,7 @@ export function IntimacionPrintable({
           <DocumentField label="Tipo societario" value={BRAND.legalForm} />
           <DocumentField label="CUIT" value={legalCuitLabel()} mono />
           <DocumentField label="Domicilio" value={BRAND.address} />
-          <DocumentField label="Préstamo" value={<span className="whitespace-nowrap">{contract.loanId}</span>} mono />
+          <DocumentField label="Préstamo" value={contract.loanId} mono />
           <DocumentField label="Contrato" value={`CTR-${docShortId(contract.id)}`} mono />
           <DocumentField label="Pagaré" value={`PAG-${docShortId(contract.id)}`} mono />
           <DocumentField label="Capital originado" value={formatARSDecimal(contract.loan.principal)} mono />

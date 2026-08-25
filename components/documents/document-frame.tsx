@@ -16,16 +16,16 @@ export type DocumentKind =
   | 'cancelacion'
 
 const KIND_LABEL: Record<DocumentKind, string> = {
-  contrato: 'Contrato de préstamo (mutuo)',
+  contrato: 'Contrato',
   recibo: 'Comprobante',
-  informe: 'Informe crediticio',
+  informe: 'Informe',
   pagare: 'Pagaré',
-  liquidacion: 'Liquidación de cuota',
+  liquidacion: 'Liquidación',
   estado: 'Estado de deuda',
-  intimacion: 'Intimación de mora',
-  solvencia: 'Certificado de solvencia',
-  libre_deuda: 'Constancia de libre deuda',
-  cancelacion: 'Liquidación de cancelación',
+  intimacion: 'Intimación',
+  solvencia: 'Solvencia',
+  libre_deuda: 'Libre deuda',
+  cancelacion: 'Cancelación',
 }
 
 export function DocumentSheet({
@@ -80,28 +80,28 @@ export function DocumentLetterhead({
     <header className="doc-letterhead">
       <div className="doc-letterhead-bar">
         <span>UNICRÉDITOS · {BRAND.legalName}</span>
-        <span className="uppercase tracking-[0.16em]">{KIND_LABEL[kind]}</span>
+        <span className="doc-letterhead-kind">{KIND_LABEL[kind]}</span>
       </div>
 
       <div className="doc-letterhead-body">
-        <div className="flex min-w-0 items-start gap-3">
+        <div className="doc-letterhead-brand">
           <div className="doc-logo-box">
             <Logo showText={false} />
           </div>
-          <div className="min-w-0 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          <div className="doc-letterhead-copy">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {BRAND.company} · Unidad de créditos
             </p>
-            <p className="text-lg font-semibold leading-tight text-slate-900">{BRAND.legalName}</p>
-            <p className="text-[11px] leading-relaxed text-slate-600">
+            <p className="text-[17px] font-semibold leading-snug text-slate-900">{BRAND.legalName}</p>
+            <p className="text-[11px] leading-snug text-slate-600">
               {BRAND.legalForm}
               <span className="mx-1.5 text-slate-300">·</span>
               CUIT {legalCuitLabel()}
               <span className="mx-1.5 text-slate-300">·</span>
               IIBB {BRAND.iibb}
             </p>
-            <p className="text-[11px] leading-relaxed text-slate-600">{BRAND.address}</p>
-            <p className="text-[11px] text-slate-600">
+            <p className="text-[11px] leading-snug text-slate-600">{BRAND.address}</p>
+            <p className="text-[11px] leading-snug text-slate-600">
               {site}
               <span className="mx-1.5 text-slate-300">·</span>
               {BRAND.supportEmail}
@@ -117,12 +117,12 @@ export function DocumentLetterhead({
 
         <div className="doc-meta">
           {status ? <span className={cn('doc-stamp', tone)}>{status}</span> : null}
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</p>
-          {subtitle ? <p className="text-xs text-slate-600">{subtitle}</p> : null}
+          <p className="doc-meta-title">{title}</p>
+          {subtitle ? <p className="text-xs leading-snug text-slate-600">{subtitle}</p> : null}
           <p className="font-mono text-sm font-semibold tracking-tight text-slate-900">{number}</p>
-          <p className="text-[11px] text-slate-600">Emitido: {issuedAt}</p>
+          <p className="text-[11px] leading-snug text-slate-600">Emitido: {issuedAt}</p>
           {validUntil ? (
-            <p className="text-[11px] text-slate-600">
+            <p className="text-[11px] leading-snug text-slate-600">
               {validUntilLabel}: {validUntil}
             </p>
           ) : null}

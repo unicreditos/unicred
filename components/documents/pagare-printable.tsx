@@ -49,7 +49,7 @@ export function PagarePrintable({ contract }: { contract: ContractDocData }) {
           <p className="mt-3 text-[13px] leading-relaxed text-slate-700">
             Lugar de pago: {BRAND.address}. Moneda: pesos argentinos de curso legal. Este pagaré
             se emite en garantía del contrato CTR-{docShortId(contract.id)}, préstamo{' '}
-            <span className="whitespace-nowrap font-mono">{contract.loanId}</span>, sin que ello importe
+            <span className="font-mono">{contract.loanId}</span>, sin que ello importe
             novación. El tenedor puede exigir el saldo
             impago del préstamo (mutuo) y/o este título hasta la cancelación.
           </p>
@@ -82,7 +82,7 @@ export function PagarePrintable({ contract }: { contract: ContractDocData }) {
       </DocumentSection>
 
       <DocumentSection number="03" title="Librador">
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="doc-split gap-8">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
               Firma del librador

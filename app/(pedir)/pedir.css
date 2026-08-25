@@ -671,6 +671,7 @@
 .lp-doc-canvas .document-sheet,
 .lp-doc-canvas > * {
   margin-inline: auto;
+  max-width: 210mm;
 }
 
 .lp-app-content:has(.lp-doc-canvas) {

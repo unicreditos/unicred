@@ -109,7 +109,7 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
       </DocumentSection>
 
       <DocumentSection number="02" title="Partes">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="doc-split gap-3">
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
               Acreedor / Prestamista
@@ -384,7 +384,7 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
             </p>
           </div>
         )}
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="doc-split gap-8">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
               Deudor / librador del pagaré

@@ -101,7 +101,7 @@ export function BCRAReportPrintable({ report }: { report: BCRAReportData }) {
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
                 Puntaje al momento de emisión
               </p>
-              <p className={cn('mt-1 font-mono text-5xl font-semibold tracking-tight', score.tone)}>
+              <p className={cn('doc-amount mt-1 font-mono font-semibold tracking-tight', score.tone)}>
                 {report.scoreAtGeneration ?? '—'}
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
@@ -116,7 +116,7 @@ export function BCRAReportPrintable({ report }: { report: BCRAReportData }) {
           <div className="mt-4 h-2 overflow-hidden bg-slate-200">
             <div className="h-full bg-slate-800" style={{ width: `${score.width}%` }} />
           </div>
-          <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-500">
+          <div className="mt-1 doc-score-scale font-mono text-[10px] text-slate-500">
             <span>300</span>
             <span>560</span>
             <span>640</span>
