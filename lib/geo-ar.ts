@@ -128,3 +128,43 @@ export async function listLocalities(provinceName: string, departmentName: strin
   writeCache(key, rows)
   return rows
 }
+
+export async function resolveGeoFromPadron(input: {
+  province?: string
+  city?: string
+  postalCode?: string
+}): Promise<{ province: string; department: string; city: string; postalCode: string }> {
+  const provinceRaw = String(input.province ?? '').trim()
+  const cityRaw = String(input.city ?? '').trim()
+  const postalCode = String(input.postalCode ?? '').trim()
+  const province = provinceRaw ? displayProvinceName(officialProvinceName(provinceRaw)) : ''
+  if (!province) {
+    return { province: '', department: '', city: cityRaw, postalCode }
+  }
+  if (!cityRaw) {
+    return { province, department: '', city: '', postalCode }
+  }
+  const cacheKey = `padron:${fold(province)}:${fold(cityRaw)}`
+  const cached = readCache<{ province: string; department: string; city: string }> (cacheKey)
+  if (cached) return { ...cached, postalCode }
+  try {
+    const json = await georef<{
+      localidades: Array<{ nombre?: string; departamento?: { nombre?: string } }>
+    }>('/localidades', {
+      provincia: officialProvinceName(province),
+      nombre: cityRaw,
+      campos: 'id,nombre,departamento',
+      max: 8,
+    })
+    const hit = json.localidades?.[0]
+    const resolved = {
+      province,
+      department: String(hit?.departamento?.nombre ?? '').trim(),
+      city: String(hit?.nombre ?? cityRaw).trim(),
+    }
+    writeCache(cacheKey, resolved)
+    return { ...resolved, postalCode }
+  } catch {
+    return { province, department: '', city: cityRaw, postalCode }
+  }
+}

@@ -1,6 +1,7 @@
 import { arcaConfigured, lookupCuitsByDocumento, lookupPersonaByCuit } from '@/lib/arca/padron'
 import { taxConditionLabel, type TaxCondition } from '@/lib/arca/tax-condition'
 import { getDeudas, getDeudasHistoricas, isValidCuit, normalizeCuit } from '@/lib/bcra'
+import { resolveGeoFromPadron } from '@/lib/geo-ar'
 
 export type AccountKind = 'persona' | 'comercio'
 
@@ -19,6 +20,7 @@ export type IdentityMatch = {
   address: string
   city: string
   province: string
+  department: string
   postalCode: string
   taxStatus: string
   taxCondition: TaxCondition | ''
@@ -71,6 +73,7 @@ function emptyMatch(cuil: string): IdentityMatch {
     address: '',
     city: '',
     province: '',
+    department: '',
     postalCode: '',
     taxStatus: '',
     taxCondition: '',
@@ -121,6 +124,15 @@ async function enrichFromPublicApis(cuit: string): Promise<IdentityMatch> {
     match.taxConditionLabel = arca.taxConditionLabel || match.taxConditionLabel
     match.monotributoCategory = arca.monotributoCategory || match.monotributoCategory
     match.dni = arca.dni || match.dni
+    const geo = await resolveGeoFromPadron({
+      province: match.province,
+      city: match.city,
+      postalCode: match.postalCode,
+    })
+    match.province = geo.province || match.province
+    match.department = geo.department
+    match.city = geo.city || match.city
+    match.postalCode = geo.postalCode || match.postalCode
     match.sources.push({
       id: 'arca',
       ok: Boolean(arca.name),

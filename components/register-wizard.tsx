@@ -163,7 +163,7 @@ export function RegisterWizard() {
     setIdentity(match)
     setGeo((prev) => ({
       province: match.province || prev.province,
-      department: prev.department,
+      department: match.department || prev.department,
       city: match.city || prev.city,
       postalCode: match.postalCode || prev.postalCode,
     }))
@@ -370,10 +370,22 @@ export function RegisterWizard() {
                 )}
                 {accountType === 'comercio' ? (
                   <div className="mb-3 grid gap-1 rounded-md border bg-background/70 p-3 text-xs">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Padrón ARCA</p>
+                    <p>
+                      <span className="text-muted-foreground">Razón social: </span>
+                      <span className="font-medium">{identity.name || businessName || 'ARCA no informó la denominación'}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">CUIT: </span>
+                      <span className="font-mono">{formatCuil(merchantCuit || identity.cuil)}</span>
+                    </p>
                     <p><span className="text-muted-foreground">Tipo: </span>{identity.personType === 'JURIDICA' ? 'Persona jurídica' : identity.personType === 'FISICA' ? 'Persona física' : 'Sin clasificar'}</p>
                     <p><span className="text-muted-foreground">Condición ARCA: </span>{identity.taxConditionLabel || identity.taxStatus || 'Sin dato'}</p>
                     {identity.monotributoCategory ? <p><span className="text-muted-foreground">Categoría monotributo: </span>{identity.monotributoCategory}</p> : null}
-                    <p className="font-mono">{merchantCuit || identity.cuil}</p>
+                    <p>
+                      <span className="text-muted-foreground">Domicilio fiscal: </span>
+                      {[identity.address, identity.city, identity.province, identity.postalCode].filter(Boolean).join(' · ') || 'Sin domicilio en el padrón'}
+                    </p>
                   </div>
                 ) : null}
                 <Field
@@ -385,7 +397,7 @@ export function RegisterWizard() {
                   <div className="grid gap-3 pt-2 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>CUIT de la sociedad (ARCA)</Label>
-                      <Input value={merchantCuit} readOnly className="font-mono" />
+                      <Input value={formatCuil(merchantCuit)} readOnly className="font-mono" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Rol del firmante *</Label>
@@ -708,6 +720,12 @@ export function RegisterWizard() {
       </div>
     </main>
   )
+}
+
+function formatCuil(value: string) {
+  const n = String(value ?? '').replace(/\D/g, '')
+  if (n.length !== 11) return value
+  return `${n.slice(0, 2)}-${n.slice(2, 10)}-${n.slice(10)}`
 }
 
 function Header({ title, text }: { title: string; text: string }) {

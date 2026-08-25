@@ -80,11 +80,31 @@ export type ArcaPersona = {
   service: 'a13' | 'a5' | 'a4'
 }
 
+function soapText(value: unknown): string {
+  if (value == null || value === '') return ''
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    const s = String(value).trim()
+    return s === '[object Object]' ? '' : s
+  }
+  if (Array.isArray(value)) return soapText(value[0])
+  if (typeof value === 'object') {
+    const rec = value as Record<string, unknown>
+    if ('$value' in rec) return soapText(rec.$value)
+    if ('_' in rec) return soapText(rec._)
+  }
+  return ''
+}
+
+function firstObject(value: any): any {
+  if (Array.isArray(value)) return firstObject(value[0])
+  return value && typeof value === 'object' ? value : {}
+}
+
 function pickDomicilio(raw: any) {
   const list = asArray(raw?.domicilio ?? raw?.domicilioFiscal ?? raw?.datosGenerales?.domicilioFiscal)
   if (!list.length) return null
   return (
-    list.find((d) => String(d?.tipoDomicilio || '').toUpperCase() === 'FISCAL') ??
+    list.find((d) => soapText(d?.tipoDomicilio).toUpperCase() === 'FISCAL') ??
     list[0]
   )
 }
@@ -102,25 +122,26 @@ function unwrapConstancia(raw: any): any {
 
 function generalBlock(raw: any): any {
   if (!raw || typeof raw !== 'object') return {}
-  return raw.datosGenerales ?? raw.persona ?? raw
+  return firstObject(raw.datosGenerales ?? raw.persona ?? raw)
 }
 
 export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5'): ArcaPersona | null {
   const body = unwrapConstancia(raw)
   const persona = generalBlock(body)
   if (!persona || typeof persona !== 'object') return null
-  const cuil = String(persona.idPersona ?? persona.cuit ?? body?.idPersona ?? '').replace(/\D/g, '')
+  const cuil = soapText(persona.idPersona ?? persona.cuit ?? body?.idPersona).replace(/\D/g, '')
   if (!/^\d{11}$/.test(cuil)) return null
   const name =
-    String(persona.razonSocial || body?.razonSocial || '').trim() ||
-    [persona.apellido, persona.nombre].filter(Boolean).join(', ').trim() ||
-    String(persona.denominacion || '').trim()
+    soapText(persona.razonSocial) ||
+    soapText(body?.razonSocial) ||
+    [soapText(persona.apellido), soapText(persona.nombre)].filter(Boolean).join(', ') ||
+    soapText(persona.denominacion)
   const dom = pickDomicilio(persona) ?? pickDomicilio(body)
-  const doc = String(persona.numeroDocumento ?? persona.nroDocumento ?? body?.numeroDocumento ?? '').replace(/\D/g, '')
-  const tipo = String(persona.tipoPersona || body?.tipoPersona || '').toUpperCase()
+  const doc = soapText(persona.numeroDocumento ?? persona.nroDocumento ?? body?.numeroDocumento).replace(/\D/g, '')
+  const tipo = soapText(persona.tipoPersona || body?.tipoPersona).toUpperCase()
   const personType: ArcaPersonType =
     tipo === 'JURIDICA' ? 'JURIDICA' : tipo === 'FISICA' ? 'FISICA' : personTypeFromCuit(cuil)
-  const taxStatus = String(persona.estadoClave ?? persona.estadoClaveFiscal ?? body?.estadoClave ?? '')
+  const taxStatus = soapText(persona.estadoClave ?? persona.estadoClaveFiscal ?? body?.estadoClave)
   const taxes = collectTaxes(body)
   const activities = collectActivities(body)
   const monotributoCategory = monotributoCategoryFromRaw(body)
@@ -131,10 +152,10 @@ export function mapArcaPersona(raw: any, service: ArcaPersona['service'] = 'a5')
     dni,
     name,
     personType,
-    address: String(dom?.direccion ?? ''),
-    city: String(dom?.localidad ?? ''),
-    province: AFIP_PROVINCIAS[String(dom?.idProvincia ?? '')] || String(dom?.descripcionProvincia ?? ''),
-    postalCode: String(dom?.codPostal ?? dom?.codigoPostal ?? ''),
+    address: soapText(dom?.direccion),
+    city: soapText(dom?.localidad),
+    province: AFIP_PROVINCIAS[soapText(dom?.idProvincia)] || soapText(dom?.descripcionProvincia),
+    postalCode: soapText(dom?.codPostal ?? dom?.codigoPostal),
     taxStatus,
     taxCondition: classifyTaxCondition({
       keyStatus: taxStatus,

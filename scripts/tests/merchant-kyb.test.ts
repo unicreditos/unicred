@@ -136,7 +136,39 @@ describe('padrón ARCA: condición fiscal', () => {
     const mapped = mapArcaPersona({ personaReturn: riPj }, 'a5')
     assert.equal(mapped?.personType, 'JURIDICA')
     assert.equal(mapped?.name, 'RM INTERNATIONAL GROUP S.A.S.')
+    assert.equal(mapped?.address, 'MAIPU 566')
     assert.equal(collectTaxes(riPj).length, 2)
+  })
+
+  it('desenvuelve nodos SOAP ($value / array) de persona jurídica', () => {
+    const mapped = mapArcaPersona(
+      {
+        personaReturn: {
+          datosGenerales: [
+            {
+              idPersona: { $value: '33710900979' },
+              tipoPersona: { $value: 'JURIDICA' },
+              razonSocial: { $value: 'CRONEC S.R.L' },
+              estadoClave: { $value: 'ACTIVO' },
+              domicilioFiscal: {
+                direccion: { $value: 'PJE. SOLDADO SALAZAR 196' },
+                localidad: { $value: 'SALTA' },
+                idProvincia: { $value: '9' },
+                codPostal: { $value: '4400' },
+              },
+            },
+          ],
+          datosRegimenGeneral: { impuesto: [{ idImpuesto: 30, descripcionImpuesto: 'IVA' }] },
+        },
+      },
+      'a5',
+    )
+    assert.equal(mapped?.name, 'CRONEC S.R.L')
+    assert.equal(mapped?.address, 'PJE. SOLDADO SALAZAR 196')
+    assert.equal(mapped?.city, 'SALTA')
+    assert.equal(mapped?.province, 'Salta')
+    assert.equal(mapped?.postalCode, '4400')
+    assert.equal(mapped?.taxCondition, 'responsable_inscripto')
   })
 
   it('CUIT 20 es física y 30 jurídica', () => {
