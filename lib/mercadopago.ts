@@ -357,6 +357,134 @@ export function getMercadoPagoPublicKey() {
   return MP_CONFIG.publicKey
 }
 
+export type MpOfflineTicketNetwork = 'pagofacil' | 'rapipago'
+
+export type MpOfflineTicketResult = {
+  paymentId: string
+  barcode: string | null
+  ticketUrl: string | null
+  status: string
+  expiresAt: string | null
+}
+
+function firstTicketString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  }
+  return null
+}
+
+export function extractMpTicketFields(data: unknown): MpOfflineTicketResult | null {
+  if (!data || typeof data !== 'object') return null
+  const rec = data as Record<string, unknown>
+  const td =
+    rec.transaction_details && typeof rec.transaction_details === 'object'
+      ? (rec.transaction_details as Record<string, unknown>)
+      : {}
+  const poi =
+    rec.point_of_interaction && typeof rec.point_of_interaction === 'object'
+      ? (rec.point_of_interaction as Record<string, unknown>)
+      : {}
+  const poiTx =
+    poi.transaction_data && typeof poi.transaction_data === 'object'
+      ? (poi.transaction_data as Record<string, unknown>)
+      : {}
+  const barcodeObj = rec.barcode && typeof rec.barcode === 'object' ? (rec.barcode as Record<string, unknown>) : {}
+  const tdBarcode = td.barcode && typeof td.barcode === 'object' ? (td.barcode as Record<string, unknown>) : {}
+  const id = rec.id != null ? String(rec.id) : null
+  if (!id) return null
+  const barcode = firstTicketString(
+    barcodeObj.content,
+    tdBarcode.content,
+    rec.barcode_content,
+    poiTx.barcode_content,
+    poiTx.barcode,
+    td.payment_method_reference_id,
+  )
+  const ticketUrl = firstTicketString(
+    td.external_resource_url,
+    poiTx.ticket_url,
+    poiTx.external_resource_url,
+    rec.ticket_url,
+  )
+  if (!barcode && !ticketUrl) return null
+  return {
+    paymentId: id,
+    barcode: barcode ? barcode.replace(/\s+/g, '') : null,
+    ticketUrl,
+    status: String(rec.status ?? ''),
+    expiresAt: firstTicketString(rec.date_of_expiration),
+  }
+}
+
+export async function createOfflineTicketPayment(input: {
+  amount: number
+  network: MpOfflineTicketNetwork
+  description: string
+  externalReference: string
+  expiresAt: Date
+  payerEmail: string
+  payerFirstName?: string
+  payerLastName?: string
+  identificationType?: string
+  identificationNumber?: string
+  metadata?: Record<string, unknown>
+  idempotencyKey: string
+}): Promise<MpOfflineTicketResult> {
+  const amount = Number(input.amount.toFixed(2))
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Importe inválido para el cupón de red.')
+  if (!input.payerEmail?.includes('@')) {
+    throw new Error('Falta el email del titular para emitir Pago Fácil / Rapipago.')
+  }
+
+  const notification_url = mercadoPagoNotificationUrl(getSiteBaseUrl())
+  const identificationNumber = input.identificationNumber?.replace(/\D/g, '') || undefined
+  const body: Record<string, unknown> = {
+    transaction_amount: amount,
+    description: input.description,
+    payment_method_id: input.network,
+    date_of_expiration: input.expiresAt.toISOString(),
+    external_reference: input.externalReference.slice(0, 64),
+    binary_mode: false,
+    payer: {
+      email: input.payerEmail,
+      first_name: input.payerFirstName || undefined,
+      last_name: input.payerLastName || undefined,
+      identification: identificationNumber
+        ? {
+            type: input.identificationType || (identificationNumber.length === 11 ? 'CUIT' : 'DNI'),
+            number: identificationNumber,
+          }
+        : undefined,
+    },
+    metadata: input.metadata ?? {},
+  }
+  if (notification_url) body.notification_url = notification_url
+
+  const created = await mpApiFetch('/v1/payments', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    idempotencyKey: input.idempotencyKey,
+  })
+  if (!created.ok) {
+    const rec = created.data && typeof created.data === 'object' ? (created.data as Record<string, unknown>) : {}
+    const cause = Array.isArray(rec.cause) ? rec.cause[0] : null
+    const detail =
+      (cause && typeof cause === 'object' && 'description' in cause
+        ? String((cause as { description?: string }).description)
+        : '') ||
+      (typeof rec.message === 'string' ? rec.message : '') ||
+      'Mercado Pago no emitió el cupón de Pago Fácil / Rapipago.'
+    throw new Error(detail)
+  }
+  const ticket = extractMpTicketFields(created.data)
+  if (!ticket) {
+    throw new Error('Mercado Pago no devolvió el código de barras ni el ticket de la red.')
+  }
+  return ticket
+}
+
 export async function mpApiFetch<T = unknown>(
   path: string,
   init?: RequestInit & { idempotencyKey?: string },

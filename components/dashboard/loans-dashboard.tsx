@@ -25,6 +25,7 @@ import { getLoanCouponQrs, getPublicTreasury } from '@/app/actions/payments'
 import { barcodeSvg, couponCode, installmentPayPath } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
+import type { InstallmentCashCoupons } from '@/lib/payments/installment-mp-ticket'
 import QRCode from 'qrcode'
 import Link from 'next/link'
 import { installment, loan } from '@/lib/db/schema'
@@ -650,7 +651,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
               <div>
                 <CardTitle className="text-base">Talonario / cuponera</CardTitle>
                 <CardDescription>
-                  Cada talón abierto tiene el QR EMV de Mercado Pago con el importe de esa cuota. También podés pagar por la web, Pago Fácil, Rapipago o transferencia a Brubank.
+                  Cada talón abierto tiene el QR de Mercado Pago y los cupones de Pago Fácil y Rapipago de esa cuota. También podés transferir a Brubank.
                 </CardDescription>
               </div>
               <Button asChild variant="outline" size="sm">
@@ -821,6 +822,33 @@ function LayoutDashboardLocalIcon() {
   )
 }
 
+function CashTicketMini({
+  label,
+  ticket,
+}: {
+  label: string
+  ticket: { barcode: string | null; expiresAt: string } | null
+}) {
+  let svg: string | null = null
+  if (ticket?.barcode) {
+    try {
+      svg = barcodeSvg(ticket.barcode, { height: 28, module: ticket.barcode.length > 24 ? 0.8 : 1 })
+    } catch {
+      svg = null
+    }
+  }
+  return (
+    <div className="rounded-md border border-border/80 bg-muted/30 px-2 py-1.5">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      {svg ? (
+        <div className="mt-1 overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />
+      ) : (
+        <p className="mt-1 text-[10px] text-muted-foreground">Sin cupón emitido</p>
+      )}
+    </div>
+  )
+}
+
 function LoanCouponBook({
   loanId,
   installments,
@@ -829,6 +857,7 @@ function LoanCouponBook({
   installments: Installment[]
 }) {
   const [qrs, setQrs] = useState<Record<string, string>>({})
+  const [tickets, setTickets] = useState<Record<string, InstallmentCashCoupons>>({})
   const [cbu, setCbu] = useState<string | null>(null)
 
   useEffect(() => {
@@ -842,7 +871,7 @@ function LoanCouponBook({
     void getLoanCouponQrs(loanId)
       .then(async (payloads) => {
         const pairs = await Promise.all(
-          Object.entries(payloads).map(async ([id, payload]) => {
+          Object.entries(payloads.qrs ?? {}).map(async ([id, payload]) => {
             if (!isMercadoPagoEmvQr(payload.qrData)) return null
             const data = await QRCode.toDataURL(payload.qrData, { margin: 1, width: 180 })
             return [id, data] as const
@@ -850,9 +879,13 @@ function LoanCouponBook({
         )
         if (cancelled) return
         setQrs(Object.fromEntries(pairs.filter((row): row is readonly [string, string] => Boolean(row))))
+        setTickets(payloads.tickets ?? {})
       })
       .catch(() => {
-        if (!cancelled) setQrs({})
+        if (!cancelled) {
+          setQrs({})
+          setTickets({})
+        }
       })
     return () => {
       cancelled = true
@@ -902,13 +935,19 @@ function LoanCouponBook({
               <div className="min-w-0 flex-1 overflow-x-auto" dangerouslySetInnerHTML={{ __html: barcodeSvg(code, { height: 36, module: 1.1 }) }} />
             </div>
             {open ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <CashTicketMini label="Pago Fácil" ticket={tickets[row.id]?.pagoFacil ?? null} />
+                <CashTicketMini label="Rapipago" ticket={tickets[row.id]?.rapipago ?? null} />
+              </div>
+            ) : null}
+            {open ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button asChild size="sm">
                   <Link href={installmentPayPath(row.id)}>Pagar en la web o app</Link>
                 </Button>
                 {cbu ? (
                   <p className="text-[10px] text-muted-foreground">
-                    MP · Pago Fácil · Rapipago · CBU {cbu}
+                    Transferencia CBU {cbu}
                   </p>
                 ) : null}
               </div>

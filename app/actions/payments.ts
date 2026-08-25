@@ -22,6 +22,7 @@ import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
 import { attachMercadoPagoQr, ensureLoanCouponMpQrs, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
+import { ensureLoanCouponTickets } from '@/lib/payments/installment-mp-ticket'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
 
 export type PaymentMethod =
@@ -605,7 +606,14 @@ export async function getLoanCouponQrs(loanId: string) {
   if (!loanRow || !(await canViewOwnedRecord(userId, loanRow.userId))) {
     throw new Error('No podés ver la cuponera de este crédito.')
   }
-  return ensureLoanCouponMpQrs(id, loanRow.userId)
+  const [qrs, tickets] = await Promise.all([
+    ensureLoanCouponMpQrs(id, loanRow.userId),
+    ensureLoanCouponTickets(id, loanRow.userId).catch((err) => {
+      console.error('[payments] cupones Pago Fácil/Rapipago:', (err as Error).message)
+      return {} as Awaited<ReturnType<typeof ensureLoanCouponTickets>>
+    }),
+  ])
+  return { qrs, tickets }
 }
 
 export async function reportCouponTransfer(installmentId: string, formData: FormData) {
