@@ -44,8 +44,9 @@ function checks(): EnvCheck[] {
     },
     {
       name: 'CRON_SECRET',
-      required: prod,
-      detail: 'Bearer para /api/cron/reconcile-payments (Vercel Cron).',
+      // Opcional: sin secreto los crons quedan cerrados (401). No tumba /api/health.
+      required: false,
+      detail: 'Bearer para /api/cron/* (Vercel Cron). Sin esto no corren reconcile MP/KYC.',
     },
     {
       name: 'RESEND_API_KEY',

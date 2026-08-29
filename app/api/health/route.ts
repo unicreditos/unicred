@@ -27,14 +27,14 @@ export async function GET() {
     bcra = 'error'
   }
 
-  const ok = env.ok && database !== 'error'
-  let payway: 'ok' | 'sandbox' | 'missing' = 'missing'
+  // Payway es solo referencia de diseño; cobro/billetera = API propia UNICRÉDITOS.
+  const wallet = 'native' as const
+  let paywayRef: 'configured' | 'absent' = 'absent'
   try {
     const { getPaywayConfig } = await import('@/lib/payway')
-    const cfg = getPaywayConfig()
-    if (cfg.configured) payway = cfg.env === 'production' ? 'ok' : 'sandbox'
+    paywayRef = getPaywayConfig().configured ? 'configured' : 'absent'
   } catch {
-    payway = 'missing'
+    paywayRef = 'absent'
   }
 
   let dbHost = 'none'
@@ -59,6 +59,9 @@ export async function GET() {
     users = -1
   }
 
+  const cron = process.env.CRON_SECRET?.trim() ? 'ok' : 'missing'
+  const ok = env.ok && database !== 'error'
+
   return NextResponse.json(
     {
       ok,
@@ -68,12 +71,12 @@ export async function GET() {
       dbHost,
       users,
       bcra,
-      payway,
-      // Solo conteos: no exponer nombres de variables de entorno en público.
+      wallet,
+      paywayRef,
+      cron,
       env: {
         missingRequired: env.missingRequired.length,
         missingOptional: env.missingOptional.length,
-        missingNames: env.missingRequired.map((m) => m.name),
       },
     },
     { status: ok ? 200 : 503 },

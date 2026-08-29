@@ -25,14 +25,12 @@ const checklist = [
   'BETTER_AUTH_URL',
   'BETTER_AUTH_SECRET',
   'DATABASE_URL',
-  'CRON_SECRET',
   'MERCADO_PAGO_ACCESS_TOKEN',
   'MERCADO_PAGO_PUBLIC_KEY',
   'MERCADO_PAGO_WEBHOOK_SECRET',
   'DIDIT_API_KEY',
   'DIDIT_WORKFLOW_ID',
   'DIDIT_WEBHOOK_SECRET',
-  'PAYWAY_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'AFIP_CUIT',
   'AFIP_CERT',
@@ -44,6 +42,8 @@ console.log('---')
 for (const name of checklist) {
   console.log(`${name}: ${mask(name)}`)
 }
+console.log(`CRON_SECRET (recomendado): ${mask('CRON_SECRET')}`)
+console.log(`PAYWAY_* (referencia): ${process.env.PAYWAY_WEBHOOK_SECRET ? 'presente' : 'ausente — ok'}`)
 
 const previous = process.env.NODE_ENV
 process.env.NODE_ENV = 'production'

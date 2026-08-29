@@ -77,7 +77,6 @@ async function main() {
     }),
     probe('didit webhook vivo', '/api/webhooks/didit', { status: [200], bodyIncludes: 'didit' }),
     probe('mp webhook health', '/api/webhooks/mercadopago', { status: [200], bodyIncludes: 'webhook' }),
-    probe('payway webhook cerrado', '/api/webhooks/payway', { status: [401] }),
 
     // Canal /pedir retirado: redirige al sitio único
     probe('pedir landing', '/pedir', { status: [308, 307, 302] }),

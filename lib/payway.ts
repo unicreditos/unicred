@@ -1,7 +1,7 @@
 /**
- * Cliente Payway (Prisma) para sandbox del portal developers.payway.com.ar.
- * En sandbox el gateway solo acepta casos ficticios; el cobro usable en UNICRÉDITOS
- * se acredita con simulación / webhook hasta la homologación.
+ * Cliente de referencia Payway (Prisma) — solo homologación / diseño de contrato.
+ * El cobro usable en UNICRÉDITOS es API propia (billetera + Mercado Pago).
+ * No es dependencia de producción: puede faltar sin afectar health ni desembolsos.
  */
 
 export type PaywayEnv = 'sandbox' | 'production'
