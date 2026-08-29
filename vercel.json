@@ -5,10 +5,6 @@
     {
       "path": "/api/cron/reconcile-payments",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/reconcile-kyc",
-      "schedule": "*/30 * * * *"
     }
   ],
   "redirects": [

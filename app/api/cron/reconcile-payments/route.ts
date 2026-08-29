@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { reconcileOpenDiditSessions } from '@/lib/kyc/reconcile-didit'
 import { reconcileOpenMercadoPagoPayments } from '@/lib/payments/settle-mp'
 
 export const runtime = 'nodejs'
@@ -19,7 +20,22 @@ export async function GET(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
-  const results = await reconcileOpenMercadoPagoPayments(120)
-  const credited = results.filter((r) => r.credited > 0).length
-  return NextResponse.json({ ok: true, scanned: results.length, credited })
+
+  const [payments, kyc] = await Promise.all([
+    reconcileOpenMercadoPagoPayments(120),
+    reconcileOpenDiditSessions(40),
+  ])
+
+  return NextResponse.json({
+    ok: true,
+    payments: {
+      scanned: payments.length,
+      credited: payments.filter((r) => r.credited > 0).length,
+    },
+    kyc: {
+      scanned: kyc.length,
+      applied: kyc.filter((r) => r.applied).length,
+      errors: kyc.filter((r) => r.error).length,
+    },
+  })
 }
