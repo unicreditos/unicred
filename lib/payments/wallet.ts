@@ -1,6 +1,7 @@
 /**
  * Billetera virtual UNICRÉDITOS (cuenta propia + riel Payway / tesorería RM).
- * En sandbox el saldo se carga con simulación; el CVU es válido en formato CBU.
+ * Ledger de billetera UNICRÉDITOS.
+ * El saldo real solo se acredita por inbound Payway / tesorería. Las cargas simuladas están deshabilitadas.
  * El cobro de cuotas descuenta el saldo y emite el recibo Payway.
  */
 
@@ -97,7 +98,7 @@ async function loadSnapshot(userId: string, walletId: string): Promise<WalletSna
     balance: money(row.balance),
     currency: row.currency,
     provider: row.provider,
-    sandbox: paywayAllowsSimulate(),
+    sandbox: false,
     paywayLive: Boolean(row.paywayAccountId),
     treasuryOrigin: treasuryOriginLabel(),
     createdAt: row.createdAt.toISOString(),
@@ -256,30 +257,17 @@ export async function creditWallet(input: {
   })
 }
 
-export async function loadWalletSandbox(userId: string, amount: number) {
-  if (!paywayAllowsSimulate()) {
-    throw new Error('La carga de prueba solo está habilitada en sandbox Payway.')
-  }
-  const value = round2(amount)
-  if (!(value >= 100) || value > MAX_SANDBOX_LOAD) {
-    throw new Error(`Ingresá un importe entre $100 y ${MAX_SANDBOX_LOAD.toLocaleString('es-AR')}.`)
-  }
-  await ensureWalletAccount(userId)
-  const result = await creditWallet({
-    userId,
-    amount: value,
-    kind: 'sandbox_load',
-    externalId: `sandbox-load-${crypto.randomUUID()}`,
-    reference: `PW-LOAD-${Date.now().toString().slice(-8)}`,
-    notes: 'Carga de prueba (sandbox). No es una transferencia real.',
-  })
-  if (!result.matched) throw new Error('No se pudo acreditar el saldo.')
-  return loadSnapshot(userId, result.walletId!)
+export async function loadWalletSandbox(_userId: string, _amount: number): Promise<never> {
+  throw new Error(
+    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita cuando Payway confirma el ingreso.',
+  )
 }
 
 export async function reportWalletInbound(userId: string, amount: number, originRaw: string) {
   if (!paywayAllowsSimulate()) {
-    throw new Error('En producción el ingreso llega solo cuando Payway acredita la transferencia al CVU.')
+    throw new Error(
+      'En producción el ingreso llega solo cuando Payway acredita la transferencia al CVU. No se puede informar manualmente.',
+    )
   }
   const origin = parseWalletDestination(originRaw)
   const value = round2(amount)
@@ -611,7 +599,7 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
         loanId,
         wallet_id: wallet.id,
         cvu: wallet.cvu,
-        sandbox: paywayAllowsSimulate(),
+        sandbox: false,
       },
       externalId: paymentId,
       paymentLinkId: paymentId,

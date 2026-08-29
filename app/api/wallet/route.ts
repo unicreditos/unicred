@@ -5,7 +5,6 @@ import {
   reportWalletInbound,
   transferFromWallet,
 } from '@/lib/payments/wallet'
-import { loadWalletSandbox } from '@/lib/payments/wallet'
 import { requireUserId } from '@/lib/session'
 import { notifyPaymentReceived } from '@/lib/notify-email'
 import { revalidatePath } from 'next/cache'
@@ -27,7 +26,7 @@ export async function GET() {
 /**
  * POST /api/wallet
  * body.action:
- *  - deposit | topup_sandbox | transfer | pay_installments
+ *  - deposit | transfer | pay_installments
  */
 export async function POST(req: Request) {
   try {
@@ -36,9 +35,14 @@ export async function POST(req: Request) {
     const action = String(body?.action ?? '').trim()
 
     if (action === 'topup_sandbox') {
-      const wallet = await loadWalletSandbox(userId, Number(body?.amount) || 0)
-      revalidatePath('/dashboard')
-      return NextResponse.json({ ok: true, wallet })
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias.',
+        },
+        { status: 400 },
+      )
     }
 
     if (action === 'deposit') {
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'Acción inválida. Usá: topup_sandbox | deposit | transfer | pay_installments',
+        error: 'Acción inválida. Usá: deposit | transfer | pay_installments',
       },
       { status: 400 },
     )

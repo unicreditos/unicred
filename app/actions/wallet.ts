@@ -4,7 +4,6 @@ import { notifyPaymentReceived } from '@/lib/notify-email'
 import {
   ensureWalletAccount,
   listQueuedPayouts,
-  loadWalletSandbox,
   markTreasuryPayoutExecuted,
   payInstallmentsFromWallet,
   reportWalletInbound,
@@ -20,11 +19,10 @@ export async function getMyWallet() {
   return ensureWalletAccount(userId)
 }
 
-export async function topUpWalletSandbox(amount: number) {
-  const userId = await assertRole('customer')
-  const wallet = await loadWalletSandbox(userId, amount)
-  revalidateCustomer()
-  return wallet
+export async function topUpWalletSandbox(_amount: number) {
+  throw new Error(
+    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita con Payway.',
+  )
 }
 
 export async function depositToWallet(amount: number, origin: string) {

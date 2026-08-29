@@ -63,7 +63,8 @@ export function getPaywayConfig(): PaywayConfig {
   return {
     env,
     configured: Boolean(publicKey && secretKey),
-    simulateAllowed: env !== 'production',
+    // Nunca simular cobros/cargas salvo flag explícito local (ALLOW_PAYWAY_SIMULATE=1).
+    simulateAllowed: env !== 'production' && trimEnv('ALLOW_PAYWAY_SIMULATE') === '1',
     baseUrl,
     publicKey,
     secretKey,

@@ -1,6 +1,6 @@
 'use client'
 
-import { depositToWallet, getMyWallet, payWithWallet, sendFromWallet, topUpWalletSandbox } from '@/app/actions/wallet'
+import { getMyWallet, payWithWallet, sendFromWallet } from '@/app/actions/wallet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,8 +12,6 @@ import { toast } from 'sonner'
 
 type Wallet = Awaited<ReturnType<typeof getMyWallet>>
 
-const TOPUPS = [10_000, 50_000, 100_000, 250_000]
-
 export function WalletDesk({
   pendingInstallments = [],
   onPaid,
@@ -24,8 +22,6 @@ export function WalletDesk({
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [busy, setBusy] = useState(false)
   const [panel, setPanel] = useState<'ingresar' | 'transferir' | 'cuotas'>('ingresar')
-  const [custom, setCustom] = useState('50000')
-  const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
   const [outAmount, setOutAmount] = useState('')
   const [concept, setConcept] = useState('Transferencia')
@@ -48,39 +44,6 @@ export function WalletDesk({
   async function copy(label: string, value: string) {
     await navigator.clipboard.writeText(value)
     toast.success(`${label} copiado`)
-  }
-
-  async function deposit() {
-    const amount = Number(custom.replace(/\D/g, '')) || 0
-    if (!origin.trim()) {
-      toast.error('Indicá el CBU, CVU o alias desde el que transferiste.')
-      return
-    }
-    setBusy(true)
-    try {
-      const next = await depositToWallet(amount, origin)
-      setWallet(next)
-      toast.success(
-        `Ingreso de ${formatARS(amount)} registrado. El saldo se confirma cuando tesorería vea la transferencia.`,
-      )
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function sandboxLoad(amount: number) {
-    setBusy(true)
-    try {
-      const next = await topUpWalletSandbox(amount)
-      setWallet(next)
-      toast.success(`Se acreditaron ${formatARS(amount)} (solo entorno de desarrollo).`)
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
   }
 
   async function send() {
@@ -206,57 +169,15 @@ export function WalletDesk({
         {panel === 'ingresar' ? (
           <div className="mt-4 space-y-3">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Transferí a tu CVU o alias desde tu banco o billetera. Después informá el origen y el importe para
-              que tesorería RM confirme el crédito en tu saldo.
+              Transferí a tu CVU o alias desde tu banco o billetera. El saldo se acredita automáticamente cuando
+              Payway confirma el ingreso. No hay cargas simuladas ni de prueba.
             </p>
-            <form
-              className="grid gap-3 sm:grid-cols-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void deposit()
-              }}
-            >
-              <div className="space-y-1">
-                <Label htmlFor="wallet-in-amount">Importe transferido</Label>
-                <Input id="wallet-in-amount" inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="wallet-origin">CBU / CVU / alias de origen</Label>
-                <Input
-                  id="wallet-origin"
-                  placeholder="22 dígitos o alias"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="sm:col-span-2 font-semibold" disabled={busy}>
-                {busy ? 'Registrando…' : 'Informar ingreso'}
-              </Button>
-            </form>
-            {wallet.sandbox ? (
-              <div className="rounded-xl border border-dashed border-amber-300/80 bg-amber-50/80 p-3">
-                <p className="text-xs font-semibold text-amber-950">Solo desarrollo</p>
-                <p className="mt-1 text-xs text-amber-900/80">
-                  En este entorno podés acreditar saldo de prueba sin transferencia bancaria.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {TOPUPS.map((amount) => (
-                    <Button
-                      key={amount}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-amber-300 bg-white"
-                      disabled={busy}
-                      onClick={() => void sandboxLoad(amount)}
-                    >
-                      + {formatARS(amount)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            <div className="rounded-xl border bg-slate-50 p-3 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">CVU</p>
+              <p className="mt-1 font-mono">{formatCVU(wallet.cvu)}</p>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Alias</p>
+              <p className="mt-1 font-mono">{displayAlias(wallet.alias)}</p>
+            </div>
           </div>
         ) : null}
 
@@ -441,21 +362,6 @@ export function WalletPayBox({
     toast.success(`${label} copiado`)
   }
 
-  async function loadNeeded() {
-    if (!wallet) return
-    const missing = Math.ceil(Math.max(amount - wallet.balance, amount))
-    setBusy(true)
-    try {
-      const next = await topUpWalletSandbox(missing)
-      setWallet(next)
-      toast.success('Saldo de desarrollo acreditado.')
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function pay() {
     setBusy(true)
     try {
@@ -478,7 +384,6 @@ export function WalletPayBox({
   }
 
   const enough = wallet.balance + 0.009 >= amount
-  const topup = Math.ceil(Math.max(amount - wallet.balance, amount))
 
   return (
     <div className="space-y-3">
@@ -518,15 +423,9 @@ export function WalletPayBox({
           <p className="text-xs text-slate-600">
             Faltan {formatARS(Math.max(0, amount - wallet.balance))} para cubrir esta cuota.
           </p>
-          {wallet.sandbox ? (
-            <Button type="button" className="w-full" disabled={busy} onClick={() => void loadNeeded()}>
-              {busy ? 'Cargando…' : `Cargar ${formatARS(topup)} (desarrollo)`}
-            </Button>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Transferí al CVU e informá el ingreso en Billetera. Cuando se confirme, el saldo aparece acá.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Transferí al CVU o alias de tu billetera. Cuando Payway confirme el ingreso, el saldo aparece acá.
+          </p>
         </div>
       )}
     </div>

@@ -16,7 +16,6 @@ import { ensureLoanContract } from '@/lib/legal/expediente'
 import { ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
 import { getInbox } from '@/lib/notifications'
 import {
-  loadWalletSandbox,
   payInstallmentsFromWallet,
   transferFromWallet,
   ensureWalletAccount,
@@ -814,25 +813,11 @@ export async function mobileVerifyIdentity(
 
 /* ----------------------------- Wallet ops ------------------------------- */
 
-export async function mobileWalletTopup(userId: string, amount: number) {
-  try {
-    const wallet = await loadWalletSandbox(userId, amount)
-    return {
-      ok: true,
-      balance: wallet.balance,
-      movementId: wallet.movements[0]?.id ?? `sandbox-${Date.now()}`,
-    }
-  } catch (err) {
-    // Producción: el ingreso real llega por CVU/alias (Payway inbound). No simular.
-    const wallet = await ensureWalletAccount(userId)
-    const msg = err instanceof Error ? err.message : 'Carga no disponible'
-    if (/sandbox|producción|produccion|Payway/i.test(msg)) {
-      throw new Error(
-        `En producción el dinero se acredita al transferir a tu CVU (${wallet.cvu}) o alias (${wallet.alias}). Copiá los datos desde Ingresar.`,
-      )
-    }
-    throw err
-  }
+export async function mobileWalletTopup(userId: string, _amount: number) {
+  const wallet = await ensureWalletAccount(userId)
+  throw new Error(
+    `Las cargas simuladas están deshabilitadas. Transferí a tu CVU (${wallet.cvu}) o alias (${wallet.alias}). El saldo se acredita cuando Payway confirma el ingreso.`,
+  )
 }
 
 export async function mobileWalletTransfer(userId: string, amount: number, destination: string, concept?: string) {
