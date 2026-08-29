@@ -1,5 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { hashPassword, verifyPassword } from 'better-auth/crypto'
-import { and, eq } from 'drizzle-orm'
+import { and } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { account, profile, user as userTable } from '@/lib/db/schema'
 import { getRoleForUser, newId } from '@/lib/session'
@@ -13,18 +14,29 @@ export type MobileAuthUser = {
   role: string
 }
 
-function toAuthUser(row: {
+async function resolveAuthStatus(userId: string, banned?: boolean | null): Promise<string> {
+  if (banned) return 'BANNED'
+  const [prof] = await db
+    .select({ dni: profile.dni, cuil: profile.cuil })
+    .from(profile)
+    .where(eq(profile.userId, userId))
+    .limit(1)
+  if (!prof?.dni || !prof?.cuil) return 'PENDING_VERIFICATION'
+  return 'ACTIVE'
+}
+
+async function toAuthUser(row: {
   id: string
   email: string
   name: string
   banned?: boolean | null
   role?: string | null
-}): MobileAuthUser {
+}): Promise<MobileAuthUser> {
   return {
     id: row.id,
     email: row.email,
     name: row.name,
-    status: row.banned ? 'BANNED' : 'ACTIVE',
+    status: await resolveAuthStatus(row.id, row.banned),
     role: row.role || 'customer',
   }
 }
@@ -47,7 +59,7 @@ export async function mobileLogin(email: string, password: string) {
 
   const role = await getRoleForUser(usr.id)
   const token = signMobileToken({ userId: usr.id, email: usr.email })
-  return { token, user: toAuthUser({ ...usr, role }) }
+  return { token, user: await toAuthUser({ ...usr, role }) }
 }
 
 export async function mobileSignup(email: string, password: string, name: string) {
@@ -92,7 +104,7 @@ export async function mobileSignup(email: string, password: string, name: string
   const token = signMobileToken({ userId, email: emailNorm })
   return {
     token,
-    user: toAuthUser({ id: userId, email: emailNorm, name: display, role: 'customer' }),
+    user: await toAuthUser({ id: userId, email: emailNorm, name: display, role: 'customer' }),
   }
 }
 
@@ -100,7 +112,7 @@ export async function mobileMe(userId: string) {
   const [usr] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
   if (!usr) throw new Error('Usuario no encontrado')
   const role = await getRoleForUser(usr.id)
-  return { user: toAuthUser({ ...usr, role }) }
+  return { user: await toAuthUser({ ...usr, role }) }
 }
 
 export async function requireMobileUserId(req: Request): Promise<string> {

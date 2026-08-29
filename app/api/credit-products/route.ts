@@ -10,8 +10,8 @@ export function OPTIONS(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const items = await mobileCreditProducts()
-    return mobileJson(req, items)
+    const data = await mobileCreditProducts()
+    return mobileJson(req, data)
   } catch (err) {
     return mobileJson(req, { message: (err as Error).message }, { status: 500 })
   }

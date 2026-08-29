@@ -25,7 +25,7 @@ import { listServicePayments, payServiceFromWallet } from '@/lib/payments/servic
 import { SERVICE_CATEGORIES, SERVICE_PROVIDERS } from '@/lib/services/catalog'
 import { getRoleForUser, newId } from '@/lib/session'
 import { createDiditSession, diditApprovedForUser, isDiditConfigured } from '@/lib/didit'
-import { computeFrenchAmortization } from '@/lib/finance'
+import { computeFrenchAmortization, frenchAmortizationSchedule } from '@/lib/finance'
 import {
   computeCreditOffer,
   decideUnderwriting,
@@ -300,6 +300,8 @@ export async function mobileApplyLoan(
     purpose?: string
     bankName?: string
     cbu?: string
+    employer?: string
+    documentFileIds?: string[]
   },
 ) {
   const ready = await requireCustomerReadyForCredit(userId)
@@ -325,6 +327,17 @@ export async function mobileApplyLoan(
         updatedAt: new Date(),
       })
       .where(eq(profile.userId, userId))
+  }
+
+  if (input.bankName || input.cbu || input.employer) {
+    await writeMobileMeta(userId, {
+      disbursement: {
+        bankName: input.bankName || null,
+        cbu: input.cbu || null,
+        employer: input.employer || null,
+        updatedAt: new Date().toISOString(),
+      },
+    })
   }
 
   const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
@@ -426,13 +439,25 @@ export async function mobileCalculateCredit(input: {
 }) {
   const [product] = await db.select().from(loanProduct).where(eq(loanProduct.id, input.creditProductId)).limit(1)
   if (!product) throw new Error('Producto no encontrado')
-  const amort = computeFrenchAmortization(Number(input.amount), Number(input.termMonths), Number(product.monthlyRate))
+  const amount = Number(input.amount)
+  const termMonths = Number(input.termMonths)
+  const monthlyRate = Number(product.monthlyRate)
+  const amort = computeFrenchAmortization(amount, termMonths, monthlyRate)
+  const schedule = frenchAmortizationSchedule(amount, monthlyRate, termMonths)
   return {
     monthlyPayment: amort.installmentAmount,
     totalPayment: amort.totalAmount,
-    tna: amort.tna,
-    cft: amort.cft,
-    termMonths: Number(input.termMonths),
+    totalInterest: amort.totalInterest,
+    tnaRate: amort.tna / 100,
+    cftRate: amort.cft / 100,
+    adminFee: 0,
+    amortizationSchedule: schedule.map((row) => ({
+      number: row.number,
+      payment: row.installment,
+      principal: row.capital,
+      interest: row.interest,
+      remainingBalance: row.balance,
+    })),
   }
 }
 
@@ -654,7 +679,7 @@ export async function mobileFullProfile(userId: string) {
     identityVerified: prof?.kycStatus === 'approved',
     creditScore: prof?.creditScore ?? null,
     availableCreditLine: null,
-    status: usr?.banned ? 'BANNED' : 'ACTIVE',
+    status: usr?.banned ? 'BANNED' : !prof?.dni || !prof?.cuil ? 'PENDING_VERIFICATION' : 'ACTIVE',
     kycStatus: prof?.kycStatus ?? 'pending',
     role: prof?.role ?? usr?.role ?? 'customer',
     termsAccepted: true,
@@ -700,8 +725,24 @@ export async function mobileVerifyIdentity(
 /* ----------------------------- Wallet ops ------------------------------- */
 
 export async function mobileWalletTopup(userId: string, amount: number) {
-  const wallet = await loadWalletSandbox(userId, amount)
-  return { ok: true, balance: wallet.balance, movementId: wallet.movements[0]?.id ?? null }
+  try {
+    const wallet = await loadWalletSandbox(userId, amount)
+    return {
+      ok: true,
+      balance: wallet.balance,
+      movementId: wallet.movements[0]?.id ?? `sandbox-${Date.now()}`,
+    }
+  } catch (err) {
+    // Producción: el ingreso real llega por CVU/alias (Payway inbound). No simular.
+    const wallet = await ensureWalletAccount(userId)
+    const msg = err instanceof Error ? err.message : 'Carga no disponible'
+    if (/sandbox|producción|produccion|Payway/i.test(msg)) {
+      throw new Error(
+        `En producción el dinero se acredita al transferir a tu CVU (${wallet.cvu}) o alias (${wallet.alias}). Copiá los datos desde Ingresar.`,
+      )
+    }
+    throw err
+  }
 }
 
 export async function mobileWalletTransfer(userId: string, amount: number, destination: string, concept?: string) {
@@ -802,13 +843,17 @@ export async function mobileServicesPay(
 export async function mobileNotifications(userId: string, page = 1, limit = 20) {
   const role = await getRoleForUser(userId)
   const inbox = await getInbox(userId, role)
+  const meta = await getMobileMeta(userId)
+  const readIds = new Set(
+    Array.isArray(meta.readNotificationIds) ? (meta.readNotificationIds as string[]) : [],
+  )
   const all = inbox.items.map((it) => ({
     id: it.id,
     title: it.title,
     message: it.detail,
     type: it.tone,
-    read: false,
-    readAt: null as string | null,
+    read: readIds.has(it.id),
+    readAt: readIds.has(it.id) ? new Date().toISOString() : null,
     data: { href: it.href },
     createdAt: it.at,
   }))
@@ -817,11 +862,18 @@ export async function mobileNotifications(userId: string, page = 1, limit = 20) 
   return { items: slice, total: all.length, page, totalPages: Math.max(1, Math.ceil(all.length / limit)) }
 }
 
-export async function mobileNotificationRead(_userId: string, _id: string) {
+export async function mobileNotificationRead(userId: string, id: string) {
+  const meta = await getMobileMeta(userId)
+  const readIds = Array.isArray(meta.readNotificationIds) ? [...(meta.readNotificationIds as string[])] : []
+  if (!readIds.includes(id)) readIds.push(id)
+  await writeMobileMeta(userId, { readNotificationIds: readIds })
   return { success: true }
 }
 
-export async function mobileNotificationReadAll(_userId: string) {
+export async function mobileNotificationReadAll(userId: string) {
+  const role = await getRoleForUser(userId)
+  const inbox = await getInbox(userId, role)
+  await writeMobileMeta(userId, { readNotificationIds: inbox.items.map((it) => it.id) })
   return { success: true }
 }
 
@@ -897,10 +949,34 @@ export async function mobileSupportPost(userId: string, message: string) {
 
 export async function mobilePresign(userId: string, input: { fileName: string; contentType: string }) {
   const path = `mobile/${userId}/${Date.now()}_${input.fileName.replace(/[^\w.\-]+/g, '_')}`
+  const base =
+    (process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'https://www.unicreditos.com').replace(
+      /\/+$/,
+      '',
+    )
   return {
-    uploadUrl: `https://www.unicreditos.com/api/upload/put?path=${encodeURIComponent(path)}`,
+    uploadUrl: `${base}/api/upload/put?path=${encodeURIComponent(path)}`,
     cloud_storage_path: path,
   }
+}
+
+export async function mobileStoreUploadBlob(
+  userId: string,
+  path: string,
+  contentType: string,
+  dataBase64: string,
+) {
+  if (!path.startsWith(`mobile/${userId}/`)) throw new Error('Path inválido')
+  if (dataBase64.length > 5_500_000) throw new Error('Archivo demasiado grande (máx. ~4MB)')
+  const meta = await getMobileMeta(userId)
+  const pending = { ...((meta.pendingUploads as OcrBag) || {}) }
+  pending[path] = {
+    contentType,
+    dataBase64,
+    createdAt: new Date().toISOString(),
+  }
+  await writeMobileMeta(userId, { pendingUploads: pending })
+  return { ok: true, path }
 }
 
 export async function mobileUploadComplete(
@@ -909,18 +985,25 @@ export async function mobileUploadComplete(
 ) {
   const id = newId('file')
   const meta = await getMobileMeta(userId)
+  const pending = { ...((meta.pendingUploads as OcrBag) || {}) }
+  const blob = pending[input.cloud_storage_path] as OcrBag | undefined
   const files = Array.isArray(meta.files) ? [...(meta.files as OcrBag[])] : []
+  const contentType = String(blob?.contentType || 'application/octet-stream')
+  const dataBase64 = typeof blob?.dataBase64 === 'string' ? blob.dataBase64 : null
+  const url = dataBase64 ? `data:${contentType};base64,${dataBase64}` : null
   const row = {
     id,
     path: input.cloud_storage_path,
     fileName: input.fileName || input.cloud_storage_path.split('/').pop(),
     documentType: input.documentType || 'other',
     loanId: input.loanId || null,
-    url: null,
+    url,
+    contentType,
     createdAt: new Date().toISOString(),
   }
   files.push(row)
-  await writeMobileMeta(userId, { files })
+  if (blob) delete pending[input.cloud_storage_path]
+  await writeMobileMeta(userId, { files, pendingUploads: pending })
   return { id, cloud_storage_path: input.cloud_storage_path }
 }
 
