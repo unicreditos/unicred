@@ -54,7 +54,11 @@ export function trustedOrigins() {
   if (process.env.NODE_ENV === 'development') {
     add('http://localhost:3000')
     add('http://127.0.0.1:3000')
+    add('http://localhost:8081')
+    add('http://127.0.0.1:8081')
   }
+  add('unicreditos://')
+  add('exp://localhost:8081')
 
   return Array.from(origins)
 }
