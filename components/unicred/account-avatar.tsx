@@ -2,7 +2,6 @@
 
 import { updateMyAvatar } from '@/app/actions/account'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { fileToDataUrl } from '@/lib/media-compress'
 import { cn } from '@/lib/utils'
 import { Camera, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -34,6 +33,7 @@ export function AccountAvatar({
 }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const blobRef = useRef<string | null>(null)
   const [preview, setPreview] = useState(image ?? '')
   const [pending, startTransition] = useTransition()
 
@@ -41,22 +41,33 @@ export function AccountAvatar({
     setPreview(image ?? '')
   }, [image])
 
+  useEffect(() => {
+    return () => {
+      if (blobRef.current) URL.revokeObjectURL(blobRef.current)
+    }
+  }, [])
+
   const box = size === 'lg' ? 'size-16' : size === 'sm' ? 'size-9' : 'size-11'
 
   const onPick = (file: File | undefined) => {
     if (!file) return
+    if (blobRef.current) URL.revokeObjectURL(blobRef.current)
     const local = URL.createObjectURL(file)
+    blobRef.current = local
     setPreview(local)
     startTransition(async () => {
       try {
-        const dataUrl = await fileToDataUrl(file, 700_000)
         const data = new FormData()
-        data.set('avatarDataUrl', dataUrl)
+        data.set('avatar', file)
         const res = await updateMyAvatar(data)
         if (!res.ok) {
           setPreview(image ?? '')
           toast.error(res.error)
           return
+        }
+        if (blobRef.current) {
+          URL.revokeObjectURL(blobRef.current)
+          blobRef.current = null
         }
         setPreview(res.image)
         toast.success('Foto de perfil actualizada')

@@ -344,20 +344,23 @@ export function WorkspaceShell({
           </div>
           <form
             className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex"
+            role="search"
             onSubmit={(e) => {
               e.preventDefault()
               const q = query.trim()
               if (!q) return
-              if (role === 'admin') router.push(`/admin?tab=solicitudes`)
-              else if (role === 'merchant') router.push(`/merchant?tab=sales`)
-              else go('cuotas')
+              const enc = encodeURIComponent(q)
+              if (role === 'admin') router.push(`/admin?tab=solicitudes&q=${enc}`)
+              else if (role === 'merchant') router.push(`/merchant?tab=sales&q=${enc}`)
+              else router.push(`/dashboard?tab=cuotas&q=${enc}`)
             }}
           >
-            <Search className="h-4 w-4 text-slate-400" />
+            <Search className="h-4 w-4 text-slate-400" aria-hidden />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={role === 'admin' ? 'Buscar solicitudes' : 'Buscar créditos'}
+              aria-label={role === 'admin' ? 'Buscar solicitudes' : 'Buscar créditos'}
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
             />
           </form>

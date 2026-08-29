@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { toast } from 'sonner'
 
 const SEEN_KEY = 'uc-inbox-seen'
+const BADGE_POLL_MS = 60_000
 
 function toneIcon(tone: InboxItem['tone']) {
   if (tone === 'ok') return <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -40,14 +41,18 @@ export function NotificationCenter() {
     const onDoc = (event: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
     }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
   useEffect(() => {
-    let source: EventSource | null = null
-    let poll: ReturnType<typeof setInterval> | null = null
-
     const apply = (next: InboxPayload) => {
       setInbox(next)
       if (lastStamp.current && next.stamp && next.stamp !== lastStamp.current) {
@@ -66,27 +71,29 @@ export function NotificationCenter() {
         .catch(() => null)
 
     void pull()
+    const poll = setInterval(() => {
+      void pull()
+    }, BADGE_POLL_MS)
 
-    if (typeof EventSource !== 'undefined') {
-      source = new EventSource('/api/notifications/stream')
-      source.onmessage = (event) => {
-        try {
-          apply(JSON.parse(event.data) as InboxPayload)
-        } catch {
-          /* payload incompleto */
-        }
-      }
-    } else {
-      poll = setInterval(() => {
-        void pull()
-      }, 8000)
-    }
-
-    return () => {
-      source?.close()
-      if (poll) clearInterval(poll)
-    }
+    return () => clearInterval(poll)
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    let source: EventSource | null = null
+    if (typeof EventSource === 'undefined') return
+    source = new EventSource('/api/notifications/stream')
+    source.onmessage = (event) => {
+      try {
+        const next = JSON.parse(event.data) as InboxPayload
+        setInbox(next)
+        lastStamp.current = next.stamp
+      } catch {
+        /* payload incompleto */
+      }
+    }
+    return () => source?.close()
+  }, [open])
 
   const unread = useMemo(() => {
     if (!seen) return inbox.items.length
@@ -108,6 +115,8 @@ export function NotificationCenter() {
         }}
         className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
         aria-label="Notificaciones"
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell className="h-6 w-6" strokeWidth={1.75} />
         {unread > 0 ? (
@@ -117,7 +126,11 @@ export function NotificationCenter() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div
+          role="dialog"
+          aria-label="Panel de notificaciones"
+          className="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+        >
           <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
             <p className="text-sm font-semibold text-brand-navy-900">Notificaciones</p>
             <button type="button" className="text-[11px] font-medium text-brand-primary" onClick={markRead}>
@@ -147,7 +160,12 @@ export function NotificationCenter() {
                     <span className="block text-[13px] font-medium text-brand-navy-900">{item.title}</span>
                     <span className="block text-[11px] text-slate-500">{item.detail}</span>
                     <span className="mt-0.5 block text-[10px] text-slate-400">
-                      {new Date(item.at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(item.at).toLocaleString('es-AR', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   </span>
                 </button>

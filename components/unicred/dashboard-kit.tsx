@@ -5,15 +5,11 @@ import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import {
   TrendingUp,
   TrendingDown,
-  Wallet,
   CheckCircle2,
-  FileText,
   Landmark,
   CreditCard,
   CalendarDays,
   Users,
-  Building2,
-  BadgeCheck,
   Clock,
   Shield,
   Globe2,
@@ -194,6 +190,7 @@ export function LineChart({
   yMax?: number
   yFormatter?: (v: number) => string
 }) {
+  const fillId = `uc-lc-${color.replace(/[^a-zA-Z0-9]/g, '')}-${height}-${points.length}-${Math.round(points[0] ?? 0)}-${Math.round(points[points.length - 1] ?? 0)}`
   const max = yMax ?? Math.max(1, ...points)
   const step = 1200 / Math.max(1, points.length - 1)
   const width = 1200
@@ -225,7 +222,7 @@ export function LineChart({
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
         <defs>
-          <linearGradient id="uc-lc-fill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.22" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
@@ -242,7 +239,7 @@ export function LineChart({
             strokeWidth="1"
           />
         ))}
-        {fill ? <path d={fillPath} fill="url(#uc-lc-fill)" /> : null}
+        {fill ? <path d={fillPath} fill={`url(#${fillId})`} /> : null}
         <path
           d={dPath}
           fill="none"
