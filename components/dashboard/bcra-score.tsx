@@ -14,7 +14,7 @@ import {
 import { bcraCheck, profile } from '@/lib/db/schema'
 import { Loader2, RefreshCw, Scale } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 type Profile = typeof profile.$inferSelect
@@ -23,6 +23,7 @@ type BcraCheck = typeof bcraCheck.$inferSelect
 interface BCRAScoreProps {
   profile: Profile | null
   lastBcraCheck: BcraCheck | null
+  autoConsult?: boolean
 }
 
 const BAND_CONFIG = {
@@ -75,12 +76,13 @@ function snapshotFromCheck(check: BcraCheck | null): FullBcraSnapshot | null {
   }
 }
 
-export function BCRAScore({ profile, lastBcraCheck }: BCRAScoreProps) {
+export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAScoreProps) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [live, setLive] = useState<FullBcraSnapshot | null>(null)
   const [liveScore, setLiveScore] = useState<number | null>(null)
   const [liveReasons, setLiveReasons] = useState<string[]>([])
+  const autoRan = useRef(false)
   const fromCheck = useMemo(() => snapshotFromCheck(lastBcraCheck), [lastBcraCheck])
   const snap = live ?? fromCheck
   const score = liveScore ?? profile?.creditScore ?? lastBcraCheck?.computedScore ?? null
@@ -108,6 +110,17 @@ export function BCRAScore({ profile, lastBcraCheck }: BCRAScoreProps) {
       router.refresh()
     })
   }
+
+  useEffect(() => {
+    if (!autoConsult || autoRan.current || pending) return
+    if (!profile?.cuil) return
+    const src = String(lastBcraCheck?.source ?? '')
+    const needs =
+      !lastBcraCheck || src.includes('synth') || src.includes('fallback')
+    if (!needs) return
+    autoRan.current = true
+    consult()
+  }, [autoConsult, lastBcraCheck, pending, profile?.cuil])
 
   const consultBtn = (
     <Button size="sm" onClick={consult} disabled={pending || !profile?.cuil} className="gap-1.5 shrink-0">

@@ -14,8 +14,13 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { PublicInquiryForm } from '@/components/unicred/public-inquiry-form'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = { title: 'Contacto · Atención al Cliente · UNICRÉDITOS', description: 'Formulario y email de soporte. Atención remota de lunes a viernes, 9 a 18 hs.' }
+export const metadata = pageMetadata({
+  title: 'Contacto · Atención al Cliente',
+  description: 'Formulario y email de soporte. Atención remota de lunes a viernes, 9 a 18 hs.',
+  path: '/contacto',
+})
 
 export default function ContactoPage() {
   return (

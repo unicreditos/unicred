@@ -1,3 +1,4 @@
+import { GROUP } from '@/lib/brand'
 import { ImageResponse } from 'next/og'
 
 export const alt = 'UNICRÉDITOS — Créditos digitales en Argentina'
@@ -19,7 +20,7 @@ export default function OpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          backgroundColor: '#3b3ea8',
+          backgroundColor: '#0C1612',
           padding: 80,
           fontFamily: 'sans-serif',
         }}
@@ -29,7 +30,7 @@ export default function OpengraphImage() {
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            color: '#c7d2fe',
+            color: '#6EE7B7',
             fontSize: 26,
             fontWeight: 600,
             letterSpacing: 4,
@@ -42,10 +43,10 @@ export default function OpengraphImage() {
               width: 14,
               height: 14,
               borderRadius: 14,
-              backgroundColor: '#22d3ee',
+              backgroundColor: '#20BD5A',
             }}
           />
-          RM International Group
+          {GROUP.name}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -65,7 +66,7 @@ export default function OpengraphImage() {
             style={{
               display: 'flex',
               marginTop: 28,
-              color: '#e0e7ff',
+              color: '#e8f9ee',
               fontSize: 52,
               fontWeight: 500,
               lineHeight: 1.2,
@@ -82,7 +83,7 @@ export default function OpengraphImage() {
             justifyContent: 'space-between',
             borderTop: '2px solid rgba(255,255,255,0.2)',
             paddingTop: 32,
-            color: '#c7d2fe',
+            color: '#9AADA3',
             fontSize: 28,
           }}
         >

@@ -1,34 +1,38 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist_Mono, Poppins } from 'next/font/google'
+import { Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import { AnalyticsGate } from '@/components/analytics-gate'
+import { CookieConsent } from '@/components/cookie-consent'
+import { SiteJsonLd } from '@/components/json-ld'
+import { SkipLink } from '@/components/skip-link'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
-const poppins = Poppins({
+const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
   variable: '--font-geist-sans',
+  display: 'swap',
 })
 
 const geistMono = Geist_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
+  display: 'swap',
 })
 
-const siteTitle = 'UNICRÉDITOS — Plataforma de Soluciones Financieras'
+const siteTitle = 'UNICRÉDITOS — Créditos, cuotas y pagos'
 const siteDescription =
-  'Créditos que transforman vidas y negocios. Impulsamos tus proyectos, construimos tu futuro. Préstamos personales, crédito PyME y financiación en comercios. unicreditos.com'
+  'Tu manera de comprar en cuotas y pedir préstamos digitales. Billetera, pagos de servicios, KYC y BCRA. TNA y CFT a la vista. unicreditos.com'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),
-  title: siteTitle,
+  title: {
+    default: siteTitle,
+    template: '%s · UNICRÉDITOS',
+  },
   description: siteDescription,
   applicationName: 'UNICRÉDITOS',
   authors: [{ name: 'RM International Group S.A.S.' }],
   creator: 'RM International Group S.A.S.',
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     type: 'website',
     siteName: 'UNICRÉDITOS',
@@ -57,7 +61,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#081D3A',
+  themeColor: '#20BD5A',
 }
 
 export default function RootLayout({
@@ -66,11 +70,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-AR" className={`${poppins.variable} ${geistMono.variable} bg-background`}>
+    <html lang="es-AR" className={`${sans.variable} ${geistMono.variable} bg-background`}>
       <body className="font-sans antialiased">
+        <SkipLink />
+        <SiteJsonLd />
         {children}
+        <CookieConsent />
         <Toaster richColors closeButton position="top-right" />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <AnalyticsGate />
       </body>
     </html>
   )

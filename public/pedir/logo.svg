@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 56" role="img" aria-label="UNICR�DITOS">
-  <rect x="0" y="0" width="56" height="56" rx="14" fill="#0A1628"/>
-  <path d="M15.5 15.5v16c0 7.18 5.82 13 13 13s13-5.82 13-13v-16" fill="none" stroke="#F7F4EF" stroke-width="4.6" stroke-linecap="round"/>
-  <path d="M36.5 12c5.2 3.5 8.7 9.5 8.7 16.5" fill="none" stroke="#2DD4A8" stroke-width="3.4" stroke-linecap="round"/>
-  <circle cx="40.5" cy="13.2" r="2.7" fill="#2DD4A8"/>
-  <text x="72" y="28" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="600" letter-spacing="-0.4" fill="#0A1628">UNICR�DITOS</text>
-  <text x="72" y="46" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="9.5" font-weight="600" letter-spacing="1.8" fill="#5C6B7A">PR�STAMOS ONLINE</text>
-</svg>

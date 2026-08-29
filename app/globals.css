@@ -46,49 +46,49 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
 
-  --color-brand-navy: #0B1D3A;
-  --color-brand-navy-50: #EEF2F8;
-  --color-brand-navy-100: #D6DEED;
-  --color-brand-navy-200: #A9B9D5;
-  --color-brand-navy-300: #7C94BC;
-  --color-brand-navy-400: #4F6FA4;
-  --color-brand-navy-500: #2A4E85;
-  --color-brand-navy-600: #102B5B;
-  --color-brand-navy-700: #0E274A;
-  --color-brand-navy-800: #0B1D3A;
-  --color-brand-navy-900: #061428;
-  --color-brand-royal: #13315C;
-  --color-brand-primary: #1E58E5;
-  --color-brand-primary-50: #EBF2FF;
-  --color-brand-primary-100: #C7DAFF;
-  --color-brand-primary-200: #8FB5FF;
-  --color-brand-primary-300: #5791FF;
-  --color-brand-primary-400: #1F6CF5;
-  --color-brand-primary-500: #1E58E5;
-  --color-brand-primary-600: #1648C4;
-  --color-brand-primary-700: #123A9C;
-  --color-brand-primary-800: #0C2870;
-  --color-brand-primary-900: #071A4A;
+  --color-brand-navy: #0C1612;
+  --color-brand-navy-50: #F3F6F4;
+  --color-brand-navy-100: #E2E8E4;
+  --color-brand-navy-200: #C5D0C9;
+  --color-brand-navy-300: #9AADA3;
+  --color-brand-navy-400: #6E8779;
+  --color-brand-navy-500: #4A6356;
+  --color-brand-navy-600: #2A3D33;
+  --color-brand-navy-700: #1A2820;
+  --color-brand-navy-800: #0C1612;
+  --color-brand-navy-900: #07100C;
+  --color-brand-royal: #157A3B;
+  --color-brand-primary: #20BD5A;
+  --color-brand-primary-50: #E8F9EE;
+  --color-brand-primary-100: #C8F0D6;
+  --color-brand-primary-200: #90E1AD;
+  --color-brand-primary-300: #58D184;
+  --color-brand-primary-400: #2CC868;
+  --color-brand-primary-500: #20BD5A;
+  --color-brand-primary-600: #1A9A4A;
+  --color-brand-primary-700: #157A3B;
+  --color-brand-primary-800: #0F5A2B;
+  --color-brand-primary-900: #0A3C1D;
 
-  --color-brand-cian: #22D3EE;
-  --color-brand-cian-50: #ECFDFF;
-  --color-brand-cian-100: #CFFAFE;
-  --color-brand-cian-200: #A5F3FC;
-  --color-brand-cian-300: #67E8F9;
-  --color-brand-cian-400: #22D3EE;
-  --color-brand-cian-500: #06B6D4;
-  --color-brand-cian-600: #0891B2;
-  --color-brand-cian-700: #0E7490;
-  --color-brand-cian-800: #155E75;
-  --color-brand-cian-900: #164E63;
+  --color-brand-cian: #6EE7B7;
+  --color-brand-cian-50: #ECFDF5;
+  --color-brand-cian-100: #D1FAE5;
+  --color-brand-cian-200: #A7F3D0;
+  --color-brand-cian-300: #6EE7B7;
+  --color-brand-cian-400: #34D399;
+  --color-brand-cian-500: #10B981;
+  --color-brand-cian-600: #059669;
+  --color-brand-cian-700: #047857;
+  --color-brand-cian-800: #065F46;
+  --color-brand-cian-900: #064E3B;
 
-  --color-brand-emerald: #00C853;
+  --color-brand-emerald: #20BD5A;
   --color-brand-amber: #F59E0B;
   --color-brand-rose: #F43F5E;
   --color-brand-indigo: #4F46E5;
 
-  --color-trustbar: #081D3A;
-  --color-trustbar-foreground: #E2E8F0;
+  --color-trustbar: #0C1612;
+  --color-trustbar-foreground: #E2E8E4;
 
   --shadow-xs: 0 1px 2px 0 rgb(11 37 69 / 0.04), 0 1px 1px 0 rgb(11 37 69 / 0.03);
   --shadow-sm: 0 1px 3px 0 rgb(11 37 69 / 0.06), 0 1px 2px -1px rgb(11 37 69 / 0.05);
@@ -112,80 +112,80 @@
 
 :root {
   color-scheme: light;
-  --background: #F5F7FA;
-  --foreground: #08182E;
+  --background: #F7F8F6;
+  --foreground: #0C1612;
   --card: #FFFFFF;
-  --card-foreground: #08182E;
+  --card-foreground: #0C1612;
   --popover: #FFFFFF;
-  --popover-foreground: #08182E;
-  --primary: #1E58E5;
+  --popover-foreground: #0C1612;
+  --primary: #20BD5A;
   --primary-foreground: #FFFFFF;
-  --secondary: #EEF2F8;
-  --secondary-foreground: #081D3A;
-  --muted: #F1F5F9;
-  --muted-foreground: #4B5B7A;
-  --accent: #22D3EE;
-  --accent-foreground: #081D3A;
-  --success: #00C853;
+  --secondary: #E8F9EE;
+  --secondary-foreground: #0C1612;
+  --muted: #F3F6F4;
+  --muted-foreground: #4A6356;
+  --accent: #157A3B;
+  --accent-foreground: #FFFFFF;
+  --success: #20BD5A;
   --success-foreground: #FFFFFF;
   --warning: #F59E0B;
-  --warning-foreground: #081D3A;
+  --warning-foreground: #0C1612;
   --destructive: #DC2626;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #1E58E5;
-  --chart-1: #1E58E5;
-  --chart-2: #00C853;
+  --border: #C5D0C9;
+  --input: #C5D0C9;
+  --ring: #20BD5A;
+  --chart-1: #20BD5A;
+  --chart-2: #157A3B;
   --chart-3: #F59E0B;
   --chart-4: #8B5CF6;
   --chart-5: #F43F5E;
   --radius: 0.875rem;
 
-  --sidebar: #081D3A;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #1E58E5;
+  --sidebar: #0C1612;
+  --sidebar-foreground: #E2E8E4;
+  --sidebar-primary: #20BD5A;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #13315C;
+  --sidebar-accent: #1A2820;
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255,255,255,0.06);
-  --sidebar-ring: #22D3EE;
+  --sidebar-ring: #20BD5A;
 }
 
 .dark {
   color-scheme: dark;
-  --background: #06162E;
-  --foreground: #E2E8F0;
-  --card: #0B2545;
-  --card-foreground: #E2E8F0;
-  --popover: #0B2545;
-  --popover-foreground: #E2E8F0;
-  --primary: #22D3EE;
-  --primary-foreground: #06162E;
-  --secondary: #13315C;
-  --secondary-foreground: #E2E8F0;
-  --muted: #0E274A;
-  --muted-foreground: #94A3B8;
-  --accent: #0052D4;
-  --accent-foreground: #FFFFFF;
-  --success: #10B981;
+  --background: #07100C;
+  --foreground: #E2E8E4;
+  --card: #0C1612;
+  --card-foreground: #E2E8E4;
+  --popover: #0C1612;
+  --popover-foreground: #E2E8E4;
+  --primary: #20BD5A;
+  --primary-foreground: #07100C;
+  --secondary: #1A2820;
+  --secondary-foreground: #E2E8E4;
+  --muted: #1A2820;
+  --muted-foreground: #9AADA3;
+  --accent: #34D399;
+  --accent-foreground: #07100C;
+  --success: #20BD5A;
   --success-foreground: #FFFFFF;
   --destructive: #DC2626;
   --border: rgba(255,255,255,0.08);
   --input: rgba(255,255,255,0.10);
-  --ring: #22D3EE;
-  --chart-1: #22D3EE;
-  --chart-2: #10B981;
+  --ring: #20BD5A;
+  --chart-1: #20BD5A;
+  --chart-2: #34D399;
   --chart-3: #F59E0B;
   --chart-4: #8B5CF6;
   --chart-5: #F43F5E;
-  --sidebar: #06162E;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #22D3EE;
-  --sidebar-primary-foreground: #06162E;
-  --sidebar-accent: #0B2545;
-  --sidebar-accent-foreground: #E2E8F0;
+  --sidebar: #07100C;
+  --sidebar-foreground: #E2E8E4;
+  --sidebar-primary: #20BD5A;
+  --sidebar-primary-foreground: #07100C;
+  --sidebar-accent: #1A2820;
+  --sidebar-accent-foreground: #E2E8E4;
   --sidebar-border: rgba(255,255,255,0.06);
-  --sidebar-ring: #22D3EE;
+  --sidebar-ring: #20BD5A;
 }
 
 @media print {
@@ -598,7 +598,8 @@
     overflow: visible !important;
   }
   .doc-letterhead-bar,
-  .doc-section-num {
+  .doc-section-num,
+  .service-ticket {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -974,23 +975,23 @@
 }
 
 .uc-gradient-navy {
-  background-image: linear-gradient(135deg, #081D3A 0%, #102B5B 48%, #1E58E5 100%);
+  background-image: linear-gradient(135deg, #07100C 0%, #0C1612 48%, #157A3B 100%);
 }
 .uc-gradient-brand {
-  background-image: linear-gradient(135deg, #1E58E5 0%, #06B6D4 100%);
+  background-image: linear-gradient(135deg, #20BD5A 0%, #157A3B 100%);
 }
 .uc-gradient-card {
-  background-image: linear-gradient(135deg, rgba(0,82,212,0.04) 0%, rgba(34,211,238,0.04) 100%);
+  background-image: linear-gradient(135deg, rgba(32,189,90,0.06) 0%, rgba(21,122,59,0.04) 100%);
 }
 .uc-text-gradient {
-  background-image: linear-gradient(90deg, #0052D4 0%, #06B6D4 100%);
+  background-image: linear-gradient(90deg, #20BD5A 0%, #157A3B 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .uc-ring-focus:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0,82,212,0.18), 0 0 0 1px #0052D4;
+  box-shadow: 0 0 0 3px rgba(32,189,90,0.22), 0 0 0 1px #20BD5A;
 }
 .uc-table-sticky thead th {
   position: sticky;
@@ -1003,6 +1004,15 @@
 .uc-scroll-thin::-webkit-scrollbar-track { background: transparent; }
 
 html { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 body {
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "cv02","cv03","cv04","cv11";

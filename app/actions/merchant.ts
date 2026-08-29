@@ -260,6 +260,8 @@ export async function createMerchantSale(input: {
   amount: number
   term: number
   monthlyRate?: number
+  /** Promoción 0% absorbida por el comercio (cuotas sin interés). */
+  zeroInterest?: boolean
   customerName: string
   customerCuil: string
 }) {
@@ -332,7 +334,7 @@ export async function createMerchantSale(input: {
     return { ok: false as const, error: 'El producto de consumo no está activo. Pedile a admin que ejecute el seed.' }
   }
 
-  const monthlyRate = Number(product.monthlyRate)
+  const monthlyRate = input.zeroInterest ? 0 : Number(product.monthlyRate)
   const monthlyIncome = Number(customer.monthlyIncome ?? 0)
   const consulted = await persistBcraConsultation({
     userId: customer.userId,
@@ -348,7 +350,7 @@ export async function createMerchantSale(input: {
     score: score.score,
     monthlyIncome,
     term,
-    monthlyRate,
+    monthlyRate: monthlyRate || Number(product.monthlyRate),
     productMinAmount: Number(product.minAmount ?? catalog.minAmount),
     productMaxAmount: Number(product.maxAmount ?? catalog.maxAmount),
     history,
@@ -383,7 +385,9 @@ export async function createMerchantSale(input: {
 
   const loanId = newId('loan')
   const now = new Date()
-  const purpose = `Venta ${m.businessName} — ${input.customerName.trim() || cuil}`
+  const purpose = input.zeroInterest
+    ? `Venta 0% ${m.businessName} — ${input.customerName.trim() || cuil}`
+    : `Venta ${m.businessName} — ${input.customerName.trim() || cuil}`
   let contractId: string | null = null
 
   await db.transaction(async (tx) => {
@@ -437,6 +441,177 @@ export async function createMerchantSale(input: {
     status,
     rejectionReason,
     maxOffered: offer.maxAmount,
+    zeroInterest: Boolean(input.zeroInterest),
+  }
+}
+
+/** Cliente financia una compra en un comercio adherido (online o QR). */
+export async function requestConsumoAtMerchant(input: {
+  merchantId: string
+  amount: number
+  term: number
+  note?: string
+}) {
+  const userId = await assertRole('customer')
+  const [m] = await db
+    .select()
+    .from(merchant)
+    .where(and(eq(merchant.id, input.merchantId), eq(merchant.status, 'active')))
+    .limit(1)
+  if (!m) return { ok: false as const, error: 'Comercio no encontrado o inactivo.' }
+  if (m.userId === userId) {
+    return { ok: false as const, error: 'No podés financiarte en tu propio comercio.' }
+  }
+
+  const [customer] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  if (!customer?.cuil) {
+    return { ok: false as const, error: 'Completá CUIL en tu perfil antes de financiar.' }
+  }
+  if (!(await diditApprovedForUser(userId)) || customer.kycStatus !== 'approved') {
+    return { ok: false as const, error: 'Verificá tu identidad con Didit antes de comprar en cuotas.' }
+  }
+  if (Number(customer.monthlyIncome ?? 0) <= 0) {
+    return { ok: false as const, error: 'Declará tus ingresos en el perfil.' }
+  }
+
+  const catalog = catalogByType('consumo')
+  const amount = Math.round(Number(input.amount))
+  const term = Math.round(Number(input.term))
+  if (!Number.isFinite(amount) || amount < catalog.minAmount || amount > catalog.maxAmount) {
+    return {
+      ok: false as const,
+      error: `Monto fuera de rango: ${catalog.minAmount} a ${catalog.maxAmount}.`,
+    }
+  }
+  if (!Number.isFinite(term) || term < catalog.minTerm || term > catalog.maxTerm) {
+    return { ok: false as const, error: `El plazo debe estar entre ${catalog.minTerm} y ${catalog.maxTerm} cuotas.` }
+  }
+
+  const open = await db
+    .select({ id: loan.id })
+    .from(loan)
+    .where(and(eq(loan.userId, userId), inArray(loan.status, [...OPEN_LOAN_STATUSES])))
+    .limit(1)
+  if (open.length) {
+    return { ok: false as const, error: 'Ya tenés un crédito abierto. Cancelalo o terminá de pagarlo antes.' }
+  }
+
+  const [product] = await db
+    .select()
+    .from(loanProduct)
+    .where(eq(loanProduct.id, catalog.id))
+    .limit(1)
+  if (!product?.active) {
+    return { ok: false as const, error: 'El producto de consumo no está activo.' }
+  }
+
+  const monthlyRate = Number(product.monthlyRate)
+  const monthlyIncome = Number(customer.monthlyIncome ?? 0)
+  const consulted = await persistBcraConsultation({
+    userId,
+    cuil: customer.cuil,
+    monthlyIncome,
+  })
+  if (!consulted.ok) return { ok: false as const, error: consulted.error }
+
+  const score = consulted.score
+  const deuda = consulted.snapshot.deudas
+  const history = await loadAppRepaymentHistory(userId)
+  const offer = computeCreditOffer({
+    score: score.score,
+    monthlyIncome,
+    term,
+    monthlyRate,
+    productMinAmount: Number(product.minAmount ?? catalog.minAmount),
+    productMaxAmount: Number(product.maxAmount ?? catalog.maxAmount),
+    history,
+  })
+  if (!offer.eligible || amount > offer.maxAmount) {
+    return {
+      ok: false as const,
+      error: `Monto no ofrecible. Tu tope actual: ${offer.maxAmount.toLocaleString('es-AR')} ARS. ${offer.reason}`,
+    }
+  }
+
+  const amort = computeFrenchAmortization(amount, term, monthlyRate)
+  const decision = decideUnderwriting({
+    score,
+    installmentAmount: amort.installmentAmount,
+    monthlyIncome,
+    worstSituation: deuda.worstSituation,
+    rejectedChecksCount: Number(consulted.snapshot.chequesRechazados?.count ?? 0),
+  })
+
+  let status: 'pending' | 'approved' | 'rejected' = 'pending'
+  let rejectionReason: string | null = null
+  if (decision.outcome === 'rejected') {
+    status = 'rejected'
+    rejectionReason = decision.reason
+  } else if (decision.outcome === 'pending_review') {
+    status = 'pending'
+    rejectionReason = decision.reason
+  } else {
+    status = 'approved'
+  }
+
+  const loanId = newId('loan')
+  const now = new Date()
+  const note = input.note?.trim()
+  const purpose = note
+    ? `Compra en cuotas · ${m.businessName} · ${note}`
+    : `Compra en cuotas · ${m.businessName}`
+  let contractId: string | null = null
+
+  await db.transaction(async (tx) => {
+    await tx.insert(loan).values({
+      id: loanId,
+      userId,
+      productId: product.id,
+      merchantId: m.id,
+      type: 'consumo',
+      principal: String(amount),
+      term,
+      monthlyRate: String(monthlyRate),
+      tna: String(amort.tna),
+      installmentAmount: String(amort.installmentAmount),
+      totalAmount: String(amort.totalAmount),
+      cft: String(amort.cft),
+      status,
+      purpose,
+      scoreAtApproval: score.score,
+      rejectionReason,
+      disbursedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    if (status === 'approved') {
+      const contract = await ensureLoanContract(
+        tx,
+        { id: loanId, userId, type: 'consumo', status: 'approved' },
+        { generatedBy: 'online_consumo', now },
+      )
+      contractId = contract?.id ?? null
+    }
+  })
+
+  if (contractId) {
+    await notifyContractReady({
+      userId,
+      contractId,
+      principal: amount,
+      term,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/merchant')
+  return {
+    ok: true as const,
+    loanId,
+    installmentAmount: amort.installmentAmount,
+    status,
+    rejectionReason,
+    merchantName: m.businessName,
   }
 }
 

@@ -55,25 +55,39 @@ function defaultProduct(products: LoanProduct[]) {
   return products.find((p) => p.id === 'prod_personal') ?? products[0]
 }
 
-function defaultTerm(product?: LoanProduct) {
-  if (!product) return 12
-  return Math.max(product.minTerm, Math.min(12, product.maxTerm))
+function defaultTerm(product?: LoanProduct, preferred?: number | null) {
+  if (!product) return preferred && preferred > 0 ? preferred : 12
+  const fallback = Math.max(product.minTerm, Math.min(12, product.maxTerm))
+  if (preferred == null || !Number.isFinite(preferred)) return fallback
+  return Math.max(product.minTerm, Math.min(product.maxTerm, Math.round(preferred)))
+}
+
+function defaultAmount(product?: LoanProduct, preferred?: number | null) {
+  if (!product) return preferred && preferred > 0 ? preferred : 50_000
+  const fallback = Math.min(500_000, Number(product.maxAmount))
+  if (preferred == null || !Number.isFinite(preferred)) return fallback
+  return Math.max(
+    Number(product.minAmount),
+    Math.min(Number(product.maxAmount), Math.round(preferred)),
+  )
 }
 
 export function LoanRequestSimulator({
   products,
   identityReady = false,
+  initialAmount = null,
+  initialTerm = null,
 }: {
   products: LoanProduct[]
   identityReady?: boolean
+  initialAmount?: number | null
+  initialTerm?: number | null
 }) {
   const router = useRouter()
   const initial = defaultProduct(products)
   const [selectedProductId, setSelectedProductId] = useState<string>(initial?.id ?? '')
-  const [amount, setAmount] = useState<number>(
-    initial ? Math.min(500000, Number(initial.maxAmount)) : 50000,
-  )
-  const [term, setTerm] = useState<number>(defaultTerm(initial))
+  const [amount, setAmount] = useState<number>(defaultAmount(initial, initialAmount))
+  const [term, setTerm] = useState<number>(defaultTerm(initial, initialTerm))
   const [purpose, setPurpose] = useState<string>('')
   const [resultModal, setResultModal] = useState<RequestResult | null>(null)
 

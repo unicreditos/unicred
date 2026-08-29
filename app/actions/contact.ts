@@ -1,7 +1,17 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { inquiryEmail, sendEmail } from '@/lib/email'
 import { BRAND } from '@/lib/brand'
+import { consumeRateLimit } from '@/lib/rate-limit'
+
+function clientKey() {
+  return headers().then((h) => {
+    const forwarded = h.get('x-forwarded-for')?.split(',')[0]?.trim()
+    const realIp = h.get('x-real-ip')?.trim()
+    return forwarded || realIp || 'anonymous'
+  })
+}
 
 export async function submitPublicInquiry(input: {
   kind: 'contacto'
@@ -11,6 +21,12 @@ export async function submitPublicInquiry(input: {
   subjectLine: string
   message: string
 }) {
+  const ip = await clientKey()
+  const limit = consumeRateLimit(`contact:${ip}`, 5, 15 * 60 * 1000)
+  if (!limit.ok) {
+    throw new Error('Demasiados mensajes desde esta red. Probá de nuevo en unos minutos.')
+  }
+
   const name = String(input.name ?? '').trim()
   const email = String(input.email ?? '').trim()
   const message = String(input.message ?? '').trim()

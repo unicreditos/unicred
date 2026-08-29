@@ -1,6 +1,8 @@
 import { CANONICAL_HOST, shouldRedirectHost } from '@/lib/site'
+import { loggedInSignupBouncePath } from '@/directo/intent'
 import {
   installmentPosPath,
+  legacyPedirRedirect,
   publicPayInstallmentId,
   safeInternalPath,
   shouldBounceLoggedInToWorkspace,
@@ -18,6 +20,8 @@ const DASHBOARD_TABS = new Set([
   'scoring',
   'cuotas',
   'pagos',
+  'billetera',
+  'servicios',
   'comprobantes',
   'bancos',
   'documentos',
@@ -30,7 +34,7 @@ const DASHBOARD_TAB_ALIASES: Record<string, string> = {
   banca: 'bancos',
 }
 
-const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/merchant', '/pedir/cuenta', '/pedir/docs']
+const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/merchant']
 
 function hasSessionCookie(request: NextRequest) {
   return request.cookies
@@ -52,6 +56,13 @@ export function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl
+
+  const fromPedir = legacyPedirRedirect(pathname)
+  if (fromPedir) {
+    const url = request.nextUrl.clone()
+    url.pathname = fromPedir
+    return NextResponse.redirect(url, 308)
+  }
 
   const dashboardLeaf = pathname.match(/^\/dashboard\/([^/]+)\/?$/)
   if (dashboardLeaf) {
@@ -87,6 +98,13 @@ export function proxy(request: NextRequest) {
         url.search = dest.search
         return NextResponse.redirect(url)
       }
+      const fromDirecto = loggedInSignupBouncePath(pathname, request.nextUrl.searchParams)
+      if (fromDirecto) {
+        const dest = new URL(fromDirecto, url)
+        url.pathname = dest.pathname
+        url.search = dest.search
+        return NextResponse.redirect(url)
+      }
       url.pathname = '/dashboard'
       url.search = ''
       return NextResponse.redirect(url)
@@ -100,13 +118,8 @@ export function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     const intended = `${pathname}${request.nextUrl.search}`
     url.search = ''
-    if (pathname.startsWith('/pedir/')) {
-      url.pathname = '/pedir/ingresar'
-      url.searchParams.set('callbackUrl', intended)
-    } else {
-      url.pathname = '/sign-in'
-      url.searchParams.set('next', intended)
-    }
+    url.pathname = '/sign-in'
+    url.searchParams.set('next', intended)
     return NextResponse.redirect(url)
   }
 

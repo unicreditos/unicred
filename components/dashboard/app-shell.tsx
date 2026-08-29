@@ -3,19 +3,12 @@
 import { WorkspaceShell, type WorkspaceNavItem } from '@/components/unicred/workspace-shell'
 import { useSession } from '@/lib/auth-client'
 import {
-  Bell,
   CreditCard,
-  FileText,
-  FolderKanban,
-  Handshake,
-  Landmark,
   LayoutDashboard,
-  Scale,
-  Settings2,
-  ShieldCheck,
   Sparkles,
-  User,
   Wallet,
+  WalletCards,
+  Zap,
 } from 'lucide-react'
 
 export type TabValue =
@@ -28,6 +21,8 @@ export type TabValue =
   | 'scoring'
   | 'cuotas'
   | 'pagos'
+  | 'billetera'
+  | 'servicios'
   | 'comprobantes'
   | 'bancos'
   | 'documentos'
@@ -45,6 +40,8 @@ const TAB_VALUES: readonly TabValue[] = [
   'scoring',
   'cuotas',
   'pagos',
+  'billetera',
+  'servicios',
   'comprobantes',
   'bancos',
   'documentos',
@@ -58,35 +55,29 @@ export function isDashboardTab(value: string | null): value is TabValue {
 }
 
 const NAV: WorkspaceNavItem[] = [
-  { id: 'overview', label: 'Inicio', icon: LayoutDashboard, group: 'Cuenta' },
-  { id: 'pagos', label: 'Pagar cuotas', icon: Wallet, group: 'Cuenta' },
-  { id: 'cuotas', label: 'Créditos', icon: CreditCard, group: 'Crédito' },
-  { id: 'solicitar', label: 'Solicitar', icon: Sparkles, group: 'Crédito' },
-  { id: 'mis_solicitudes', label: 'Solicitudes', icon: FileText, group: 'Crédito' },
-  { id: 'scoring', label: 'Situación BCRA', icon: Scale, group: 'Crédito' },
-  { id: 'perfil', label: 'Identidad', icon: User, group: 'Datos' },
-  { id: 'kyc_biometrico', label: 'Biometría', icon: ShieldCheck, group: 'Datos' },
-  { id: 'bancos', label: 'Cuentas de desembolso', icon: Landmark, group: 'Datos' },
-  { id: 'cuenta', label: 'Configuración', icon: Settings2, group: 'Datos' },
-  { id: 'documentos', label: 'Documentos', icon: FolderKanban, group: 'Archivo' },
-  { id: 'comprobantes', label: 'Comprobantes', icon: FileText, group: 'Archivo' },
-  { id: 'notificaciones', label: 'Actividad', icon: Bell, group: 'Soporte' },
-  { id: 'reclamos', label: 'Reclamos', icon: Scale, group: 'Soporte' },
-  { id: 'ayuda', label: 'Ayuda', icon: Handshake, group: 'Soporte' },
+  { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
+  { id: 'pagos', label: 'Pagar', icon: Wallet },
+  { id: 'billetera', label: 'Billetera', icon: WalletCards },
+  { id: 'servicios', label: 'Servicios', icon: Zap },
+  { id: 'cuotas', label: 'Créditos', icon: CreditCard },
+  { id: 'solicitar', label: 'Solicitar', icon: Sparkles },
 ]
 
 const MOBILE_TABS: WorkspaceNavItem[] = [
   { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
+  { id: 'pagos', label: 'Pagar', icon: Wallet },
+  { id: 'billetera', label: 'Billetera', icon: WalletCards },
+  { id: 'servicios', label: 'Servicios', icon: Zap },
   { id: 'cuotas', label: 'Créditos', icon: CreditCard },
-  { id: 'pagos', label: 'Pagos', icon: Wallet },
-  { id: 'solicitar', label: 'Solicitar', icon: Sparkles },
 ]
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   overview: { title: 'Tu cuenta', subtitle: 'Vencimientos, score y estado de tus préstamos' },
-  pagos: { title: 'Pagar cuotas', subtitle: 'Caja de cobro: tarjetas, Mercado Pago y redes de efectivo' },
-  cuotas: { title: 'Mis créditos', subtitle: 'Saldos, cuotas y amortización' },
-  solicitar: { title: 'Nueva solicitud', subtitle: 'Simulá TNA, CFT y enviá el pedido' },
+  pagos: { title: 'Pagar cuotas', subtitle: 'Caja de cobro: tarjetas, Mercado Pago, Payway y redes de efectivo' },
+  billetera: { title: 'Billetera UNICRÉDITOS', subtitle: 'Saldo, P2P interno y egresos desde tesorería RM' },
+  servicios: { title: 'Pagos y recargas', subtitle: 'Servicios, impuestos y recargas con saldo de billetera' },
+  cuotas: { title: 'Mis créditos', subtitle: 'Saldos, cuotas, contrato y pagaré' },
+  solicitar: { title: 'Nueva solicitud', subtitle: 'Identidad, BCRA, padrón, TNA y CFT' },
   mis_solicitudes: { title: 'Solicitudes', subtitle: 'Estado de cada trámite' },
   scoring: { title: 'Situación BCRA', subtitle: 'Consulta a Central de Deudores y score UNICRÉDITOS' },
   perfil: { title: 'Identidad', subtitle: 'CUIL, domicilio e ingresos declarados' },
@@ -104,11 +95,17 @@ interface DashboardShellProps {
   children: React.ReactNode
   activeTab: TabValue
   onTabChange: (value: TabValue) => void
+  user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
-export function DashboardShell({ children, activeTab, onTabChange }: DashboardShellProps) {
+export function DashboardShell({ children, activeTab, onTabChange, user }: DashboardShellProps) {
   const { data: session } = useSession()
   const copy = TITLES[activeTab] ?? TITLES.overview
+  const resolved = {
+    name: session?.user?.name ?? user?.name,
+    email: session?.user?.email ?? user?.email,
+    image: session?.user?.image ?? user?.image,
+  }
 
   return (
     <WorkspaceShell
@@ -118,12 +115,18 @@ export function DashboardShell({ children, activeTab, onTabChange }: DashboardSh
       onNavigate={(id) => onTabChange(id as TabValue)}
       title={copy.title}
       subtitle={copy.subtitle}
-      user={{
-        name: session?.user?.name,
-        email: session?.user?.email,
-        image: session?.user?.image,
-      }}
+      user={resolved}
       onProfile={() => onTabChange('perfil')}
+      accountItems={[
+        { label: 'Didit y biometría', onSelect: () => onTabChange('kyc_biometrico') },
+        { label: 'Billetera virtual', onSelect: () => onTabChange('billetera') },
+        { label: 'Pagos y recargas', onSelect: () => onTabChange('servicios') },
+        { label: 'CBU / CVU de desembolso', onSelect: () => onTabChange('bancos') },
+        { label: 'Contratos y pagarés', onSelect: () => onTabChange('documentos') },
+        { label: 'Clave de acceso', onSelect: () => onTabChange('cuenta') },
+        { label: 'Reclamos', onSelect: () => onTabChange('reclamos') },
+        { label: 'Ayuda', onSelect: () => onTabChange('ayuda') },
+      ]}
       mobileTabs={MOBILE_TABS}
     >
       {children}

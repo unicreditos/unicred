@@ -1,6 +1,10 @@
 import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
-import { PaymentReceiptPrintable } from '@/components/documents/payment-receipt-printable'
+import {
+  PaymentReceiptPrintable,
+  type ReceiptDocData,
+} from '@/components/documents/payment-receipt-printable'
+import { ServicePaymentTicketPrintable } from '@/components/documents/service-payment-ticket'
 import { Button } from '@/components/ui/button'
 import { receiptBranding } from '@/lib/brand'
 import { db } from '@/lib/db'
@@ -53,7 +57,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const receipt =
     receiptRaw && (await canViewOwnedRecord(userId, receiptRaw.userId)) ? receiptRaw : null
 
-  let data = null
+  let data: ReceiptDocData | null = null
   let notFound = false
 
   if (!receipt) {
@@ -177,10 +181,22 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
     <DocumentPreviewShell
       backHref={backHref}
       meta={`Comprobante ${data.receiptNumber}`}
-      fileName={documentPdfBaseName('Comprobante', String(data.receiptNumber))}
+      fileName={documentPdfBaseName(
+        data.receiptType === 'service_payment' ? 'Ticket-Servicio' : 'Comprobante',
+        String(data.receiptNumber),
+      )}
+      hint={
+        data.receiptType === 'service_payment'
+          ? 'Ticket de pago de servicio. En el diálogo de impresión usá «Guardar como PDF».'
+          : undefined
+      }
       extra={<DocumentPackLinks receiptId={data.id} />}
     >
-      <PaymentReceiptPrintable receipt={data} />
+      {data.receiptType === 'service_payment' ? (
+        <ServicePaymentTicketPrintable receipt={data} />
+      ) : (
+        <PaymentReceiptPrintable receipt={data} />
+      )}
     </DocumentPreviewShell>
   )
 }

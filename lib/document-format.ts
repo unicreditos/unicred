@@ -106,6 +106,10 @@ export function paymentMethodLabel(method: string | null | undefined) {
     cvu: 'Transferencia CVU',
     wallet: 'Transferencia',
     link_pago: 'Mercado Pago',
+    payway_qr: 'Payway QR',
+    payway_wallet: 'Billetera virtual',
+    payway_card: 'Tarjeta Payway',
+    billetera_unicreditos: 'Billetera UNICRÉDITOS',
   }
   if (!method) return '—'
   return map[method] ?? method.replace(/_/g, ' ')

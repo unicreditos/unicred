@@ -1,8 +1,13 @@
 import { PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BRAND, legalPartyLine } from '@/lib/brand'
 import { BadgeCheck, FileCheck2, Scale } from 'lucide-react'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = { title: 'Términos y Condiciones Generales · UNICRÉDITOS', description: 'Términos y Condiciones Generales de UNICRÉDITOS. Mutuo, TNA, CFT, arrepentimiento, Ley 24.240, Ley 25.326.' }
+export const metadata = pageMetadata({
+  title: 'Términos y Condiciones Generales',
+  description: 'Términos y Condiciones Generales de UNICRÉDITOS. Mutuo, TNA, CFT, arrepentimiento, Ley 24.240, Ley 25.326.',
+  path: '/legal/terminos',
+})
 
 export default function TerminosPage() {
   const secciones = [
@@ -16,7 +21,7 @@ export default function TerminosPage() {
     {
       id: '2', t: '2 · Servicios financieros',
       p: [
-        'Los servicios ofrecidos incluyen: préstamo personal, crédito de consumo en cuotas, financiación a comercios adheridos, pagos de cuotas a través de Mercado Pago, consulta a la Central de Deudores del BCRA, scoring UNICRÉDITOS, verificación de identidad (KYC) y paneles de cliente, comercio y administración.',
+        'Los servicios ofrecidos incluyen: préstamo personal digital, crédito de consumo en cuotas (tienda física y online, con promociones 0% absorbidas por el comercio cuando corresponda), financiación a comercios adheridos, billetera virtual UNICRÉDITOS (saldo, transferencias P2P y egresos vía tesorería), pagos de servicios y recargas, pagos de cuotas a través de Mercado Pago y otros medios habilitados, consulta a la Central de Deudores del BCRA, scoring UNICRÉDITOS, verificación de identidad (KYC) y paneles de cliente, comercio y administración.',
         'UNICRÉDITOS no es una entidad financiera autorizada por el BCRA, no capta depósitos y no está inscrita como Proveedor No Financiero de Crédito (PNFC, Com. A 7146 / A 7532) hasta que esa constancia se publique aquí. El CBU, CVU o alias se usa para desembolsar el crédito a tu nombre.',
         'Cada línea de producto podrá contar con condiciones particulares (monto mínimo/máximo, plazo, tasas, garantías, comisiones). Tales condiciones se informan en el simulador, oferta y contrato de préstamo (mutuo con interés, CCCN arts. 1525 y ss.), previo a la aceptación final del Usuario. “Préstamo” y “mutuo” designan el mismo negocio jurídico.',
       ],

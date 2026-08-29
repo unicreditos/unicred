@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/finance'
-import { BRAND } from '@/lib/brand'
-import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { BRAND, GROUP } from '@/lib/brand'
+import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import {
   TrendingUp,
   TrendingDown,
@@ -18,11 +18,7 @@ import {
   Shield,
   Globe2,
   FileCheck2,
-  Handshake,
-  Sparkles,
-  Banknote,
   CircleDot,
-  MonitorSmartphone,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -185,7 +181,7 @@ export function LineChart({
   points,
   labels,
   height = 200,
-  color = '#0052D4',
+  color = '#20BD5A',
   fill = true,
   yMax,
   yFormatter = (v) => String(Math.round(v)),
@@ -522,15 +518,15 @@ function InfoField({
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn('h-5 w-5', className)} aria-hidden>
-      <circle cx="16" cy="16" r="15.2" fill="#0B1D3A" />
-      <rect x="11" y="6.4" width="11.2" height="7.2" rx="1.1" fill="#00C853" />
+      <circle cx="16" cy="16" r="15.2" fill="#0C1612" />
+      <rect x="11" y="6.4" width="11.2" height="7.2" rx="1.1" fill="#20BD5A" />
       <text
         x="16.6"
         y="12.1"
         textAnchor="middle"
         fontSize="5.4"
         fontWeight="700"
-        fill="#0B1D3A"
+        fill="#0C1612"
       >
         $
       </text>
@@ -561,8 +557,8 @@ export function BrandLogo({
           <span className={cn('text-[17px] font-black tracking-[0.04em]', light ? 'text-white' : 'text-brand-navy-800 dark:text-white')}>
             {BRAND.company}
           </span>
-          <span className={cn('mt-0.5 max-w-[168px] text-[10px] font-medium leading-snug', light ? 'text-white/70' : 'text-muted-foreground')}>
-            {BRAND.slogan}
+          <span className={cn('mt-0.5 max-w-[200px] text-[10px] font-medium leading-snug', light ? 'text-white/70' : 'text-muted-foreground')}>
+            {GROUP.productLine}
           </span>
         </span>
       ) : null}
@@ -580,7 +576,7 @@ export function DigitalCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1D3A] via-[#102B5B] to-[#1E58E5] p-5 text-white shadow-xl',
+        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0C1612] via-[#1A2820] to-[#20BD5A] p-5 text-white shadow-xl',
         className,
       )}
     >
@@ -780,126 +776,116 @@ export function TrustBar() {
 }
 
 export function HeroLanding() {
-  const pillars = [
-    { icon: <Globe2 className="h-5 w-5" />, title: 'Argentina', text: 'Operamos en el país, con DNI, CUIL y Central de Deudores.' },
-    { icon: <Shield className="h-5 w-5" />, title: 'Confiable', text: 'TNA y CFT a la vista. Datos protegidos por la Ley 25.326.' },
-    { icon: <Clock className="h-5 w-5" />, title: 'Digital', text: 'Simulá y pedí online. El tiempo depende de Didit y del BCRA.' },
-    { icon: <Handshake className="h-5 w-5" />, title: 'Cercano', text: 'Personas, PyMEs y comercios adheridos. Atención por email.' },
-  ]
-
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 uc-gradient-navy opacity-95" />
+    <section className="relative overflow-hidden bg-brand-navy text-white">
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-navy via-[#0a1f18] to-brand-primary-900" />
       <div
-        className="absolute inset-0 opacity-[0.12]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 18% 40%, rgba(255,255,255,0.18) 0 1px, transparent 1.5px), radial-gradient(circle at 72% 28%, rgba(255,255,255,0.12) 0 1px, transparent 1.5px)',
-          backgroundSize: '48px 48px, 72px 72px',
-        }}
+        className="pointer-events-none absolute -left-24 top-0 h-[480px] w-[480px] rounded-full bg-brand-primary/25 blur-3xl"
+        aria-hidden
       />
-      <div className="absolute -right-40 top-0 h-[520px] w-[520px] rounded-full bg-brand-cian-500/10 blur-3xl" />
-      <div className="absolute -left-32 bottom-0 h-[420px] w-[420px] rounded-full bg-brand-primary-400/20 blur-3xl" />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-12 lg:py-24">
-        <div className="lg:col-span-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-cian-200 ring-1 ring-white/5">
-            <Banknote className="h-3.5 w-3.5" />
-            {BRAND.legalName} · Créditos digitales
-          </div>
-          <h1 className="mt-5 text-[36px] font-black leading-[1.08] tracking-tight text-white sm:text-[50px]">
-            {BRAND.valueProp}
-          </h1>
-          <p className="mt-3 text-sm font-medium text-brand-cian-200">{BRAND.slogan}</p>
-          <p className="mt-2 text-base font-medium text-white/85">{BRAND.tagline}</p>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200/90">
-            Soluciones financieras inteligentes y accesibles para personas, comercios y empresas.
-            Simulá, evaluamos tu perfil con la Central de Deudores del BCRA y acreditamos en tu
-            cuenta. Costos informados antes de firmar. Sujeto a evaluación crediticia.
+      <div
+        className="pointer-events-none absolute -right-16 bottom-0 h-[360px] w-[360px] rounded-full bg-brand-cian-500/20 blur-3xl"
+        aria-hidden
+      />
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-12 lg:gap-12 lg:py-24">
+        <div className="lg:col-span-7">
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-cian-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
+            {GROUP.productLine}
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <h1 className="mt-6 text-[42px] font-bold leading-[1.05] tracking-tight text-white sm:text-[56px] lg:text-[64px]">
+            UNICRÉDITOS
+          </h1>
+          <p className="mt-4 max-w-xl text-xl font-medium leading-snug text-brand-cian-100 sm:text-2xl">
+            {BRAND.valueProp}
+          </p>
+          <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75">
+            Préstamos digitales, compras en cuotas sin tarjeta, billetera y pagos de servicios. TNA y
+            CFT a la vista antes de firmar.
+          </p>
+          <dl className="mt-8 grid max-w-lg grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+                Tope del primer crédito
+              </dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-white">
+                {formatARS(FIRST_CREDIT_HARD_CAP)}
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+                Cuotas fijas
+              </dt>
+              <dd className="mt-1 text-lg font-bold text-white">3 a 48</dd>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 sm:col-span-1 col-span-2">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+                Antes de firmar
+              </dt>
+              <dd className="mt-1 text-lg font-bold text-white">TNA y CFT</dd>
+            </div>
+          </dl>
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/sign-up"
-              className="inline-flex items-center gap-2 rounded-xl uc-gradient-brand px-5 py-3 text-sm font-bold text-white shadow-lg shadow-brand-primary/30 ring-1 ring-white/10 transition hover:-translate-y-0.5"
+              className="inline-flex items-center rounded-full bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-brand-primary/30 transition hover:bg-brand-primary-600"
             >
-              Solicitar crédito <MonitorSmartphone className="h-4 w-4" />
+              Empezá ahora
             </Link>
             <Link
-              href="#simulador"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/10 backdrop-blur transition hover:bg-white/10"
+              href="/simulador"
+              className="inline-flex items-center rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
             >
-              Simular mi crédito <Sparkles className="h-4 w-4" />
+              Simular cuota
             </Link>
-          </div>
-          <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
-            {pillars.map((s) => (
-              <div key={s.title} className="rounded-2xl border border-white/10 bg-white/5 p-3.5 ring-1 ring-white/5 backdrop-blur">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-brand-cian-200">
-                  {s.icon}
-                </div>
-                <div className="mt-2 text-sm font-bold text-white">{s.title}</div>
-                <div className="mt-1 text-[11px] leading-snug text-slate-300/85">{s.text}</div>
-              </div>
-            ))}
           </div>
         </div>
 
-        <div className="lg:col-span-6">
-          <div className="relative mx-auto w-full max-w-[520px]">
-            <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-br from-brand-cian-400/20 via-transparent to-brand-primary-400/20 blur-2xl" />
-            <div className="relative rounded-[26px] border border-white/10 bg-card p-3 shadow-2xl ring-1 ring-white/5">
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                <BrandLogo showText={true} />
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vista de ejemplo</div>
-                  <div className="text-xs font-semibold text-brand-navy">Préstamo personal</div>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-brand-primary-50/60 p-3 ring-1 ring-brand-primary/10">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-brand-primary-600">Capital</div>
-                  <div className="mt-1 text-xl font-black text-brand-navy tabular-nums">$ 500.000</div>
-                </div>
-                <div className="rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-200/60">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">Cuota fija</div>
-                  <div className="mt-1 text-xl font-black text-brand-navy tabular-nums">{formatARS(PERSONAL_QUOTE.installmentAmount)}</div>
-                </div>
-                <div className="col-span-2 rounded-2xl border border-border/60 bg-white p-4 shadow-xs">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">Plan 12 cuotas</span>
-                        <StatusChip status="activo" />
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">Sistema francés · referencia del simulador</div>
-                    </div>
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
-                      <Landmark className="h-4.5 w-4.5" />
-                    </span>
+        <div className="relative lg:col-span-5">
+          <div
+            className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-brand-primary/30 to-brand-cian-500/10 blur-2xl"
+            aria-hidden
+          />
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/5 p-6 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-cian-200">
+              Una sola cuenta
+            </p>
+            <ul className="mt-5 space-y-4">
+              {[
+                { t: 'Préstamo digital', d: 'Hasta 48 cuotas fijas · KYC + BCRA' },
+                { t: 'Cuotas sin tarjeta', d: 'Tienda física y checkout online' },
+                { t: 'Billetera + servicios', d: 'Saldo, transferencias y recargas' },
+              ].map((item) => (
+                <li
+                  key={item.t}
+                  className="flex gap-3 border-b border-white/10 pb-4 last:border-0 last:pb-0"
+                >
+                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-primary" />
+                  <div>
+                    <p className="font-bold text-white">{item.t}</p>
+                    <p className="mt-0.5 text-sm text-white/65">{item.d}</p>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-                    <Mini label="TNA" value={PERSONAL_QUOTE.tnaLabel} />
-                    <Mini label="CFT c/IVA" value={PERSONAL_QUOTE.cftLabel} />
-                    <Mini label="Plazo" value="12 meses" />
-                  </div>
-                  <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-                    Ejemplo informativo para $500.000 a 12 meses. La oferta final puede variar según perfil de riesgo.
-                  </p>
-                </div>
-              </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <Link
+                href="/comprar-en-cuotas"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/10"
+              >
+                Comprar en cuotas
+              </Link>
+              <Link
+                href="/prestamos"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/10"
+              >
+                Pedir préstamo
+              </Link>
             </div>
           </div>
         </div>
       </div>
     </section>
-  )
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-sm font-bold tabular-nums">{value}</div>
-    </div>
   )
 }
 

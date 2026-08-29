@@ -1,12 +1,14 @@
 import { PublicBcraBoard } from '@/components/unicred/public-bcra-board'
 import { FeatureCard, Grid, PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BadgeCheck, Landmark, Scale, Shield } from 'lucide-react'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'Datos oficiales BCRA',
   description:
     'Tipo de cambio de referencia y variables publicadas por el Banco Central. UNICRÉDITOS no opera compraventa de divisas.',
-}
+  path: '/datos-bcra',
+})
 
 export default function DatosBcraPage() {
   return (

@@ -3,22 +3,14 @@
 import { type AdminTabId } from '@/lib/admin-nav'
 import { WorkspaceShell, type WorkspaceNavItem } from '@/components/unicred/workspace-shell'
 import {
-  Activity,
   Banknote,
-  Building2,
   CreditCard,
-  FileClock,
-  Landmark,
   LayoutDashboard,
-  Percent,
   ReceiptText,
   Scale,
   Settings2,
   ShieldCheck,
-  Store,
-  Target,
   Users,
-  Wallet,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -26,33 +18,20 @@ export type { AdminTabId }
 
 export const NAV_ITEMS = [
   { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, group: 'cmd' },
-  { id: 'solicitudes', label: 'Solicitudes', icon: FileClock, group: 'orig' },
-  { id: 'usuarios', label: 'Clientes', icon: Users, group: 'orig' },
   { id: 'creditos', label: 'Créditos', icon: CreditCard, group: 'orig' },
-  { id: 'comercios', label: 'Comercios', icon: Store, group: 'orig' },
-  { id: 'kyc', label: 'KYC', icon: ShieldCheck, group: 'orig' },
+  { id: 'usuarios', label: 'Clientes', icon: Users, group: 'orig' },
+  { id: 'kyc', label: 'Identidad', icon: ShieldCheck, group: 'orig' },
   { id: 'cobranzas', label: 'Mesa de cobro', icon: ReceiptText, group: 'cob' },
-  { id: 'desembolsos', label: 'Desembolsos', icon: Banknote, group: 'fin' },
-  { id: 'comprobantes', label: 'Comprobantes', icon: ReceiptText, group: 'fin' },
-  { id: 'movimientos', label: 'Movimientos', icon: Wallet, group: 'fin' },
-  { id: 'cuentas-bancarias', label: 'Cuentas', icon: Building2, group: 'fin' },
-  { id: 'cartera_activa', label: 'Cartera', icon: CreditCard, group: 'fin' },
+  { id: 'desembolsos', label: 'Desembolsos', icon: Banknote, group: 'cob' },
   { id: 'legales', label: 'Contratos', icon: Scale, group: 'leg' },
-  { id: 'reclamos', label: 'Reclamos', icon: Scale, group: 'leg' },
-  { id: 'logs_auditoria', label: 'Auditoría', icon: Activity, group: 'leg' },
-  { id: 'scoring', label: 'Scoring BCRA', icon: Target, group: 'riesgo' },
-  { id: 'bcra', label: 'Variables BCRA', icon: Landmark, group: 'riesgo' },
   { id: 'parametros', label: 'Configuración', icon: Settings2, group: 'sys' },
-  { id: 'tarifas', label: 'Tasas', icon: Percent, group: 'sys' },
 ] as const
 
 const GROUP_LABEL: Record<string, string> = {
   cmd: 'Control',
   orig: 'Originación',
-  cob: 'Cobranzas',
-  fin: 'Contable / Finanzas',
+  cob: 'Caja',
   leg: 'Legales',
-  riesgo: 'Riesgo',
   sys: 'Sistema',
 }
 
@@ -67,7 +46,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   overview: { title: 'Dashboard Ejecutivo', subtitle: 'Estado general de UNICRÉDITOS' },
   creditos: { title: 'Aprobación de créditos', subtitle: 'Pipeline de originación' },
   solicitudes: { title: 'Todas las solicitudes', subtitle: 'Historial de originación' },
-  kyc: { title: 'Validación KYC', subtitle: 'Identidad y biometría pendientes' },
+  kyc: { title: 'Identidad', subtitle: 'Didit y biometría pendientes' },
   usuarios: { title: 'Personas', subtitle: 'Alta, ficha, bloqueo y baja de usuarios' },
   comercios: { title: 'Red de comercios', subtitle: 'Altas y estado de adhesión' },
   base_clientes: { title: 'Personas', subtitle: 'Alta, ficha, bloqueo y baja de usuarios' },
@@ -124,6 +103,13 @@ export function AdminAppShell({
         email: user?.email,
         image: user?.image,
       }}
+      accountItems={[
+        { label: 'Solicitudes', onSelect: () => onTabChange('solicitudes') },
+        { label: 'Comercios', onSelect: () => onTabChange('comercios') },
+        { label: 'Movimientos', onSelect: () => onTabChange('movimientos') },
+        { label: 'Scoring BCRA', onSelect: () => onTabChange('scoring') },
+        { label: 'Auditoría', onSelect: () => onTabChange('logs_auditoria') },
+      ]}
       mobileTabs={[
         { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
         { id: 'cobranzas', label: 'Cobros', icon: ReceiptText },

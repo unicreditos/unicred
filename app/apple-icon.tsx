@@ -13,7 +13,7 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0B1D3A',
+          background: '#0C1612',
         }}
       >
         <div
@@ -28,12 +28,12 @@ export default function AppleIcon() {
             style={{
               width: 86,
               height: 54,
-              background: '#00C853',
+              background: '#20BD5A',
               borderRadius: 10,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#0B1D3A',
+              color: '#0C1612',
               fontSize: 36,
               fontWeight: 700,
             }}

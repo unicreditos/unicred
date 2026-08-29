@@ -7,15 +7,10 @@ import {
   Stepper,
   TrustBar,
 } from '@/components/unicred/dashboard-kit'
-import { PublicBcraBoard, PublicBcraTicker } from '@/components/unicred/public-bcra-board'
-import {
-  LegalStrip,
-  PublicCtaBanner,
-  PublicFooter,
-  PublicHeader,
-} from '@/components/unicred/public-chrome'
+import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
 import { formatARS } from '@/lib/finance'
-import { COMERCIO_QUOTE, CONSUMO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { CONSUMO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { pageMetadata } from '@/lib/seo'
 import {
   BadgeCheck,
   Banknote,
@@ -33,6 +28,13 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+export const metadata = pageMetadata({
+  title: 'Créditos, cuotas sin tarjeta y pagos de servicios',
+  description:
+    'Préstamos digitales, compras en cuotas sin tarjeta, billetera y pagos de servicios. TNA y CFT a la vista. UNICRÉDITOS.',
+  path: '/',
+})
+
 export default async function HomePage() {
   const { isLoggedIn, accountHref } = await getAccountHref()
 
@@ -40,32 +42,32 @@ export default async function HomePage() {
     {
       icon: Wallet,
       tag: 'Personas',
-      name: 'Préstamo personal',
-      desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. Destino libre, sujeto a evaluación.`,
+      name: 'Préstamo digital',
+      desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. 100% online.`,
       metric: PERSONAL_QUOTE.metric,
       metricHint: PERSONAL_QUOTE.metricHint,
-      cta: 'Simular personal',
-      href: '/productos#personal',
+      cta: 'Pedir préstamo',
+      href: '/prestamos',
     },
     {
       icon: Store,
-      tag: 'PyME',
-      name: 'Crédito comercial',
-      desc: `Capital de trabajo. Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)}. Evaluación con KYC y Central de Deudores.`,
-      metric: COMERCIO_QUOTE.metric,
-      metricHint: COMERCIO_QUOTE.metricHint,
-      cta: 'Ver línea comercial',
-      href: '/productos#comercial',
+      tag: 'Sin tarjeta',
+      name: 'Comprar en cuotas',
+      desc: `Físico y online. Hasta ${formatARS(CONSUMO_QUOTE.maxAmount)}. Promos 0% en locales adheridos.`,
+      metric: CONSUMO_QUOTE.metric,
+      metricHint: CONSUMO_QUOTE.metricHint,
+      cta: 'Ver cómo comprar',
+      href: '/comprar-en-cuotas',
     },
     {
       icon: TrendingUp,
-      tag: 'Punto de venta',
-      name: 'Crédito de consumo',
-      desc: `Financiación en comercios adheridos. Hasta ${formatARS(CONSUMO_QUOTE.maxAmount)}. El cliente debe tener cuenta y KYC aprobado.`,
-      metric: CONSUMO_QUOTE.metric,
-      metricHint: CONSUMO_QUOTE.metricHint,
-      cta: 'Ver red de comercios',
-      href: '/comercios',
+      tag: 'Billetera',
+      name: 'Pagos y recargas',
+      desc: 'Luz, gas, impuestos y celular con saldo UNICRÉDITOS. Una sola cuenta.',
+      metric: 'Débito inmediato',
+      metricHint: 'Liquidación al prestador vía tesorería RM',
+      cta: 'Ir a servicios',
+      href: '/pagos-servicios',
     },
   ]
 
@@ -102,15 +104,9 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <PublicBcraTicker />
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
+      <main id="contenido-principal">
       <HeroLanding />
-
-      <section id="datos-bcra" className="relative scroll-mt-24 border-b border-border/60 bg-slate-50/40">
-        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
-          <PublicBcraBoard compact />
-        </div>
-      </section>
 
       <section id="simulador" className="relative scroll-mt-24">
         <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-12">
@@ -348,6 +344,7 @@ export default async function HomePage() {
 
       <TrustBar />
       <PublicCtaBanner />
+      </main>
       <PublicFooter />
     </div>
   )

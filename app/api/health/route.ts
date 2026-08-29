@@ -28,6 +28,15 @@ export async function GET() {
   }
 
   const ok = env.ok && database !== 'error'
+  let payway: 'ok' | 'sandbox' | 'missing' = 'missing'
+  try {
+    const { getPaywayConfig } = await import('@/lib/payway')
+    const cfg = getPaywayConfig()
+    if (cfg.configured) payway = cfg.env === 'production' ? 'ok' : 'sandbox'
+  } catch {
+    payway = 'missing'
+  }
+
   return NextResponse.json(
     {
       ok,
@@ -35,6 +44,7 @@ export async function GET() {
       time: new Date().toISOString(),
       database,
       bcra,
+      payway,
       // Solo conteos: no exponer nombres de variables de entorno en público.
       env: {
         missingRequired: env.missingRequired.length,

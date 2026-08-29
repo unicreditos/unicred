@@ -67,12 +67,12 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
   return (
     <main className="relative grid min-h-svh lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#081D3A] p-10 lg:flex">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0C1612] p-10 lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              'linear-gradient(180deg, transparent 42%, rgba(8,16,32,0.85) 100%), radial-gradient(ellipse at 50% 110%, #1E58E5 0%, transparent 55%)',
+              'linear-gradient(180deg, transparent 42%, rgba(7,16,12,0.85) 100%), radial-gradient(ellipse at 50% 110%, #20BD5A 0%, transparent 55%)',
           }}
         />
         <svg
@@ -101,7 +101,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </p>
         </div>
         <p className="relative z-10 text-xs text-white/45">
-          UNICRÉDITOS es una marca comercial de {BRAND.legalName} — {BRAND.domain}
+          UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por {BRAND.legalName} — {BRAND.domain}
         </p>
       </div>
 

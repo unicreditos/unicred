@@ -15,9 +15,9 @@ import {
   DIDIT_SESSION_COOKIE,
   getDiditDecision,
   isDiditConfigured,
-  splitPersonName,
   upsertDiditSessionRow,
 } from '@/lib/didit'
+import { diditPersonExpectedDetails } from '@/lib/didit-expected'
 import { getRoleForUser, getSession, newId, requireUserId } from '@/lib/session'
 
 export async function getDiditPublicConfig() {
@@ -79,20 +79,16 @@ export async function startDiditVerification(input?: {
 
   const fromProfile = await expectedFromProfile(userId)
   const fullName = input?.fullName?.trim() || fromProfile.fullName || ''
-  const names = splitPersonName(fullName)
   const session = await getSession()
   let created
   try {
     created = await createDiditSession({
     vendorData: userId,
-    expectedDetails: {
-      first_name: names.first_name || undefined,
-      last_name: names.last_name || undefined,
-      date_of_birth: input?.birthDate || fromProfile.birthDate || undefined,
-      nationality: 'ARG',
-      id_country: 'ARG',
-      identification_number: (input?.dni || fromProfile.dni || '').replace(/\D/g, '') || undefined,
-    },
+    expectedDetails: diditPersonExpectedDetails({
+      fullName,
+      dni: input?.dni || fromProfile.dni,
+      birthDate: input?.birthDate || fromProfile.birthDate,
+    }),
     contactDetails: {
       email: input?.email || session?.user?.email || undefined,
       phone: input?.phone || fromProfile.phone || undefined,
@@ -142,7 +138,7 @@ export async function startDiditVerification(input?: {
 }
 
 export async function startDiditSignupVerification(input: {
-  fullName: string
+  fullName?: string
   dni?: string
   birthDate?: string
   phone?: string
@@ -157,20 +153,16 @@ export async function startDiditSignupVerification(input: {
     return { ok: false as const, error: 'Demasiados intentos de verificación. Esperá unos minutos.' }
   }
 
-  const names = splitPersonName(input.fullName)
   const vendorData = signupVendorData()
   let created
   try {
     created = await createDiditSession({
     vendorData,
-    expectedDetails: {
-      first_name: names.first_name || undefined,
-      last_name: names.last_name || undefined,
-      date_of_birth: input.birthDate || undefined,
-      nationality: 'ARG',
-      id_country: 'ARG',
-      identification_number: (input.dni || '').replace(/\D/g, '') || undefined,
-    },
+    expectedDetails: diditPersonExpectedDetails({
+      fullName: input.fullName,
+      dni: input.dni,
+      birthDate: input.birthDate,
+    }),
     contactDetails: {
       email: input.email || undefined,
       phone: input.phone || undefined,

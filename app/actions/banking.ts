@@ -19,8 +19,9 @@ import { notifyDisbursementCredited } from '@/lib/notify-email'
 import { and, eq, sql, desc, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { formatCBU, formatCVU, formatAlias, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
-import { persistBankLookup } from '@/lib/bank-lookup'
+import { persistBankLookup, toExtractedProfile } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
+import { parseWalletDestination } from '@/lib/payments/cvu'
 
 type AccountType = 'cbu' | 'cvu' | 'alias' | 'cci'
 
@@ -171,6 +172,150 @@ export async function createBankAccount(input: {
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/perfil')
   return { ok: true, id: result.id }
+}
+
+/**
+ * Flujo operativo: el cliente ingresa solo CBU, CVU o alias.
+ * Consulta ArgenAPI, completa titular/banco/CUIL y guarda la cuenta verificada.
+ */
+export async function lookupAndCreateBankAccount(input: {
+  identifier: string
+  setAsPrimary?: boolean
+}) {
+  const userId = await assertRole('customer')
+  const dest = parseWalletDestination(input.identifier)
+
+  const lookup = await validateBankAccountAuto({
+    cbu: dest.kind === 'cbu' ? dest.value : undefined,
+    cvu: dest.kind === 'cvu' ? dest.value : undefined,
+    alias: dest.kind === 'alias' ? dest.value : undefined,
+  })
+
+  const best = lookup.best
+  const extracted = toExtractedProfile(best)
+  if (!best?.ok || !extracted) {
+    throw new Error(
+      best?.message ||
+        'No encontramos esa cuenta en la red. Revisá el CBU, CVU o alias e intentá de nuevo.',
+    )
+  }
+  if (extracted.bloqueada === true) {
+    throw new Error('La cuenta está bloqueada en la red. No se puede usar para desembolso.')
+  }
+  if (extracted.activa === false) {
+    throw new Error('La cuenta figura inactiva. Pedí otra CBU/CVU o alias a tu nombre.')
+  }
+
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const [u] = await db.select({ name: user.name }).from(user).where(eq(user.id, userId)).limit(1)
+
+  const bankName =
+    (extracted.entidad || extracted.banco || '').trim() ||
+    (dest.kind === 'alias' ? 'Alias Coelsa' : dest.kind === 'cvu' ? 'Billetera virtual' : 'Cuenta bancaria')
+  const holderName =
+    (extracted.titular || extracted.titularNombre || '').trim() ||
+    (prof as any)?.fullName?.trim() ||
+    u?.name?.trim() ||
+    ''
+  const holderCuil =
+    (extracted.cuil || extracted.cuit || '').replace(/\D/g, '').slice(0, 11) ||
+    (prof?.cuil ?? '').replace(/\D/g, '').slice(0, 11)
+
+  if (!holderName) {
+    throw new Error('La API no devolvió el titular y faltan datos en tu perfil. Completá tu nombre y reintentá.')
+  }
+  if (!validateCuilMod11(holderCuil)) {
+    throw new Error(
+      'La API no devolvió un CUIL válido. Completá tu CUIL en el perfil y volvé a validar la cuenta.',
+    )
+  }
+
+  const cbu =
+    (extracted.cbu || (dest.kind === 'cbu' ? dest.value : '') || '').replace(/\D/g, '').slice(0, 22) ||
+    undefined
+  const cvu =
+    (extracted.cvu || (dest.kind === 'cvu' ? dest.value : '') || '').replace(/\D/g, '').slice(0, 22) ||
+    undefined
+  const alias = extracted.alias
+    ? normalizeBankAlias(extracted.alias)
+    : dest.kind === 'alias'
+      ? dest.value
+      : undefined
+
+  let accountType: AccountType = dest.kind
+  if (alias && !cbu && !cvu) accountType = 'alias'
+  else if (cvu && !cbu) accountType = 'cvu'
+  else if (cbu) accountType = 'cbu'
+
+  if (cbu && !RE_CBU_CVU.test(cbu)) throw new Error('CBU inválido devuelto por la red')
+  if (cvu && !RE_CBU_CVU.test(cvu)) throw new Error('CVU inválido devuelto por la red')
+  if (alias && (!isValidBankAlias(alias) || !RE_ALIAS.test(alias))) {
+    throw new Error('Alias inválido devuelto por la red')
+  }
+
+  const setAsPrimary = input.setAsPrimary ?? true
+  const id = crypto.randomUUID()
+
+  await db.transaction(async (tx) => {
+    if (setAsPrimary) {
+      await tx
+        .update(bankAccount)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(eq(bankAccount.userId, userId))
+    }
+    await tx.insert(bankAccount).values({
+      id,
+      userId,
+      accountType,
+      bankName,
+      accountNumber: extracted.numeroCuenta || undefined,
+      cbu,
+      cvu,
+      alias,
+      holderName,
+      holderCuil,
+      holderDocumentType: extracted.tipoDocumento || undefined,
+      holderDocumentNumber: extracted.numeroDocumento || undefined,
+      bankCode: extracted.codigoEntidad || undefined,
+      branch: extracted.sucursal || undefined,
+      scheme: extracted.scheme || accountType.toUpperCase(),
+      currency: extracted.moneda || 'ARS',
+      networkStatus: extracted.estado || (extracted.activa ? 'ACTIVA' : undefined),
+      networkBlocked: extracted.bloqueada === true,
+      isPrimary: setAsPrimary,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+  })
+
+  await persistBankLookup({
+    bankAccountId: id,
+    lookup,
+    actorUserId: userId,
+    source: 'unicred_lookup_create',
+  })
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/perfil')
+
+  return {
+    ok: true as const,
+    id,
+    extracted: {
+      bankName,
+      holderName,
+      holderCuil,
+      cbu: cbu || null,
+      cvu: cvu || null,
+      alias: alias || null,
+      accountType,
+      entidad: extracted.entidad || extracted.banco || null,
+      scheme: extracted.scheme || accountType.toUpperCase(),
+      estado: extracted.estado || null,
+    },
+    message: `Cuenta validada y guardada · ${bankName} · ${holderName}`,
+  }
 }
 
 export async function updateBankAccount(

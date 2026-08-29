@@ -16,8 +16,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
+import type { DirectoIntent } from '@/directo/intent'
+import { directoSolicitarHref } from '@/directo/intent'
 import { authClient } from '@/lib/auth-client'
+import {
+  adultBirthDateBounds,
+  isPlausibleAdultBirthDate,
+  isSocietyLabelForDidit,
+  plausiblePersonDni,
+} from '@/lib/didit-expected'
+import { formatARS } from '@/lib/finance'
 import type { AccountKind, IdentityMatch } from '@/lib/identity'
+import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import type { RepresentativeRole } from '@/lib/merchant-kyb'
 import {
   Building2,
@@ -59,7 +69,7 @@ const SITUACIONES = [
 
 const CATEGORIAS = ['Almacén / kiosco', 'Indumentaria', 'Servicios', 'Gastronomía', 'Tecnología', 'Otro']
 
-export function RegisterWizard() {
+export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('tipo')
   const [accountType, setAccountType] = useState<AccountKind | null>(null)
@@ -103,6 +113,9 @@ export function RegisterWizard() {
   const idx = STEPS.indexOf(step)
   const lastLookup = useRef('')
   const handleLookupRef = useRef<(raw?: string) => Promise<void>>(async () => {})
+  const signInHref = intent?.fromDirecto
+    ? `/sign-in?next=${encodeURIComponent(directoSolicitarHref(intent))}`
+    : '/sign-in'
 
   function go(next: Step) {
     setError(null)
@@ -242,7 +255,7 @@ export function RegisterWizard() {
       band: done.score?.band,
       reasons: done.score?.reasons,
       reportId: done.reportId,
-      dashboardUrl: done.dashboardUrl,
+      dashboardUrl: intent?.fromDirecto ? directoSolicitarHref(intent) : done.dashboardUrl,
       warning: done.warning,
       diditConfigured: done.diditConfigured,
     })
@@ -268,7 +281,7 @@ export function RegisterWizard() {
           </ul>
         </div>
         <p className="text-xs text-sidebar-foreground/50">
-          UNICRÉDITOS es una marca comercial de RM International Group S.A.S. — Argentina
+          UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por RM International Group S.A.S. — Argentina
         </p>
       </div>
 
@@ -290,6 +303,13 @@ export function RegisterWizard() {
           {step === 'tipo' && (
             <section className="space-y-5">
               <Header title="¿Cómo querés registrarte?" text="Elegí si la cuenta es para vos o para tu comercio." />
+              {intent?.fromDirecto ? (
+                <p className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  {intent.amount && intent.term
+                    ? `Simulaste ${formatARS(intent.amount)} en ${intent.term} cuotas. Primero abrís la cuenta; el tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}.`
+                    : `Venís de la campaña en línea. El tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}; el catálogo más alto se habilita con historial.`}
+                </p>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 <TypeCard
                   active={accountType === 'persona'}
@@ -407,7 +427,13 @@ export function RegisterWizard() {
                   label={identity.personType === 'JURIDICA' ? 'Nombre y apellido del representante *' : 'Nombre / denominación'}
                   value={name}
                   onChange={setName}
+                  placeholder={identity.personType === 'JURIDICA' ? 'Como figura en el DNI' : undefined}
                 />
+                {identity.personType === 'JURIDICA' && isSocietyLabelForDidit(name, businessName || identity.name) ? (
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    Didit verifica el DNI de una persona. Completá nombre y apellido del representante, no la razón social.
+                  </p>
+                ) : null}
                 {identity.personType === 'JURIDICA' && accountType === 'comercio' ? (
                   <div className="grid gap-3 pt-2 sm:grid-cols-2">
                     <div className="space-y-1.5">
@@ -480,7 +506,17 @@ export function RegisterWizard() {
                 <Button variant="outline" onClick={() => go('id')}>
                   Volver
                 </Button>
-                <Button className="flex-1" disabled={!confirmedIdentity || !name.trim() || dni.length < 7 || (identity.personType === 'JURIDICA' && accountType === 'comercio' && cuil.replace(/\D/g, '').length !== 11)} onClick={() => go('datos')}>
+                <Button
+                  className="flex-1"
+                  disabled={
+                    !confirmedIdentity ||
+                    !name.trim() ||
+                    dni.length < 7 ||
+                    (identity.personType === 'JURIDICA' && isSocietyLabelForDidit(name, businessName || identity.name)) ||
+                    (identity.personType === 'JURIDICA' && accountType === 'comercio' && cuil.replace(/\D/g, '').length !== 11)
+                  }
+                  onClick={() => go('datos')}
+                >
                   Confirmar y continuar
                 </Button>
               </div>
@@ -493,7 +529,17 @@ export function RegisterWizard() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="birthDate">Fecha de nacimiento *</Label>
-                  <Input id="birthDate" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                  <Input
+                    id="birthDate"
+                    type="date"
+                    value={birthDate}
+                    min={adultBirthDateBounds().min}
+                    max={adultBirthDateBounds().max}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                  />
+                  {accountType === 'comercio' && identity?.personType === 'JURIDICA' ? (
+                    <p className="text-xs text-muted-foreground">Del representante. No uses la fecha de constitución de la sociedad.</p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Teléfono *</Label>
@@ -558,7 +604,7 @@ export function RegisterWizard() {
                 <Button
                   className="flex-1"
                   disabled={
-                    !birthDate ||
+                    !isPlausibleAdultBirthDate(birthDate) ||
                     !phone ||
                     !geo.province ||
                     !geo.department ||
@@ -580,7 +626,11 @@ export function RegisterWizard() {
             <section className="space-y-5">
               <Header
                 title="Verificación de identidad"
-                text="Didit valida tu DNI, prueba de vida y coincidencia facial dentro de UNICRÉDITOS. No se aceptan fotos ni videos cargados a mano."
+                text={
+                  accountType === 'comercio' && identity?.personType === 'JURIDICA'
+                    ? 'Didit verifica el DNI, la prueba de vida y el rostro del representante. No se verifica la razón social ni el CUIT de la sociedad.'
+                    : 'Didit valida tu DNI, prueba de vida y coincidencia facial dentro de UNICRÉDITOS. No se aceptan fotos ni videos cargados a mano.'
+                }
               />
               {diditConfigured === null ? (
                 <p className="text-sm text-muted-foreground">Comprobando Didit…</p>
@@ -593,9 +643,9 @@ export function RegisterWizard() {
                   </p>
                   <DiditVerifyButton
                     mode="signup"
-                    fullName={name}
-                    dni={dni}
-                    birthDate={birthDate}
+                    fullName={isSocietyLabelForDidit(name, businessName) ? undefined : name}
+                    dni={plausiblePersonDni(dni)}
+                    birthDate={isPlausibleAdultBirthDate(birthDate) ? birthDate : undefined}
                     phone={phone}
                     email={email}
                     className="w-full"
@@ -631,11 +681,11 @@ export function RegisterWizard() {
               <Header title="Creá tu acceso" text="Con esto entras al panel de créditos UNICRÉDITOS. Cada préstamo se evalúa aparte." />
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} placeholder="Mínimo 8 caracteres" />
+                <Input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} placeholder="Mínimo 8 caracteres" />
               </div>
               <div className="space-y-3 rounded-lg border bg-muted/20 p-4 text-sm">
                 <p className="flex gap-2">
@@ -659,7 +709,7 @@ export function RegisterWizard() {
               {error && <Alert text={error} />}
               {alreadyRegistered && (
                 <p className="text-sm">
-                  <Link href="/sign-in" className="text-primary underline">
+                  <Link href={signInHref} className="text-primary underline">
                     Ir a ingresar
                   </Link>
                 </p>
@@ -699,9 +749,9 @@ export function RegisterWizard() {
                 </p>
                 <DiditVerifyButton
                   mode="session"
-                  fullName={name}
-                  dni={dni}
-                  birthDate={birthDate}
+                  fullName={isSocietyLabelForDidit(name, businessName) ? undefined : name}
+                  dni={plausiblePersonDni(dni)}
+                  birthDate={isPlausibleAdultBirthDate(birthDate) ? birthDate : undefined}
                   phone={phone}
                   email={email}
                   className="w-full"
@@ -731,7 +781,7 @@ export function RegisterWizard() {
           {step !== 'resultado' && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
               ¿Ya tenés cuenta?{' '}
-              <Link href="/sign-in" className="font-medium text-primary underline-offset-4 hover:underline">
+              <Link href={signInHref} className="font-medium text-primary underline-offset-4 hover:underline">
                 Ingresá
               </Link>
             </p>
@@ -793,11 +843,21 @@ function TypeCard({
   )
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }

@@ -3,6 +3,10 @@
  * Razón social, CUIT y domicilio salen de la constancia AFIP / IGJ
  * de RM International Group S.A.S. El CUIT de marca no se toma del
  * certificado WSAA (puede ser de otro titular).
+ *
+ * UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por
+ * esa SAS. No se publica el CUIT de otras personas ni el domicilio de
+ * obra del NOA en el mutuo.
  */
 
 function readEnv(...names: string[]) {
@@ -26,13 +30,60 @@ const COMPANY_ADDRESS =
 const resolvedCuit = formatCuit(readEnv('NEXT_PUBLIC_BRAND_CUIT', 'BRAND_CUIT')) || COMPANY_CUIT
 const resolvedAddress = readEnv('NEXT_PUBLIC_BRAND_ADDRESS', 'BRAND_ADDRESS') || COMPANY_ADDRESS
 
+export const GROUP = {
+  name: 'Grupo Emprenor',
+  productLine: 'Un producto Grupo Emprenor',
+  home: 'https://www.emprenor.com.ar/',
+  units: [
+    {
+      id: 'emprenor',
+      name: 'EMPRENOR',
+      role: 'Construcción e instalaciones',
+      href: 'https://www.emprenor.com.ar/',
+    },
+    {
+      id: 'fixya',
+      name: 'FixYa',
+      role: 'Marketplace de oficios',
+      href: 'https://fixya.emprenor.com/',
+    },
+    {
+      id: 'emitia',
+      name: 'EMITIA',
+      role: 'Facturación electrónica',
+      href: 'https://www.emitia.com.ar/',
+    },
+    {
+      id: 'myemprenor',
+      name: 'MyEmprenor',
+      role: 'Gestión de obras',
+      href: 'https://www.myemprenor.online/',
+    },
+    {
+      id: 'unipagos',
+      name: 'UniPagos',
+      role: 'Pagos',
+      href: 'https://unipagos.com/',
+    },
+    {
+      id: 'unicreditos',
+      name: 'UNICRÉDITOS',
+      role: 'Créditos',
+      href: 'https://www.unicreditos.com/',
+      current: true,
+    },
+  ],
+} as const
+
+export type GroupUnit = (typeof GROUP.units)[number]
+
 export const BRAND = {
   company: 'UNICRÉDITOS',
   legalName: 'RM International Group S.A.S.',
   legalForm: 'Sociedad por Acciones Simplificada',
-  slogan: 'Plataforma de soluciones financieras',
+  slogan: 'Créditos, cuotas, billetera y servicios en una sola cuenta',
   tagline: 'Impulsamos tus proyectos, construimos tu futuro.',
-  valueProp: 'Créditos que transforman vidas y negocios.',
+  valueProp: 'Tu manera de comprar en cuotas y pedir préstamos digitales.',
   cuit: resolvedCuit,
   address: resolvedAddress,
   city: 'Ciudad Autónoma de Buenos Aires',
@@ -78,6 +129,15 @@ export function publicBrandWebsite() {
 
 export function legalPartyLine() {
   return `${BRAND.legalName} (${BRAND.legalForm}, CUIT ${legalCuitLabel()}), domicilio ${BRAND.address}`
+}
+
+/** Pie público: unidad de grupo + operador del mutuo (SAS). */
+export function groupOperatorLine() {
+  return `${BRAND.company} es la unidad de créditos de ${GROUP.name}, operada por ${BRAND.legalName} (CUIT ${legalCuitLabel()}).`
+}
+
+export function groupSiblingUnits() {
+  return GROUP.units.filter((unit) => !('current' in unit && unit.current))
 }
 
 /** Bloque de marca que se guarda en cada comprobante emitido. */

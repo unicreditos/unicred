@@ -169,15 +169,7 @@ export async function resolveDiditWorkflowId() {
   return id
 }
 
-export function splitPersonName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return { first_name: '', last_name: '' }
-  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] }
-  return {
-    last_name: parts[0],
-    first_name: parts.slice(1).join(' '),
-  }
-}
+export { splitPersonName } from './didit-expected'
 
 export async function createDiditSession(input: {
   vendorData: string

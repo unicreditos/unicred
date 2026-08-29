@@ -20,24 +20,28 @@ function mask(name: string) {
   return `ok (${v.length} chars)`
 }
 
-console.log('Archivo .env.production.local:', existsSync(prodFile) ? 'presente' : 'no existe')
-console.log('---')
-for (const name of [
+const checklist = [
   'NEXT_PUBLIC_SITE_URL',
   'BETTER_AUTH_URL',
   'BETTER_AUTH_SECRET',
   'DATABASE_URL',
+  'CRON_SECRET',
   'MERCADO_PAGO_ACCESS_TOKEN',
   'MERCADO_PAGO_PUBLIC_KEY',
   'MERCADO_PAGO_WEBHOOK_SECRET',
   'DIDIT_API_KEY',
   'DIDIT_WORKFLOW_ID',
   'DIDIT_WEBHOOK_SECRET',
+  'PAYWAY_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'AFIP_CUIT',
   'AFIP_CERT',
   'AFIP_KEY',
-]) {
+] as const
+
+console.log('Archivo .env.production.local:', existsSync(prodFile) ? 'presente' : 'no existe')
+console.log('---')
+for (const name of checklist) {
   console.log(`${name}: ${mask(name)}`)
 }
 
@@ -48,6 +52,8 @@ process.env.NODE_ENV = previous
 if (report.missingRequired.length) {
   console.log('\nEl arranque en producción cortaría por:')
   for (const item of report.missingRequired) console.log(`  - ${item.name}: ${item.detail}`)
+} else {
+  console.log('\n✓ Variables obligatorias de producción: completas')
 }
 
 const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''

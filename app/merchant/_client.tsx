@@ -239,16 +239,25 @@ export function MerchantTabsClient({
 }) {
   const { data: session } = useSession()
 
-  const initTab: TabValue =
-    defaultTab && MERCHANT_TAB_IDS.includes(defaultTab as TabValue)
-      ? (defaultTab as TabValue)
-      : merchant
-        ? "overview"
-        : "profile"
+  const initTab: TabValue = (() => {
+    const requested =
+      defaultTab && MERCHANT_TAB_IDS.includes(defaultTab as TabValue)
+        ? (defaultTab as TabValue)
+        : merchant
+          ? "overview"
+          : "profile"
+    if (merchant?.status === "active") return requested
+    if (requested === "ayuda") return "ayuda"
+    return "profile"
+  })()
 
   const [activeTab, setActiveTab] = useState<TabValue>(initTab)
 
   function goNav(id: string) {
+    if (merchant?.status !== "active" && id !== "profile" && id !== "ayuda") {
+      setActiveTab("profile")
+      return
+    }
     setActiveTab(id as TabValue)
   }
 
@@ -287,11 +296,26 @@ export function MerchantTabsClient({
   }, [sales, commissionRate])
 
   const copy = MERCHANT_TITLES[activeTab]
+  const merchantReady = merchant?.status === 'active'
+  const nav = merchantReady
+    ? MERCHANT_NAV
+    : MERCHANT_NAV.filter((item) => item.id === 'profile' || item.id === 'ayuda')
+  const mobileNav = merchantReady
+    ? [
+        { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
+        { id: 'venta_rapida', label: 'Vender', icon: Sparkles },
+        { id: 'sales', label: 'Ventas', icon: CreditCard },
+        { id: 'liquidations', label: 'Cobros', icon: Banknote },
+      ]
+    : [
+        { id: 'profile', label: 'Datos', icon: Store },
+        { id: 'ayuda', label: 'Ayuda', icon: Handshake },
+      ]
 
   return (
     <WorkspaceShell
       role="merchant"
-      nav={MERCHANT_NAV}
+      nav={nav}
       activeId={activeTab}
       onNavigate={goNav}
       title={copy?.title ?? "Comercio"}
@@ -302,12 +326,7 @@ export function MerchantTabsClient({
         image: session?.user?.image,
       }}
       onProfile={() => setActiveTab("profile")}
-      mobileTabs={[
-        { id: "overview", label: "Inicio", icon: LayoutDashboard },
-        { id: "venta_rapida", label: "Vender", icon: Sparkles },
-        { id: "sales", label: "Ventas", icon: CreditCard },
-        { id: "liquidations", label: "Cobros", icon: Banknote },
-      ]}
+      mobileTabs={mobileNav}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
             <Tabs value={activeTab} className="w-full">
@@ -526,7 +545,7 @@ function MerchantOverview({
             centerValue={String(totals.totalOps)}
             segments={[
               { label: 'Vigentes', value: totals.activeCount, color: '#00C853', count: totals.activeCount },
-              { label: 'Cobradas', value: totals.receivedCount, color: '#1E58E5', count: totals.receivedCount },
+              { label: 'Cobradas', value: totals.receivedCount, color: '#20BD5A', count: totals.receivedCount },
               { label: 'Rechazadas', value: totals.rejectedCount, color: '#DC2626', count: totals.rejectedCount },
               { label: 'Otras', value: Math.max(0, totals.totalOps - totals.activeCount - totals.receivedCount - totals.rejectedCount), color: '#94A3B8' },
             ]}
@@ -1002,7 +1021,13 @@ function MerchantProfileForm({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">KYB</span>
-              <span className="text-xs font-medium">{existing?.kybStatus ?? "incomplete"}</span>
+              <span className="text-xs font-medium">
+                {existing?.kybStatus === 'complete' || existing?.kybStatus === 'approved'
+                  ? 'Completo'
+                  : existing?.kybStatus === 'pending'
+                    ? 'En revisión'
+                    : 'Pendiente de completar'}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Comisión</span>
@@ -1080,7 +1105,9 @@ function SaleForm({
 
   const [amount, setAmount] = useState<string>("")
   const [term, setTerm] = useState<number>(6)
-  const monthlyRate = catalogByType("consumo").monthlyRate
+  const catalogRate = catalogByType("consumo").monthlyRate
+  const [zeroInterest, setZeroInterest] = useState(false)
+  const monthlyRate = zeroInterest ? 0 : catalogRate
   const [customerName, setCustomerName] = useState<string>("")
   const [customerCuil, setCustomerCuil] = useState<string>("")
 
@@ -1102,6 +1129,7 @@ function SaleForm({
       const res = await createMerchantSale({
         amount: Number(amount),
         term,
+        zeroInterest,
         customerName: customerName.trim(),
         customerCuil,
       })
@@ -1200,9 +1228,25 @@ function SaleForm({
                 Tasa de catálogo (consumo)
               </p>
               <p className="font-mono text-sm font-semibold">{formatPercent(monthlyRate)} mensual</p>
-              <p className="text-xs text-muted-foreground">
-                La fija UNICRÉDITOS. El comercio no puede cambiarla. El CFT lo paga el cliente.
-              </p>
+              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={zeroInterest}
+                  onChange={(e) => setZeroInterest(e.target.checked)}
+                  disabled={disabled || loading}
+                />
+                <span>
+                  Promoción <strong>0% para el cliente</strong> (el comercio absorbe el interés).
+                </span>
+              </label>
+              {!zeroInterest ? (
+                <p className="text-xs text-muted-foreground">
+                  La fija UNICRÉDITOS. El CFT lo paga el cliente.
+                </p>
+              ) : (
+                <p className="text-xs text-emerald-700">Cuotas sin interés para el comprador.</p>
+              )}
             </div>
           </div>
 
@@ -1575,7 +1619,9 @@ function VentaRapidaTab({
   const [customerEmail, setCustomerEmail] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerCuil, setCustomerCuil] = useState("")
-  const monthlyRate = catalogByType("consumo").monthlyRate
+  const [zeroInterest, setZeroInterest] = useState(false)
+  const catalogRate = catalogByType("consumo").monthlyRate
+  const monthlyRate = zeroInterest ? 0 : catalogRate
 
   const sim = useMemo(() => {
     const a = Number(amount) || 0
@@ -1585,7 +1631,7 @@ function VentaRapidaTab({
     } catch {
       return null
     }
-  }, [amount, term])
+  }, [amount, term, monthlyRate])
 
   const quickAmounts = [50000, 100000, 250000, 500000, 1000000]
 
@@ -1598,6 +1644,7 @@ function VentaRapidaTab({
       const res = await createMerchantSale({
         amount: Number(amount),
         term,
+        zeroInterest,
         customerName: purposeTag,
         customerCuil,
       })
@@ -1721,6 +1768,18 @@ function VentaRapidaTab({
                     </SelectContent>
                   </Select>
                 </div>
+                <label className="flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={zeroInterest}
+                    onChange={(e) => setZeroInterest(e.target.checked)}
+                    disabled={disabled || loading}
+                  />
+                  <span>
+                    Promoción <strong>0% para el cliente</strong> (el comercio absorbe el interés).
+                  </span>
+                </label>
                 <div className="space-y-1.5">
                   <Label htmlFor="qr-phone">Teléfono (opcional)</Label>
                   <Input
@@ -1909,9 +1968,29 @@ function SolicitudesRecibidasTab({ sales }: { sales: SaleType[] }) {
             <CardDescription>Todas las operaciones originadas desde tu comercio</CardDescription>
           </div>
           <div className="hidden items-center gap-2 sm:flex">
-            <Input placeholder="Buscar cliente u operación…" className="h-9 w-64" />
-            <Button variant="ghost" size="sm" className="h-9">
-              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Exportar
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                const rows = list.map((s) => ({
+                  id: s.id,
+                  monto: s.principal,
+                  cuotas: s.term,
+                  estado: s.status,
+                  fecha: s.createdAt,
+                }))
+                const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `unicreditos-ventas-${Date.now()}.json`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar
             </Button>
           </div>
         </CardHeader>
@@ -2128,7 +2207,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
   const { labels: mesesLabels, amounts: evolV, counts: evolQ } = monthlySalesSeries(sales)
 
   const catSegments = [
-    { label: "Activos", value: totals.activeCount ?? 0, color: "#0052D4" },
+    { label: "Activos", value: totals.activeCount ?? 0, color: "#20BD5A" },
     { label: "Cobrados", value: totals.receivedCount ?? 0, color: "#10B981" },
     { label: "Rechazados", value: totals.rejectedCount ?? 0, color: "#F43F5E" },
   ].filter((s) => s.value > 0)
@@ -2136,7 +2215,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
-        Totales reales de tus operaciones. No hay exportación ni filtros por rubro todavía.
+        Totales reales de tus operaciones originadas en UNICRÉDITOS.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -2152,7 +2231,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
             points={evolV}
             labels={mesesLabels}
             height={260}
-            color="#0052D4"
+            color="#20BD5A"
             fill
             yFormatter={(v) => (v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}K`)}
           />
@@ -2201,16 +2280,31 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
             points={evolQ}
             labels={mesesLabels}
             height={230}
-            color="#22D3EE"
+            color="#34D399"
             fill
             yFormatter={(v) => String(v)}
           />
         </SectionCard>
 
-        <SectionCard title="Top productos / categorías" description="Todavía no hay rubro por venta" icon={<FileBarChart className="h-4 w-4 text-brand-cian" />} className="lg:col-span-5">
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            Las ventas no cargan categoría. No se muestran cifras de demostración.
-          </p>
+        <SectionCard
+          title="Rendimiento"
+          description="Indicadores de tus operaciones"
+          icon={<FileBarChart className="h-4 w-4 text-brand-cian" />}
+          className="lg:col-span-5"
+        >
+          <dl className="space-y-4 py-2">
+            {[
+              { t: 'Ticket medio', v: formatARS(totals.avgTicket ?? 0) },
+              { t: 'Tasa de aprobación', v: `${totals.totalOps ? Math.round(((totals.activeCount ?? 0) + (totals.receivedCount ?? 0)) / totals.totalOps * 100) : 0}%` },
+              { t: 'Clientes únicos', v: String(totals.totalCustomers ?? 0) },
+              { t: 'Volumen neto estimado', v: formatARS(totals.totalNet ?? 0) },
+            ].map((row) => (
+              <div key={row.t} className="flex items-center justify-between border-b border-border/50 pb-3 last:border-0">
+                <dt className="text-sm text-muted-foreground">{row.t}</dt>
+                <dd className="text-sm font-bold tabular-nums text-brand-navy">{row.v}</dd>
+              </div>
+            ))}
+          </dl>
         </SectionCard>
       </div>
     </div>
@@ -2313,10 +2407,16 @@ function AyudaTab() {
           <CardHeader>
             <CardTitle className="text-sm">Recursos para comercios</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Todavía no hay manual, plantilla masiva ni kit de marca publicados.
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Guías operativas y soporte comercial:{' '}
+              <a className="font-semibold text-brand-primary" href={`mailto:${BRAND.merchantsEmail}`}>
+                {BRAND.merchantsEmail}
+              </a>
             </p>
+            <Button asChild variant="outline" size="sm">
+              <a href="/comercios">Ver beneficios de adhesión</a>
+            </Button>
           </CardContent>
         </Card>
       </div>

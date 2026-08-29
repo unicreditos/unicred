@@ -587,6 +587,110 @@ export const supportCase = pgTable('support_case', {
   index('support_case_status_idx').on(t.status),
 ])
 
+/* -------------------- Billetera virtual Payway / Prisma ------------------- */
+
+export const walletAccount = pgTable('wallet_account', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('active'),
+  cvu: text('cvu').notNull().unique(),
+  alias: text('alias').notNull().unique(),
+  holderName: text('holderName'),
+  taxId: text('taxId'),
+  balance: numeric('balance', { precision: 14, scale: 2 }).notNull().default('0'),
+  currency: text('currency').notNull().default('ARS'),
+  /** Ledger propio; el riel externo (payway / pomelo / treasury) es solo ejecución. */
+  provider: text('provider').notNull().default('unicred'),
+  paywayAccountId: text('paywayAccountId'),
+  pomeloAccountId: text('pomeloAccountId'),
+  liveAttempt: jsonb('liveAttempt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('wallet_account_cvu_idx').on(t.cvu),
+  index('wallet_account_alias_idx').on(t.alias),
+])
+
+export const walletMovement = pgTable('wallet_movement', {
+  id: text('id').primaryKey(),
+  walletId: text('walletId').notNull().references(() => walletAccount.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  direction: text('direction').notNull(),
+  kind: text('kind').notNull(),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  balanceAfter: numeric('balanceAfter', { precision: 14, scale: 2 }).notNull(),
+  paymentId: text('paymentId').references(() => payment.id, { onDelete: 'set null' }),
+  payoutId: text('payoutId'),
+  counterpartyUserId: text('counterpartyUserId'),
+  externalId: text('externalId'),
+  reference: text('reference'),
+  notes: text('notes'),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('wallet_movement_wallet_idx').on(t.walletId),
+  index('wallet_movement_user_idx').on(t.userId),
+  uniqueIndex('wallet_movement_external_unique').on(t.externalId).where(sql`${t.externalId} is not null`),
+])
+
+/**
+ * Órdenes de egreso a CBU/CVU externos.
+ * El saldo del cliente ya se debitó en el ledger UNICRÉDITOS;
+ * tesorería RM (o Payway/Pomelo) ejecuta la transferencia bancaria.
+ */
+export const walletPayout = pgTable('wallet_payout', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull().references(() => walletAccount.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('queued'),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('ARS'),
+  destinationKind: text('destinationKind').notNull(),
+  destinationValue: text('destinationValue').notNull(),
+  concept: text('concept'),
+  reference: text('reference').notNull(),
+  treasuryCbu: text('treasuryCbu').notNull(),
+  rail: text('rail').notNull().default('treasury_rm'),
+  providerPayload: jsonb('providerPayload'),
+  executedAt: tsCol('executedAt'),
+  executedBy: text('executedBy'),
+  failureReason: text('failureReason'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('wallet_payout_user_idx').on(t.userId),
+  index('wallet_payout_status_idx').on(t.status),
+  uniqueIndex('wallet_payout_reference_unique').on(t.reference),
+])
+
+/**
+ * Pagos de servicios y recargas debitados de la billetera UNICRÉDITOS.
+ * Tesorería RM liquida al prestador (mismo patrón que wallet_payout).
+ */
+export const servicePayment = pgTable('service_payment', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull().references(() => walletAccount.id, { onDelete: 'cascade' }),
+  providerId: text('providerId').notNull(),
+  providerName: text('providerName').notNull(),
+  category: text('category').notNull(),
+  kind: text('kind').notNull(),
+  accountRef: text('accountRef').notNull(),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('ARS'),
+  status: text('status').notNull().default('queued'),
+  reference: text('reference').notNull(),
+  movementId: text('movementId'),
+  providerPayload: jsonb('providerPayload'),
+  executedAt: tsCol('executedAt'),
+  failureReason: text('failureReason'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('service_payment_user_idx').on(t.userId),
+  index('service_payment_status_idx').on(t.status),
+  uniqueIndex('service_payment_reference_unique').on(t.reference),
+])
+
 /**
  * Rastro de toda intervención manual de administración: quién tocó qué, cuándo
  * y con qué valores. Es append-only: nada del producto actualiza ni borra filas

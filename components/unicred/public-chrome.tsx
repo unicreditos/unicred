@@ -2,7 +2,9 @@
 
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
-import { BRAND } from '@/lib/brand'
+import { BRAND, GROUP, groupOperatorLine, groupSiblingUnits } from '@/lib/brand'
+import { formatARS } from '@/lib/finance'
+import { COMERCIO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import {
   ArrowRight,
   Building2,
@@ -16,9 +18,7 @@ import {
   PhoneCall,
   Scale,
   Shield,
-  Store,
   TrendingUp,
-  Users,
   Wallet,
   X,
 } from 'lucide-react'
@@ -27,35 +27,35 @@ import { useState } from 'react'
 
 export const MEGA_MENU = {
   personas: {
-    label: 'Personas',
-    hint: 'Créditos para vos',
+    label: 'Clientes',
+    hint: 'Todo en una cuenta',
     items: [
-      { icon: Wallet, title: 'Préstamo Personal', desc: 'Hasta $3.000.000 · cuota fija', href: '/productos#personal' },
-      { icon: Scale, title: 'Situación crediticia', desc: 'Consulta a Central de Deudores BCRA', href: '/scoring' },
-      { icon: Calculator, title: 'Simulador de cuotas', desc: 'TNA, CFT y total a devolver', href: '/simulador' },
-      { icon: Handshake, title: 'Reestructurar deudas', desc: 'Unificá cuotas con asesoría', href: '/contacto' },
+      { icon: Wallet, title: 'Préstamo digital', desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} · cuota fija`, href: '/prestamos' },
+      { icon: Handshake, title: 'Comprar en cuotas', desc: 'Sin tarjeta · físico y online', href: '/comprar-en-cuotas' },
+      { icon: Calculator, title: 'Pagos y recargas', desc: 'Servicios, impuestos y celular', href: '/pagos-servicios' },
+      { icon: Scale, title: 'Situación crediticia', desc: 'Consulta Central de Deudores BCRA', href: '/scoring' },
+      { icon: Calculator, title: 'Simulador', desc: 'TNA, CFT y total a devolver', href: '/simulador' },
       { title: 'Ver todos los productos', featured: true, href: '/productos' },
     ],
   },
   pymes: {
-    label: 'PyMEs y comercios',
-    hint: 'Capital de trabajo y ventas',
+    label: 'Comercios',
+    hint: 'Vendé en cuotas',
     items: [
-      { icon: Store, title: 'Adherir mi comercio', desc: 'Financiá a clientes con cuenta UNICRÉDITOS', href: '/comercios' },
-      { icon: Building2, title: 'Crédito comercial', desc: 'Hasta $5.000.000 para tu PyME', href: '/productos#comercial' },
-      { icon: TrendingUp, title: 'Crédito de consumo', desc: 'Cuotas en el punto de venta', href: '/productos#consumo' },
-      { icon: Users, title: 'Alta de comercio', desc: 'Adhesión sujeta a validación de UNICRÉDITOS', href: '/comercios' },
-      { title: 'Conocer la red de comercios', featured: true, href: '/comercios' },
+      { icon: Building2, title: 'Adherí tu comercio', desc: 'POS, QR y liquidaciones', href: '/comercios' },
+      { icon: TrendingUp, title: 'Red de comercios', desc: 'Dónde se compra con UNICRÉDITOS', href: '/red-comercios' },
+      { icon: Building2, title: 'Crédito comercial', desc: `Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)} para tu PyME`, href: '/productos#comercial' },
+      { title: 'Crear cuenta comercio', featured: true, href: '/sign-up' },
     ],
   },
   ayuda: {
     label: 'Ayuda',
     hint: 'Atención y transparencia',
     items: [
+      { icon: PhoneCall, title: 'Preguntas frecuentes', desc: 'Préstamos, cuotas y servicios', href: '/preguntas-frecuentes' },
       { icon: PhoneCall, title: 'Contacto', desc: 'Formulario y email de soporte', href: '/contacto' },
-      { icon: Calculator, title: 'Calculadora de cuotas', desc: 'Simulador con TNA y CFT', href: '/simulador' },
       { icon: Landmark, title: 'Datos oficiales BCRA', desc: 'Tipo de cambio de referencia', href: '/datos-bcra' },
-      { icon: Scale, title: 'Términos y condiciones', desc: 'Contrato y reglas del servicio', href: '/legal/terminos' },
+      { icon: Scale, title: 'Usuario financiero', desc: 'Identificación y productos', href: '/legal/usuario-financiero' },
       { icon: Lock, title: 'Privacidad', desc: 'Tratamiento de datos personales', href: '/legal/privacidad' },
       { title: 'Escribinos ahora', featured: true, href: '/contacto' },
     ],
@@ -112,6 +112,7 @@ export function PublicHeader({
 }) {
   const [open, setOpen] = useState(false)
   const [mobileSection, setMobileSection] = useState<MenuKey | null>(null)
+  const [desktopOpen, setDesktopOpen] = useState<MenuKey | null>(null)
   const accountLabel =
     accountHref === '/admin' ? 'Administración' : accountHref === '/merchant' ? 'Mi comercio' : 'Mi cuenta'
 
@@ -123,26 +124,54 @@ export function PublicHeader({
         <nav className="hidden lg:flex lg:items-center lg:gap-1 text-sm" aria-label="Principal">
           {(Object.keys(MEGA_MENU) as MenuKey[]).map((key) => {
             const menu = MEGA_MENU[key]
+            const expanded = desktopOpen === key
+            const panelId = `mega-${key}`
             return (
-              <div key={key} className="group relative">
+              <div
+                key={key}
+                className="relative"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                    setDesktopOpen((current) => (current === key ? null : current))
+                  }
+                }}
+              >
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 font-semibold text-muted-foreground transition hover:bg-brand-primary-50 hover:text-brand-primary"
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 font-semibold text-muted-foreground transition hover:bg-brand-primary-50 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  aria-expanded={expanded}
+                  aria-haspopup="true"
+                  aria-controls={panelId}
+                  onClick={() => setDesktopOpen((current) => (current === key ? null : key))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setDesktopOpen(null)
+                  }}
                 >
                   <span>{menu.label}</span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60 transition group-hover:rotate-180" />
+                  <ChevronDown className={`h-3.5 w-3.5 opacity-60 transition ${expanded ? 'rotate-180' : ''}`} />
                 </button>
-                <div className="invisible absolute left-1/2 top-full z-50 mt-2 w-[540px] -translate-x-1/2 translate-y-2 rounded-2xl border border-border/70 bg-card p-3 opacity-0 shadow-2xl shadow-brand-navy/15 transition duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                  <div className="rounded-xl border border-dashed border-brand-primary/15 bg-gradient-to-br from-brand-primary-50/50 to-brand-cian-50/20 p-4">
-                    <div className="text-[11px] font-bold uppercase tracking-widest text-brand-primary-700">{menu.hint}</div>
-                    <div className="mt-0.5 text-base font-extrabold text-brand-navy-900">{menu.label}</div>
+                {expanded ? (
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-label={menu.label}
+                    className="absolute left-1/2 top-full z-50 mt-2 w-[540px] -translate-x-1/2 rounded-2xl border border-border/70 bg-card p-3 shadow-2xl shadow-brand-navy/15"
+                  >
+                    <div className="rounded-xl border border-dashed border-brand-primary/15 bg-gradient-to-br from-brand-primary-50/50 to-brand-cian-50/20 p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-brand-primary-700">{menu.hint}</div>
+                      <div className="mt-0.5 text-base font-extrabold text-brand-navy-900">{menu.label}</div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-0.5">
+                      {menu.items.map((item) => (
+                        <MegaMenuItemLink
+                          key={item.title}
+                          item={item}
+                          onNavigate={() => setDesktopOpen(null)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-0.5">
-                    {menu.items.map((item) => (
-                      <MegaMenuItemLink key={item.title} item={item} />
-                    ))}
-                  </div>
-                </div>
+                ) : null}
               </div>
             )
           })}
@@ -171,6 +200,7 @@ export function PublicHeader({
             size="icon"
             className="lg:hidden"
             aria-expanded={open}
+            aria-controls="mobile-nav"
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
             onClick={() => setOpen((v) => !v)}
           >
@@ -180,7 +210,7 @@ export function PublicHeader({
       </div>
 
       {open ? (
-        <div className="border-t border-border/60 bg-white lg:hidden">
+        <div id="mobile-nav" className="border-t border-border/60 bg-white lg:hidden">
           <nav className="mx-auto max-w-7xl space-y-1 px-4 py-3 sm:px-6" aria-label="Móvil">
             {(Object.keys(MEGA_MENU) as MenuKey[]).map((key) => {
               const menu = MEGA_MENU[key]
@@ -189,7 +219,8 @@ export function PublicHeader({
                 <div key={key} className="rounded-xl border border-border/60">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between px-3 py-3 text-sm font-semibold"
+                    className="flex w-full items-center justify-between px-3 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary"
+                    aria-expanded={expanded}
                     onClick={() => setMobileSection(expanded ? null : key)}
                   >
                     {menu.label}
@@ -238,9 +269,8 @@ export function PublicFooter() {
           <div className="space-y-4 md:col-span-4">
             <BrandLogo showText light />
             <p className="max-w-md text-sm leading-relaxed text-slate-300/85">
-              UNICRÉDITOS es la plataforma de créditos digitales de RM International Group S.A.S. No somos un banco:
-              originamos y administramos créditos sujetos a evaluación crediticia, con TNA, CFT e impuestos
-              informados en cada simulación y contrato.
+              {groupOperatorLine()} No somos un banco: originamos y administramos créditos sujetos a evaluación
+              crediticia, con TNA, CFT e impuestos informados en cada simulación y contrato.
             </p>
             <div className="flex flex-wrap gap-3 text-xs text-slate-300/80">
               <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-brand-cian-300" /> Ley 25.326</span>
@@ -250,38 +280,59 @@ export function PublicFooter() {
           </div>
 
           <div className="md:col-span-2">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Personas</div>
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Clientes</div>
             <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
-              <li><Link href="/productos" className="hover:text-white">Productos</Link></li>
+              <li><Link href="/prestamos" className="hover:text-white">Préstamos digitales</Link></li>
+              <li><Link href="/comprar-en-cuotas" className="hover:text-white">Comprar en cuotas</Link></li>
+              <li><Link href="/pagos-servicios" className="hover:text-white">Pagos y recargas</Link></li>
               <li><Link href="/simulador" className="hover:text-white">Simulador</Link></li>
-              <li><Link href="/scoring" className="hover:text-white">Situación BCRA</Link></li>
-              <li><Link href="/datos-bcra" className="hover:text-white">Datos oficiales BCRA</Link></li>
-              <li><Link href="/sign-up" className="hover:text-white">Solicitar crédito</Link></li>
+              <li><Link href="/sign-up" className="hover:text-white">Crear cuenta</Link></li>
             </ul>
           </div>
 
           <div className="md:col-span-3">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Empresa</div>
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Comercios</div>
             <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
-              <li><Link href="/comercios" className="hover:text-white">Red de comercios</Link></li>
-              <li><Link href="/contacto" className="hover:text-white">Contacto comercial</Link></li>
+              <li><Link href="/comercios" className="hover:text-white">Adherí tu comercio</Link></li>
+              <li><Link href="/red-comercios" className="hover:text-white">Red de comercios</Link></li>
+              <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
               <li><Link href="/sign-up" className="hover:text-white">Crear cuenta</Link></li>
             </ul>
           </div>
 
           <div className="md:col-span-3">
             <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Ayuda y legales</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
+            <ul className="mt-4 space-y-2 text-sm text-slate-200/90">
+              <li><Link href="/preguntas-frecuentes" className="hover:text-white">Preguntas frecuentes</Link></li>
               <li><Link href="/contacto" className="hover:text-white">Contacto</Link></li>
+              <li><Link href="/legal/arrepentimiento" className="hover:text-white">Botón de arrepentimiento</Link></li>
+              <li><Link href="/legal/baja" className="hover:text-white">Botón de baja</Link></li>
+              <li><Link href="/legal/usuario-financiero" className="hover:text-white">Usuario financiero</Link></li>
+              <li><Link href="/legal/tasas" className="hover:text-white">Comisiones y tasas</Link></li>
+              <li><Link href="/legal/defensa-consumidor" className="hover:text-white">Defensa del consumidor</Link></li>
               <li><Link href="/legal/terminos" className="hover:text-white">Términos y condiciones</Link></li>
               <li><Link href="/legal/privacidad" className="hover:text-white">Política de privacidad</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-300/65 md:flex-row md:items-center">
+        <div className="mt-10 border-t border-white/10 pt-8">
+          <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">{GROUP.name}</div>
+          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-200/80">
+            {groupSiblingUnits().map((unit) => (
+              <li key={unit.id}>
+                <a href={unit.href} target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                  {unit.name}
+                </a>
+                <span className="ml-1 text-slate-400/80">· {unit.role}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-300/80 md:flex-row md:items-center">
           <p suppressHydrationWarning>© {year} UNICRÉDITOS · {BRAND.domain} · {BRAND.domains.slice(1).join(' · ')}</p>
-          <p className="max-w-xl md:text-right">
+          <p className="max-w-xl text-slate-300/80 md:text-right">
             La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en contrato.
           </p>
         </div>

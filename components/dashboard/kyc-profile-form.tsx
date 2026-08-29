@@ -126,7 +126,7 @@ export function KYCProfileForm({
               <div>
                 <CardTitle>Perfil y validación KYC</CardTitle>
                 <CardDescription>
-                  Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican solo con Didit, en la pestaña Biometría.
+                  Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican solo con Didit, en la misma solicitud.
                 </CardDescription>
               </div>
             </div>

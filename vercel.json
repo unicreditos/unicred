@@ -6,5 +6,29 @@
       "path": "/api/cron/reconcile-payments",
       "schedule": "0 8 * * *"
     }
+  ],
+  "redirects": [
+    { "source": "/pedir", "destination": "/", "statusCode": 308 },
+    { "source": "/pedir/solicitud", "destination": "/sign-up", "statusCode": 308 },
+    { "source": "/pedir/solicitud/:path*", "destination": "/sign-up", "statusCode": 308 },
+    { "source": "/pedir/ingresar", "destination": "/sign-in", "statusCode": 308 },
+    { "source": "/pedir/ingresar/:path*", "destination": "/sign-in", "statusCode": 308 },
+    { "source": "/pedir/faq", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/faq/:path*", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/contacto", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/contacto/:path*", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/ayuda", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/ayuda/:path*", "destination": "/contacto", "statusCode": 308 },
+    { "source": "/pedir/cuenta", "destination": "/dashboard", "statusCode": 308 },
+    { "source": "/pedir/cuenta/:path*", "destination": "/dashboard", "statusCode": 308 },
+    { "source": "/pedir/legal/terminos", "destination": "/legal/terminos", "statusCode": 308 },
+    { "source": "/pedir/legal/terminos/:path*", "destination": "/legal/terminos", "statusCode": 308 },
+    { "source": "/pedir/legal/privacidad", "destination": "/legal/privacidad", "statusCode": 308 },
+    { "source": "/pedir/legal/privacidad/:path*", "destination": "/legal/privacidad", "statusCode": 308 },
+    { "source": "/pedir/pagar/:id", "destination": "/pagar/:id", "statusCode": 308 },
+    { "source": "/pedir/docs/contrato/:id", "destination": "/dashboard/documentos/contrato/:id", "statusCode": 308 },
+    { "source": "/pedir/docs/pagare/:id", "destination": "/dashboard/documentos/pagare/:id", "statusCode": 308 },
+    { "source": "/pedir/docs/cuponera/:id", "destination": "/dashboard/documentos/cuponera/:id", "statusCode": 308 },
+    { "source": "/pedir/:path*", "destination": "/", "statusCode": 308 }
   ]
 }

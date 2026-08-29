@@ -1,13 +1,15 @@
 import { FeatureCard, Grid, PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { formatARS } from '@/lib/finance'
 import { COMERCIO_QUOTE, CONSUMO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { pageMetadata } from '@/lib/seo'
 import { BadgeCheck, Landmark, Scale, Shield, Store, Wallet } from 'lucide-react'
 
-export const metadata = {
-  title: 'Productos · Créditos UNICRÉDITOS',
+export const metadata = pageMetadata({
+  title: 'Productos · Créditos',
   description:
     'Préstamo personal, crédito comercial y consumo en comercios. TNA y CFT de referencia del catálogo operativo. Sujeto a evaluación.',
-}
+  path: '/productos',
+})
 
 export default function ProductosPage() {
   const productos = [
@@ -56,7 +58,7 @@ export default function ProductosPage() {
         'El comercio cobra el neto cuando UNICRÉDITOS acredita',
       ],
       rate: CONSUMO_QUOTE,
-      cta: { href: '/comercios', label: 'Ver red de comercios' },
+      cta: { href: '/red-comercios', label: 'Ver red de comercios' },
       tone: 'from-brand-cian-500/10 to-sky-400/10 border-brand-cian-500/20',
     },
   ]
@@ -65,7 +67,7 @@ export default function ProductosPage() {
     <PublicPageShell
       eyebrow="Portafolio"
       title="Nuestros productos de crédito"
-      description="Tres líneas vigentes. Las tasas de esta página salen del mismo catálogo que usa el simulador y el contrato. Sujeto a evaluación crediticia."
+      description="Tres líneas de crédito más billetera, pagos de servicios y red de comercios. Las tasas salen del mismo catálogo que usa el simulador y el contrato."
       icon={<Wallet className="h-3.5 w-3.5" />}
       primaryAction={{ href: '/simulador', label: 'Abrir simulador' }}
       secondaryAction={{ href: '/contacto', label: 'Consultar' }}
@@ -116,9 +118,12 @@ export default function ProductosPage() {
 
         <PageSection eyebrow="Servicios que sí existen" title="Lo que podés hacer hoy">
           <Grid cols={3}>
-            <FeatureCard icon={<Scale className="h-5 w-5" />} title="Situación BCRA" description="Consulta a la Central de Deudores con cuenta. El puntaje UNICRÉDITOS no es un score oficial del BCRA." badge="Con cuenta" />
-            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Refinanciación" description="Hasta dos veces, solo si hay mora. Reparte el saldo en las cuotas impagas." />
-            <FeatureCard icon={<Shield className="h-5 w-5" />} title="Arrepentimiento" description="10 días corridos desde la aceptación del contrato, si el crédito aún no se acreditó. Ley 24.240 art. 34." />
+            <FeatureCard icon={<Wallet className="h-5 w-5" />} title="Préstamo digital" description="Pedilo online, KYC Didit, BCRA y acreditación en tu CBU/CVU." />
+            <FeatureCard icon={<Store className="h-5 w-5" />} title="Cuotas sin tarjeta" description="Comprá en comercios físicos u online. Promo 0% si el local la absorbe." />
+            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Pagos y recargas" description="Servicios, impuestos y celular con saldo de billetera UNICRÉDITOS." />
+            <FeatureCard icon={<Scale className="h-5 w-5" />} title="Situación BCRA" description="Consulta a la Central de Deudores con cuenta. El puntaje UNICRÉDITOS no es score oficial del BCRA." />
+            <FeatureCard icon={<Shield className="h-5 w-5" />} title="Arrepentimiento y baja" description="Canales formales Ley 24.240: reclamos, 10 días de arrepentimiento y baja de servicio." />
+            <FeatureCard icon={<BadgeCheck className="h-5 w-5" />} title="Billetera propia" description="Saldo, P2P interno y egresos ejecutados desde tesorería RM." />
           </Grid>
         </PageSection>
 

@@ -6,11 +6,13 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 function authorized(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
+  const secret = process.env.CRON_SECRET?.trim()
+  if (!secret) {
+    // Sin secreto dedicado no se acepta el cron (evita spoof de x-vercel-cron).
+    return false
+  }
   const header = req.headers.get('authorization') ?? ''
-  if (secret && header === `Bearer ${secret}`) return true
-  if (req.headers.get('x-vercel-cron') === '1') return true
-  return false
+  return header === `Bearer ${secret}`
 }
 
 export async function GET(req: NextRequest) {

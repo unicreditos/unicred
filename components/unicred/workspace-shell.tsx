@@ -94,6 +94,7 @@ export function WorkspaceShell({
   user,
   children,
   onProfile,
+  accountItems,
   mobileTabs,
 }: {
   role: WorkspaceRole
@@ -105,12 +106,19 @@ export function WorkspaceShell({
   user: { name?: string | null; email?: string | null; image?: string | null }
   children: ReactNode
   onProfile?: () => void
+  accountItems?: { label: string; onSelect: () => void }[]
   mobileTabs?: WorkspaceNavItem[]
 }) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const collapsed = useSyncExternalStore(subscribeStorage, () => readFlag(SIDEBAR_KEY), () => false)
   const closedGroups = useSyncExternalStore(subscribeStorage, readGroups, getServerGroups)
+  // Menú de cuenta (Base UI) solo en cliente: evita mismatch de ids/aria en hidratación.
+  const clientReady = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
   const [closedMenus, setClosedMenus] = useState<Record<string, boolean>>({})
   const [query, setQuery] = useState('')
   const meta = ROLE_META[role]
@@ -198,7 +206,7 @@ export function WorkspaceShell({
                             ? 'h-12 justify-center rounded-xl'
                             : 'gap-3 rounded-xl px-2.5 py-3 text-[14px]',
                           isActive
-                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#22D3EE]'
+                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
                             : childActive
                               ? 'font-semibold text-white'
                               : 'font-medium text-white/75 hover:bg-white/8 hover:text-white',
@@ -239,7 +247,7 @@ export function WorkspaceShell({
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
-                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#22D3EE]'
+                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
                                     : 'font-medium text-white/55 hover:bg-white/6 hover:text-white',
                                 )}
                               >
@@ -290,10 +298,14 @@ export function WorkspaceShell({
             {collapsed ? null : <span>Colapsar menú</span>}
           </button>
           {collapsed ? null : (
-            <p className="mt-2 px-1 text-[10px] leading-relaxed text-white/35">
-              UNICRÉDITOS · RM International Group
-              <br />
-              Créditos sujetos a evaluación
+            <p
+              className="mt-2 px-1 text-[10px] leading-relaxed text-white/35"
+              aria-label="UNICRÉDITOS · Grupo Emprenor. Créditos sujetos a evaluación"
+            >
+              <span className="block">UNICRÉDITOS · Grupo Emprenor</span>
+              <span className="block" aria-hidden="true">
+                Créditos sujetos a evaluación
+              </span>
             </p>
           )}
         </div>
@@ -350,49 +362,66 @@ export function WorkspaceShell({
             />
           </form>
           <NotificationCenter />
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-slate-50">
+          {clientReady ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-slate-50">
+                <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
+                <span className="hidden max-w-[170px] truncate text-left sm:inline">
+                  <span className="block text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
+                  <span className="block text-[11px] text-slate-500">{user.email}</span>
+                </span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-2">
+                <div className="flex items-center gap-3 px-1 py-2">
+                  <AccountAvatar name={user.name} email={user.email} image={user.image} size="lg" editable />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{user.name ?? 'Usuario'}</div>
+                    <div className="truncate text-xs text-muted-foreground">{user.email}</div>
+                    <p className="mt-1 text-[11px] text-slate-500">JPG, PNG o WebP · máx. 1,5 MB</p>
+                  </div>
+                </div>
+                {onProfile || accountItems?.length ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    {onProfile ? (
+                      <DropdownMenuItem className="gap-2" onClick={onProfile}>
+                        <User className="h-4 w-4" /> Identidad
+                      </DropdownMenuItem>
+                    ) : null}
+                    {accountItems?.map((item) => (
+                      <DropdownMenuItem key={item.label} onClick={item.onSelect}>
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="gap-2 text-destructive focus:text-destructive"
+                  onClick={() =>
+                    signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          router.replace('/')
+                          router.refresh()
+                        },
+                      },
+                    })
+                  }
+                >
+                  <LogOut className="h-4 w-4" /> Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2.5 rounded-xl px-1.5 py-1" aria-hidden>
               <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
               <span className="hidden max-w-[170px] truncate text-left sm:inline">
                 <span className="block text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
                 <span className="block text-[11px] text-slate-500">{user.email}</span>
               </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 p-2">
-              <div className="flex items-center gap-3 px-1 py-2">
-                <AccountAvatar name={user.name} email={user.email} image={user.image} size="lg" editable />
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{user.name ?? 'Usuario'}</div>
-                  <div className="truncate text-xs text-muted-foreground">{user.email}</div>
-                  <p className="mt-1 text-[11px] text-slate-500">JPG, PNG o WebP · máx. 1,5 MB</p>
-                </div>
-              </div>
-              {onProfile ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="gap-2" onClick={onProfile}>
-                    <User className="h-4 w-4" /> Perfil
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2 text-destructive focus:text-destructive"
-                onClick={() =>
-                  signOut({
-                    fetchOptions: {
-                      onSuccess: () => {
-                        router.replace('/')
-                        router.refresh()
-                      },
-                    },
-                  })
-                }
-              >
-                <LogOut className="h-4 w-4" /> Cerrar sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          )}
         </header>
         <main className={cn('flex-1 px-4 py-5 sm:px-6 lg:px-8', mobileTabs?.length ? 'pb-24 md:pb-8' : '')}>{children}</main>
       </div>
@@ -400,7 +429,7 @@ export function WorkspaceShell({
       {mobileTabs?.length ? (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5">
-            {mobileTabs.slice(0, 4).map((item) => {
+            {(mobileTabs.length ? mobileTabs : nav).slice(0, 4).map((item) => {
               const Icon = item.icon
               const on = item.id === activeId
               return (

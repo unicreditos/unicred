@@ -3,12 +3,14 @@ import { formatARS } from '@/lib/finance'
 import { CONSUMO_QUOTE } from '@/lib/loan-catalog'
 import { ArrowRight, BadgeCheck, Calculator, Landmark, ShieldCheck, Store, Users } from 'lucide-react'
 import Link from 'next/link'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Comercios y PyMEs · UNICRÉDITOS',
+export const metadata = pageMetadata({
+  title: 'Comercios y PyMEs',
   description:
     'Adherí tu comercio para ofrecer cuotas. El cliente debe tener cuenta UNICRÉDITOS y KYC. Comisión informada al adherir. Sin costo de alta.',
-}
+  path: '/comercios',
+})
 
 export default function ComerciosPage() {
   return (

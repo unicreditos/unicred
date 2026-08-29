@@ -180,7 +180,7 @@ export async function notifyContractReady(input: {
       contractReadyEmail({
         to: u.email,
         name: u.name,
-        contractUrl: `${appOrigin()}/pedir/docs/contrato/${input.contractId}`,
+        contractUrl: `${appOrigin()}/dashboard/documentos/contrato/${input.contractId}`,
         principal: input.principal,
         term: input.term,
       }),

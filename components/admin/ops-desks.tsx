@@ -57,7 +57,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
               void adminRegisterCollection({
                 installmentId: row.id,
                 amount: Number(data.get('amount')),
-                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago',
+                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'payway_qr',
                 reference: String(data.get('reference') || ''),
                 notes: String(data.get('notes') || ''),
               })
@@ -86,6 +86,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
                 <option value="transferencia_rm">Transferencia a tesorería RM</option>
                 <option value="efectivo">Efectivo</option>
                 <option value="mercado_pago">Mercado Pago</option>
+                <option value="payway_qr">Payway (sandbox)</option>
               </select>
             </label>
             <label className="block text-xs font-medium text-slate-600">

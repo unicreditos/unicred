@@ -392,7 +392,7 @@ export function AdminContent({
             <LineChart
               points={daySeries.map((d) => d.value)}
               labels={daySeries.map((d) => d.label)}
-              color="#1E58E5"
+              color="#20BD5A"
               height={220}
             />
           </section>
@@ -404,7 +404,7 @@ export function AdminContent({
               centerValue={String(stats.loans.total ?? 0)}
               segments={[
                 { label: 'Aprobadas', value: approvedCount, color: '#00C853', count: approvedCount },
-                { label: 'En evaluación', value: evaluatingCount, color: '#1E58E5', count: evaluatingCount },
+                { label: 'En evaluación', value: evaluatingCount, color: '#20BD5A', count: evaluatingCount },
                 { label: 'Rechazadas', value: rejectedCount, color: '#DC2626', count: rejectedCount },
                 { label: 'Canceladas', value: cancelledCount, color: '#94A3B8', count: cancelledCount },
               ]}
@@ -1487,7 +1487,7 @@ export function AdminContent({
     )
   }
 
-  if (activeTab === 'parametros') {
+  if (activeTab === 'parametros' || activeTab === 'tarifas') {
     const activos = products.filter((p) => p.active)
     const montoMin = activos.length ? Math.min(...activos.map((p) => Number(p.minAmount) || 0)) : 0
     const montoMax = activos.length ? Math.max(...activos.map((p) => Number(p.maxAmount) || 0)) : 0

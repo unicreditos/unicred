@@ -28,6 +28,9 @@ function getBaseURL() {
 }
 
 const isDev = process.env.NODE_ENV === 'development'
+const requireEmailVerification =
+  process.env.REQUIRE_EMAIL_VERIFICATION === 'true' ||
+  (!isDev && Boolean(process.env.RESEND_API_KEY))
 
 /**
  * Orígenes desde los que se aceptan requests autenticadas. Cada comodín acá es
@@ -85,13 +88,21 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
-    requireEmailVerification: false,
+    requireEmailVerification,
     maxPasswordLength: 128,
     minPasswordLength: 8,
     resetPasswordTokenExpiresIn: 60 * 60,
     sendResetPassword: async ({ user, url }) => {
       const { sendEmail, passwordResetEmail } = await import('@/lib/email')
       await sendEmail({ to: user.email, ...passwordResetEmail(url) })
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      const { sendEmail, emailVerificationEmail } = await import('@/lib/email')
+      await sendEmail({ to: user.email, ...emailVerificationEmail(url) })
     },
   },
   session: {

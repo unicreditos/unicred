@@ -2,8 +2,13 @@ import { LoanSimulator } from '@/components/loan-simulator'
 import { PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BadgeCheck, Calculator, FileText, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = { title: 'Simulador de Créditos Online · UNICRÉDITOS', description: 'Simulá préstamos personales, comerciales y consumo. Calculá cuotas, TNA y CFT en segundos.' }
+export const metadata = pageMetadata({
+  title: 'Simulador de Créditos Online',
+  description: 'Simulá préstamos personales, comerciales y consumo. Calculá cuotas, TNA y CFT en segundos.',
+  path: '/simulador',
+})
 
 export default function SimuladorPage() {
   return (

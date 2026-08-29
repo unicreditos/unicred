@@ -1,12 +1,14 @@
 import { FeatureCard, Grid, PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BadgeCheck, BarChart3, Building2, FileCheck2, Landmark, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'Situación crediticia y consulta BCRA',
   description:
     'Consultá la Central de Deudores del BCRA desde tu cuenta. El score UNICRÉDITOS es interno (300 a 850) y no es un puntaje oficial del Banco Central.',
-}
+  path: '/scoring',
+})
 
 export default function ScoringPage() {
   const escalas = [

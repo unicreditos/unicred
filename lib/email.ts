@@ -115,7 +115,7 @@ export function brandedEmailHtml(input: {
   const site = emailOrigin()
   const btn = input.cta
     ? `<p style="margin:0 0 24px">
-        <a href="${escapeHtml(input.cta.href)}" style="display:inline-block;background:${input.cta.danger ? '#B42318' : '#0052D4'};color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600">
+        <a href="${escapeHtml(input.cta.href)}" style="display:inline-block;background:${input.cta.danger ? '#B42318' : '#20BD5A'};color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600">
           ${escapeHtml(input.cta.label)}
         </a>
       </p>`
@@ -131,7 +131,7 @@ export function brandedEmailHtml(input: {
         <td align="center">
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #d6dee8">
             <tr>
-              <td style="background:#0B1D3A;padding:16px 24px">
+              <td style="background:#0C1612;padding:16px 24px">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="vertical-align:middle">
@@ -158,7 +158,7 @@ export function brandedEmailHtml(input: {
                   ${escapeHtml(BRAND.legalName)} · CUIT ${escapeHtml(String(BRAND.cuit))} · ${escapeHtml(BRAND.address)}
                 </p>
                 <p style="font-size:12px;line-height:1.5;color:#64748b;margin:6px 0 0">
-                  <a href="${site}" style="color:#0052D4;text-decoration:none">${escapeHtml(BRAND.domain)}</a>
+                  <a href="${site}" style="color:#20BD5A;text-decoration:none">${escapeHtml(BRAND.domain)}</a>
                   · ${escapeHtml(BRAND.supportEmail)}
                 </p>
                 ${note}
@@ -193,6 +193,26 @@ export function passwordResetEmail(url: string): Pick<EmailMessage, 'subject' | 
       <p style="font-size:13px;line-height:1.6;color:#4F6FA4;margin:0 0 8px">El enlace vence en 1 hora y se puede usar una sola vez. Si no pediste el cambio, ignorá este mensaje.</p>
     `,
     cta: { href: url, label: 'Elegir nueva contraseña' },
+  })
+  return { subject, html, text }
+}
+
+export function emailVerificationEmail(url: string): Pick<EmailMessage, 'subject' | 'html' | 'text'> {
+  const subject = `Confirmá tu email en ${BRAND.company}`
+  const text = brandedText([
+    `Confirmá tu dirección de correo para activar tu cuenta ${BRAND.company}.`,
+    '',
+    `Entrá en este enlace: ${url}`,
+    '',
+    'Si no creaste una cuenta, ignorá este mensaje.',
+  ])
+  const html = brandedEmailHtml({
+    title: 'Confirmá tu email',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Confirmá tu dirección de correo para activar tu cuenta ${escapeHtml(BRAND.company)}.</p>
+      <p style="font-size:13px;line-height:1.6;color:#4F6FA4;margin:0 0 8px">Si no creaste una cuenta, ignorá este mensaje.</p>
+    `,
+    cta: { href: url, label: 'Confirmar email' },
   })
   return { subject, html, text }
 }

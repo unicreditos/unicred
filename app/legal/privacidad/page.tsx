@@ -1,8 +1,13 @@
 import { PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BRAND, legalPartyLine } from '@/lib/brand'
 import { BadgeCheck, Database, Eye, EyeOff, FileCheck2, FileSearch, Handshake, Lock, Shield, ShieldCheck, UserCheck } from 'lucide-react'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata = { title: 'Política de Privacidad · RG 78/2019 · UNICRÉDITOS', description: 'Política de Privacidad y tratamiento de datos personales. Ley 25.326 · AAIP RG 78/2019. Derechos ARCO, bases, finalidades, conservación, seguridad.' }
+export const metadata = pageMetadata({
+  title: 'Política de Privacidad · RG 78/2019',
+  description: 'Política de Privacidad y tratamiento de datos personales. Ley 25.326 · AAIP RG 78/2019. Derechos ARCO, bases, finalidades, conservación, seguridad.',
+  path: '/legal/privacidad',
+})
 
 export default function PrivacidadPage() {
   const secs = [
@@ -64,8 +69,8 @@ export default function PrivacidadPage() {
     {
       t: '8 · Cookies y tecnologías tracking',
       p: [
-        'Cookies técnicas de sesión y de la plataforma. Analytics de Vercel si el despliegue lo tiene activo. No usamos Google Analytics 4 ni cookies de marketing en este código.',
-        'Podrás gestionar cookies desde panel configuración navegador, desde sección perfil cuenta, desde banner al primer acceso, o solicitando bloqueo a soporte.',
+        'Cookies técnicas de sesión y de la plataforma. Analytics de Vercel solo se carga si aceptás cookies no esenciales en el banner del primer acceso. No usamos Google Analytics 4 ni cookies de marketing en este código.',
+        'Podés gestionar el consentimiento desde el banner al primer acceso (Solo esenciales / Aceptar), desde la configuración del navegador, o solicitando bloqueo a soporte.',
       ],
     },
     {

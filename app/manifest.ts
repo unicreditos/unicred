@@ -3,6 +3,7 @@ import { BRAND } from '@/lib/brand'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: '/',
     name: BRAND.company,
     short_name: BRAND.company,
     description: `${BRAND.slogan}. ${BRAND.valueProp}`,
@@ -11,21 +12,33 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    theme_color: '#0B1D3A',
-    background_color: '#F5F7FA',
+    theme_color: '#20BD5A',
+    background_color: '#F7F8F6',
     categories: ['finance', 'business'],
     icons: [
-      {
-        src: '/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
-        purpose: 'any',
-      },
       {
         src: '/icon',
         sizes: '32x32',
         type: 'image/png',
         purpose: 'any',
+      },
+      {
+        src: '/apple-icon',
+        sizes: '180x180',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/192',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/512',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   }

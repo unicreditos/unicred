@@ -24,6 +24,9 @@ import { createPaymentLinkMP, ensureMercadoPagoCustomer, getMercadoPagoPublicKey
 import { attachMercadoPagoQr, ensureLoanCouponMpQrs, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
 import { ensureLoanCouponTickets } from '@/lib/payments/installment-mp-ticket'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
+import { isPaywayConfigured, isPaywayMethod, lookupPaywayBin, paywayAllowsSimulate } from '@/lib/payway'
+import { openPaywayCheckout } from '@/lib/payments/payway-checkout'
+import { settlePaywayPayment } from '@/lib/payments/settle-payway'
 
 export type PaymentMethod =
   | 'mercado_pago'
@@ -39,6 +42,9 @@ export type PaymentMethod =
   | 'rapipago'
   | 'ticket'
   | 'transferencia_rm'
+  | 'payway_qr'
+  | 'payway_wallet'
+  | 'payway_card'
 
 const MP_CHANNELS: Record<string, MPPaymentChannel> = {
   mercado_pago: 'all',
@@ -55,6 +61,10 @@ const MP_CHANNELS: Record<string, MPPaymentChannel> = {
 
 function usesMercadoPagoCheckout(method: PaymentMethod) {
   return method in MP_CHANNELS
+}
+
+function usesPaywayCheckout(method: PaymentMethod) {
+  return isPaywayMethod(method)
 }
 
 export async function getMyPayments(limit = 50) {
@@ -203,7 +213,7 @@ export async function createPaymentLink(
 
   if (method === 'debito_automatico') {
     throw new Error(
-      'El débito automático aún no está habilitado. Pagá con Mercado Pago, tarjeta, Pago Fácil, Rapipago o transferencia a RM.',
+      'El débito automático aún no está habilitado. Pagá con Mercado Pago, Payway, tarjeta, Pago Fácil, Rapipago o transferencia a RM.',
     )
   }
 
@@ -211,8 +221,27 @@ export async function createPaymentLink(
     throw new Error('Para transferir a RM usá el formulario de transferencia con comprobante.')
   }
 
+  if (usesPaywayCheckout(method)) {
+    const payway = await openPaywayCheckout({
+      userId,
+      loanId,
+      installmentIds,
+      method,
+      amount: total,
+      source: 'web',
+      firstInstallmentId: insts[0].id,
+      firstDueDate: insts[0].dueDate,
+      coupon:
+        insts.length === 1
+          ? { loanId, number: insts[0].number, dueDate: insts[0].dueDate, amount: insts[0].amount }
+          : undefined,
+    })
+    revalidateCustomer()
+    return payway
+  }
+
   if (!usesMercadoPagoCheckout(method)) {
-    throw new Error('Método de pago no disponible. Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago.')
+    throw new Error('Método de pago no disponible. Elegí Mercado Pago, Payway, tarjeta, Pago Fácil o Rapipago.')
   }
 
   if (!MP_CONFIG.accessTokenSet) {
@@ -409,11 +438,8 @@ export async function createCouponCheckout(
   if (method === 'transferencia_bancaria' || method === 'transferencia_rm') {
     throw new Error('Para transferir usá el CBU de RM que figura en esta página.')
   }
-  if (!usesMercadoPagoCheckout(method)) {
-    throw new Error('Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago.')
-  }
-  if (!MP_CONFIG.accessTokenSet) {
-    throw new Error('Mercado Pago no está configurado en este entorno.')
+  if (!usesMercadoPagoCheckout(method) && !usesPaywayCheckout(method)) {
+    throw new Error('Elegí Mercado Pago, Payway, tarjeta, Pago Fácil o Rapipago.')
   }
 
   const [inst] = await db.select().from(installment).where(eq(installment.id, installmentId)).limit(1)
@@ -434,6 +460,24 @@ export async function createCouponCheckout(
 
   const total = Number(inst.amount) || 0
   if (!Number.isFinite(total) || total <= 0) throw new Error('Importe inválido.')
+
+  if (usesPaywayCheckout(method)) {
+    return openPaywayCheckout({
+      userId,
+      loanId,
+      installmentIds: [inst.id],
+      method,
+      amount: total,
+      source: 'coupon',
+      firstInstallmentId: inst.id,
+      firstDueDate: inst.dueDate,
+      coupon: { loanId, number: inst.number, dueDate: inst.dueDate, amount: inst.amount },
+    })
+  }
+
+  if (!MP_CONFIG.accessTokenSet) {
+    throw new Error('Mercado Pago no está configurado en este entorno.')
+  }
 
   const [payer] = await db
     .select({ email: userTable.email, name: userTable.name })
@@ -1338,6 +1382,59 @@ export async function getCheckoutStatus(paymentId: string) {
     receiptId: rcpt?.id ?? null,
     settled: row.status === 'paid',
   }
+}
+
+export async function simulatePaywayCheckout(paymentId: string, outcome: 'approved' | 'rejected' = 'approved') {
+  const userId = await assertRole('customer')
+  if (!paywayAllowsSimulate()) {
+    throw new Error('La simulación de Payway solo está habilitada en sandbox.')
+  }
+  const id = String(paymentId ?? '').trim()
+  if (!id) throw new Error('Pago no encontrado.')
+  const [row] = await db
+    .select()
+    .from(payment)
+    .where(and(eq(payment.id, id), eq(payment.userId, userId), eq(payment.gateway, 'payway')))
+    .limit(1)
+  if (!row) throw new Error('Pago Payway no encontrado.')
+  const result = await settlePaywayPayment({
+    status: outcome,
+    amount: Number(row.amount) || 0,
+    localPaymentId: row.id,
+    paywayId: `sim-${row.id.replace(/-/g, '').slice(0, 12)}`,
+    method: row.method,
+    gatewayPayload: { simulated: true, outcome, at: new Date().toISOString() },
+  })
+  if (result.matched && result.credited > 0 && result.userId) {
+    await notifyPaymentReceived({
+      userId: result.userId,
+      amount: result.amount ?? 0,
+      installmentNumber: result.installmentNumber,
+      receiptId: result.receiptId,
+    })
+  } else if (result.matched && result.rejected && result.userId) {
+    await notifyPaymentRejected({
+      userId: result.userId,
+      amount: result.amount ?? 0,
+      reason: result.reason,
+    })
+  }
+  revalidateCustomer()
+  return {
+    settled: result.localStatus === 'paid',
+    status: result.localStatus ?? row.status,
+    credited: result.credited,
+    receiptId: result.receiptId ?? null,
+    reason: result.reason ?? null,
+  }
+}
+
+export async function consultPaywayBin(bin: string) {
+  await assertRole('customer')
+  if (!isPaywayConfigured()) throw new Error('Payway no está configurado.')
+  const info = await lookupPaywayBin(bin)
+  if (!info) throw new Error('BIN no reconocido en sandbox. Probá 450799 o 529991.')
+  return info
 }
 
 /*

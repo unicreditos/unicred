@@ -13,22 +13,29 @@ import {
   disbursement,
   bcraCheck,
 } from '@/lib/db/schema'
-import { getOrCreateProfile, requireCustomer } from '@/lib/session'
+import { getOrCreateProfile, getSession, requireCustomer } from '@/lib/session'
 import { desc, eq, and } from 'drizzle-orm'
 import { Suspense } from 'react'
 import DashboardLoading from './loading'
 
 export const metadata = {
-  title: 'Mi panel | UNICRÉDITOS',
+  title: 'Mi panel',
   description:
     'Panel de usuario de UNICRÉDITOS. Gestioná tu perfil, solicitá créditos y seguí tus cuotas.',
+  robots: { index: false, follow: false },
 }
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const userId = await requireCustomer()
+  const session = await getSession()
   const prof = await getOrCreateProfile()
+  const sessionUser = {
+    name: session?.user?.name ?? null,
+    email: session?.user?.email ?? null,
+    image: session?.user?.image ?? null,
+  }
 
   const [
     products,
@@ -167,6 +174,7 @@ export default async function DashboardPage() {
   return (
     <Suspense fallback={<DashboardLoading />}>
     <DashboardTabsWrapper
+      sessionUser={sessionUser}
       initialProfile={prof}
       products={products}
       loans={loans}

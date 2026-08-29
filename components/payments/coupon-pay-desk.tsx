@@ -3,15 +3,18 @@
 import {
   createCouponCheckout,
   reportCouponTransfer,
+  simulatePaywayCheckout,
   type PaymentMethod,
 } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { barcodeSvg } from '@/lib/coupon'
+import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { installmentPosPath } from '@/lib/workspace-gate'
 import { formatARS, formatARSDecimal } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
+import { isPaywayQr } from '@/lib/payments/payway-qr'
 import type { TreasuryClientView } from '@/lib/treasury'
 import QRCode from 'qrcode'
 import { Landmark, Loader2, QrCode, Smartphone, Wallet } from 'lucide-react'
@@ -24,9 +27,10 @@ const CHANNELS: { id: PaymentMethod; label: string; hint: string }[] = [
   { id: 'mercado_pago', label: 'Mercado Pago · todos los medios', hint: 'Tarjeta, dinero en cuenta, QR, Pago Fácil y Rapipago' },
   { id: 'pago_facil', label: 'Pago Fácil', hint: 'Cupón para pagar en efectivo en la red' },
   { id: 'rapipago', label: 'Rapipago', hint: 'Cupón para pagar en efectivo en la red' },
-  { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Formulario en tu panel, como una caja' },
-  { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Formulario en tu panel, como una caja' },
+  { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Formulario en tu panel' },
+  { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Formulario en tu panel' },
   { id: 'mercadopago_wallet', label: 'Dinero en cuenta', hint: 'Saldo Mercado Pago' },
+  { id: 'payway_wallet', label: 'Billetera UNICRÉDITOS', hint: 'CVU, saldo y pago inmediato' },
 ]
 
 export function CouponPayDesk({
@@ -55,9 +59,11 @@ export function CouponPayDesk({
   const [busy, setBusy] = useState(false)
   const [link, setLink] = useState<string | null>(null)
   const [mpQr, setMpQr] = useState<string | null>(null)
+  const [paywayPaymentId, setPaywayPaymentId] = useState<string | null>(null)
   const [amount, setAmount] = useState(Number(installment.amount) || 0)
   const barcode = useMemo(() => barcodeSvg(installment.coupon, { height: 42, module: 1.2 }), [installment.coupon])
   const due = installment.dueLabel ?? ''
+  const payway = method === 'payway_qr' || method === 'payway_wallet' || method === 'payway_card'
 
   const start = useCallback(async (channel: PaymentMethod, redirect = false) => {
     setBusy(true)
@@ -65,19 +71,26 @@ export function CouponPayDesk({
       const r = await createCouponCheckout(installment.id, channel)
       setLink(r.paymentLinkUrl)
       setAmount(r.amount)
-      if (isMercadoPagoEmvQr(r.qrData)) {
-        const data = await QRCode.toDataURL(r.qrData, { margin: 1, width: 280 })
+      const paywayChannel = channel === 'payway_qr' || channel === 'payway_wallet' || channel === 'payway_card'
+      setPaywayPaymentId(paywayChannel ? r.paymentId : null)
+      const qrPayload = r.qrData ?? ''
+      if (isMercadoPagoEmvQr(qrPayload) || (paywayChannel && (isPaywayQr(qrPayload) || /^https?:\/\//i.test(qrPayload)))) {
+        const data = await QRCode.toDataURL(qrPayload, { margin: 1, width: 280 })
         setMpQr(data)
-        if (redirect && r.paymentLinkUrl) {
+        if (redirect && r.paymentLinkUrl && !paywayChannel) {
           window.location.href = r.paymentLinkUrl
           return
         }
       } else {
         setMpQr(null)
-        throw new Error('Mercado Pago no emitió un QR de pago válido para esta cuota.')
+        throw new Error(
+          paywayChannel
+            ? 'Payway no emitió un QR de prueba para esta cuota.'
+            : 'Mercado Pago no emitió un QR de pago válido para esta cuota.',
+        )
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo abrir Mercado Pago.')
+      toast.error(err instanceof Error ? err.message : 'No se pudo abrir el checkout.')
     } finally {
       setBusy(false)
     }
@@ -145,7 +158,8 @@ export function CouponPayDesk({
               type="button"
               onClick={() => {
                 setMethod(c.id)
-                if (guest && (c.id === 'tarjeta_credito' || c.id === 'tarjeta_debito')) return
+                if (guest && (c.id === 'tarjeta_credito' || c.id === 'tarjeta_debito' || c.id.startsWith('payway_'))) return
+                if (c.id === 'payway_wallet') return
                 void start(c.id, false)
               }}
               className={`rounded-lg border p-3 text-left text-sm ${
@@ -158,18 +172,51 @@ export function CouponPayDesk({
           ))}
         </div>
 
-        {guest && (method === 'tarjeta_credito' || method === 'tarjeta_debito') ? (
+        {guest && (method === 'tarjeta_credito' || method === 'tarjeta_debito' || payway) ? (
           <div className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3">
-            <p className="text-sm font-medium text-brand-navy-900">Pagar con tarjeta en la caja</p>
+            <p className="text-sm font-medium text-brand-navy-900">
+              {payway ? 'Pagar con billetera UNICRÉDITOS' : 'Pagar con tarjeta en la caja'}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ingresá a tu cuenta para cargar una tarjeta nueva o usar una guardada. El cobro queda en el panel; no
-              volvés al sitio público.
+              {payway
+                ? 'Ingresá a tu cuenta para pagar con saldo de tu billetera UNICRÉDITOS.'
+                : 'Ingresá a tu cuenta para cargar una tarjeta nueva o usar una guardada. El cobro queda en el panel.'}
             </p>
             <Button asChild className="mt-3 w-full">
               <a href={`/sign-in?next=${encodeURIComponent(installmentPosPath(installment.id, method))}`}>
-                Ingresar y pagar con {method === 'tarjeta_debito' ? 'débito' : 'crédito'}
+                Ingresar y pagar
               </a>
             </Button>
+          </div>
+        ) : method === 'payway_wallet' ? (
+          <WalletPayBox
+            installmentIds={[installment.id]}
+            amount={Number(installment.amount) || 0}
+            onSettled={() => window.location.reload()}
+          />
+        ) : payway ? (
+          <div className="space-y-2">
+            <Button
+              disabled={busy || !paywayPaymentId}
+              className="w-full gap-1.5"
+              onClick={() => {
+                if (!paywayPaymentId) return
+                setBusy(true)
+                void simulatePaywayCheckout(paywayPaymentId, 'approved')
+                  .then((r) => {
+                    if (r.settled) toast.success('Pago acreditado. El recibo quedó en tu panel.')
+                    else toast.message('El cobro aún no se acreditó. Revisá el estado en el panel.')
+                  })
+                  .catch((err) => toast.error((err as Error).message))
+                  .finally(() => setBusy(false))
+              }}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+              Confirmar cobro
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              El QR de la derecha corresponde a este talón. El recibo se emite al confirmar el cobro.
+            </p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -188,23 +235,25 @@ export function CouponPayDesk({
             </Button>
           </div>
         )}
+        {payway ? null : (
         <p className="text-xs text-muted-foreground">
           El QR de la derecha es el código EMV de Mercado Pago con el importe de esta cuota
           ({formatARS(amount)}). Escanealo con la app. En la web podés elegir tarjeta, dinero en
           cuenta, Pago Fácil o Rapipago. El recibo se emite cuando el cobro está confirmado.
         </p>
+        )}
       </section>
 
       <aside className="space-y-4 lg:col-span-5">
         <div className="rounded-xl border bg-white p-5">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
-            <QrCode className="h-4 w-4" /> QR Mercado Pago
+            <QrCode className="h-4 w-4" /> {payway ? 'QR de pago' : 'QR Mercado Pago'}
           </p>
           {mpQr ? (
             <div className="mt-3 flex flex-col items-center">
               <img src={mpQr} alt="QR de checkout Mercado Pago" className="h-48 w-48" />
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Escaneá con la app Mercado Pago. Importe {formatARSDecimal(amount)}.
+                Escaneá con la app {payway ? 'o simulá el cobro en tu panel' : 'Mercado Pago'}. Importe {formatARSDecimal(amount)}.
               </p>
             </div>
           ) : (

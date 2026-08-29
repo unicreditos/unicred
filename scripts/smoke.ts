@@ -44,8 +44,14 @@ async function probe(
 async function main() {
   const checks = await Promise.all([
     // Sitio principal
-    probe('home', '/', { status: [200], bodyIncludes: 'UNICRÉDITOS' }),
-    probe('login', '/sign-in', { status: [200], bodyIncludes: 'Plataforma de soluciones financieras' }),
+    probe('home', '/', {
+      status: [200],
+      bodyIncludes: ['UNICRÉDITOS', 'Grupo Emprenor', 'Tope del primer crédito'],
+    }),
+    probe('login', '/sign-in', {
+      status: [200],
+      bodyIncludes: ['UNICRÉDITOS', 'Grupo Emprenor', 'Central de Deudores'],
+    }),
     probe('productos', '/productos', { status: [200] }),
     probe('simulador', '/simulador', { status: [200] }),
     probe('legales', '/legal/terminos', {
@@ -61,43 +67,25 @@ async function main() {
     probe('manifest', '/manifest.webmanifest', { status: [200] }),
     probe('admin sin sesión', '/admin', { status: [307, 308, 302] }),
     probe('dashboard sin sesión', '/dashboard', { status: [307, 308, 302] }),
-    probe('health', '/api/health', { status: [200] }),
+    probe('directo', '/directo', {
+      status: [200],
+      bodyIncludes: ['primer crédito', 'UNICRÉDITOS', 'Grupo Emprenor'],
+    }),
+    probe('directo productos', '/directo/productos', {
+      status: [200],
+      bodyIncludes: ['Préstamo personal', 'primer crédito'],
+    }),
     probe('didit webhook vivo', '/api/webhooks/didit', { status: [200], bodyIncludes: 'didit' }),
-    probe('mp webhook cerrado', '/api/webhooks/mercadopago', { status: [401] }),
+    probe('mp webhook health', '/api/webhooks/mercadopago', { status: [200], bodyIncludes: 'webhook' }),
+    probe('payway webhook cerrado', '/api/webhooks/payway', { status: [401] }),
 
-    // Canal /pedir
-    probe('pedir landing', '/pedir', {
-      status: [200],
-      bodyIncludes: ['UNICRÉDITOS', 'Login / Registro', 'Pensado para vos'],
-    }),
-    probe('pedir solicitud', '/pedir/solicitud', {
-      status: [200],
-      bodyIncludes: ['Solicitud', 'Evaluación'],
-    }),
-    probe('pedir faq', '/pedir/faq', {
-      status: [200],
-      bodyIncludes: ['Preguntas frecuentes', 'mutuo'],
-    }),
-    probe('pedir ingresar', '/pedir/ingresar', { status: [200], bodyIncludes: 'Ingresá' }),
-    probe('pedir contacto', '/pedir/contacto', { status: [200], bodyIncludes: 'Contacto' }),
-    probe('pedir terminos', '/pedir/legal/terminos', {
-      status: [200],
-      bodyIncludes: ['Términos', 'mutuo', 'PNFC', 'TEA'],
-    }),
-    probe('pedir privacidad', '/pedir/legal/privacidad', {
-      status: [200],
-      bodyIncludes: ['Privacidad', 'BCRA'],
-    }),
-    probe('pedir cuenta sin sesión', '/pedir/cuenta', { status: [307, 308, 302] }),
-    probe('pedir pagar sin id', '/pedir/pagar', { status: [404] }),
-    probe('pedir pagar cuota inexistente', '/pedir/pagar/inst_inexistente', {
-      status: [200, 404, 307, 308, 302],
-    }),
+    // Canal /pedir retirado: redirige al sitio único
+    probe('pedir landing', '/pedir', { status: [308, 307, 302] }),
+    probe('pedir solicitud', '/pedir/solicitud', { status: [308, 307, 302] }),
+    probe('pedir ingresar', '/pedir/ingresar', { status: [308, 307, 302] }),
+    probe('pedir pagar cuota', '/pedir/pagar/inst_inexistente', { status: [308, 307, 302] }),
 
     // Docs protegidos (sin sesión → login)
-    probe('docs contrato sin sesión', '/pedir/docs/contrato/demo', { status: [307, 308, 302] }),
-    probe('docs pagare sin sesión', '/pedir/docs/pagare/demo', { status: [307, 308, 302] }),
-    probe('docs cuponera sin sesión', '/pedir/docs/cuponera/demo', { status: [307, 308, 302] }),
     probe('dash contrato sin sesión', '/dashboard/documentos/contrato/demo', {
       status: [307, 308, 302],
     }),

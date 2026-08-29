@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { GROUP } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 export function Logo({
@@ -35,7 +36,7 @@ export function Logo({
               invert ? 'text-sidebar-foreground/60' : 'text-muted-foreground',
             )}
           >
-            RM International Group
+            {GROUP.name}
           </span>
         </span>
       )}

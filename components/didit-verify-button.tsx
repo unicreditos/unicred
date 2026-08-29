@@ -174,7 +174,7 @@ export function DiditVerifyButton({
       const result =
         mode === 'signup'
           ? await startDiditSignupVerification({
-              fullName: fullName || 'Titular',
+              fullName: fullName?.trim() || undefined,
               dni,
               birthDate,
               phone,

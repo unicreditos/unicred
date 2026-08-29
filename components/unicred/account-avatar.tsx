@@ -6,7 +6,7 @@ import { fileToDataUrl } from '@/lib/media-compress'
 import { cn } from '@/lib/utils'
 import { Camera, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 function initialsFrom(name?: string | null, email?: string | null) {
@@ -36,6 +36,10 @@ export function AccountAvatar({
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState(image ?? '')
   const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setPreview(image ?? '')
+  }, [image])
 
   const box = size === 'lg' ? 'size-16' : size === 'sm' ? 'size-9' : 'size-11'
 

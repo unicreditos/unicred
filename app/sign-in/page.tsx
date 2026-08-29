@@ -2,12 +2,17 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { AuthForm } from '@/components/auth-form'
 import { getSession, getDashboardUrlForUser } from '@/lib/session'
+import { pageMetadata } from '@/lib/seo'
 import { safeInternalPath } from '@/lib/workspace-gate'
 import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
-  title: 'Ingresar | UNICRÉDITOS',
-  description: 'Accedé a tus créditos, cuotas y comprobantes de UNICRÉDITOS.',
+  ...pageMetadata({
+    title: 'Ingresar',
+    description: 'Accedé a tus créditos, cuotas y comprobantes de UNICRÉDITOS.',
+    path: '/sign-in',
+    noIndex: true,
+  }),
   robots: { index: false, follow: true },
 }
 

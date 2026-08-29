@@ -1,0 +1,534 @@
+'use client'
+
+import { depositToWallet, getMyWallet, payWithWallet, sendFromWallet, topUpWalletSandbox } from '@/app/actions/wallet'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { formatARS, formatARSDecimal, formatCVU, displayAlias } from '@/lib/finance'
+import { cn } from '@/lib/utils'
+import { ArrowDownLeft, ArrowUpRight, Copy, Loader2, WalletCards } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+
+type Wallet = Awaited<ReturnType<typeof getMyWallet>>
+
+const TOPUPS = [10_000, 50_000, 100_000, 250_000]
+
+export function WalletDesk({
+  pendingInstallments = [],
+  onPaid,
+}: {
+  pendingInstallments?: { id: string; number: number; amount: number | string; loanId: string }[]
+  onPaid?: () => void
+}) {
+  const [wallet, setWallet] = useState<Wallet | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [panel, setPanel] = useState<'ingresar' | 'transferir' | 'cuotas'>('ingresar')
+  const [custom, setCustom] = useState('50000')
+  const [origin, setOrigin] = useState('')
+  const [destination, setDestination] = useState('')
+  const [outAmount, setOutAmount] = useState('')
+  const [concept, setConcept] = useState('Transferencia')
+  const [payId, setPayId] = useState(pendingInstallments[0]?.id ?? '')
+
+  const refresh = useCallback(async () => {
+    const next = await getMyWallet()
+    setWallet(next)
+    return next
+  }, [])
+
+  useEffect(() => {
+    void refresh().catch((err) => toast.error((err as Error).message))
+  }, [refresh])
+
+  useEffect(() => {
+    if (!payId && pendingInstallments[0]) setPayId(pendingInstallments[0].id)
+  }, [payId, pendingInstallments])
+
+  async function copy(label: string, value: string) {
+    await navigator.clipboard.writeText(value)
+    toast.success(`${label} copiado`)
+  }
+
+  async function deposit() {
+    const amount = Number(custom.replace(/\D/g, '')) || 0
+    if (!origin.trim()) {
+      toast.error('Indicá el CBU, CVU o alias desde el que transferiste.')
+      return
+    }
+    setBusy(true)
+    try {
+      const next = await depositToWallet(amount, origin)
+      setWallet(next)
+      toast.success(
+        `Ingreso de ${formatARS(amount)} registrado. El saldo se confirma cuando tesorería vea la transferencia.`,
+      )
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sandboxLoad(amount: number) {
+    setBusy(true)
+    try {
+      const next = await topUpWalletSandbox(amount)
+      setWallet(next)
+      toast.success(`Se acreditaron ${formatARS(amount)} (solo entorno de desarrollo).`)
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function send() {
+    setBusy(true)
+    try {
+      const next = await sendFromWallet(Number(outAmount.replace(',', '.')) || 0, destination, concept)
+      setWallet(next)
+      setDestination('')
+      setOutAmount('')
+      toast.success(
+        next.movements[0]?.kind === 'p2p_out'
+          ? 'Transferencia interna acreditada al instante.'
+          : 'Orden creada: saldo debitado. Tesorería RM ejecuta el egreso al destino.',
+      )
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function paySelected() {
+    if (!payId) {
+      toast.error('Elegí una cuota.')
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await payWithWallet([payId])
+      toast.success(`Cuota pagada con la billetera. Recibo emitido (${formatARS(result.amount)}).`)
+      await refresh()
+      onPaid?.()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!wallet) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border bg-white p-6 text-sm text-slate-600">
+        <Loader2 className="h-4 w-4 animate-spin" /> Abriendo tu billetera…
+      </div>
+    )
+  }
+
+  const selected = pendingInstallments.find((row) => row.id === payId)
+  const selectedAmount = selected ? Number(selected.amount) || 0 : 0
+  const canPay = Boolean(selected) && wallet.balance + 0.009 >= selectedAmount
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-2xl border border-brand-navy/10 bg-gradient-to-br from-brand-navy-900 via-brand-navy-800 to-brand-primary-900 text-white shadow-lg shadow-brand-navy/20">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <WalletCards className="h-4 w-4" /> Billetera UNICRÉDITOS
+            </p>
+            <p className="mt-3 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
+              {formatARSDecimal(wallet.balance)}
+            </p>
+            <p className="mt-1.5 text-sm text-white/70">Saldo disponible · ARS</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs backdrop-blur">
+            <p className="text-white/60">Estado</p>
+            <p className="font-semibold capitalize text-white">{wallet.status === 'active' ? 'Activa' : wallet.status}</p>
+          </div>
+        </div>
+        <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+          <div className="bg-black/25 px-5 py-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">CVU</p>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="font-mono text-sm tracking-wide">{formatCVU(wallet.cvu)}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => void copy('CVU', wallet.cvu)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          <div className="bg-black/25 px-5 py-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Alias</p>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="font-mono text-sm">{displayAlias(wallet.alias)}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => void copy('Alias', wallet.alias)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['ingresar', 'Ingresar'],
+            ['transferir', 'Transferir'],
+            ['cuotas', 'Pagar cuota'],
+          ] as const).map(([id, label]) => (
+            <Button
+              key={id}
+              type="button"
+              size="sm"
+              variant={panel === id ? 'default' : 'outline'}
+              onClick={() => setPanel(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+
+        {panel === 'ingresar' ? (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Transferí a tu CVU o alias desde tu banco o billetera. Después informá el origen y el importe para
+              que tesorería RM confirme el crédito en tu saldo.
+            </p>
+            <form
+              className="grid gap-3 sm:grid-cols-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void deposit()
+              }}
+            >
+              <div className="space-y-1">
+                <Label htmlFor="wallet-in-amount">Importe transferido</Label>
+                <Input id="wallet-in-amount" inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="wallet-origin">CBU / CVU / alias de origen</Label>
+                <Input
+                  id="wallet-origin"
+                  placeholder="22 dígitos o alias"
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="sm:col-span-2 font-semibold" disabled={busy}>
+                {busy ? 'Registrando…' : 'Informar ingreso'}
+              </Button>
+            </form>
+            {wallet.sandbox ? (
+              <div className="rounded-xl border border-dashed border-amber-300/80 bg-amber-50/80 p-3">
+                <p className="text-xs font-semibold text-amber-950">Solo desarrollo</p>
+                <p className="mt-1 text-xs text-amber-900/80">
+                  En este entorno podés acreditar saldo de prueba sin transferencia bancaria.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {TOPUPS.map((amount) => (
+                    <Button
+                      key={amount}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-300 bg-white"
+                      disabled={busy}
+                      onClick={() => void sandboxLoad(amount)}
+                    >
+                      + {formatARS(amount)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {panel === 'transferir' ? (
+          <form
+            className="mt-4 grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void send()
+            }}
+          >
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Destino UNICRÉDITOS: acreditación inmediata. Destino bancario externo: debitamos tu saldo y tesorería
+              RM ({wallet.treasuryOrigin}) ejecuta la transferencia.
+            </p>
+            <div className="space-y-1">
+              <Label htmlFor="wallet-dest">Destino</Label>
+              <Input
+                id="wallet-dest"
+                placeholder="CBU, CVU o alias"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="wallet-out-amount">Importe</Label>
+                <Input
+                  id="wallet-out-amount"
+                  inputMode="decimal"
+                  value={outAmount}
+                  onChange={(e) => setOutAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="wallet-concept">Concepto</Label>
+                <Input id="wallet-concept" value={concept} onChange={(e) => setConcept(e.target.value)} />
+              </div>
+            </div>
+            <Button type="submit" className="font-semibold" disabled={busy}>
+              {busy ? 'Enviando…' : 'Transferir'}
+            </Button>
+          </form>
+        ) : null}
+
+        {panel === 'cuotas' ? (
+          <div className="mt-4 space-y-3">
+            {pendingInstallments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tenés cuotas pendientes para pagar con saldo.</p>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="wallet-pay-id">Cuota</Label>
+                  <select
+                    id="wallet-pay-id"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={payId}
+                    onChange={(e) => setPayId(e.target.value)}
+                  >
+                    {pendingInstallments.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        Cuota #{row.number} · {formatARS(Number(row.amount) || 0)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full font-semibold"
+                  disabled={busy || !canPay}
+                  onClick={() => void paySelected()}
+                >
+                  {busy
+                    ? 'Pagando…'
+                    : canPay
+                      ? `Pagar ${formatARS(selectedAmount)} con billetera`
+                      : 'Saldo insuficiente'}
+                </Button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+        <p className="text-sm font-bold text-brand-navy">Movimientos</p>
+        {wallet.movements.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Todavía no hay movimientos en esta billetera.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border/60">
+            {wallet.movements.map((row) => (
+              <li key={row.id} className="flex items-start justify-between gap-3 py-3 text-sm">
+                <div className="flex min-w-0 items-start gap-2">
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                      row.direction === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600',
+                    )}
+                  >
+                    {row.direction === 'in' ? (
+                      <ArrowDownLeft className="h-4 w-4" />
+                    ) : (
+                      <ArrowUpRight className="h-4 w-4" />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-brand-navy">
+                      {row.kind === 'sandbox_load'
+                        ? 'Carga (desarrollo)'
+                        : row.kind === 'p2p_in' || row.kind === 'p2p_out'
+                          ? 'Transferencia interna'
+                          : row.kind === 'service_bill' || row.kind === 'service_recharge'
+                            ? 'Pago de servicio'
+                            : row.kind === 'installment' || row.kind === 'pay_installment'
+                              ? 'Pago de cuota'
+                              : row.notes || row.kind}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {row.reference || '—'} · {new Date(row.createdAt).toLocaleString('es-AR')}
+                    </p>
+                  </div>
+                </div>
+                <p
+                  className={cn(
+                    'shrink-0 font-bold tabular-nums',
+                    row.direction === 'in' ? 'text-emerald-700' : 'text-brand-navy',
+                  )}
+                >
+                  {row.direction === 'in' ? '+' : '−'}
+                  {formatARS(row.amount)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {wallet.payouts.length > 0 ? (
+        <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-sm font-bold text-brand-navy">Egresos a bancos</p>
+          <ul className="mt-3 divide-y divide-border/60">
+            {wallet.payouts.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                <div>
+                  <p className="font-semibold">{row.destinationValue}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {row.status} · {row.rail} · {row.reference}
+                  </p>
+                </div>
+                <p className="font-bold tabular-nums">{formatARS(row.amount)}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function WalletPayBox({
+  installmentIds,
+  amount,
+  onSettled,
+}: {
+  installmentIds: string[]
+  amount: number
+  onSettled?: () => void
+}) {
+  const [wallet, setWallet] = useState<Wallet | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void getMyWallet()
+      .then(setWallet)
+      .catch((err) => toast.error((err as Error).message))
+  }, [])
+
+  async function copy(value: string, label: string) {
+    await navigator.clipboard.writeText(value)
+    toast.success(`${label} copiado`)
+  }
+
+  async function loadNeeded() {
+    if (!wallet) return
+    const missing = Math.ceil(Math.max(amount - wallet.balance, amount))
+    setBusy(true)
+    try {
+      const next = await topUpWalletSandbox(missing)
+      setWallet(next)
+      toast.success('Saldo de desarrollo acreditado.')
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function pay() {
+    setBusy(true)
+    try {
+      await payWithWallet(installmentIds)
+      toast.success('Pago acreditado con la billetera. El recibo quedó en tu panel.')
+      onSettled?.()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!wallet) {
+    return (
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Abriendo billetera…
+      </p>
+    )
+  }
+
+  const enough = wallet.balance + 0.009 >= amount
+  const topup = Math.ceil(Math.max(amount - wallet.balance, amount))
+
+  return (
+    <div className="space-y-3">
+      <p className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 px-3 py-2 text-xs text-brand-navy">
+        Billetera UNICRÉDITOS. Los egresos externos salen desde la cuenta de tesorería RM.
+      </p>
+      <div className="rounded-lg border bg-slate-50 p-3">
+        <p className="text-[11px] uppercase tracking-wide text-slate-500">Saldo</p>
+        <p className="text-xl font-semibold tabular-nums">{formatARSDecimal(wallet.balance)}</p>
+        <dl className="mt-2 space-y-1 text-xs">
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-500">CVU</dt>
+            <dd className="font-mono">
+              {formatCVU(wallet.cvu)}{' '}
+              <button type="button" className="text-brand-primary" onClick={() => void copy(wallet.cvu, 'CVU')}>
+                copiar
+              </button>
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-500">Alias</dt>
+            <dd className="font-mono">
+              {displayAlias(wallet.alias)}{' '}
+              <button type="button" className="text-brand-primary" onClick={() => void copy(wallet.alias, 'Alias')}>
+                copiar
+              </button>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      {enough ? (
+        <Button type="button" className="w-full font-semibold" disabled={busy} onClick={() => void pay()}>
+          {busy ? 'Debitando…' : `Pagar ${formatARS(amount)} con la billetera`}
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-600">
+            Faltan {formatARS(Math.max(0, amount - wallet.balance))} para cubrir esta cuota.
+          </p>
+          {wallet.sandbox ? (
+            <Button type="button" className="w-full" disabled={busy} onClick={() => void loadNeeded()}>
+              {busy ? 'Cargando…' : `Cargar ${formatARS(topup)} (desarrollo)`}
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Transferí al CVU e informá el ingreso en Billetera. Cuando se confirme, el saldo aparece acá.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

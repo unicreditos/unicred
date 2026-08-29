@@ -53,6 +53,14 @@ function typeMeta(type: string) {
       note: 'Documento informativo. El desembolso se acredita cuando tesorería confirma la cuenta del titular.',
     }
   }
+  if (type === 'service_payment') {
+    return {
+      title: 'Comprobante de pago de servicio',
+      subtitle: 'Pago de factura / recarga procesado con billetera UNICRÉDITOS',
+      amountLabel: 'Importe pagado',
+      note: 'Débito acreditado en tu billetera. La liquidación al prestador la ejecuta tesorería RM. Conservá este comprobante.',
+    }
+  }
   if (type === 'partial_payment') {
     return {
       title: 'Recibo de pago parcial',
@@ -86,6 +94,7 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
   const customer = receipt.customerSnapshot ?? {}
   const bank = receipt.bankAccountSnapshot
   const isPayment = receipt.receiptType === 'payment' || receipt.receiptType === 'partial_payment'
+  const isService = receipt.receiptType === 'service_payment' || Boolean(loan.service)
   const branding = receipt.branding ?? {}
 
   return (
@@ -119,9 +128,20 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
               />
             ) : null}
             <DocumentField label="Medio" value={paymentMethodLabel(receipt.method)} />
-            <DocumentField label="Referencia" value={receipt.referenceNumber ?? '—'} mono />
-            {loan.id ? <DocumentField label="Préstamo" value={asText(loan.id)} mono /> : null}
-            {isPayment && inst.number != null ? (
+            <DocumentField
+              label={isService ? 'Operación' : 'Referencia'}
+              value={asText(loan.operationId ?? receipt.referenceNumber)}
+              mono
+            />
+            {isService ? (
+              <>
+                <DocumentField label="Empresa" value={asText(loan.providerName)} />
+                <DocumentField label="Cuenta / referencia" value={asText(loan.accountRef)} mono />
+                <DocumentField label="Código de autorización" value={asText(loan.authCode)} mono />
+              </>
+            ) : null}
+            {!isService && loan.id ? <DocumentField label="Préstamo" value={asText(loan.id)} mono /> : null}
+            {isPayment && !isService && inst.number != null ? (
               <DocumentField
                 label="Cuota"
                 value={`${asText(inst.number)} de ${asText(loan.term ?? '—')}`}
@@ -137,7 +157,22 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
         </div>
       </DocumentSection>
 
-      <DocumentSection number="02" title="Titular">
+      {isService ? (
+        <DocumentSection number="02" title="Detalle del servicio">
+          <DocumentFieldGrid cols={3}>
+            <DocumentField label="Rubro" value={asText(loan.category)} />
+            <DocumentField
+              label="Tipo"
+              value={loan.kind === 'recharge' ? 'Recarga' : 'Pago de factura'}
+            />
+            <DocumentField label="Saldo billetera antes" value={money(receipt.previousBalance)} />
+            <DocumentField label="Saldo billetera después" value={money(receipt.newBalance)} />
+            <DocumentField label="Estado liquidación" value="En cola tesorería RM" />
+          </DocumentFieldGrid>
+        </DocumentSection>
+      ) : null}
+
+      <DocumentSection number={isService ? '03' : '02'} title="Titular">
         <DocumentFieldGrid>
           <DocumentField label="Nombre" value={asText(customer.name)} />
           <DocumentField label="CUIL" value={asText(customer.cuil)} mono />
@@ -151,7 +186,7 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
         </DocumentFieldGrid>
       </DocumentSection>
 
-      {isPayment && (loan.principal != null || inst.amount != null) ? (
+      {isPayment && !isService && (loan.principal != null || inst.amount != null) ? (
         <DocumentSection number="03" title="Préstamo e imputación">
           <div className="doc-split gap-4">
             <table className="doc-table">
@@ -234,7 +269,7 @@ export function PaymentReceiptPrintable({ receipt }: { receipt: ReceiptDocData }
 
       <DocumentFooter
         documentId={receipt.id}
-        extra={`${branding.company ?? BRAND.company} · CUIT ${branding.cuit ?? legalCuitLabel()}. Recibo interno del acreedor. La discriminación de capital e interés está en la liquidación de cuota.`}
+        extra={`${branding.company ?? BRAND.company} · CUIT ${branding.cuit ?? legalCuitLabel()}. ${isService ? 'Comprobante de pago de servicio / factura.' : 'Recibo interno del acreedor. La discriminación de capital e interés está en la liquidación de cuota.'}`}
       />
     </DocumentSheet>
   )

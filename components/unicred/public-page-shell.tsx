@@ -1,4 +1,3 @@
-import { PublicBcraTicker } from '@/components/unicred/public-bcra-board'
 import { PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { getAccountHref } from '@/lib/session'
@@ -28,10 +27,9 @@ export async function PublicPageShell({
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      <PublicBcraTicker />
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
 
-      <main>
+      <main id="contenido-principal">
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 sm:pt-14 lg:px-8">
           <Link href="/" className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand-primary">
             <ArrowLeft className="h-4 w-4" /> Volver al inicio

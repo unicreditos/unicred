@@ -17,6 +17,8 @@ import { syncOverdueInstallments } from '@/lib/legal/expediente'
 import { cancelMercadoPagoPayment } from '@/lib/mercadopago'
 import { isOpenNetworkCoupon, mercadoPagoNumericId } from '@/lib/payments/network-coupon'
 import { reconcileOpenMercadoPagoPayments, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
+import { paywayAllowsSimulate } from '@/lib/payway'
+import { settlePaywayPayment } from '@/lib/payments/settle-payway'
 import { revalidateOps } from '@/lib/revalidate'
 import { assertAdmin, newId } from '@/lib/session'
 import { and, desc, eq, inArray, or } from 'drizzle-orm'
@@ -376,7 +378,7 @@ export async function getAdminOpsDesk(): Promise<AdminOpsDesk> {
 export async function adminRegisterCollection(input: {
   installmentId: string
   amount: number
-  method: 'transferencia_rm' | 'efectivo' | 'mercado_pago'
+  method: 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'payway_qr'
   reference?: string
   notes?: string
 }) {
@@ -516,4 +518,21 @@ export async function adminReconcileMercadoPago() {
   const scanned = results.length
   revalidateOps()
   return { scanned, credited }
+}
+
+export async function adminSimulatePayway(paymentId: string, outcome: 'approved' | 'rejected' = 'approved') {
+  await assertAdmin()
+  if (!paywayAllowsSimulate()) throw new Error('La simulación Payway solo está habilitada en sandbox.')
+  const [row] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
+  if (!row || row.gateway !== 'payway') throw new Error('Pago Payway no encontrado.')
+  const result = await settlePaywayPayment({
+    status: outcome,
+    amount: money(row.amount),
+    localPaymentId: row.id,
+    paywayId: `adm-${row.id.replace(/-/g, '').slice(0, 12)}`,
+    method: row.method,
+    gatewayPayload: { simulated_by: 'admin', outcome },
+  })
+  revalidateOps()
+  return { credited: result.credited, status: result.localStatus, receiptId: result.receiptId ?? null }
 }

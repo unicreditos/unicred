@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateWebhookSecret, validateWebhookSignature } from '@/lib/mercadopago'
+import { validateWebhookSignature } from '@/lib/mercadopago'
 import { getMercadoPagoQrOrder, paymentIdsFromQrOrder } from '@/lib/mercadopago-qr'
 import { findLocalPaymentId, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
@@ -8,12 +8,8 @@ import { revalidatePath } from 'next/cache'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const secret = searchParams.get('secret')
-  if (!validateWebhookSecret(secret ?? undefined)) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
-  }
+/** Healthcheck público: no revela secretos ni acepta liquidaciones. */
+export async function GET() {
   return NextResponse.json({
     ok: true,
     webhook: 'active',
@@ -35,9 +31,8 @@ export async function POST(req: NextRequest) {
     body,
     toleranceSeconds: 60 * 15,
   })
-  const secretOk = validateWebhookSecret(searchParams.get('secret') ?? undefined)
-  const production = process.env.NODE_ENV === 'production'
-  if (production ? !sigOk : !sigOk && !secretOk) {
+  // Solo HMAC (x-signature). No aceptar secretos en query string.
+  if (!sigOk) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
 

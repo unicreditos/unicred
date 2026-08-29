@@ -9,8 +9,8 @@ import { ActivityInbox } from '@/components/dashboard/activity-inbox'
 import { AccountSettings } from '@/components/dashboard/account-settings'
 import { ClaimsPanel } from '@/components/dashboard/claims-panel'
 import { DueCalendar } from '@/components/dashboard/due-calendar'
+import { parseDirectoIntent } from '@/directo/intent'
 import {
-  DigitalCard,
   SectionCard,
   StatusChip,
 } from '@/components/unicred/dashboard-kit'
@@ -50,7 +50,7 @@ import {
   savedPaymentMethod,
   disbursement,
 } from '@/lib/db/schema'
-import { useMemo, useState, useTransition, useEffect, KeyboardEvent } from 'react'
+import { useMemo, useState, useTransition, useEffect, useRef, KeyboardEvent } from 'react'
 import {
   BellRing,
   CheckCircle2,
@@ -82,16 +82,18 @@ import {
   FileText,
   Handshake,
   Pencil,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  createBankAccount,
+  lookupAndCreateBankAccount,
   updateBankAccount,
   setPrimaryBankAccount,
   deleteBankAccount,
   validateBankAccountLive,
 } from '@/app/actions/banking'
+import { consultMyBcra } from '@/app/actions/bcra'
 import { getDiditPublicConfig, syncDiditSession } from '@/app/actions/didit'
 import { DiditVerifyButton } from '@/components/didit-verify-button'
 import { generateBCRAReport, generateLoanContract, acceptLoanContract, refinanceLoan } from '@/app/actions/documents'
@@ -101,6 +103,8 @@ import { BRAND } from '@/lib/brand'
 import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
 import { asMoraRows, evaluateIntimation, evaluateRefinance, MAX_REFINANCES } from '@/lib/legal/mora'
 import { PayInstallmentDialog } from '@/components/payments/pay-installment-dialog'
+import { WalletDesk } from '@/components/payments/wallet-desk'
+import { ServicesDesk } from '@/components/payments/services-desk'
 import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
 import Link from 'next/link'
 
@@ -142,6 +146,7 @@ type KpiTotals = {
 }
 
 interface DashboardTabsWrapperProps {
+  sessionUser?: { name?: string | null; email?: string | null; image?: string | null }
   initialProfile: Profile | null
   products: LoanProduct[]
   loans: Loan[]
@@ -196,6 +201,7 @@ function formatDateShort(d: Date | string) {
 }
 
 export function DashboardTabsWrapper({
+  sessionUser,
   initialProfile,
   products,
   loans,
@@ -215,10 +221,16 @@ export function DashboardTabsWrapper({
 }: DashboardTabsWrapperProps) {
   const router = useRouter()
   const { data: session } = useSession()
+  const resolvedUser = {
+    name: session?.user?.name ?? sessionUser?.name ?? null,
+    email: session?.user?.email ?? sessionUser?.email ?? null,
+    image: session?.user?.image ?? sessionUser?.image ?? null,
+  }
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
   const urlTab = isDashboardTab(rawTab) ? rawTab : null
   const [activeTab, setActiveTabState] = useState<TabValue>(urlTab ?? 'overview')
+  const directoIntent = parseDirectoIntent(searchParams)
 
   const [syncedUrl, setSyncedUrl] = useState(() => urlTab ?? '')
   const currentUrl = urlTab ?? ''
@@ -251,6 +263,19 @@ export function DashboardTabsWrapper({
     const query = sp.toString()
     router.replace(`${window.location.pathname}${query ? `?${query}` : ''}`, { scroll: false })
   }, [searchParams, router])
+
+  const autoBcraOnce = useRef(false)
+  useEffect(() => {
+    if (autoBcraOnce.current) return
+    if (!initialProfile?.cuil) return
+    const src = String(lastBcraCheck?.source ?? '')
+    const needs = !lastBcraCheck || src.includes('synth') || src.includes('fallback')
+    if (!needs) return
+    autoBcraOnce.current = true
+    void consultMyBcra().then((r) => {
+      if (r.ok) router.refresh()
+    })
+  }, [initialProfile?.cuil, lastBcraCheck, router])
 
   const setActiveTab = (t: TabValue) => {
     setActiveTabState(t)
@@ -290,7 +315,10 @@ export function DashboardTabsWrapper({
   }
 
   const activeLoansList = loans.filter((l: any) => l.status === 'active')
-  const firstName = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'ahí'
+  const firstName =
+    (resolvedUser.name ?? '').trim().split(/\s+/).filter(Boolean)[0] ||
+    (resolvedUser.email ?? '').split('@')[0] ||
+    null
   const monthlyIncome = Number(initialProfile?.monthlyIncome) || 0
   const monthlyLoad = activeLoansList.reduce((sum, l: any) => sum + (Number(l.installmentAmount) || 0), 0)
   const capacityCeiling = monthlyIncome > 0 ? monthlyIncome * 0.35 : 0
@@ -320,14 +348,14 @@ export function DashboardTabsWrapper({
     .slice(0, 5)
 
   return (
-    <DashboardShell activeTab={activeTab} onTabChange={setActiveTab}>
+    <DashboardShell activeTab={activeTab} onTabChange={setActiveTab} user={resolvedUser}>
       <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         {activeTab === 'overview' && (
           <>
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-brand-navy-900">
-                  Hola, {firstName} 👋
+                  {firstName ? `Hola, ${firstName}` : 'Hola'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">Bienvenido a tu cuenta UNICRÉDITOS.</p>
               </div>
@@ -335,8 +363,6 @@ export function DashboardTabsWrapper({
                 Solicitar nuevo crédito
               </Button>
             </div>
-
-            <DigitalCard holder={session?.user?.name ?? firstName} className="md:col-span-3" />
 
             <div className="grid gap-3 md:grid-cols-3">
               <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -353,7 +379,7 @@ export function DashboardTabsWrapper({
                     </p>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-[#1E58E5]"
+                        className="h-full rounded-full bg-brand-primary"
                         style={{
                           width: `${capacityCeiling > 0 ? Math.min(100, Math.round((monthlyLoad / capacityCeiling) * 100)) : 0}%`,
                         }}
@@ -501,7 +527,7 @@ export function DashboardTabsWrapper({
               <MetricTile
                 label="Score UNICRÉDITOS"
                 value={score ?? '—'}
-                hint={score ? band.label : 'Consultá BCRA desde Situación BCRA'}
+                hint={score ? band.label : 'Se consulta solo con Central de Deudores'}
                 tone={!score ? 'warn' : score >= 640 ? 'ok' : 'warn'}
               />
               <MetricTile
@@ -565,10 +591,13 @@ export function DashboardTabsWrapper({
                 </header>
                 <div className="grid gap-2 p-3">
                   {[
-                    { t: 'Pagar cuota', d: 'Checkout Mercado Pago', tab: 'pagos' as TabValue },
+                    { t: 'Pagar cuota', d: 'Mercado Pago, efectivo, transferencia o billetera', tab: 'pagos' as TabValue },
+                    { t: 'Billetera', d: 'CVU, saldo y transferencias UNICRÉDITOS', tab: 'billetera' as TabValue },
+                    { t: 'Pagos y recargas', d: 'Servicios, impuestos y celular', tab: 'servicios' as TabValue },
                     { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas' as TabValue },
-                    { t: 'Consultar BCRA', d: 'Central de Deudores', tab: 'scoring' as TabValue },
+                    { t: 'Contrato y pagaré', d: 'Expediente del crédito', tab: 'documentos' as TabValue },
                     { t: 'Cargar cuenta', d: 'CBU / CVU de desembolso', tab: 'bancos' as TabValue },
+                    { t: 'Ayuda', d: 'FAQ y contacto', tab: 'ayuda' as TabValue },
                     { t: 'Reclamos', d: 'Ley 24.240 · 10 días hábiles', tab: 'reclamos' as TabValue },
                   ].map((a) => (
                     <button
@@ -596,8 +625,8 @@ export function DashboardTabsWrapper({
                   <h2 className="text-sm font-semibold text-brand-navy-900">Movimientos recientes</h2>
                   <p className="text-xs text-slate-500">Pagos acreditados y desembolsos de tu cuenta</p>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('comprobantes')}>
-                  Ver comprobantes
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('pagos')}>
+                  Ver pagos
                 </Button>
               </header>
               <div className="p-4">
@@ -761,7 +790,7 @@ export function DashboardTabsWrapper({
                     { q: '¿Puedo arrepentirme?', a: `Sí, ${WITHDRAWAL_DAYS} días corridos desde la aceptación del contrato, si el crédito todavía no se acreditó. El botón está en Documentos.` },
                     { q: '¿Qué pasa si me atraso con una cuota?', a: 'La cuota queda vencida en el cronograma. UNICRÉDITOS no liquida punitorios de oficio. Pagá desde Mercado Pago, tarjeta o transferencia.' },
                     { q: '¿Cómo descargo un comprobante o el informe BCRA?', a: 'En Comprobantes y Documentos. El informe refleja la consulta a la Central de Deudores.' },
-                    { q: '¿UNICRÉDITOS es un banco?', a: 'No. UNICRÉDITOS es la plataforma de créditos de RM International Group S.A.S. Consultamos la Central de Deudores del BCRA para evaluar. El crédito está sujeto a aprobación.' },
+                    { q: '¿UNICRÉDITOS es un banco?', a: 'No. UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por RM International Group S.A.S. Consultamos la Central de Deudores del BCRA para evaluar. El crédito está sujeto a aprobación.' },
                   ].map((f, i) => (
                     <details
                       key={i}
@@ -790,15 +819,40 @@ export function DashboardTabsWrapper({
                 >
                   <div className="space-y-2.5 text-sm">
                     {[
-                      { icon: BellRing, title: 'Atención', value: BRAND.phone || 'Formulario y email (sin 0800 publicado)', tone: 'emerald' },
-                      { icon: Landmark, title: 'Soporte', value: BRAND.supportEmail, tone: 'primary' },
-                      { icon: Globe2, title: 'Sitio web oficial', value: BRAND.domain, tone: 'primary' },
-                      { icon: ShieldCheck, title: 'Consultas BCRA', value: 'Central de Deudores', tone: 'navy' },
+                      {
+                        icon: BellRing,
+                        title: 'Atención',
+                        value: BRAND.phone || 'Formulario y email',
+                        href: '/contacto',
+                        tone: 'emerald',
+                      },
+                      {
+                        icon: Landmark,
+                        title: 'Soporte',
+                        value: BRAND.supportEmail,
+                        href: `mailto:${BRAND.supportEmail}`,
+                        tone: 'primary',
+                      },
+                      {
+                        icon: Globe2,
+                        title: 'Sitio web oficial',
+                        value: BRAND.domain,
+                        href: `https://${BRAND.domain}`,
+                        tone: 'primary',
+                      },
+                      {
+                        icon: ShieldCheck,
+                        title: 'Consultas BCRA',
+                        value: 'Central de Deudores',
+                        href: '/scoring',
+                        tone: 'navy',
+                      },
                     ].map((c, i) => (
-                      <div
+                      <a
                         key={i}
+                        href={c.href}
                         className={
-                          'flex items-center justify-between gap-3 rounded-xl border p-3 ' +
+                          'flex items-center justify-between gap-3 rounded-xl border p-3 transition hover:opacity-95 ' +
                           (c.tone === 'emerald'
                             ? 'border-emerald-200 bg-emerald-50/40'
                             : c.tone === 'navy'
@@ -806,17 +860,19 @@ export function DashboardTabsWrapper({
                               : 'border-brand-primary-200/60 bg-brand-primary-50/40')
                         }
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex min-w-0 items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-brand-primary ring-1 ring-border/80">
                             <c.icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{c.title}</div>
-                            <div className="text-sm font-bold text-foreground truncate">{c.value}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {c.title}
+                            </div>
+                            <div className="truncate text-sm font-bold text-foreground">{c.value}</div>
                           </div>
                         </div>
                         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                      </div>
+                      </a>
                     ))}
                   </div>
                 </SectionCard>
@@ -848,11 +904,7 @@ export function DashboardTabsWrapper({
           {activeTab === 'perfil' && (
             <KYCProfileForm
               initialProfile={initialProfile}
-              user={{
-                name: session?.user?.name,
-                email: session?.user?.email,
-                image: session?.user?.image,
-              }}
+              user={resolvedUser}
             />
           )}
           {activeTab === 'solicitar' && (
@@ -868,28 +920,165 @@ export function DashboardTabsWrapper({
                     </Button>
                   }
                 />
-              ) : myKyc?.provider !== 'didit' || myKyc.status !== 'approved' ? (
-                <DecisionBanner
-                  tone="warn"
-                  title="Falta la verificación Didit"
-                  detail="Sin identidad aprobada el simulador no origina crédito. Completá DNI y prueba de vida en Biometría."
-                  action={
-                    <Button size="sm" onClick={() => setActiveTab('kyc_biometrico')}>
-                      Ir a biometría
-                    </Button>
+              ) : null}
+              {kycPct < 100 ? (
+                <KYCProfileForm
+                  initialProfile={initialProfile}
+                  user={resolvedUser}
+                />
+              ) : null}
+              {myKyc?.provider !== 'didit' || myKyc.status !== 'approved' ? (
+                <KYCBiometricPanel kyc={myKyc} profile={initialProfile} />
+              ) : null}
+              {bankAccounts.length === 0 ? (
+                <BancosPanel
+                  accounts={bankAccounts}
+                  profile={initialProfile}
+                  defaultHolderName={resolvedUser.name ?? ''}
+                  isPending={isPending}
+                  onLookupCreate={(identifier, setAsPrimary) =>
+                    startTransition(async () => {
+                      try {
+                        const r = await lookupAndCreateBankAccount({ identifier, setAsPrimary })
+                        showToast('ok', r.message || 'Cuenta validada y guardada.')
+                        router.refresh()
+                      } catch (e: any) {
+                        showToast('err', e?.message ?? 'No se pudo validar la cuenta.')
+                      }
+                    })
+                  }
+                  onUpdate={(id, v) =>
+                    startTransition(async () => {
+                      try {
+                        await updateBankAccount(id, v)
+                        showToast('ok', 'Cuenta actualizada. Volvé a validar.')
+                        router.refresh()
+                      } catch (e: any) {
+                        showToast('err', e?.message ?? 'Error al actualizar.')
+                      }
+                    })
+                  }
+                  onSetPrimary={(id) =>
+                    startTransition(async () => {
+                      try {
+                        await setPrimaryBankAccount(id)
+                        showToast('ok', 'Cuenta principal actualizada.')
+                        router.refresh()
+                      } catch (e: any) {
+                        showToast('err', e?.message ?? 'Error.')
+                      }
+                    })
+                  }
+                  onValidate={(id) =>
+                    startTransition(async () => {
+                      try {
+                        const r = await validateBankAccountLive(id)
+                        if (r.ok) showToast('ok', r.message || 'Cuenta verificada.')
+                        else showToast('err', r?.message || 'No se pudo validar.')
+                        router.refresh()
+                      } catch (e: any) {
+                        showToast('err', e?.message ?? 'Error de validación.')
+                      }
+                    })
+                  }
+                  onDelete={(id) =>
+                    startTransition(async () => {
+                      try {
+                        await deleteBankAccount(id)
+                        showToast('ok', 'Cuenta eliminada.')
+                        router.refresh()
+                      } catch (e: any) {
+                        showToast('err', e?.message ?? 'Error al eliminar.')
+                      }
+                    })
                   }
                 />
               ) : null}
-              <LoanRequestSimulator
-                products={products}
-                identityReady={myKyc?.provider === 'didit' && myKyc.status === 'approved'}
-              />
+              <BCRAScore profile={initialProfile} lastBcraCheck={lastBcraCheck} />
+              {activeLoansList.length === 0 ? (
+                <LoanRequestSimulator
+                  products={products}
+                  identityReady={myKyc?.provider === 'didit' && myKyc.status === 'approved'}
+                  initialAmount={directoIntent.amount}
+                  initialTerm={directoIntent.term}
+                />
+              ) : null}
             </>
           )}
           {activeTab === 'scoring' && (
-            <BCRAScore profile={initialProfile} lastBcraCheck={lastBcraCheck} />
+            <BCRAScore profile={initialProfile} lastBcraCheck={lastBcraCheck} autoConsult />
           )}
-          {activeTab === 'cuotas' && <LoansDashboard loans={loans} />}
+          {activeTab === 'cuotas' && (
+            <>
+              <LoansDashboard loans={loans} />
+              <DocumentosPanel
+                profile={initialProfile}
+                loans={loans}
+                lastBcraCheck={lastBcraCheck}
+                bcraReports={bcraReports}
+                contracts={contracts}
+                installments={installmentsAll}
+                isPending={isPending}
+                onGenBCRA={(cid) =>
+                  startTransition(async () => {
+                    try {
+                      const r = await generateBCRAReport(cid)
+                      showToast('ok', `Informe ${r.reportNumber} generado.`)
+                      router.refresh()
+                    } catch (e: any) {
+                      showToast('err', e?.message ?? 'Error al generar informe.')
+                    }
+                  })
+                }
+                onGenContract={(lid) =>
+                  startTransition(async () => {
+                    try {
+                      await generateLoanContract(lid)
+                      showToast('ok', 'Contrato generado. Revisá y aceptalo.')
+                      router.refresh()
+                    } catch (e: any) {
+                      showToast('err', e?.message ?? 'Error al generar contrato.')
+                    }
+                  })
+                }
+                onAcceptContract={(cid) =>
+                  startTransition(async () => {
+                    try {
+                      const ip = (typeof window !== 'undefined' ? 'local-client' : '') || '0.0.0.0'
+                      const ua = typeof window !== 'undefined' ? window.navigator.userAgent : ''
+                      await acceptLoanContract(cid, { ip, ua })
+                      showToast('ok', 'Contrato y pagaré aceptados. El expediente quedó firmado.')
+                      router.refresh()
+                    } catch (e: any) {
+                      showToast('err', e?.message ?? 'Error al aceptar.')
+                    }
+                  })
+                }
+                onRefinance={(loanId) =>
+                  startTransition(async () => {
+                    try {
+                      const r = await refinanceLoan(loanId)
+                      showToast('ok', `Refinanciación ${r.number}/2. El saldo se repartió en ${r.remainingCount} cuotas.`)
+                      router.refresh()
+                    } catch (e: any) {
+                      showToast('err', e?.message ?? 'No se pudo refinanciar.')
+                    }
+                  })
+                }
+                onWithdraw={(loanId) =>
+                  startTransition(async () => {
+                    const r = await withdrawLoanAcceptance(loanId)
+                    if (r.ok) {
+                      showToast('ok', 'Arrepentimiento registrado. El crédito y el contrato quedaron anulados.')
+                      router.refresh()
+                    } else {
+                      showToast('err', r.error)
+                    }
+                  })
+                }
+              />
+            </>
+          )}
 
           {activeTab === 'kyc_biometrico' && (
             <KYCBiometricPanel kyc={myKyc} profile={initialProfile} />
@@ -899,16 +1088,16 @@ export function DashboardTabsWrapper({
             <BancosPanel
               accounts={bankAccounts}
               profile={initialProfile}
-              defaultHolderName={session?.user?.name ?? ''}
+              defaultHolderName={resolvedUser.name ?? ''}
               isPending={isPending}
-              onCreate={(v) =>
+              onLookupCreate={(identifier, setAsPrimary) =>
                 startTransition(async () => {
                   try {
-                    await createBankAccount(v)
-                    showToast('ok', 'Cuenta bancaria agregada.')
+                    const r = await lookupAndCreateBankAccount({ identifier, setAsPrimary })
+                    showToast('ok', r.message || 'Cuenta validada y guardada.')
                     router.refresh()
                   } catch (e: any) {
-                    showToast('err', e?.message ?? 'Error al agregar.')
+                    showToast('err', e?.message ?? 'No se pudo validar la cuenta.')
                   }
                 })
               }
@@ -961,16 +1150,32 @@ export function DashboardTabsWrapper({
           )}
 
           {activeTab === 'pagos' && (
-            <PagosPanel
-              profile={initialProfile}
-              loans={loans}
-              installments={installmentsAll}
-              payments={payments}
-              savedMethods={savedPaymentMethods}
-              isPending={isPending}
-              payerEmail={session?.user?.email ?? null}
+            <>
+              <PagosPanel
+                profile={initialProfile}
+                loans={loans}
+                installments={installmentsAll}
+                payments={payments}
+                savedMethods={savedPaymentMethods}
+                isPending={isPending}
+                payerEmail={session?.user?.email ?? null}
+              />
+              <ComprobantesPanel
+                receipts={paymentReceipts}
+                disbursements={disbursements}
+                payments={payments}
+              />
+            </>
+          )}
+
+          {activeTab === 'billetera' && (
+            <WalletDesk
+              pendingInstallments={installmentsAll.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')}
+              onPaid={() => router.refresh()}
             />
           )}
+
+          {activeTab === 'servicios' && <ServicesDesk />}
 
           {activeTab === 'documentos' && (
             <DocumentosPanel
@@ -1275,7 +1480,7 @@ function BancosPanel({
   profile,
   defaultHolderName,
   isPending,
-  onCreate,
+  onLookupCreate,
   onUpdate,
   onSetPrimary,
   onDelete,
@@ -1285,17 +1490,7 @@ function BancosPanel({
   profile: Profile | null
   defaultHolderName?: string
   isPending: boolean
-  onCreate: (v: {
-    accountType: 'cbu' | 'cvu' | 'alias' | 'cci'
-    bankName: string
-    cbu?: string
-    cvu?: string
-    alias?: string
-    accountNumber?: string
-    holderName: string
-    holderCuil: string
-    setAsPrimary?: boolean
-  }) => void
+  onLookupCreate: (identifier: string, setAsPrimary: boolean) => void
   onUpdate: (
     id: string,
     v: {
@@ -1314,54 +1509,41 @@ function BancosPanel({
   onValidate: (id: string) => void
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'cbu' | 'cvu' | 'alias' | 'cci'>('cbu')
-  const [bankName, setBankName] = useState('')
-  const [cbu, setCbu] = useState('')
-  const [cvu, setCvu] = useState('')
-  const [alias, setAlias] = useState('')
-  const [cci, setCci] = useState('')
-  const [holderName, setHolderName] = useState(
-    (profile as any)?.fullName ?? (profile as any)?.holderName ?? defaultHolderName ?? '',
-  )
-  const [holderCuil, setHolderCuil] = useState(profile?.cuil ?? '')
+  const [identifier, setIdentifier] = useState('')
   const [primary, setPrimary] = useState(accounts.length === 0)
+  const [preview, setPreview] = useState<{
+    bankName: string
+    holderName: string
+    holderCuil: string
+    cbu?: string
+    cvu?: string
+    alias?: string
+    accountType: string
+  } | null>(null)
 
   function resetForm() {
     setEditingId(null)
-    setAccountType('cbu')
-    setBankName('')
-    setCbu('')
-    setCvu('')
-    setAlias('')
-    setCci('')
-    setHolderName((profile as any)?.fullName ?? defaultHolderName ?? '')
-    setHolderCuil(profile?.cuil ?? '')
+    setIdentifier('')
+    setPreview(null)
     setPrimary(accounts.length === 0)
   }
 
   function startEdit(a: BankAccount) {
     setEditingId(a.id)
-    setAccountType((a.accountType as any) || 'cbu')
-    setBankName(a.bankName || '')
-    setCbu(a.cbu || '')
-    setCvu(a.cvu || '')
-    setAlias(normalizeBankAlias(a.alias || ''))
-    setCci(a.accountNumber || '')
-    setHolderName(a.holderName || '')
-    setHolderCuil(a.holderCuil || '')
+    setIdentifier(a.cbu || a.cvu || a.alias || '')
+    setPreview({
+      bankName: a.bankName,
+      holderName: a.holderName,
+      holderCuil: a.holderCuil,
+      cbu: a.cbu || undefined,
+      cvu: a.cvu || undefined,
+      alias: a.alias || undefined,
+      accountType: a.accountType,
+    })
     setPrimary(!!a.isPrimary)
   }
 
-  const payload = {
-    accountType,
-    bankName,
-    cbu: cbu || undefined,
-    cvu: cvu || undefined,
-    alias: alias ? normalizeBankAlias(alias) : undefined,
-    accountNumber: cci || undefined,
-    holderName,
-    holderCuil,
-  }
+  const canSubmit = identifier.trim().length >= 6
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
@@ -1382,8 +1564,8 @@ function BancosPanel({
                 No tenés cuentas bancarias cargadas
               </p>
               <p className="max-w-xs text-xs text-muted-foreground">
-                Agregá tu CBU, CVU o ALIAS para el desembolso. Tesorería acredita cuando
-                confirma la transferencia, sin plazo fijo de 24/48 hs.
+                Ingresá tu CBU, CVU o alias. Al validar, consultamos la red y completamos
+                titular, entidad y CUIL automáticamente.
               </p>
             </div>
           ) : (
@@ -1406,23 +1588,29 @@ function BancosPanel({
                     >
                       <Landmark className="h-5 w-5" />
                     </div>
-                    <div className="space-y-0.5 min-w-0">
+                    <div className="min-w-0 space-y-0.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-foreground">{a.bankName}</p>
                         <Badge variant="outline" className="text-[10px] font-semibold uppercase">
                           {a.accountType}
                         </Badge>
                         {a.isPrimary && (
-                          <Badge className="gap-1 bg-amber-500/90 hover:bg-amber-500 text-white">
+                          <Badge className="gap-1 bg-amber-500/90 text-white hover:bg-amber-500">
                             <Star className="h-3 w-3 fill-white" /> Principal
                           </Badge>
                         )}
                         {a.isVerified ? (
-                          <Badge variant="outline" className="gap-1 border-emerald-300/60 text-emerald-700 dark:text-emerald-400">
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-emerald-300/60 text-emerald-700 dark:text-emerald-400"
+                          >
                             <Check className="h-3 w-3" /> Verificada
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="gap-1 border-amber-300/60 text-amber-700 dark:text-amber-400">
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-amber-300/60 text-amber-700 dark:text-amber-400"
+                          >
                             <Clock className="h-3 w-3" /> Pendiente verif.
                           </Badge>
                         )}
@@ -1449,12 +1637,15 @@ function BancosPanel({
                       </div>
                       {a.extractedProfile ? (
                         <div className="mt-2 grid gap-1 rounded-md bg-muted/60 px-2 py-2 text-[11px] text-muted-foreground sm:grid-cols-2">
-                          <span>Entidad: <strong className="text-foreground">{(a.extractedProfile as any).entidad || a.bankName}</strong></span>
+                          <span>
+                            Entidad:{' '}
+                            <strong className="text-foreground">
+                              {(a.extractedProfile as any).entidad || a.bankName}
+                            </strong>
+                          </span>
                           <span>Código: {(a.extractedProfile as any).codigoEntidad || a.bankCode || '—'}</span>
                           <span>Esquema: {a.scheme || (a.extractedProfile as any).scheme || a.accountType}</span>
                           <span>Red: {a.networkStatus || (a.extractedProfile as any).estado || '—'}</span>
-                          {(a.extractedProfile as any).sucursal ? <span>Sucursal: {(a.extractedProfile as any).sucursal}</span> : null}
-                          {(a.extractedProfile as any).tipoCuenta ? <span>Tipo: {(a.extractedProfile as any).tipoCuenta}</span> : null}
                         </div>
                       ) : null}
                     </div>
@@ -1468,7 +1659,7 @@ function BancosPanel({
                         disabled={isPending || !(a.cbu || a.cvu || a.alias)}
                         onClick={() => onValidate(a.id)}
                       >
-                        <Globe2 className="h-3.5 w-3.5" /> Validar ArgenAPI
+                        <Globe2 className="h-3.5 w-3.5" /> Validar
                       </Button>
                     )}
                     <Button
@@ -1512,136 +1703,137 @@ function BancosPanel({
         <CardHeader>
           <CardTitle className="text-base">{editingId ? 'Editar cuenta' : 'Agregar cuenta'}</CardTitle>
           <CardDescription>
-            CBU/CVU: 22 dígitos. Alias: 6 a 20 caracteres, sin @. El @ es solo visual.
+            Solo CBU, CVU (22 dígitos) o alias. Al validar, completamos y guardamos los datos de la red.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Tipo de cuenta</Label>
-            <Select value={accountType} onValueChange={(v: any) => setAccountType(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cbu">CBU (Banco tradicional)</SelectItem>
-                <SelectItem value="cvu">CVU (Billetera virtual · Mercado Pago / Ualá / etc)</SelectItem>
-                <SelectItem value="alias">ALIAS (transferencias)</SelectItem>
-                <SelectItem value="cci">CCI (Exterior)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Banco / Entidad</Label>
-            <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Ej: Banco Galicia" />
-          </div>
-          {accountType === 'cbu' && (
-            <div className="space-y-1.5">
-              <Label>CBU (22 dígitos)</Label>
-              <Input
-                value={cbu}
-                onChange={(e) => setCbu(e.target.value.replace(/\D/g, '').slice(0, 22))}
-                placeholder="00000000 0 00000000000000"
-                className="font-mono tracking-wide"
-              />
-            </div>
-          )}
-          {accountType === 'cvu' && (
-            <div className="space-y-1.5">
-              <Label>CVU (22 dígitos)</Label>
-              <Input
-                value={cvu}
-                onChange={(e) => setCvu(e.target.value.replace(/\D/g, '').slice(0, 22))}
-                placeholder="00000000 0 00000000000000"
-                className="font-mono tracking-wide"
-              />
-            </div>
-          )}
-          {accountType === 'alias' && (
-            <div className="space-y-1.5">
-              <Label>ALIAS</Label>
-              <div className="flex overflow-hidden rounded-md border border-input bg-background">
-                <span className="flex items-center border-r bg-muted px-3 text-sm font-medium text-muted-foreground">
-                  @
-                </span>
-                <Input
-                  value={alias}
-                  onChange={(e) => setAlias(normalizeBankAlias(e.target.value))}
-                  placeholder="emprenor"
-                  className="border-0 lowercase shadow-none focus-visible:ring-0"
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Escribí solo el alias. No hace falta el @; si lo pegás, se quita solo.
-              </p>
-            </div>
-          )}
-          {accountType === 'cci' && (
-            <div className="space-y-1.5">
-              <Label>CCI / SWIFT / IBAN (Transferencia internacional)</Label>
-              <Input
-                value={cci}
-                onChange={(e) => setCci(e.target.value.trim())}
-                placeholder="Ej: ADARARBAXXX / IBAN GB29 NWBK 6016 1331 9268 19"
-                className="font-mono uppercase"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Ingrese el código SWIFT/BIC o el IBAN completo de la cuenta exterior.
-              </p>
-            </div>
-          )}
-          <Separator />
-          <div className="space-y-1.5">
-            <Label>Titular de la cuenta</Label>
-            <Input value={holderName} onChange={(e) => setHolderName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>CUIL titular</Label>
+            <Label htmlFor="bank-identifier">CBU, CVU o alias</Label>
             <Input
-              value={holderCuil}
-              onChange={(e) => setHolderCuil(e.target.value.replace(/\D/g, '').slice(0, 11))}
-              placeholder="20-12345678-9"
-              className="font-mono"
+              id="bank-identifier"
+              value={identifier}
+              onChange={(e) => {
+                const raw = e.target.value.trim()
+                const digits = raw.replace(/\D/g, '')
+                if (digits.length >= 10 && /^[\d\s.-]+$/.test(raw)) {
+                  setIdentifier(digits.slice(0, 22))
+                } else {
+                  setIdentifier(normalizeBankAlias(raw) || raw.replace(/^@+/, '').toLowerCase())
+                }
+                setPreview(null)
+              }}
+              placeholder="Ej: 01700991… o mi.alias.mp"
+              className="font-mono tracking-wide"
+              autoComplete="off"
+              inputMode="text"
             />
+            <p className="text-[11px] text-muted-foreground">
+              Pegá el CBU/CVU completo o el alias sin @. El sistema detecta el tipo solo.
+            </p>
           </div>
-          <label className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5 text-xs">
-            <input
-              type="checkbox"
-              checked={primary}
-              onChange={(e) => setPrimary(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
-              disabled={!!editingId}
-            />
-            <span>
-              Establecer como <span className="font-semibold">cuenta principal</span> para
-              acreditaciones.
-            </span>
-          </label>
-        </CardContent>
-        <CardFooter className="border-t bg-muted/20 gap-2">
-          {editingId ? (
-            <Button type="button" variant="outline" className="w-full" disabled={isPending} onClick={resetForm}>
-              Cancelar
-            </Button>
+
+          {preview ? (
+            <div className="space-y-2 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-3 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Datos de la cuenta</p>
+              <div className="grid gap-1.5 text-xs text-slate-700">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Entidad</span>
+                  <span className="font-semibold text-foreground">{preview.bankName}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Titular</span>
+                  <span className="font-semibold text-foreground">{preview.holderName}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">CUIL</span>
+                  <span className="font-mono font-semibold text-foreground">{preview.holderCuil}</span>
+                </div>
+                {preview.cbu ? (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">CBU</span>
+                    <span className="font-mono text-foreground">{formatCBU(preview.cbu)}</span>
+                  </div>
+                ) : null}
+                {preview.cvu ? (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">CVU</span>
+                    <span className="font-mono text-foreground">{formatCVU(preview.cvu)}</span>
+                  </div>
+                ) : null}
+                {preview.alias ? (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Alias</span>
+                    <span className="font-mono text-foreground">{displayAlias(preview.alias)}</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           ) : null}
-          <Button
-            disabled={
-              isPending ||
-              !bankName ||
-              !holderName ||
-              holderCuil.length < 11 ||
-              (accountType === 'cbu' && cbu.length < 22) ||
-              (accountType === 'cvu' && cvu.length < 22) ||
-              (accountType === 'alias' && alias.length < 6) ||
-              (accountType === 'cci' && !cci.trim())
-            }
-            className="w-full gap-1.5"
-            onClick={() => {
-              if (editingId) onUpdate(editingId, payload)
-              else onCreate({ ...payload, setAsPrimary: primary })
-            }}
-          >
-            <Landmark className="h-4 w-4" /> {editingId ? 'Guardar cambios' : 'Agregar cuenta'}
-          </Button>
+
+          {!editingId ? (
+            <label className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5 text-xs">
+              <input
+                type="checkbox"
+                checked={primary}
+                onChange={(e) => setPrimary(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              <span>
+                Establecer como <span className="font-semibold">cuenta principal</span> para acreditaciones.
+              </span>
+            </label>
+          ) : null}
+        </CardContent>
+        <CardFooter className="gap-2 border-t bg-muted/20">
+          {editingId ? (
+            <>
+              <Button type="button" variant="outline" className="w-full" disabled={isPending} onClick={resetForm}>
+                Cancelar
+              </Button>
+              <Button
+                className="w-full gap-1.5"
+                disabled={isPending || !canSubmit}
+                onClick={() => {
+                  const digits = identifier.replace(/\D/g, '')
+                  const isDigits = digits.length === 22
+                  const alias = normalizeBankAlias(identifier)
+                  const accountType = isDigits ? (digits.startsWith('000') ? 'cvu' : 'cbu') : 'alias'
+                  onUpdate(editingId, {
+                    accountType,
+                    bankName: preview?.bankName || 'Cuenta bancaria',
+                    cbu: accountType === 'cbu' ? digits : undefined,
+                    cvu: accountType === 'cvu' ? digits : undefined,
+                    alias: accountType === 'alias' ? alias : undefined,
+                    holderName:
+                      preview?.holderName ||
+                      (profile as any)?.fullName ||
+                      defaultHolderName ||
+                      '',
+                    holderCuil: preview?.holderCuil || profile?.cuil || '',
+                  })
+                  resetForm()
+                }}
+              >
+                Guardar
+              </Button>
+            </>
+          ) : (
+            <Button
+              className="w-full gap-1.5"
+              disabled={isPending || !canSubmit}
+              onClick={() => onLookupCreate(identifier.trim(), primary)}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Validando…
+                </>
+              ) : (
+                <>
+                  <Globe2 className="h-4 w-4" /> Validar y agregar
+                </>
+              )}
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
@@ -1683,7 +1875,7 @@ function PagosPanel({
     setSelectedIds((ids) => (ids.includes(payFromUrl) ? ids : [...ids, payFromUrl]))
     if (
       methodFromUrl &&
-      ['mercado_pago', 'tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'mercadopago_wallet', 'transferencia_bancaria'].includes(
+      ['mercado_pago', 'tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'mercadopago_wallet', 'transferencia_bancaria', 'payway_qr', 'payway_wallet', 'payway_card'].includes(
         methodFromUrl,
       )
     ) {
@@ -1863,15 +2055,18 @@ function PagosPanel({
                   <SelectItem value="tarjeta_credito">Tarjeta de crédito</SelectItem>
                   <SelectItem value="tarjeta_debito">Tarjeta de débito</SelectItem>
                   <SelectItem value="mercadopago_wallet">Dinero en cuenta Mercado Pago</SelectItem>
-                  <SelectItem value="transferencia_bancaria">Transferencia a RM (Brubank)</SelectItem>
+                  <SelectItem value="payway_wallet">Billetera UNICRÉDITOS</SelectItem>
+                  <SelectItem value="transferencia_bancaria">Transferencia a RM (tesorería)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {method === 'transferencia_bancaria'
-                  ? 'Vas a ver el CBU de RM International Group (Brubank). Transferí, subí el comprobante y tesorería acredita cuando vea el dinero.'
+                  ? 'Vas a ver el CBU de RM International Group. Transferí, subí el comprobante y tesorería acredita cuando vea el dinero.'
                   : method === 'tarjeta_credito' || method === 'tarjeta_debito'
                     ? 'Se abre el formulario de tarjeta en esta caja: una nueva o una ya guardada. El cobro no te saca del panel.'
-                    : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR EMV de Mercado Pago con el importe real.'}
+                    : method === 'payway_wallet'
+                      ? 'Se abre tu billetera UNICRÉDITOS: CVU, saldo y pago inmediato de la cuota.'
+                      : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR.'}
               </p>
             </div>
 

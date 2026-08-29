@@ -1,13 +1,15 @@
 'use client'
 
-import { createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, type PaymentMethod } from '@/app/actions/payments'
+import { consultPaywayBin, createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, simulatePaywayCheckout, type PaymentMethod } from '@/app/actions/payments'
 import { MercadoPagoCheckoutBrick, type BrickChannel } from '@/components/payments/mp-checkout-brick'
+import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { barcodeSvg, couponCode } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
 import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
+import { isPaywayQr, paywayQrLabel } from '@/lib/payments/payway-qr'
 import { cn } from '@/lib/utils'
 import QRCode from 'qrcode'
 import { Landmark, QrCode, Wallet, X } from 'lucide-react'
@@ -23,6 +25,10 @@ type InstallmentPay = {
 }
 
 type Tab = 'mp' | 'transfer'
+
+function isPaywayCheckout(method: PaymentMethod) {
+  return method === 'payway_qr' || method === 'payway_wallet' || method === 'payway_card'
+}
 
 function toBrickChannel(method: PaymentMethod): BrickChannel {
   if (method === 'pago_facil') return 'pago_facil'
@@ -41,7 +47,6 @@ export function PayInstallmentDialog({
   email,
   initialTab = 'mp',
   method = 'mercado_pago',
-  payPathPrefix: _payPathPrefix = '/pagar',
   returnPath,
   onSettled,
 }: {
@@ -51,7 +56,6 @@ export function PayInstallmentDialog({
   email?: string | null
   initialTab?: Tab
   method?: PaymentMethod
-  payPathPrefix?: string
   returnPath?: string
   onSettled?: () => void
 }) {
@@ -60,13 +64,15 @@ export function PayInstallmentDialog({
   const [session, setSession] = useState<{
     paymentId: string
     preferenceId: string
-    publicKey: string
+    publicKey: string | null
     amount: number
     paymentLinkUrl: string
     coupon: string | null
     qrData: string | null
     mpCustomerId: string | null
     mpCardIds: string[]
+    gateway: string | null
+    simulateAllowed?: boolean
   } | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
@@ -88,7 +94,11 @@ export function PayInstallmentDialog({
 
   useEffect(() => {
     const payload = session?.qrData
-    if (!payload || !isMercadoPagoEmvQr(payload)) {
+    if (!payload) {
+      setQr(null)
+      return
+    }
+    if (!isMercadoPagoEmvQr(payload) && !isPaywayQr(payload) && !/^https?:\/\//i.test(payload)) {
       setQr(null)
       return
     }
@@ -103,19 +113,21 @@ export function PayInstallmentDialog({
         method,
         returnPath ? { returnPath } : undefined,
       )
-      if (!r.publicKey || !r.externalPreferenceId) {
+      if (r.gateway !== 'payway' && (!r.publicKey || !r.externalPreferenceId)) {
         throw new Error('Falta la public key o la preferencia de Mercado Pago.')
       }
       setSession({
         paymentId: r.paymentId,
-        preferenceId: r.externalPreferenceId,
-        publicKey: r.publicKey,
+        preferenceId: r.externalPreferenceId ?? r.paymentId,
+        publicKey: r.publicKey ?? null,
         amount: r.amount,
         paymentLinkUrl: r.paymentLinkUrl ?? '',
         coupon: r.coupon,
         qrData: r.qrData ?? null,
         mpCustomerId: r.mpCustomerId ?? null,
         mpCardIds: r.mpCardIds ?? [],
+        gateway: r.gateway ?? 'mercado_pago',
+        simulateAllowed: 'simulateAllowed' in r ? Boolean(r.simulateAllowed) : false,
       })
     } catch (err) {
       toast.error((err as Error).message)
@@ -132,6 +144,10 @@ export function PayInstallmentDialog({
     setTab(initialTab)
     void getCollectionAccount().then(setTreasury).catch(() => setTreasury(null))
     if (initialTab !== 'mp') return
+    if (method === 'payway_wallet') {
+      startedFor.current = `${idsKey}:${method}`
+      return
+    }
     const key = `${idsKey}:${method}`
     if (startedFor.current === key) return
     startedFor.current = key
@@ -225,7 +241,7 @@ export function PayInstallmentDialog({
               if (!session) void startMp()
             }}
           >
-            <Wallet className="h-3.5 w-3.5" /> Mercado Pago
+            <Wallet className="h-3.5 w-3.5" /> {method === 'payway_wallet' ? 'Billetera UNICRÉDITOS' : isPaywayCheckout(method) ? 'Checkout Payway' : 'Mercado Pago'}
           </Button>
           <Button type="button" size="sm" variant={tab === 'transfer' ? 'default' : 'outline'} onClick={() => setTab('transfer')}>
             <Landmark className="h-3.5 w-3.5" /> Transferencia RM
@@ -234,7 +250,46 @@ export function PayInstallmentDialog({
 
         {tab === 'mp' ? (
           <div className="space-y-4 p-4">
-            {session ? (
+            {method === 'payway_wallet' ? (
+              <WalletPayBox
+                installmentIds={installments.map((row) => row.id)}
+                amount={total}
+                onSettled={() => {
+                  onSettled?.()
+                  onClose()
+                }}
+              />
+            ) : isPaywayCheckout(method) ? (
+              <PaywaySandboxPanel
+                session={session}
+                busy={busy}
+                qr={qr}
+                total={total}
+                coupon={coupon}
+                barcode={barcode}
+                method={method}
+                onRetry={() => void startMp()}
+                onSimulate={async (outcome) => {
+                  if (!session?.paymentId) return
+                  setBusy(true)
+                  try {
+                    const r = await simulatePaywayCheckout(session.paymentId, outcome)
+                    if (r.settled) {
+                      toast.success('Pago acreditado. El recibo quedó en tu panel.')
+                      onSettled?.()
+                      onClose()
+                      return
+                    }
+                    if (outcome === 'rejected') toast.error('Cobro rechazado.')
+                    else toast.message('El cobro aún no se acreditó. Revisá el estado en el panel.')
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              />
+            ) : session?.publicKey ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-slate-600">
                   {method === 'tarjeta_credito' || method === 'tarjeta_debito'
@@ -264,6 +319,7 @@ export function PayInstallmentDialog({
               </Button>
             )}
 
+            {method === 'payway_wallet' || isPaywayCheckout(method) ? null : (
             <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <summary className="cursor-pointer text-xs font-medium text-slate-600">
                 Pagar con QR o talón desde la app
@@ -295,6 +351,7 @@ export function PayInstallmentDialog({
                 ) : null}
               </div>
             </details>
+            )}
           </div>
         ) : (
           <form action={sendTransfer} className="space-y-4 p-4">
@@ -353,6 +410,119 @@ export function PayInstallmentDialog({
           </form>
         )}
       </div>
+    </div>
+  )
+}
+
+function PaywaySandboxPanel({
+  session,
+  busy,
+  qr,
+  total,
+  coupon,
+  barcode,
+  method,
+  onRetry,
+  onSimulate,
+}: {
+  session: {
+    paymentId: string
+    amount: number
+    paymentLinkUrl: string
+    qrData: string | null
+    simulateAllowed?: boolean
+  } | null
+  busy: boolean
+  qr: string | null
+  total: number
+  coupon: string | null
+  barcode: string | null
+  method: PaymentMethod
+  onRetry: () => void
+  onSimulate: (outcome: 'approved' | 'rejected') => Promise<void>
+}) {
+  const [bin, setBin] = useState('')
+  const [binInfo, setBinInfo] = useState<string | null>(null)
+
+  if (!session) {
+    return (
+      <Button type="button" className="w-full" disabled={busy} onClick={onRetry}>
+        {busy ? 'Abriendo Payway…' : 'Reintentar cobro Payway'}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 px-3 py-2 text-xs text-brand-navy">
+        {session.simulateAllowed
+          ? 'Entorno de desarrollo Payway: usá simular cobro para acreditar el recibo.'
+          : 'Checkout Payway. El cobro se confirma cuando el riel acredita el pago.'}
+      </p>
+      <div className="flex flex-wrap items-start gap-4">
+        {qr ? (
+          <div className="flex flex-col items-center">
+            <img src={qr} alt="QR Payway sandbox" className="h-36 w-36" />
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
+              <QrCode className="h-3.5 w-3.5" /> {paywayQrLabel(method)}
+            </p>
+            <p className="max-w-[180px] text-center text-[10px] text-slate-500">
+              {formatARS(session.amount || total)}. En sandbox el cobro se acredita con el botón de simulación.
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Generando checkout Payway…</p>
+        )}
+        {coupon && barcode ? (
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Talón de la cuota</p>
+            <div dangerouslySetInnerHTML={{ __html: barcode }} />
+            <p className="mt-1 font-mono text-[11px] text-slate-600">{coupon}</p>
+          </div>
+        ) : null}
+      </div>
+      {method === 'payway_card' ? (
+        <form
+          className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void consultPaywayBin(bin)
+              .then((info) => setBinInfo(`${info.brand} · ${info.kind} · ${info.bank} (${info.source})`))
+              .catch((err) => {
+                setBinInfo(null)
+                toast.error((err as Error).message)
+              })
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="payway-bin">Consultar BIN (6 dígitos)</Label>
+            <Input
+              id="payway-bin"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="450799"
+              value={bin}
+              onChange={(e) => setBin(e.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="outline" className="self-end">
+            Consultar
+          </Button>
+          {binInfo ? <p className="sm:col-span-2 text-xs text-slate-600">{binInfo}</p> : null}
+        </form>
+      ) : null}
+      {session.simulateAllowed ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" disabled={busy} onClick={() => void onSimulate('approved')}>
+            {busy ? 'Acreditando…' : 'Simular cobro aprobado'}
+          </Button>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => void onSimulate('rejected')}>
+            Simular rechazo
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Sandbox de simulación deshabilitado (PAYWAY_ENV=production).</p>
+      )}
     </div>
   )
 }

@@ -4,6 +4,10 @@ import { getMyMerchant, getMerchantSales, getMyMerchantDocuments } from "@/app/a
 import { getMyDiditApproved } from "@/app/actions/didit"
 import { MerchantTabsClient } from "@/app/merchant/_client"
 
+export const metadata = {
+  robots: { index: false, follow: false },
+}
+
 export default async function MerchantPage() {
   await requireMerchant()
   const session = await getSession()

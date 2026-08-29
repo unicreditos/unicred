@@ -43,6 +43,11 @@ function checks(): EnvCheck[] {
       detail: 'Sin esto el webhook rechaza todas las notificaciones y no se acreditan cuotas.',
     },
     {
+      name: 'CRON_SECRET',
+      required: prod,
+      detail: 'Bearer para /api/cron/reconcile-payments (Vercel Cron).',
+    },
+    {
       name: 'RESEND_API_KEY',
       required: false,
       detail: 'Sin una key `re_…` no se envían correos de recuperación ni contacto.',
