@@ -20,9 +20,15 @@ export async function GET(req: Request) {
       'POST /api/signup',
       'GET /api/auth/me',
       'GET /api/users/dashboard',
+      'PUT /api/users/profile',
+      'POST /api/loans/apply',
+      'GET /api/loans/:id/contract',
+      'POST /api/loans/:id/sign',
       'GET /api/wallet/me',
-      'GET /api/loans',
-      'GET /api/credit-products',
+      'POST /api/wallet/topup|transfer|payout|pay-installments',
+      'POST /api/payments/create',
+      'GET /api/services/*',
+      'GET /api/admin/dashboard',
     ],
   })
 }
