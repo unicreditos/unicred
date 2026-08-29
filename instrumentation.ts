@@ -1,7 +1,13 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
   const { assertProductionEnv } = await import('@/lib/env')
-  assertProductionEnv()
+  // No tumbar el runtime entero: un deploy con dominio en otra cuenta Vercel
+  // puede tener env incompleto; preferimos sitio degradado a 500 global.
+  try {
+    assertProductionEnv()
+  } catch (err) {
+    console.error('[env] arranque con configuración incompleta:', (err as Error).message)
+  }
   try {
     const { applyEmitiaAfipEnv } = await import('@/lib/arca/emitia-certs')
     const bundle = applyEmitiaAfipEnv()
