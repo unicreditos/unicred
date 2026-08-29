@@ -17,20 +17,31 @@ function cleanConnectionUrl(url: string | undefined): string | undefined {
 
 function getBaseURL() {
   if (process.env.NODE_ENV === 'development') return 'http://localhost:3000'
-  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
+  const fromEnv =
+    process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL
+  if (fromEnv) {
+    try {
+      const u = new URL(fromEnv.includes('://') ? fromEnv : `https://${fromEnv}`)
+      // Apex redirige a www en Vercel: la cookie y el CSRF deben vivir en www.
+      if (u.hostname === 'unicreditos.com') u.hostname = 'www.unicreditos.com'
+      return u.origin
+    } catch {
+      return fromEnv.replace(/\/$/, '')
+    }
+  }
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`
   if (process.env.V0_RUNTIME_URL) return process.env.V0_RUNTIME_URL
-  return undefined
+  return 'https://www.unicreditos.com'
 }
 
 const isDev = process.env.NODE_ENV === 'development'
-const requireEmailVerification =
-  process.env.REQUIRE_EMAIL_VERIFICATION === 'true' ||
-  (!isDev && Boolean(process.env.RESEND_API_KEY))
+/** Solo si se fuerza explícitamente. No bloquear login solo por tener Resend. */
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true'
 
 /**
  * Orígenes desde los que se aceptan requests autenticadas. Cada comodín acá es

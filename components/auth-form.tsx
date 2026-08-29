@@ -44,11 +44,16 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setLoading(false)
 
     if (error) {
-      setError(
-        isSignUp
-          ? 'No pudimos crear tu cuenta. Verificá los datos e intentá de nuevo.'
-          : 'Email o contraseña incorrectos.',
-      )
+      const raw = `${error.message || ''} ${error.code || ''}`.toLowerCase()
+      if (!isSignUp && (raw.includes('verif') || raw.includes('email_not_verified'))) {
+        setError('Tu email todavía no está verificado. Revisá tu correo o pedí un nuevo enlace.')
+      } else {
+        setError(
+          isSignUp
+            ? 'No pudimos crear tu cuenta. Verificá los datos e intentá de nuevo.'
+            : 'Email o contraseña incorrectos.',
+        )
+      }
       return
     }
 
