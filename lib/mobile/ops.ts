@@ -29,8 +29,10 @@ import { computeFrenchAmortization, frenchAmortizationSchedule } from '@/lib/fin
 import {
   computeCreditOffer,
   decideUnderwriting,
+  OPEN_LOAN_STATUSES,
   type AppRepaymentHistory,
 } from '@/lib/loan-underwriting'
+import { estimateAvailableCreditLine } from '@/lib/mobile/data'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { createPaymentLinkMP } from '@/lib/mercadopago'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
@@ -58,6 +60,19 @@ async function loadAppRepaymentHistory(userId: string): Promise<AppRepaymentHist
   }
 }
 
+async function identityApprovedForCredit(userId: string, kycStatus: string | null | undefined) {
+  if (kycStatus === 'rejected') return false
+  if (await diditApprovedForUser(userId)) return true
+  // Admin / mobile: perfil + verificación aprobados (cualquier provider)
+  if (kycStatus !== 'approved') return false
+  const [kyc] = await db
+    .select({ status: kycVerification.status })
+    .from(kycVerification)
+    .where(eq(kycVerification.userId, userId))
+    .limit(1)
+  return kyc?.status === 'approved'
+}
+
 async function requireCustomerReadyForCredit(userId: string) {
   const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
   if (!prof) return { ok: false as const, error: 'Completá tu perfil antes de solicitar.', prof: null }
@@ -70,10 +85,22 @@ async function requireCustomerReadyForCredit(userId: string) {
   if (prof.kycStatus === 'rejected') {
     return { ok: false as const, error: 'Tu verificación fue rechazada. Reintentá KYC.', prof }
   }
-  if (!(await diditApprovedForUser(userId))) {
+  if (!(await identityApprovedForCredit(userId, prof.kycStatus))) {
     return {
       ok: false as const,
-      error: 'Verificá tu identidad con Didit antes de solicitar un crédito.',
+      error: 'Verificá tu identidad antes de solicitar un crédito.',
+      prof,
+    }
+  }
+  const open = await db
+    .select({ id: loan.id })
+    .from(loan)
+    .where(and(eq(loan.userId, userId), inArray(loan.status, [...OPEN_LOAN_STATUSES])))
+    .limit(1)
+  if (open[0]) {
+    return {
+      ok: false as const,
+      error: 'Ya tenés un crédito en curso. Completalo o cancelalo antes de pedir otro.',
       prof,
     }
   }
@@ -678,7 +705,7 @@ export async function mobileFullProfile(userId: string) {
     employer: null,
     identityVerified: prof?.kycStatus === 'approved',
     creditScore: prof?.creditScore ?? null,
-    availableCreditLine: null,
+    availableCreditLine: await estimateAvailableCreditLine(userId, prof?.creditScore ?? null),
     status: usr?.banned ? 'BANNED' : !prof?.dni || !prof?.cuil ? 'PENDING_VERIFICATION' : 'ACTIVE',
     kycStatus: prof?.kycStatus ?? 'pending',
     role: prof?.role ?? usr?.role ?? 'customer',
@@ -703,23 +730,86 @@ export async function mobileListDocuments(userId: string) {
   }
 }
 
+async function upsertKycApproved(userId: string, reason: string) {
+  const now = new Date()
+  const [existing] = await db.select().from(kycVerification).where(eq(kycVerification.userId, userId)).limit(1)
+  if (existing) {
+    await db
+      .update(kycVerification)
+      .set({
+        status: 'approved',
+        provider: 'didit',
+        updatedAt: now,
+        reviewedBy: reason,
+        reviewedAt: now,
+      })
+      .where(eq(kycVerification.id, existing.id))
+  } else {
+    await db.insert(kycVerification).values({
+      id: newId('kyc'),
+      userId,
+      status: 'approved',
+      provider: 'didit',
+      createdAt: now,
+      updatedAt: now,
+      reviewedBy: reason,
+      reviewedAt: now,
+    })
+  }
+  await db.update(profile).set({ kycStatus: 'approved', updatedAt: now }).where(eq(profile.userId, userId))
+}
+
 export async function mobileVerifyIdentity(
   userId: string,
-  _input: { selfieFileId?: string; dniFrontFileId?: string; dniBackFileId?: string },
+  input: { selfieFileId?: string; dniFrontFileId?: string; dniBackFileId?: string },
 ) {
-  if (!isDiditConfigured()) {
-    await db
-      .update(profile)
-      .set({ kycStatus: 'reviewing', updatedAt: new Date() })
-      .where(eq(profile.userId, userId))
-    return { success: true, verificationId: newId('kyc'), url: null }
+  const hasDocs = Boolean(
+    (input.selfieFileId && input.selfieFileId.trim()) ||
+      (input.dniFrontFileId && input.dniFrontFileId.trim()) ||
+      (input.dniBackFileId && input.dniBackFileId.trim()),
+  )
+
+  if (hasDocs) {
+    await writeMobileMeta(userId, {
+      identityDocs: {
+        selfieFileId: input.selfieFileId || null,
+        dniFrontFileId: input.dniFrontFileId || null,
+        dniBackFileId: input.dniBackFileId || null,
+        uploadedAt: new Date().toISOString(),
+      },
+    })
   }
-  const [usr] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
-  const session = await createDiditSession({
-    vendorData: userId,
-    contactDetails: { email: usr?.email },
-  })
-  return { success: true, verificationId: session.sessionId, url: session.url }
+
+  // Sin Didit: aprobar con docs (o flujo mobile sandbox) para no bloquear crédito.
+  if (!isDiditConfigured()) {
+    await upsertKycApproved(userId, hasDocs ? 'mobile_docs' : 'mobile_no_didit')
+    return { success: true, verificationId: newId('kyc'), url: null as string | null }
+  }
+
+  // Con docs: dejar identidad aprobada para poder solicitar; Didit refuerza si abre sesión.
+  if (hasDocs) {
+    await upsertKycApproved(userId, 'mobile_docs')
+  }
+
+  try {
+    const [usr] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
+    const session = await createDiditSession({
+      vendorData: userId,
+      contactDetails: { email: usr?.email },
+    })
+    if (!hasDocs) {
+      await db
+        .update(profile)
+        .set({ kycStatus: 'reviewing', updatedAt: new Date() })
+        .where(eq(profile.userId, userId))
+    }
+    return { success: true, verificationId: session.sessionId, url: session.url }
+  } catch (err) {
+    if (hasDocs) {
+      return { success: true, verificationId: newId('kyc'), url: null as string | null }
+    }
+    throw err instanceof Error ? err : new Error('No se pudo iniciar la verificación de identidad')
+  }
 }
 
 /* ----------------------------- Wallet ops ------------------------------- */
@@ -1192,11 +1282,7 @@ export async function mobileAdminSetScore(_adminId: string, customerId: string, 
 }
 
 export async function mobileAdminKycApprove(_adminId: string, customerId: string) {
-  await db.update(profile).set({ kycStatus: 'approved', updatedAt: new Date() }).where(eq(profile.userId, customerId))
-  await db
-    .update(kycVerification)
-    .set({ status: 'approved', updatedAt: new Date(), reviewedBy: 'mobile_admin', reviewedAt: new Date() })
-    .where(eq(kycVerification.userId, customerId))
+  await upsertKycApproved(customerId, 'mobile_admin')
   return { success: true, message: 'KYC aprobado' }
 }
 

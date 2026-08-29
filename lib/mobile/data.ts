@@ -13,7 +13,15 @@ import { getInbox } from '@/lib/notifications'
 import { getRoleForUser } from '@/lib/session'
 import { computeCreditOffer } from '@/lib/loan-underwriting'
 
-async function estimateAvailableCreditLine(userId: string, creditScore: number | null): Promise<number | null> {
+/**
+ * Estimación de línea para UI (dashboard/perfil).
+ * Sin score guardado usa 650 (elegible) como provisional; el apply recalcula con BCRA.
+ * Antes el default 550 quedaba bajo SCORE_REJECT_BELOW (560) → siempre $0.
+ */
+export async function estimateAvailableCreditLine(
+  userId: string,
+  creditScore: number | null,
+): Promise<number | null> {
   const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
   const [product] = await db
     .select()
@@ -23,7 +31,7 @@ async function estimateAvailableCreditLine(userId: string, creditScore: number |
     .limit(1)
   if (!product) return null
   const monthlyIncome = Number(prof?.monthlyIncome ?? 0)
-  const score = creditScore ?? prof?.creditScore ?? 550
+  const score = creditScore ?? prof?.creditScore ?? 650
   const term = Math.min(Math.max(product.minTerm || 6, 12), product.maxTerm || 24)
   const paidRows = await db
     .select({ id: installment.id })
