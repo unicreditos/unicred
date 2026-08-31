@@ -17,6 +17,9 @@ const csp = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://www.mercadopago.com https://http2.mlstatic.com https://*.mlstatic.com https://www.google.com https://www.gstatic.com",
   "connect-src 'self' https://api.mercadopago.com https://api.mercadolibre.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mlstatic.com https://verification.didit.me https://*.didit.me https://vitals.vercel-insights.com https://va.vercel-scripts.com",
   "frame-src 'self' https://verify.didit.me https://verification.didit.me https://www.mercadopago.com https://*.mercadopago.com https://www.google.com",
+  // Sin esto el admin no puede reproducir el video de prueba de vida de Didit
+  // al revisar una identidad: cae en default-src y el bucket queda bloqueado.
+  "media-src 'self' https://service-didit-verification-production-a1c5f9b8.s3.amazonaws.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   'upgrade-insecure-requests',

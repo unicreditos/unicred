@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { reconcileOpenDiditSessions } from '@/lib/kyc/reconcile-didit'
 import { reconcileOpenMercadoPagoPayments } from '@/lib/payments/settle-mp'
+import { expireStalePayments } from '@/lib/payments/expire'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,12 +26,14 @@ export async function GET(req: NextRequest) {
     reconcileOpenMercadoPagoPayments(120),
     reconcileOpenDiditSessions(40),
   ])
+  const expired = await expireStalePayments()
 
   return NextResponse.json({
     ok: true,
     payments: {
       scanned: payments.length,
       credited: payments.filter((r) => r.credited > 0).length,
+      expired,
     },
     kyc: {
       scanned: kyc.length,
