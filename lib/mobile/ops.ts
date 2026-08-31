@@ -1020,6 +1020,8 @@ export async function mobilePresign(userId: string, input: { fileName: string; c
   }
 }
 
+const ALLOWED_MOBILE_UPLOAD_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+
 export async function mobileStoreUploadBlob(
   userId: string,
   path: string,
@@ -1028,6 +1030,9 @@ export async function mobileStoreUploadBlob(
 ) {
   if (!path.startsWith(`mobile/${userId}/`)) throw new Error('Path inválido')
   if (dataBase64.length > 5_500_000) throw new Error('Archivo demasiado grande (máx. ~4MB)')
+  if (!ALLOWED_MOBILE_UPLOAD_MIME.has(contentType)) {
+    throw new Error('Solo se aceptan PDF, JPG, PNG o WEBP.')
+  }
   const meta = await getMobileMeta(userId)
   const pending = { ...((meta.pendingUploads as OcrBag) || {}) }
   pending[path] = {
