@@ -47,7 +47,7 @@ export function AdminPaymentsDesk({ desk }: { desk: AdminPaymentsDesk }) {
         <MetricTile label="Fallidos / anulados" value={String(desk.kpis.failed)} tone={desk.kpis.failed ? 'warn' : 'ok'} />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-lg border bg-white p-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1.5">
         <Input
           placeholder="Cliente, ID, referencia, crédito…"
           className="h-8 w-72"
@@ -72,7 +72,7 @@ export function AdminPaymentsDesk({ desk }: { desk: AdminPaymentsDesk }) {
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

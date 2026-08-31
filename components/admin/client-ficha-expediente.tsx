@@ -37,7 +37,7 @@ function shortId(id: string) {
 function Status({ status }: { status: FichaDocRow['status'] }) {
   if (status === 'disponible') return <span className="text-xs font-medium text-emerald-700">Disponible</span>
   if (status === 'pendiente') return <span className="text-xs font-medium text-amber-700">Pendiente</span>
-  return <span className="text-xs text-slate-400">No corresponde</span>
+  return <span className="text-xs text-muted-foreground">No corresponde</span>
 }
 
 function IssueIntimationButton({ contractId }: { contractId: string }) {
@@ -125,7 +125,7 @@ function ProofUpload({ disbursementId }: { disbursementId: string }) {
       <input
         name="reference"
         placeholder="N° de transferencia"
-        className="h-8 w-40 rounded-md border border-slate-200 px-2 text-xs"
+        className="h-8 w-40 rounded-md border border-border px-2 text-xs"
       />
       <Button type="submit" size="sm" variant="outline" className="h-8" disabled={busy}>
         <Upload className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
 
   if (!ficha.credits.length) {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+      <section className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
         Todavía no hay créditos ni expediente para esta persona.
       </section>
     )
@@ -153,11 +153,11 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
   return (
     <div className="space-y-4">
       {byLoan.map(({ credit, docs }) => (
-        <section key={credit.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <section key={credit.id} className="overflow-hidden rounded-lg border border-border bg-card">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold text-brand-navy-900">Crédito {shortId(credit.id)}</h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {formatARS(credit.principal)} · {credit.term} cuotas · saldo {formatARS(credit.outstanding)}
               </p>
             </div>
@@ -168,7 +168,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
               {credit.refinanceEligible ? (
                 <RefinanceButton loanId={credit.id} used={credit.refinanceCount} />
               ) : (
-                <span className="text-[11px] text-slate-500" title={credit.refinanceReason}>
+                <span className="text-[11px] text-muted-foreground" title={credit.refinanceReason}>
                   Refinanciaciones {credit.refinanceCount}/{MAX_REFINANCES}
                 </span>
               )}
@@ -193,7 +193,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
                   <TableRow key={doc.key} className={doc.status === 'no_corresponde' ? 'opacity-50' : undefined}>
                     <TableCell>
                       <p className="text-sm font-medium">{doc.label}</p>
-                      <p className="text-[11px] text-slate-500">{doc.hint}</p>
+                      <p className="text-[11px] text-muted-foreground">{doc.hint}</p>
                     </TableCell>
                     <TableCell>
                       <Status status={doc.status} />
@@ -201,7 +201,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
                     <TableCell className="text-right font-mono text-xs tabular-nums">
                       {doc.amount != null ? formatARS(doc.amount) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">{fmtDate(doc.date)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{fmtDate(doc.date)}</TableCell>
                     <TableCell className="text-right">
                       {doc.href ? (
                         <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
@@ -210,7 +210,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
                           </Link>
                         </Button>
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -221,10 +221,10 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
         </section>
       ))}
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
+      <section className="overflow-hidden rounded-lg border border-border bg-card">
+        <header className="border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold text-brand-navy-900">Pagos del cliente</h2>
-          <p className="text-xs text-slate-500">Monto, crédito, fecha, medio y recibo emitido</p>
+          <p className="text-xs text-muted-foreground">Monto, crédito, fecha, medio y recibo emitido</p>
         </header>
         <div className="overflow-x-auto">
           <Table>
@@ -241,7 +241,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
             <TableBody>
               {ficha.payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                     Todavía no hay pagos acreditados.
                   </TableCell>
                 </TableRow>
@@ -252,7 +252,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
                     <TableCell className="font-mono text-xs">{row.loanId ? shortId(row.loanId) : '—'}</TableCell>
                     <TableCell className="text-right font-mono text-xs tabular-nums">{formatARS(row.amount)}</TableCell>
                     <TableCell className="text-xs">{paymentMethodLabel(row.method)}</TableCell>
-                    <TableCell className="font-mono text-[11px] text-slate-500">{row.reference || '—'}</TableCell>
+                    <TableCell className="font-mono text-[11px] text-muted-foreground">{row.reference || '—'}</TableCell>
                     <TableCell>
                       {row.receiptId ? (
                         <Link
@@ -263,7 +263,7 @@ export function ClientFichaExpediente({ ficha }: { ficha: ClientFicha }) {
                           {row.receiptNumber || 'Ver'}
                         </Link>
                       ) : (
-                        <span className="text-xs text-slate-400">{row.status}</span>
+                        <span className="text-xs text-muted-foreground">{row.status}</span>
                       )}
                     </TableCell>
                   </TableRow>

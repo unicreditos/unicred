@@ -73,7 +73,7 @@ export type KYCAdminRow = {
 
 function formatDate(d: Date | string | null | undefined) {
   if (!d) return '—'
-  return new Date(d).toLocaleString('es-AR')
+  return new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
 function statusBadge(s: string) {
@@ -84,7 +84,7 @@ function statusBadge(s: string) {
     approved: { label: 'Aprobado', cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-200/60' },
     rejected: { label: 'Rechazado', cls: 'bg-rose-500/15 text-rose-700 border-rose-200/60' },
   }
-  const cfg = map[s] ?? { label: s, cls: 'bg-slate-100 text-slate-700' }
+  const cfg = map[s] ?? { label: s, cls: 'bg-muted text-slate-700' }
   return (
     <Badge variant="outline" className={cn('border text-[11px]', cfg.cls)}>
       {cfg.label}
@@ -95,7 +95,7 @@ function statusBadge(s: string) {
 function DocPreview({ label, url, icon }: { label: string; url: string | null; icon: React.ReactNode }) {
   return (
     <figure className="overflow-hidden rounded-xl border bg-muted/20">
-      <div className="aspect-[4/3] bg-white">
+      <div className="aspect-[4/3] bg-card">
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt={label} className="h-full w-full object-contain" />

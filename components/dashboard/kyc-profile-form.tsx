@@ -309,7 +309,16 @@ export function KYCProfileForm({
       ) : (
         <p className="text-xs text-muted-foreground">
           Consulta CENDEU autorizada el{' '}
-          {new Date(initialProfile.bcraConsentAt).toLocaleString('es-AR')}.
+          {new Date(initialProfile.bcraConsentAt).toLocaleString('es-AR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'America/Argentina/Buenos_Aires',
+          })}
+          .
         </p>
       )}
     </div>

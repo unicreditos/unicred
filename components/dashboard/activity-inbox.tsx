@@ -90,12 +90,14 @@ export function ActivityInbox({ onOpenHref }: { onOpenHref: (href: string) => vo
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{item.title}</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">{item.detail}</span>
-                <span className="mt-1 block text-[11px] text-slate-400">
+                <span className="mt-1 block text-[11px] text-muted-foreground">
                   {new Date(item.at).toLocaleString('es-AR', {
                     day: '2-digit',
                     month: 'short',
                     hour: '2-digit',
                     minute: '2-digit',
+    hour12: false,
+                    timeZone: 'America/Argentina/Buenos_Aires',
                   })}
                 </span>
               </span>

@@ -139,10 +139,10 @@ export function AdminProductsDesk({ products }: { products: ProductRow[] }) {
         />
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <header className="shrink-0 border-b border-border px-3 py-1.5">
           <h3 className="text-[12px] font-semibold">Productos de crédito</h3>
-          <p className="text-[10px] text-slate-500">Tabla loan_product · define lo que el cliente puede pedir</p>
+          <p className="text-[10px] text-muted-foreground">Tabla loan_product · define lo que el cliente puede pedir</p>
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
           <Table>

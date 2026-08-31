@@ -44,7 +44,7 @@ function fmtPct(n: number | null | undefined) {
 function Field({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className={cn('mt-1 truncate text-sm text-brand-navy-900', mono && 'font-mono')}>
         {value || value === 0 ? String(value) : '—'}
       </p>
@@ -172,7 +172,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
         <DecisionBanner tone="ok" title="Crédito vigente" detail="El calendario de cuotas está activo." />
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-lg border border-border bg-card">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Estado" value={loanStatusLabel(loan.status)} />
           <Field label="Titular" value={customer.name} />
@@ -183,7 +183,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
           <Field label="Localidad" value={[customer.city, customer.province].filter(Boolean).join(', ')} />
           <Field label="Correo" value={customer.email} />
         </div>
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3 text-xs">
+        <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3 text-xs">
           <Link href={adminClientHref(customer.id)} className="text-brand-primary hover:underline">
             Ficha del titular
           </Link>
@@ -207,10 +207,10 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <section className="rounded-lg border border-slate-200 bg-white lg:col-span-7">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card lg:col-span-7">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Calendario de cuotas</h3>
-            <p className="text-xs text-slate-500">Punitorios 0% · mora solo cambia el estado de la cuota</p>
+            <p className="text-xs text-muted-foreground">Punitorios 0% · mora solo cambia el estado de la cuota</p>
           </header>
           <div className="overflow-x-auto">
             <Table>
@@ -246,8 +246,8 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white lg:col-span-5">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card lg:col-span-5">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Línea de tiempo</h3>
           </header>
           <ol className="space-y-3 px-4 py-4">
@@ -264,8 +264,8 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
                 />
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{event.label}</p>
-                  <p className="text-xs text-slate-500">{event.detail}</p>
-                  <p className="text-[11px] text-slate-400">{fmtDate(event.at)}</p>
+                  <p className="text-xs text-muted-foreground">{event.detail}</p>
+                  <p className="text-[11px] text-muted-foreground">{fmtDate(event.at)}</p>
                 </div>
               </li>
             ))}
@@ -274,8 +274,8 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Contrato y desembolso</h3>
           </header>
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
@@ -285,7 +285,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
             <Field label="Comprobante" value={data.disbursement?.receiptNumber} mono />
           </div>
           {data.contract ? (
-            <div className="flex flex-wrap gap-3 border-t border-slate-100 px-4 py-3 text-xs">
+            <div className="flex flex-wrap gap-3 border-t border-border px-4 py-3 text-xs">
               <Link href={`/dashboard/documentos/contrato/${data.contract.id}`} className="underline">
                 Contrato
               </Link>
@@ -299,8 +299,8 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
           ) : null}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Pagos de este crédito</h3>
           </header>
           <div className="overflow-x-auto">
@@ -341,15 +341,15 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
       </div>
 
       {data.audit.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Intervenciones</h3>
           </header>
           <ul className="divide-y">
             {data.audit.map((item) => (
               <li key={item.id} className="flex flex-wrap justify-between gap-2 px-4 py-2 text-sm">
                 <span>{item.summary}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {item.actorEmail} · {fmtDate(item.createdAt)}
                 </span>
               </li>

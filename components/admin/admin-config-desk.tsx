@@ -28,17 +28,17 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
       ) : null}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-white lg:col-span-7">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-7">
           <header className="shrink-0 border-b px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Estado operativo</h2>
-            <p className="text-[10px] text-slate-500">No se muestran claves. Un fallo acá explica por qué un canal no acredita.</p>
+            <p className="text-[10px] text-muted-foreground">No se muestran claves. Un fallo acá explica por qué un canal no acredita.</p>
           </header>
           <ul className="min-h-0 flex-1 overflow-auto divide-y">
             {(data?.integrations ?? []).map((row) => (
               <li key={row.id} className="flex items-start justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium">{row.label}</p>
-                  <p className="text-[11px] text-slate-500">{row.hint}</p>
+                  <p className="text-[11px] text-muted-foreground">{row.hint}</p>
                 </div>
                 <span
                   className={cn(
@@ -53,10 +53,10 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
           </ul>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-white lg:col-span-5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-5">
           <header className="shrink-0 border-b px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Motor de originación</h2>
-            <p className="text-[10px] text-slate-500">Umbrales en código. Cambiarlos es un deploy, no una fila de reglas.</p>
+            <p className="text-[10px] text-muted-foreground">Umbrales en código. Cambiarlos es un deploy, no una fila de reglas.</p>
           </header>
           <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[12px] text-slate-700">
             {data ? (
@@ -80,7 +80,7 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
               </div>
             ) : null}
             {data?.missingOptional.length ? (
-              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-[11px] text-slate-600">
+              <div className="mt-3 rounded-md border border-border bg-muted px-2 py-2 text-[11px] text-slate-600">
                 <p className="font-semibold text-slate-800">Opcionales sin cargar</p>
                 {data.missingOptional.map((c) => (
                   <p key={c.name}>

@@ -180,7 +180,7 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
         <BcraExtract snapshot={snap} />
       ) : (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-slate-500">
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
             Todavía no hay extracto. Consultá el BCRA para ver situación de créditos, último informe, históricas y cheques.
           </CardContent>
         </Card>
@@ -189,23 +189,23 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Scale className="h-4 w-4 text-slate-500" />
+            <Scale className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-sm">Factores del score</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-slate-600">
           {persistedReasons.length ? (
             persistedReasons.map((r) => (
-              <p key={r} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">{r}</p>
+              <p key={r} className="rounded-lg border border-border bg-muted px-3 py-2">{r}</p>
             ))
           ) : (
-            <p className="text-slate-500">
+            <p className="text-muted-foreground">
               {score
                 ? 'La consulta está guardada. Los factores se listan cuando el extracto incluye el detalle del score.'
                 : 'Aparecen después de consultar la Central de Deudores.'}
             </p>
           )}
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             CUIL {lastBcraCheck?.cuil ?? profile?.cuil ?? '—'}
             {' · '}
             Fuente: {lastBcraCheck?.source === 'bcra_api' ? 'API BCRA' : lastBcraCheck?.source ?? 'sin consulta'}

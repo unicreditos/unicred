@@ -49,7 +49,7 @@ function fmtDate(value: string | null | undefined) {
 function Field({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-sm text-brand-navy-900">{value || value === 0 ? String(value) : '—'}</p>
     </div>
   )
@@ -141,7 +141,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         <DecisionBanner tone="warn" title="Pendiente de adhesión" detail="Falta la aprobación de mesa." />
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-lg border border-border bg-card">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Nombre de fantasía" value={merchant.businessName} />
           <Field label="Razón social" value={merchant.legalName} />
@@ -158,8 +158,8 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
+      <section className="rounded-lg border border-border bg-card">
+        <header className="border-b border-border px-4 py-3">
           <h3 className="text-sm font-semibold">Titular</h3>
         </header>
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -168,7 +168,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
           <Field label="CUIL" value={owner.cuil} />
           <Field label="Identidad" value={kycStatusLabel(owner.kycStatus)} />
         </div>
-        <div className="border-t border-slate-100 px-4 py-3 text-xs">
+        <div className="border-t border-border px-4 py-3 text-xs">
           <Link href={adminClientHref(owner.id)} className="text-brand-primary hover:underline">
             Abrir ficha del titular
           </Link>
@@ -181,8 +181,8 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         <MetricTile label="Documentos" value={String(data.documents.length)} />
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
+      <section className="rounded-lg border border-border bg-card">
+        <header className="border-b border-border px-4 py-3">
           <h3 className="text-sm font-semibold">Documentos KYB</h3>
         </header>
         {data.documents.length === 0 ? (
@@ -201,8 +201,8 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
+      <section className="rounded-lg border border-border bg-card">
+        <header className="border-b border-border px-4 py-3">
           <h3 className="text-sm font-semibold">Créditos de este comercio</h3>
         </header>
         <div className="overflow-x-auto">
@@ -244,8 +244,8 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
       </section>
 
       {data.payments.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Pagos asociados</h3>
           </header>
           <ul className="divide-y">
@@ -254,7 +254,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
                 <Link href={adminPaymentHref(p.id)} className="hover:underline">
                   {paymentStatusLabel(p.status)} · {formatARS(p.amount)}
                 </Link>
-                <span className="text-xs text-slate-500">{fmtDate(p.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">{fmtDate(p.createdAt)}</span>
               </li>
             ))}
           </ul>

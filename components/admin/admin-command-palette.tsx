@@ -99,7 +99,7 @@ export function AdminCommandPalette({
           <DialogTitle>Búsqueda global</DialogTitle>
         </DialogHeader>
         <div className="flex items-center gap-2 border-b px-3">
-          <Search className="h-4 w-4 text-slate-400" />
+          <Search className="h-4 w-4 text-muted-foreground" />
           <input
             autoFocus
             value={q}
@@ -107,13 +107,13 @@ export function AdminCommandPalette({
             placeholder="Cliente, DNI, CUIL, crédito, comercio…"
             className="h-12 w-full bg-transparent text-sm outline-none"
           />
-          <kbd className="hidden rounded border bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline">ESC</kbd>
+          <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">ESC</kbd>
         </div>
         <div className="max-h-[420px] overflow-y-auto p-2">
           {term.length < 2 && digits.length < 4 ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-500">Escribí al menos 2 caracteres.</p>
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">Escribí al menos 2 caracteres.</p>
           ) : empty ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-500">No hay coincidencias en la cartera cargada.</p>
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">No hay coincidencias en la cartera cargada.</p>
           ) : (
             <div className="space-y-3">
               {results.users.length > 0 ? (
@@ -129,7 +129,7 @@ export function AdminCommandPalette({
                       }}
                     >
                       <span className="truncate font-medium">{u.name || u.email || 'Sin nombre'}</span>
-                      <span className="font-mono text-[11px] text-slate-500">{maskDoc(u.cuil || u.dni) ?? u.email}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{maskDoc(u.cuil || u.dni) ?? u.email}</span>
                     </button>
                   ))}
                 </Group>
@@ -147,7 +147,7 @@ export function AdminCommandPalette({
                       }}
                     >
                       <span className="font-mono text-xs">{l.id.slice(0, 8)}…</span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         {formatARS(l.principal)} · {l.status}
                       </span>
                     </button>
@@ -167,7 +167,7 @@ export function AdminCommandPalette({
                       }}
                     >
                       <span className="truncate font-medium">{m.businessName}</span>
-                      <span className="font-mono text-[11px] text-slate-500">{maskDoc(m.cuit)}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{maskDoc(m.cuit)}</span>
                     </button>
                   ))}
                 </Group>
@@ -181,7 +181,7 @@ export function AdminCommandPalette({
 }
 
 const rowClass =
-  'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50'
+  'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted/60'
 
 function Group({
   label,
@@ -194,7 +194,7 @@ function Group({
 }) {
   return (
     <div>
-      <p className={cn('flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400')}>
+      <p className={cn('flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground')}>
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>

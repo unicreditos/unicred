@@ -147,7 +147,7 @@ function CouponTalon({
   )
 }
 
-export async function CouponBookPrintable({ contract }: { contract: ContractDocData }) {
+export function CouponBookPrintable({ contract }: { contract: ContractDocData }) {
   const treasury = treasuryForClient()
   const open = contract.installments.filter((row) => isOpenCoupon(row.status))
   const bookCode = couponBookCode(contract.loanId)

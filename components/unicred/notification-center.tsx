@@ -118,7 +118,7 @@ export function NotificationCenter() {
           setOpen(next)
           if (next && unread > 0) markAll()
         }}
-        className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-foreground hover:bg-muted"
         aria-label="Notificaciones"
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -134,9 +134,9 @@ export function NotificationCenter() {
         <div
           role="dialog"
           aria-label="Panel de notificaciones"
-          className="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <p className="text-sm font-semibold text-brand-navy-900">Notificaciones</p>
             <button type="button" className="text-[11px] font-medium text-brand-primary" onClick={markAll}>
               Marcar leídas
@@ -144,7 +144,7 @@ export function NotificationCenter() {
           </div>
           <div className="max-h-[380px] overflow-y-auto">
             {inbox.items.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-slate-500">Sin novedades en tu cuenta.</p>
+              <p className="px-3 py-8 text-center text-sm text-muted-foreground">Sin novedades en tu cuenta.</p>
             ) : (
               inbox.items.map((item) => (
                 <button
@@ -157,20 +157,22 @@ export function NotificationCenter() {
                     router.refresh()
                   }}
                   className={cn(
-                    'flex w-full items-start gap-2.5 border-b border-slate-50 px-3 py-2.5 text-left hover:bg-slate-50',
+                    'flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2.5 text-left hover:bg-muted/60',
                     item.unread ? 'bg-sky-50/50' : '',
                   )}
                 >
                   <span className="mt-0.5">{toneIcon(item.tone)}</span>
                   <span className="min-w-0">
                     <span className="block text-[13px] font-medium text-brand-navy-900">{item.title}</span>
-                    <span className="block text-[11px] text-slate-500">{item.detail}</span>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">
+                    <span className="block text-[11px] text-muted-foreground">{item.detail}</span>
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground">
                       {new Date(item.at).toLocaleString('es-AR', {
                         day: '2-digit',
                         month: 'short',
                         hour: '2-digit',
                         minute: '2-digit',
+    hour12: false,
+                        timeZone: 'America/Argentina/Buenos_Aires',
                       })}
                     </span>
                   </span>

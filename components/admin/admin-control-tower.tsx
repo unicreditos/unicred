@@ -58,7 +58,7 @@ function loanBadge(status: string) {
     active: 'bg-emerald-500/10 text-emerald-800',
     rejected: 'bg-rose-500/10 text-rose-800',
     paid: 'bg-teal-500/10 text-teal-800',
-    cancelled: 'bg-slate-100 text-slate-600',
+    cancelled: 'bg-muted text-slate-600',
   }
   const label: Record<string, string> = {
     pending: 'En evaluación',
@@ -70,7 +70,7 @@ function loanBadge(status: string) {
     disbursed: 'Desembolsado',
   }
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', map[status] ?? 'bg-slate-100 text-slate-600')}>
+    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', map[status] ?? 'bg-muted text-slate-600')}>
       {label[status] ?? status}
     </span>
   )
@@ -218,7 +218,7 @@ export function AdminControlTower({
           openDecisions > 0
             ? pendingLoans.length
               ? 'border-amber-200 bg-amber-50'
-              : 'border-slate-200 bg-white'
+              : 'border-border bg-card'
             : 'border-emerald-200 bg-emerald-50',
         )}
       >
@@ -258,23 +258,23 @@ export function AdminControlTower({
           <div
             key={cell.label}
             className={cn(
-              'rounded-lg border bg-white px-2.5 py-1.5',
-              cell.warn ? 'border-rose-200' : 'border-slate-200',
+              'rounded-lg border bg-card px-2.5 py-1.5',
+              cell.warn ? 'border-rose-200' : 'border-border',
             )}
           >
-            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{cell.label}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{cell.label}</p>
             <p className="truncate text-[15px] font-semibold tabular-nums leading-tight text-brand-navy-900">{cell.value}</p>
-            <p className="truncate text-[10px] text-slate-500">{cell.hint}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{cell.hint}</p>
           </div>
         ))}
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-5">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-5">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
             <div>
               <h2 className="text-[12px] font-semibold text-brand-navy-900">Originación / día</h2>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-muted-foreground">
                 Prom. {avgDay}/día · {daySeries.reduce((a, p) => a + p.value, 0)} en el período
               </p>
             </div>
@@ -286,7 +286,7 @@ export function AdminControlTower({
                   onClick={() => setDays(n)}
                   className={cn(
                     'h-6 rounded px-1.5 text-[10px] font-medium',
-                    days === n ? 'bg-brand-navy-900 text-white' : 'text-slate-500 hover:bg-slate-50',
+                    days === n ? 'bg-brand-navy-900 text-white' : 'text-muted-foreground hover:bg-muted/60',
                   )}
                 >
                   {n}d
@@ -297,7 +297,7 @@ export function AdminControlTower({
           <div className="min-h-0 flex-1 px-2 pt-1">
             <LineChart points={daySeries.map((d) => d.value)} labels={daySeries.map((d) => d.label)} color="#20BD5A" height={132} />
           </div>
-          <div className="shrink-0 border-t border-slate-100 px-3 py-2">
+          <div className="shrink-0 border-t border-border px-3 py-2">
             <DonutChart
               size={112}
               stroke={14}
@@ -313,14 +313,14 @@ export function AdminControlTower({
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-3">
-          <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-3">
+          <header className="shrink-0 border-b border-border px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Cola y red</h2>
-            <p className="text-[10px] text-slate-500">Lo que bloquea originación hoy</p>
+            <p className="text-[10px] text-muted-foreground">Lo que bloquea originación hoy</p>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {alerts.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-slate-500">Sin alertas abiertas.</p>
+              <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Sin alertas abiertas.</p>
             ) : (
               alerts.map((a) =>
                 a ? (
@@ -328,12 +328,12 @@ export function AdminControlTower({
                     key={a.title}
                     type="button"
                     onClick={() => onNavigate(a.tab)}
-                    className="flex w-full items-start justify-between gap-2 border-b border-slate-50 px-3 py-2 text-left hover:bg-slate-50"
+                    className="flex w-full items-start justify-between gap-2 border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
                   >
                     <div className="min-w-0">
-                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">{a.tone}</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{a.tone}</p>
                       <p className="text-[12px] font-medium">{a.title}</p>
-                      <p className="text-[11px] text-slate-500">{a.detail}</p>
+                      <p className="text-[11px] text-muted-foreground">{a.detail}</p>
                     </div>
                     <span className="shrink-0 text-[11px] text-brand-primary">Abrir</span>
                   </button>
@@ -345,11 +345,11 @@ export function AdminControlTower({
                 key={k.id}
                 type="button"
                 onClick={() => onNavigate('kyc')}
-                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-slate-50"
+                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
               >
                 <div className="min-w-0">
                   <p className="truncate text-[12px] font-medium">{k.user?.fullName || k.user?.email || 'Cliente'}</p>
-                  <p className="text-[10px] text-slate-500">KYC · {kycStatusLabel(k.status)}</p>
+                  <p className="text-[10px] text-muted-foreground">KYC · {kycStatusLabel(k.status)}</p>
                 </div>
                 <span className="text-[11px] text-amber-700">Revisar</span>
               </button>
@@ -359,27 +359,27 @@ export function AdminControlTower({
                 key={m.id}
                 type="button"
                 onClick={() => onNavigate('comercios')}
-                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-slate-50"
+                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
               >
                 <div className="min-w-0">
                   <p className="truncate text-[12px] font-medium">{m.businessName}</p>
-                  <p className="font-mono text-[10px] text-slate-500">{m.cuit}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">{m.cuit}</p>
                 </div>
                 <span className="text-[11px] text-amber-700">Validar</span>
               </button>
             ))}
             <div className="px-3 py-2">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <MapPin className="h-3 w-3" /> Provincias
               </p>
               {provinces.length === 0 ? (
-                <p className="text-[11px] text-slate-500">Sin domicilio fiscal.</p>
+                <p className="text-[11px] text-muted-foreground">Sin domicilio fiscal.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {provinces.slice(0, 5).map((p) => (
                     <li key={p.name} className="flex justify-between gap-2 text-[11px]">
                       <span className="truncate">{p.name}</span>
-                      <span className="shrink-0 tabular-nums text-slate-500">{p.loans} cr.</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">{p.loans} cr.</span>
                     </li>
                   ))}
                 </ul>
@@ -388,11 +388,11 @@ export function AdminControlTower({
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-4">
-          <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-4">
+          <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5">
             <div>
               <h2 className="text-[12px] font-semibold">Blotter · solicitudes</h2>
-              <p className="text-[10px] text-slate-500">Últimas altas · click para el expediente</p>
+              <p className="text-[10px] text-muted-foreground">Últimas altas · click para el expediente</p>
             </div>
             <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => onNavigate('solicitudes')}>
               Todas
@@ -400,7 +400,7 @@ export function AdminControlTower({
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full text-left text-[12px]">
-              <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-1.5">Cliente</th>
                   <th className="px-3 py-1.5 text-right">Monto</th>
@@ -412,7 +412,7 @@ export function AdminControlTower({
               <tbody>
                 {loans.slice(0, 12).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
                       No hay solicitudes.
                     </td>
                   </tr>
@@ -422,14 +422,14 @@ export function AdminControlTower({
                     return (
                       <tr
                         key={l.id}
-                        className="cursor-pointer border-t border-slate-50 hover:bg-slate-50"
+                        className="cursor-pointer border-t border-slate-50 hover:bg-muted/60"
                         onClick={() => router.push(adminLoanHref(l.id, l.status))}
                       >
                         <td className="max-w-[140px] truncate px-3 py-1.5 font-medium">{u?.name || u?.email || '—'}</td>
                         <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{formatARS(l.principal)}</td>
                         <td className="px-3 py-1.5">{loanBadge(l.status)}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">{l.scoreAtApproval ?? '—'}</td>
-                        <td className="px-3 py-1.5 text-slate-500">{formatDate(l.createdAt)}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{formatDate(l.createdAt)}</td>
                       </tr>
                     )
                   })
@@ -438,15 +438,15 @@ export function AdminControlTower({
             </table>
           </div>
           {topMerchants.length > 0 ? (
-            <div className="shrink-0 border-t border-slate-100 px-3 py-1.5">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="shrink-0 border-t border-border px-3 py-1.5">
+              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <Building2 className="h-3 w-3" /> Top comercios
               </p>
               <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
                 {topMerchants.slice(0, 4).map((m) => (
                   <li key={m.id} className="flex justify-between gap-2 text-[11px]">
                     <span className="truncate">{m.businessName}</span>
-                    <span className="shrink-0 tabular-nums text-slate-500">{m.operations} ops</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{m.operations} ops</span>
                   </li>
                 ))}
               </ul>

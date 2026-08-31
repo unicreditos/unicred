@@ -24,7 +24,7 @@ function fmtDate(value: string | null | undefined) {
 function Field({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className={`mt-1 break-all text-sm text-brand-navy-900 ${mono ? 'font-mono' : ''}`}>
         {value || value === 0 ? String(value) : '—'}
       </p>
@@ -58,7 +58,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
         <MetricTile label="Recibos" value={String(receipts.length)} />
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-lg border border-border bg-card">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Cliente" value={customer.name} />
           <Field label="Correo" value={customer.email} />
@@ -79,7 +79,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
             }
           />
         </div>
-        <div className="flex flex-wrap gap-3 border-t border-slate-100 px-4 py-3 text-xs">
+        <div className="flex flex-wrap gap-3 border-t border-border px-4 py-3 text-xs">
           <Link href={adminClientHref(customer.id)} className="text-brand-primary hover:underline">
             Ficha del cliente
           </Link>
@@ -92,8 +92,8 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
       </section>
 
       {receipts.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-100 px-4 py-3">
+        <section className="rounded-lg border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Comprobantes</h3>
           </header>
           <ul className="divide-y">

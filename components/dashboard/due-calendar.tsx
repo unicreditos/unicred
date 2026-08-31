@@ -23,7 +23,7 @@ export function DueCalendar({ installments }: { installments: Due[] }) {
     const start = new Date(today.getFullYear(), today.getMonth() + i, 1)
     months.push({
       key: monthKey(start),
-      label: start.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
+      label: start.toLocaleDateString('es-AR', { month: 'short', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
       start,
     })
   }
@@ -39,12 +39,12 @@ export function DueCalendar({ installments }: { installments: Due[] }) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <header className="border-b border-slate-100 px-4 py-3">
+    <section className="rounded-xl border border-border bg-card shadow-sm">
+      <header className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-brand-navy-900">Calendario de vencimientos</h2>
-        <p className="text-xs text-slate-500">Próximos 6 meses · cuotas abiertas</p>
+        <p className="text-xs text-muted-foreground">Próximos 6 meses · cuotas abiertas</p>
       </header>
-      <div className="grid gap-px bg-slate-100 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-px bg-muted sm:grid-cols-3 lg:grid-cols-6">
         {months.map((m) => {
           const rows = byMonth.get(m.key) ?? []
           const overdue = rows.some((r) => {
@@ -54,20 +54,20 @@ export function DueCalendar({ installments }: { installments: Due[] }) {
           })
           const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0)
           return (
-            <div key={m.key} className="bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{m.label}</p>
+            <div key={m.key} className="bg-card p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{m.label}</p>
               {rows.length ? (
                 <>
                   <p className={cn('mt-1 font-mono text-sm font-semibold', overdue ? 'text-rose-700' : 'text-brand-navy-900')}>
                     {formatARS(total)}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-muted-foreground">
                     {rows.length === 1 ? '1 cuota' : `${rows.length} cuotas`}
                     {overdue ? ' · con atraso' : ''}
                   </p>
                 </>
               ) : (
-                <p className="mt-1 text-xs text-slate-400">Sin vencimientos</p>
+                <p className="mt-1 text-xs text-muted-foreground">Sin vencimientos</p>
               )}
             </div>
           )

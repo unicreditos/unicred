@@ -8,8 +8,6 @@ import {
   CheckCircle2,
   Landmark,
   CreditCard,
-  CalendarDays,
-  Users,
   Clock,
   Shield,
   Globe2,
@@ -52,7 +50,7 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4',
+        'flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-xs',
         className,
       )}
     >
@@ -604,150 +602,6 @@ export function DigitalCard({
   )
 }
 
-export type NavItem = {
-  key: string
-  label: string
-  icon: React.ReactNode
-  href?: string
-  badge?: string | number
-  disabled?: boolean
-}
-
-export function AppSidebar({
-  role = 'user',
-  items,
-  active,
-  onSelect,
-  userInfo,
-}: {
-  role?: 'user' | 'admin' | 'merchant'
-  items: NavItem[]
-  active?: string
-  onSelect?: (key: string) => void
-  userInfo?: { name?: string; roleLabel?: string; email?: string; avatar?: React.ReactNode }
-}) {
-  const roleLabels = {
-    user: 'Panel de Usuario',
-    admin: 'Dashboard Administrativo',
-    merchant: 'Panel de Comercio',
-  } as const
-
-  return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/5 uc-gradient-navy text-sidebar-foreground shadow-sm lg:flex">
-      <div className="flex items-center gap-3 px-5 pt-5 pb-6">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-          <BrandMark className="h-5 w-5 text-brand-cian" />
-        </span>
-        <div className="min-w-0">
-          <div className="text-[15px] font-black tracking-[0.04em] text-white">{BRAND.company}</div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-brand-cian-200">
-            {roleLabels[role]}
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        {items.map((it) => {
-          const isActive = active === it.key
-          const inner = (
-            <button
-              key={it.key}
-              type="button"
-              disabled={it.disabled}
-              onClick={() => onSelect?.(it.key)}
-              className={cn(
-                'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
-                isActive
-                  ? 'bg-white text-brand-navy-800 shadow-md'
-                  : 'text-slate-200/90 hover:bg-white/10 hover:text-white',
-              )}
-            >
-              <span
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-lg',
-                  isActive ? 'bg-brand-primary/10 text-brand-primary' : 'text-brand-cian-200 group-hover:text-white',
-                )}
-              >
-                {it.icon}
-              </span>
-              <span className="flex-1 truncate text-left">{it.label}</span>
-              {it.badge !== undefined ? (
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px] font-bold',
-                    isActive ? 'bg-brand-primary text-white' : 'bg-white/15 text-white',
-                  )}
-                >
-                  {it.badge}
-                </span>
-              ) : null}
-            </button>
-          )
-          return it.href ? <Link key={it.key} href={it.href}>{inner}</Link> : inner
-        })}
-      </nav>
-
-      {userInfo ? (
-        <div className="mx-3 mb-3 mt-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/5 backdrop-blur">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-cian-400/15 text-brand-cian ring-1 ring-white/10">
-              {userInfo.avatar ?? <Users className="h-5 w-5" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-white">
-                {userInfo.name ?? `Usuario ${BRAND.company}`}
-              </div>
-              <div className="truncate text-[11px] text-slate-300/80">
-                {userInfo.roleLabel ?? 'Cliente'}
-              </div>
-            </div>
-          </div>
-          {userInfo.email ? (
-            <div className="mt-2 truncate text-[11px] text-slate-300/70">{userInfo.email}</div>
-          ) : null}
-        </div>
-      ) : null}
-    </aside>
-  )
-}
-
-export function AppHeader({
-  role = 'user',
-  title,
-  subtitle,
-  actions,
-  dateRange,
-}: {
-  role?: 'user' | 'admin' | 'merchant'
-  title: string
-  subtitle?: string
-  actions?: React.ReactNode
-  dateRange?: string
-}) {
-  return (
-    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          {role === 'admin' ? 'Operaciones' : role === 'merchant' ? 'Comercio' : 'Cuenta'}
-        </div>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-brand-navy-900 sm:text-[22px]">
-          {title}
-        </h1>
-        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {dateRange ? (
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
-            <CalendarDays className="h-4 w-4 text-brand-primary" />
-            <span className="font-semibold tabular-nums">{dateRange}</span>
-          </div>
-        ) : null}
-        {actions}
-      </div>
-    </header>
-  )
-}
-
 export function TrustBar() {
   const items = [
     { icon: <Landmark className="h-4 w-4" />, label: 'Consulta Central de Deudores BCRA' },
@@ -945,11 +799,11 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        'rounded-lg border border-slate-200 bg-white overflow-hidden',
+        'overflow-hidden rounded-xl border border-border bg-card shadow-xs',
         className,
       )}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           {icon ? (
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/10">

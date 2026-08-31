@@ -168,12 +168,19 @@ export function displayAlias(a: string | null | undefined): string {
   return n ? `@${n}` : '—'
 }
 
+// Zona fija: en producción el server corre en UTC y el navegador del usuario
+// en AR, así que sin esto la fecha cambia entre el render de servidor y el
+// del cliente. hour12:false en formatDateTimeArg evita además el separador
+// "a. m./p. m." de Intl, que Node y Chromium arman con un espacio distinto
+// (uno usa NBSP) — esa sola diferencia invisible ya rompe la hidratación.
+const AR_TZ = 'America/Argentina/Buenos_Aires'
+
 export function formatDateArg(d: Date | string | null | undefined) {
   if (!d) return '—'
   try {
     const dt = typeof d === 'string' ? new Date(d) : d
     if (isNaN(dt.getTime())) return String(d)
-    return dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: AR_TZ })
   } catch {
     return String(d)
   }
@@ -190,6 +197,8 @@ export function formatDateTimeArg(d: Date | string | null | undefined) {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
+      timeZone: AR_TZ,
     })
   } catch {
     return String(d)

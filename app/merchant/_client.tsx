@@ -516,9 +516,9 @@ function MerchantOverview({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
           <h2 className="text-sm font-semibold text-brand-navy-900">Ventas por mes</h2>
-          <p className="mb-3 text-xs text-slate-500">Capital originado en los últimos 6 meses</p>
+          <p className="mb-3 text-xs text-muted-foreground">Capital originado en los últimos 6 meses</p>
           {hasVolume ? (
             <LineChart
               points={months.map((m) => m.value)}
@@ -528,13 +528,13 @@ function MerchantOverview({
               yFormatter={(v) => formatARS(v)}
             />
           ) : (
-            <p className="py-8 text-center text-sm text-slate-500">Todavía no hay ventas en el período.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay ventas en el período.</p>
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
           <h2 className="text-sm font-semibold text-brand-navy-900">Estado de ventas</h2>
-          <p className="mb-3 text-xs text-slate-500">Cartera de este comercio</p>
+          <p className="mb-3 text-xs text-muted-foreground">Cartera de este comercio</p>
           <DonutChart
             centerTitle="Ops"
             centerValue={String(totals.totalOps)}
@@ -545,13 +545,13 @@ function MerchantOverview({
               { label: 'Otras', value: Math.max(0, totals.totalOps - totals.activeCount - totals.receivedCount - totals.rejectedCount), color: '#94A3B8' },
             ]}
           />
-          <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm">
+          <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-500">Bruto</span>
+              <span className="text-muted-foreground">Bruto</span>
               <span className="font-semibold tabular-nums">{formatARS(totals.totalGross)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Comisión UNICRÉDITOS</span>
+              <span className="text-muted-foreground">Comisión UNICRÉDITOS</span>
               <span className="font-semibold tabular-nums text-rose-700">− {formatARS(totals.totalCommission)}</span>
             </div>
             <Button variant="outline" size="sm" className="w-full" onClick={() => onTab('liquidations')}>
@@ -561,18 +561,18 @@ function MerchantOverview({
         </section>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
-        <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <section className="rounded-lg border border-border bg-card">
+        <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold text-brand-navy-900">Últimas operaciones</h2>
-            <p className="text-xs text-slate-500">{lastSales.length ? 'Movimiento reciente' : 'Sin ventas registradas'}</p>
+            <p className="text-xs text-muted-foreground">{lastSales.length ? 'Movimiento reciente' : 'Sin ventas registradas'}</p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => onTab('sales')}>
             Nueva venta
           </Button>
         </header>
         {lastSales.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-slate-500">
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             {merchant?.status === 'active'
               ? 'Registrá la primera venta en cuotas.'
               : 'Cuando el comercio esté habilitado vas a ver las operaciones acá.'}
@@ -594,7 +594,7 @@ function MerchantOverview({
                   <TableRow key={row.id}>
                     <TableCell>
                       <p className="text-sm font-medium">{extractCustomerName(row.purpose)}</p>
-                      <p className="font-mono text-[11px] text-slate-500">{row.id.slice(0, 10)}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">{row.id.slice(0, 10)}</p>
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{formatARS(row.principal)}</TableCell>
                     <TableCell className="text-right tabular-nums">{row.term}</TableCell>
@@ -613,7 +613,7 @@ function MerchantOverview({
                         }
                       />
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">
+                    <TableCell className="text-xs text-muted-foreground">
                       {new Date(row.createdAt).toLocaleDateString('es-AR')}
                     </TableCell>
                   </TableRow>

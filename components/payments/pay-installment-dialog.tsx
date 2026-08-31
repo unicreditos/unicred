@@ -229,11 +229,11 @@ export function PayInstallmentDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-        <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
+        <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-brand-navy-900">Punto de venta UNICRÉDITOS</h2>
-            <p className="text-xs text-slate-500">{title}</p>
+            <p className="text-xs text-muted-foreground">{title}</p>
           </div>
           <Button type="button" size="sm" variant="ghost" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -251,7 +251,7 @@ export function PayInstallmentDialog({
                 <button
                   key={row.id}
                   type="button"
-                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-left hover:border-brand-primary/40 hover:bg-slate-50"
+                  className="rounded-lg border border-border px-3 py-2.5 text-left hover:border-brand-primary/40 hover:bg-muted/60"
                   onClick={() => {
                     setSession(null)
                     startedFor.current = ''
@@ -259,7 +259,7 @@ export function PayInstallmentDialog({
                   }}
                 >
                   <p className="text-sm font-semibold text-brand-navy-900">{row.label}</p>
-                  <p className="text-[11px] text-slate-500">{row.hint}</p>
+                  <p className="text-[11px] text-muted-foreground">{row.hint}</p>
                 </button>
               ))}
             </div>
@@ -277,39 +277,39 @@ export function PayInstallmentDialog({
           </div>
         ) : chosen === 'transferencia_bancaria' ? (
           <form action={sendTransfer} className="space-y-4 p-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Cuenta corriente RM</p>
+            <div className="rounded-lg border border-border bg-muted p-3 text-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cuenta corriente RM</p>
               <dl className="mt-2 grid gap-1.5 text-xs">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Titular</dt>
+                  <dt className="text-muted-foreground">Titular</dt>
                   <dd className="font-medium">{treasury?.holder ?? 'RM International Group S.A.S.'}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">CUIT</dt>
+                  <dt className="text-muted-foreground">CUIT</dt>
                   <dd className="font-mono">{treasury?.cuit}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Banco</dt>
+                  <dt className="text-muted-foreground">Banco</dt>
                   <dd>
                     {treasury?.bank} · {treasury?.accountType}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">CBU</dt>
+                  <dt className="text-muted-foreground">CBU</dt>
                   <dd className="font-mono">{treasury?.cbu}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">N° cuenta</dt>
+                  <dt className="text-muted-foreground">N° cuenta</dt>
                   <dd className="font-mono">{treasury?.accountNumber}</dd>
                 </div>
                 {treasury?.alias ? (
                   <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">Alias</dt>
+                    <dt className="text-muted-foreground">Alias</dt>
                     <dd className="font-mono">{treasury.alias}</dd>
                   </div>
                 ) : null}
               </dl>
-              <p className="mt-2 text-[11px] text-slate-500">
+              <p className="mt-2 text-[11px] text-muted-foreground">
                 Transferí {formatARS(total)}. En el concepto usá el ID del crédito y el n° de cuota. La cuota no se
                 marca paga hasta que tesorería vea el dinero en Brubank.
               </p>
@@ -358,7 +358,7 @@ export function PayInstallmentDialog({
             )}
             <button
               type="button"
-              className="text-xs text-slate-500 underline"
+              className="text-xs text-muted-foreground underline"
               onClick={() => {
                 setChosen(null)
                 setSession(null)

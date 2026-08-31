@@ -112,6 +112,7 @@ function formatDate(d: Date | string) {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    timeZone: 'America/Argentina/Buenos_Aires',
   })
 }
 
@@ -446,7 +447,7 @@ export function LoansDashboard({
       ) : null}
 
       {withdrawn ? (
-        <Card className="border-slate-200/80 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-950/40">
+        <Card className="border-border/80 bg-muted/60 dark:border-slate-800 dark:bg-slate-950/40">
           <CardContent className="flex gap-3 p-4 sm:p-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <XCircle className="h-5 w-5" />

@@ -192,6 +192,9 @@ function formatDateShort(d: Date | string) {
   return new Date(d).toLocaleDateString('es-AR', {
     day: '2-digit',
     month: 'short',
+    // Fija el huso: si no, el render de servidor (UTC) puede no coincidir
+    // con el del navegador y React tira error de hidratación.
+    timeZone: 'America/Argentina/Buenos_Aires',
   })
 }
 
@@ -380,7 +383,7 @@ export function DashboardTabsWrapper({
                 <h2 className="text-2xl font-bold tracking-tight text-brand-navy-900">
                   {firstName ? `Hola, ${firstName}` : 'Hola'}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">Bienvenido a tu cuenta UNICRÉDITOS.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Bienvenido a tu cuenta UNICRÉDITOS.</p>
               </div>
               <Button onClick={() => setActiveTab('solicitar')} disabled={products.length === 0}>
                 Solicitar nuevo crédito
@@ -388,8 +391,8 @@ export function DashboardTabsWrapper({
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Capacidad estimada
                 </p>
                 {monthlyIncome > 0 ? (
@@ -397,10 +400,10 @@ export function DashboardTabsWrapper({
                     <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
                       {formatARS(capacityLeft)}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Tope 35% de tus ingresos declarados ({formatARS(capacityCeiling)}) menos cuotas vigentes.
                     </p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-brand-primary"
                         style={{
@@ -412,7 +415,7 @@ export function DashboardTabsWrapper({
                 ) : (
                   <>
                     <p className="mt-2 text-lg font-semibold text-brand-navy-900">Sin ingresos cargados</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Declará ingresos en Identidad para ver tu tope de cuota (35%).
                     </p>
                     <Button size="sm" variant="outline" className="mt-3" onClick={() => setActiveTab('perfil')}>
@@ -421,14 +424,14 @@ export function DashboardTabsWrapper({
                   </>
                 )}
               </section>
-              <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Próximo pago
                 </p>
                 <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
                   {nextInstallment ? formatARS(nextInstallment.amount) : '—'}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {nextInstallment
                     ? `${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`
                     : 'No hay cuotas pendientes'}
@@ -439,8 +442,8 @@ export function DashboardTabsWrapper({
                   </Button>
                 ) : null}
               </section>
-              <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Estado de cuenta
                 </p>
                 <div className="mt-3">
@@ -455,7 +458,7 @@ export function DashboardTabsWrapper({
                     {accountOk ? 'Al día' : 'Con atraso'}
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-muted-foreground">
                   {accountOk
                     ? 'Tus cuotas vigentes no están vencidas.'
                     : `La cuota #${nextInstallment?.number} venció el ${nextInstallment ? formatDateShort(nextInstallment.dueDate) : '—'}.`}
@@ -567,12 +570,12 @@ export function DashboardTabsWrapper({
               />
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-5">
-              <section className="rounded-lg border border-slate-200 bg-white lg:col-span-3">
-                <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <div className="grid items-start gap-4 lg:grid-cols-5">
+              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
+                <header className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
                     <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
-                    <p className="text-xs text-slate-500">Capital originado y estado contractual</p>
+                    <p className="text-xs text-muted-foreground">Capital originado y estado contractual</p>
                   </div>
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('cuotas')}>
                     Ver detalle
@@ -580,25 +583,27 @@ export function DashboardTabsWrapper({
                 </header>
                 <div className="p-4">
                   {!activeLoansList.length ? (
-                    <p className="py-8 text-center text-sm text-slate-500">
+                    <p className="py-8 text-center text-sm text-muted-foreground">
                       No hay créditos activos.{' '}
                       <button type="button" className="font-medium text-brand-primary" onClick={() => setActiveTab('solicitar')}>
                         Solicitar uno
                       </button>
                     </p>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {activeLoansList.map((l: any) => (
                         <div key={l.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-brand-navy-900">
                               {(l as any).purpose || 'Préstamo personal'}
                             </p>
-                            <p className="font-mono text-[11px] text-slate-500">{String(l.id).slice(0, 12)}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Originado el {formatDateShort((l as any).createdAt)}
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-semibold tabular-nums">{formatARS(l.principal)}</p>
-                            <p className="text-[11px] text-slate-500">{l.term} cuotas · {loanStatusLabel(l.status)}</p>
+                            <p className="text-[11px] text-muted-foreground">{l.term} cuotas · {loanStatusLabel(l.status)}</p>
                           </div>
                         </div>
                       ))}
@@ -607,10 +612,10 @@ export function DashboardTabsWrapper({
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white lg:col-span-2">
-                <header className="border-b border-slate-100 px-4 py-3">
+              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-2">
+                <header className="border-b border-border px-4 py-3">
                   <h2 className="text-sm font-semibold text-brand-navy-900">Acciones</h2>
-                  <p className="text-xs text-slate-500">Atajos de tu cuenta</p>
+                  <p className="text-xs text-muted-foreground">Atajos de tu cuenta</p>
                 </header>
                 <div className="grid gap-2 p-3">
                   {[
@@ -626,13 +631,13 @@ export function DashboardTabsWrapper({
                       key={a.tab}
                       type="button"
                       onClick={() => setActiveTab(a.tab)}
-                      className="flex items-center justify-between rounded-md border border-slate-100 px-3 py-2.5 text-left hover:bg-slate-50"
+                      className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/60"
                     >
                       <span>
                         <span className="block text-[13px] font-medium text-brand-navy-900">{a.t}</span>
-                        <span className="block text-[11px] text-slate-500">{a.d}</span>
+                        <span className="block text-[11px] text-muted-foreground">{a.d}</span>
                       </span>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
@@ -641,11 +646,11 @@ export function DashboardTabsWrapper({
 
             <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
 
-            <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-              <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <section className="rounded-xl border border-border bg-card shadow-sm">
+              <header className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <h2 className="text-sm font-semibold text-brand-navy-900">Movimientos recientes</h2>
-                  <p className="text-xs text-slate-500">Pagos acreditados y desembolsos de tu cuenta</p>
+                  <p className="text-xs text-muted-foreground">Pagos acreditados y desembolsos de tu cuenta</p>
                 </div>
                 <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('pagos')}>
                   Ver pagos
@@ -653,11 +658,11 @@ export function DashboardTabsWrapper({
               </header>
               <div className="p-4">
                 {!recentMoves.length ? (
-                  <p className="py-8 text-center text-sm text-slate-500">
+                  <p className="py-8 text-center text-sm text-muted-foreground">
                     Todavía no hay movimientos. Cuando pagues una cuota o se acredite un crédito, aparecen acá.
                   </p>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-border">
                     {recentMoves.map((m) => (
                       <div key={m.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                         <div className="flex min-w-0 items-center gap-3">
@@ -671,7 +676,7 @@ export function DashboardTabsWrapper({
                           </span>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-brand-navy-900">{m.title}</p>
-                            <p className="text-[11px] text-slate-500">{formatDateShort(m.date)}</p>
+                            <p className="text-[11px] text-muted-foreground">{formatDateShort(m.date)}</p>
                           </div>
                         </div>
                         <p
@@ -883,7 +888,7 @@ export function DashboardTabsWrapper({
                         }
                       >
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-brand-primary ring-1 ring-border/80">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-brand-primary ring-1 ring-border/80">
                             <c.icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0">
@@ -1261,7 +1266,7 @@ export function DashboardTabsWrapper({
               <span className="text-sm font-medium">{toast.msg}</span>
               <button
                 onClick={() => setToast(null)}
-                className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10"
+                className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-card/10"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -1382,7 +1387,7 @@ function KYCBiometricPanel({
           )}
           {kyc?.reviewedAt && (
             <p className="text-xs text-muted-foreground">
-              Revisado el {new Date(kyc.reviewedAt as any).toLocaleDateString('es-AR')}
+              Revisado el {new Date(kyc.reviewedAt as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
               {kyc?.reviewedBy && ` · ${kyc.reviewedBy === 'didit' ? 'Didit' : `Operador #${kyc.reviewedBy.slice(0, 6)}`}`}
             </p>
           )}
@@ -1964,7 +1969,7 @@ function PagosPanel({
                         </TableCell>
                         <TableCell>
                           <div className="font-medium text-xs">
-                            # {i.loanId.slice(0, 8)}
+                            {i.loanPurpose || 'Préstamo personal'}
                           </div>
                           <div className="text-[10px] text-muted-foreground">
                             {formatARS(i.loanPrincipal)} · {i.loanTerm} cuotas
@@ -1975,7 +1980,7 @@ function PagosPanel({
                         </TableCell>
                         <TableCell>
                           <div className="font-mono text-xs">
-                            {new Date(i.dueDate as any).toLocaleDateString('es-AR')}
+                            {new Date(i.dueDate as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
                           </div>
                           {overdue && (
                             <Badge variant="destructive" className="mt-1 text-[10px] py-0 h-4">
@@ -2180,7 +2185,7 @@ function PagosPanel({
                       </p>
                       <p className="text-[10px] text-muted-foreground truncate font-mono">
                         {p.referenceNumber ?? p.id.slice(0, 10)} ·{' '}
-                        {new Date(p.createdAt as any).toLocaleDateString('es-AR')}
+                        {new Date(p.createdAt as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
                       </p>
                     </div>
                   </div>
@@ -2356,7 +2361,7 @@ function ComprobantesPanel({
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {new Date(date as any).toLocaleDateString('es-AR')}
+                        {new Date(date as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                         {detalle}

@@ -105,7 +105,7 @@ export function CustomerDocumentsDesk({
           kind: 'contrato' as const,
           id: c.id,
           title: `${c.templateName} v${c.version}`,
-          detail: `Emisión ${new Date(c.createdAt as Date).toLocaleDateString('es-AR')} · ${c.status === 'accepted' ? 'Aceptado' : 'Pendiente de firma'}`,
+          detail: `Emisión ${new Date(c.createdAt as Date).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })} · ${c.status === 'accepted' ? 'Aceptado' : 'Pendiente de firma'}`,
         }))}
         activeKind="contrato"
         activeId={contract?.id ?? activeId}
@@ -140,7 +140,7 @@ export function CustomerDocumentsDesk({
           kind: 'pagare' as const,
           id: c.id,
           title: `Pagaré ${c.templateName} v${c.version}`,
-          detail: `Emisión ${new Date(c.createdAt as Date).toLocaleDateString('es-AR')}`,
+          detail: `Emisión ${new Date(c.createdAt as Date).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`,
         }))}
         activeKind="pagare"
         activeId={contract?.id ?? activeId}
@@ -188,7 +188,7 @@ export function CustomerDocumentsDesk({
       kind: 'bcra' as const,
       id: r.id,
       title: `Informe BCRA ${r.reportNumber}`,
-      detail: `Emisión ${new Date(r.createdAt as Date).toLocaleDateString('es-AR')} · Score ${r.scoreAtGeneration ?? lastBcraScore ?? '—'}`,
+      detail: `Emisión ${new Date(r.createdAt as Date).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })} · Score ${r.scoreAtGeneration ?? lastBcraScore ?? '—'}`,
     })),
     ...contracts.flatMap((c) => {
       const loan = c.loan ?? loans.find((l) => l.id === c.loanId)

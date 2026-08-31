@@ -80,7 +80,7 @@ export function WalletDesk({
 
   if (!wallet) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border bg-white p-6 text-sm text-slate-600">
+      <div className="flex items-center gap-2 rounded-xl border bg-card p-6 text-sm text-slate-600">
         <Loader2 className="h-4 w-4 animate-spin" /> Abriendo tu billetera…
       </div>
     )
@@ -103,12 +103,12 @@ export function WalletDesk({
             </p>
             <p className="mt-1.5 text-sm text-white/70">Saldo disponible · ARS</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs backdrop-blur">
+          <div className="rounded-xl border border-white/10 bg-card/10 px-3 py-2 text-xs backdrop-blur">
             <p className="text-white/60">Estado</p>
             <p className="font-semibold capitalize text-white">{wallet.status === 'active' ? 'Activa' : wallet.status}</p>
           </div>
         </div>
-        <div className="grid gap-px bg-white/10 sm:grid-cols-1">
+        <div className="grid gap-px bg-card/10 sm:grid-cols-1">
           <div className="bg-black/25 px-5 py-3.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Ledger interno</p>
             <p className="mt-1 text-sm text-white/85">
@@ -119,7 +119,7 @@ export function WalletDesk({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+      <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap gap-2">
           {([
             ['ingresar', 'Ingresar'],
@@ -144,7 +144,7 @@ export function WalletDesk({
               El saldo de esta billetera es un ledger interno. No publiques ni copies un CVU: UNICRÉDITOS no
               emite CVU Coelsa. Para recibir el préstamo usá Cuentas de desembolso (CBU/CVU bancario a tu nombre).
             </p>
-            <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-700">
+            <div className="rounded-xl border bg-muted p-3 text-sm text-slate-700">
               Referencia interna de tesorería: {wallet.id.slice(0, 8).toUpperCase()}
             </div>
           </div>
@@ -233,7 +233,7 @@ export function WalletDesk({
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+      <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
         <p className="text-sm font-bold text-brand-navy">Movimientos</p>
         {wallet.movements.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Todavía no hay movimientos en esta billetera.</p>
@@ -245,7 +245,7 @@ export function WalletDesk({
                   <span
                     className={cn(
                       'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                      row.direction === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600',
+                      row.direction === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-slate-600',
                     )}
                   >
                     {row.direction === 'in' ? (
@@ -267,7 +267,7 @@ export function WalletDesk({
                               : row.notes || row.kind}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {row.reference || '—'} · {new Date(row.createdAt).toLocaleString('es-AR')}
+                      {row.reference || '—'} · {new Date(row.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })}
                     </p>
                   </div>
                 </div>
@@ -287,7 +287,7 @@ export function WalletDesk({
       </div>
 
       {wallet.payouts.length > 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+        <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
           <p className="text-sm font-bold text-brand-navy">Egresos a bancos</p>
           <ul className="mt-3 divide-y divide-border/60">
             {wallet.payouts.map((row) => (
@@ -354,8 +354,8 @@ export function WalletPayBox({
       <p className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 px-3 py-2 text-xs text-brand-navy">
         Billetera UNICRÉDITOS. Los egresos externos salen desde la cuenta de tesorería RM.
       </p>
-      <div className="rounded-lg border bg-slate-50 p-3">
-        <p className="text-[11px] uppercase tracking-wide text-slate-500">Saldo</p>
+      <div className="rounded-lg border bg-muted p-3">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Saldo</p>
         <p className="text-xl font-semibold tabular-nums">{formatARSDecimal(wallet.balance)}</p>
         <p className="mt-2 text-xs text-slate-600">Ledger interno · no es CVU Coelsa.</p>
       </div>

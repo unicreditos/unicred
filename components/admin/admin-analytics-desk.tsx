@@ -84,8 +84,8 @@ export function AdminAnalyticsDesk({
         <MetricTile label="Vence 7d" value={String(opsDesk.kpis.due7Count)} hint={formatARS(opsDesk.kpis.due7Amount)} />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-2">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+          <header className="shrink-0 border-b border-border px-3 py-1.5">
             <h3 className="text-[12px] font-semibold">Por producto</h3>
           </header>
           <ul className="min-h-0 flex-1 overflow-auto divide-y">
@@ -103,8 +103,8 @@ export function AdminAnalyticsDesk({
             )}
           </ul>
         </section>
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+          <header className="shrink-0 border-b border-border px-3 py-1.5">
             <h3 className="text-[12px] font-semibold">Últimas solicitudes</h3>
           </header>
           <ul className="min-h-0 flex-1 overflow-auto divide-y">
@@ -113,7 +113,7 @@ export function AdminAnalyticsDesk({
                 <Link href={adminLoanHref(l.id, l.status)} className="font-mono text-[11px] hover:underline">
                   {l.id.slice(0, 10)}…
                 </Link>
-                <span className="text-[11px] text-slate-500">{loanStatusLabel(l.status)}</span>
+                <span className="text-[11px] text-muted-foreground">{loanStatusLabel(l.status)}</span>
                 <span className="tabular-nums">{formatARS(l.principal)}</span>
               </li>
             ))}

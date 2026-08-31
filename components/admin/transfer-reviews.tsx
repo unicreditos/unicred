@@ -39,7 +39,7 @@ export function TransferReviews() {
 
   if (!rows.length) {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+      <section className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
         No hay transferencias pendientes de verificar en Brubank.
       </section>
     )
@@ -48,18 +48,18 @@ export function TransferReviews() {
   return (
     <div className="space-y-3">
       {rows.map((row) => (
-        <article key={row.id} className="rounded-lg border border-slate-200 bg-white p-4">
+        <article key={row.id} className="rounded-lg border border-border bg-card p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">{row.customerName}</p>
-              <p className="text-xs text-slate-500">{row.customerEmail}</p>
+              <p className="text-xs text-muted-foreground">{row.customerEmail}</p>
               <p className="mt-1 font-mono text-xs text-slate-600">{row.loanId}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Informó {formatARS(row.declaredAmount)} · ref {row.reference || '—'} ·{' '}
                 {row.transferDate || 'sin fecha'}
               </p>
               {row.coupons.length ? (
-                <p className="mt-1 font-mono text-[11px] text-slate-500">{row.coupons.join(' · ')}</p>
+                <p className="mt-1 font-mono text-[11px] text-muted-foreground">{row.coupons.join(' · ')}</p>
               ) : null}
             </div>
             <p className="font-mono text-lg font-semibold">{formatARS(row.amount)}</p>

@@ -88,10 +88,10 @@ export function ServicesDesk() {
   }
 
   if (success) {
-    const paidLabel = new Date(success.paidAt).toLocaleString('es-AR')
+    const paidLabel = new Date(success.paidAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
     return (
       <div className="space-y-6">
-        <div className="rounded-2xl border-2 border-emerald-400/70 bg-white p-6 shadow-sm sm:p-8">
+        <div className="rounded-2xl border-2 border-emerald-400/70 bg-card p-6 shadow-sm sm:p-8">
           <div className="flex flex-col items-center text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
               <CheckCircle2 className="h-8 w-8" />
@@ -100,7 +100,7 @@ export function ServicesDesk() {
             <p className="mt-1 text-sm text-muted-foreground">Tu pago fue procesado correctamente</p>
           </div>
 
-          <dl className="mt-8 divide-y divide-border/70 rounded-xl border border-border/60 bg-slate-50/50 px-4">
+          <dl className="mt-8 divide-y divide-border/70 rounded-xl border border-border/60 bg-muted/50 px-4">
             {[
               { k: 'Operación', v: success.operationId },
               { k: 'Empresa', v: success.providerName },
@@ -177,7 +177,7 @@ export function ServicesDesk() {
                 'rounded-full px-3 py-1.5 text-xs font-semibold transition ' +
                 (category === c.id
                   ? 'bg-brand-primary text-white'
-                  : 'bg-white text-muted-foreground ring-1 ring-border hover:text-brand-primary')
+                  : 'bg-card text-muted-foreground ring-1 ring-border hover:text-brand-primary')
               }
             >
               {c.label}
@@ -224,7 +224,7 @@ export function ServicesDesk() {
                     key={preset}
                     type="button"
                     onClick={() => setAmount(String(preset))}
-                    className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-navy ring-1 ring-border hover:ring-brand-primary"
+                    className="rounded-full bg-card px-3 py-1 text-xs font-semibold text-brand-navy ring-1 ring-border hover:ring-brand-primary"
                   >
                     {formatARS(preset)}
                   </button>

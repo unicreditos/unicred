@@ -105,7 +105,7 @@ export function AdminClaimsDesk() {
 
   return (
     <OpsFloor>
-      <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <div>
           <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
             <Headphones className="h-4 w-4 text-brand-primary" />
@@ -135,7 +135,7 @@ export function AdminClaimsDesk() {
                 }}
                 className={cn(
                   'w-full rounded-xl border p-3 text-left transition hover:border-brand-primary/40',
-                  selected?.id === row.id ? 'border-brand-primary bg-brand-primary-50/40' : 'bg-white',
+                  selected?.id === row.id ? 'border-brand-primary bg-brand-primary-50/40' : 'bg-card',
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -147,11 +147,11 @@ export function AdminClaimsDesk() {
                     {row.unread > 0 ? (
                       <span className="rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">{row.unread}</span>
                     ) : null}
-                    <span className="text-[10px] font-semibold text-slate-500">{STATUS[row.status] ?? row.status}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground">{STATUS[row.status] ?? row.status}</span>
                   </div>
                 </div>
-                <p className="mt-1 line-clamp-2 text-[12px] text-slate-500">{row.lastPreview}</p>
-                <p className="mt-1 text-[10px] text-slate-400">
+                <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">{row.lastPreview}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
                   {CATEGORY[row.category] ?? row.category} · {row.channel === 'chat' ? 'Chat' : 'Reclamo'}
                   {row.lastMessageAt ? ` · ${new Date(row.lastMessageAt).toLocaleString('es-AR')}` : ''}
                 </p>
@@ -159,14 +159,14 @@ export function AdminClaimsDesk() {
             ))
           )}
         </div>
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-white lg:col-span-8">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-8">
           {selected ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b px-3 py-2">
                 <div>
                   <p className="text-sm font-semibold">{selected.userName}</p>
                   <p className="text-[12px] text-muted-foreground">{selected.userEmail}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {selected.subject} · {CATEGORY[selected.category] ?? selected.category}
                   </p>
                 </div>
@@ -201,7 +201,7 @@ export function AdminClaimsDesk() {
               </div>
               {selected.status !== 'resolved' && selected.status !== 'closed' ? (
                 <div className="shrink-0 space-y-2 border-t px-3 py-2">
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                     <Scale className="h-3.5 w-3.5" /> Cerrar trámite / reclamo formal
                   </p>
                   <Textarea

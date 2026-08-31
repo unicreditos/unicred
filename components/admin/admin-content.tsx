@@ -292,7 +292,7 @@ export function AdminContent({
     return (
       <OpsFloor>
         <div className="grid shrink-0 grid-cols-3 gap-1.5 sm:grid-cols-6">
-          <div className="rounded-lg border bg-white px-2.5 py-1.5">
+          <div className="rounded-lg border bg-card px-2.5 py-1.5">
             <div className="text-[10px] text-muted-foreground">Total</div>
             <div className="text-[15px] font-semibold tabular-nums">{loans.length}</div>
           </div>
@@ -312,7 +312,7 @@ export function AdminContent({
             <div className="text-[10px] text-teal-700">Pagados</div>
             <div className="text-[15px] font-semibold tabular-nums text-teal-700">{counts.paid ?? 0}</div>
           </div>
-          <div className="rounded-lg border bg-white px-2.5 py-1.5">
+          <div className="rounded-lg border bg-card px-2.5 py-1.5">
             <div className="text-[10px] text-primary">Volumen</div>
             <div className="truncate text-[13px] font-semibold tabular-nums text-primary">
               {formatARS(
@@ -322,29 +322,29 @@ export function AdminContent({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-white p-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-card p-1">
           <Tabs value={loanFilter} onValueChange={setLoanFilter} className="w-full">
             <TabsList className="h-auto flex-wrap bg-transparent gap-1 p-0">
-              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Todos ({loans.length})
               </TabsTrigger>
-              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Pendientes ({counts.pending ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="active" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="active" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Activos ({counts.active ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Rechazados ({counts.rejected ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="paid" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="paid" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Pagados ({counts.paid ?? 0})
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <LoansTable loans={filteredLoans} />
         </div>
       </OpsFloor>
@@ -365,26 +365,26 @@ export function AdminContent({
           <MetricTile label="Rechazados" value={String(counts.rejected ?? 0)} tone={counts.rejected ? 'warn' : 'default'} />
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-white p-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-card p-1">
           <Tabs value={merchantFilter} onValueChange={setMerchantFilter} className="w-full">
             <TabsList className="h-auto flex-wrap bg-transparent gap-1 p-0">
-              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Todos ({merchants.length})
               </TabsTrigger>
-              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Pendientes ({counts.pending ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="active" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="active" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Activos ({activeMerchants})
               </TabsTrigger>
-              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Rechazados ({counts.rejected ?? 0})
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <MerchantsTable merchants={filteredMerchants} />
         </div>
       </OpsFloor>
@@ -439,22 +439,22 @@ export function AdminContent({
           <MetricTile label="Rechazados" value={String(counts.rejected ?? 0)} />
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-white p-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-card p-1">
           <Tabs value={kycFilter} onValueChange={setKycFilter} className="w-full">
             <TabsList className="h-auto flex-wrap bg-transparent gap-1 p-0">
-              <TabsTrigger value="pending_review" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="pending_review" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Por revisar ({(counts.reviewing ?? 0) + (counts.pending ?? 0)})
               </TabsTrigger>
-              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Todos ({kycList.length})
               </TabsTrigger>
-              <TabsTrigger value="reviewing" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="reviewing" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Revisando ({counts.reviewing ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="approved" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="approved" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Aprobados ({counts.approved ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="rejected" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Rechazados ({counts.rejected ?? 0})
               </TabsTrigger>
             </TabsList>
@@ -537,29 +537,29 @@ export function AdminContent({
           <MetricTile label="Fallidos" value={String((counts.failed ?? 0) + (counts.reversed ?? 0))} tone={(counts.failed || counts.reversed) ? 'warn' : 'ok'} />
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-white p-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg border bg-card p-1">
           <Tabs value={disbFilter} onValueChange={setDisbFilter} className="w-full">
             <TabsList className="h-auto flex-wrap bg-transparent gap-1 p-0">
-              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="pending" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Pendientes ({counts.pending ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="all" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Todos ({disbursementList.length})
               </TabsTrigger>
-              <TabsTrigger value="processing" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="processing" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Procesando ({counts.processing ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="credited" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="credited" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Acreditados ({counts.credited ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="failed" className="h-7 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:shadow-none text-xs">
+              <TabsTrigger value="failed" className="h-7 rounded-md data-[state=active]:bg-muted data-[state=active]:shadow-none text-xs">
                 Fallidos ({(counts.failed ?? 0) + (counts.reversed ?? 0)})
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
@@ -737,7 +737,7 @@ export function AdminContent({
   if (activeTab === 'cuentas-bancarias') {
     return (
       <OpsFloor>
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <BankAccountsTable accounts={bankAccounts} />
         </div>
         {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
@@ -786,7 +786,7 @@ export function AdminContent({
           <MetricTile label="Rechazadas" value={String(loans.filter(l => l.status === 'rejected').length)} />
           <MetricTile label="Monto total" value={formatARS(loans.reduce((a, l) => a + (Number(l.principal) || 0), 0))} />
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-lg border bg-white p-1.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1.5">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar por monto / ID…"
@@ -838,7 +838,7 @@ export function AdminContent({
             </Button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <LoansTable loans={filteredLoans} />
         </div>
         {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
@@ -870,14 +870,14 @@ export function AdminContent({
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-5">
-            <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-5">
+            <header className="shrink-0 border-b border-border px-3 py-1.5">
               <h2 className="text-[12px] font-semibold">Distribución por tramo</h2>
-              <p className="text-[10px] text-slate-500">Solo operaciones con score persistido</p>
+              <p className="text-[10px] text-muted-foreground">Solo operaciones con score persistido</p>
             </header>
             <div className="min-h-0 flex-1 overflow-auto space-y-2 px-3 py-3">
               {scored.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500">Sin scores en cartera.</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">Sin scores en cartera.</p>
               ) : (
                 distLabels.map((label, i) => {
                   const n = dist[i]
@@ -889,7 +889,7 @@ export function AdminContent({
                           <span className="text-xs text-slate-600">{label}</span>
                           <span className="tabular-nums text-xs font-semibold">{n} · {p}%</span>
                         </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                           <div className="h-full rounded-full" style={{ width: `${p}%`, backgroundColor: distColors[i] }} />
                         </div>
                       </div>
@@ -900,10 +900,10 @@ export function AdminContent({
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-7">
-            <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-7">
+            <header className="shrink-0 border-b border-border px-3 py-1.5">
               <h2 className="text-[12px] font-semibold">Operaciones scoreadas</h2>
-              <p className="text-[10px] text-slate-500">Últimas 20 con score en originación</p>
+              <p className="text-[10px] text-muted-foreground">Últimas 20 con score en originación</p>
             </header>
             <div className="min-h-0 flex-1 overflow-auto">
               <Table>
@@ -964,10 +964,10 @@ export function AdminContent({
           <MetricTile label="Ticket promedio" value={formatARS(activos.length ? Math.round(volActivo / activos.length) : 0)} hint="Sobre cartera activa" />
           <MetricTile label="Con score" value={`${activos.filter(l => (l.scoreAtApproval || 0) > 0).length}/${activos.length}`} hint="Score al momento de aprobación" />
         </div>
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-white">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           <header className="shrink-0 border-b px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Detalle de cartera</h2>
-            <p className="text-[10px] text-slate-500">Créditos activos y aprobados pendientes de desembolso</p>
+            <p className="text-[10px] text-muted-foreground">Créditos activos y aprobados pendientes de desembolso</p>
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <Table>
@@ -1057,10 +1057,10 @@ export function AdminContent({
           <MetricTile label="Alertas críticas" value={criticas.toLocaleString('es-AR')} tone={criticas ? 'critical' : 'ok'} />
           <MetricTile label="Operadores que actuaron" value={actores.toLocaleString('es-AR')} />
         </div>
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-white">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           <header className="shrink-0 border-b px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Trazabilidad</h2>
-            <p className="text-[10px] text-slate-500">El registro no se edita ni se borra</p>
+            <p className="text-[10px] text-muted-foreground">El registro no se edita ni se borra</p>
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <Table>
@@ -1114,7 +1114,7 @@ export function AdminContent({
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <p className="rounded-lg border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+      <p className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
         Esta vista no está en el menú operativo. Volvé a Control.
       </p>
     </div>
@@ -1168,7 +1168,7 @@ function ToastFloating({
       <span className="text-sm font-medium flex-1">{toast.msg}</span>
       <button
         onClick={onClose}
-        className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+        className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-card/10 shrink-0"
       >
         <X className="h-3.5 w-3.5" />
       </button>

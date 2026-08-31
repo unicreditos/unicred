@@ -50,7 +50,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
-            className="w-full max-w-md space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="w-full max-w-md space-y-3 rounded-xl border border-border bg-card p-4 shadow-xl"
             onSubmit={(event) => {
               event.preventDefault()
               const data = new FormData(event.currentTarget)
@@ -73,7 +73,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
           >
             <div>
               <p className="text-sm font-semibold text-brand-navy-900">Registrar cobro</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {row.customerName} · cuota #{row.number} · {formatARS(row.amount)}
               </p>
             </div>
@@ -83,7 +83,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
             </label>
             <label className="block text-xs font-medium text-slate-600">
               Medio
-              <select name="method" className="mt-1 h-9 w-full rounded-md border border-slate-200 px-2 text-sm" defaultValue="transferencia_rm">
+              <select name="method" className="mt-1 h-9 w-full rounded-md border border-border px-2 text-sm" defaultValue="transferencia_rm">
                 <option value="transferencia_rm">Transferencia a tesorería RM</option>
                 <option value="efectivo">Efectivo</option>
                 <option value="mercado_pago">Mercado Pago</option>
@@ -134,11 +134,11 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-brand-navy-900">Cupones de Pago Fácil / Rapipago</h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Códigos de barras y Nº de operación ya emitidos, todavía no cobrados. Mercado Pago avisa solo cuando el cliente paga; también podés conciliar ahora. Anular invalida el talón impreso.
           </p>
         </div>
@@ -203,7 +203,7 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
       ) : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="bg-muted text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-2">Cliente</th>
               <th className="px-4 py-2">Red</th>
@@ -213,10 +213,10 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
               <th className="px-4 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {tickets.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   No hay cupones de Pago Fácil / Rapipago pendientes. Los cobros reales aparecen en Movimientos cuando Mercado Pago confirma el pago.
                 </td>
               </tr>
@@ -227,7 +227,7 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
                     <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
                       {row.customerName}
                     </Link>
-                    <p className="font-mono text-[11px] text-slate-400">{shortLoan(row.loanId)}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">{shortLoan(row.loanId)}</p>
                   </td>
                   <td className="px-4 py-3 text-xs">{paymentMethodLabel(row.method)}</td>
                   <td className="px-4 py-3 font-mono text-xs">
@@ -306,10 +306,10 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-8">
-          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-8">
+          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
             <h2 className="text-[12px] font-semibold">Mesa de cobranzas</h2>
-            <div className="flex flex-wrap gap-1 rounded-md bg-slate-50 p-0.5">
+            <div className="flex flex-wrap gap-1 rounded-md bg-muted p-0.5">
               {(
                 [
                   ['overdue', 'Vencidas'],
@@ -324,7 +324,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                   onClick={() => setFilter(id)}
                   className={cn(
                     'h-7 rounded px-2 text-[11px] font-medium',
-                    filter === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-white',
+                    filter === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-card',
                   )}
                 >
                   {label}
@@ -334,7 +334,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full min-w-[820px] text-left text-[12px]">
-              <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-1.5">Cliente</th>
                   <th className="px-3 py-1.5">Crédito</th>
@@ -346,10 +346,10 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                   <th className="px-3 py-1.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                       No hay cuotas en este filtro.
                     </td>
                   </tr>
@@ -358,7 +358,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                     <tr key={row.id} className="align-top">
                       <td className="px-3 py-2">
                         <p className="font-medium text-brand-navy-900">{row.customerName}</p>
-                        <p className="text-[10px] text-slate-500">{row.customerEmail}</p>
+                        <p className="text-[10px] text-muted-foreground">{row.customerEmail}</p>
                       </td>
                       <td className="px-3 py-2 font-mono text-[11px]">{shortLoan(row.loanId)}</td>
                       <td className="px-3 py-2">#{row.number}</td>
@@ -371,7 +371,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                       <p className={cn('text-xs font-medium', row.status === 'overdue' ? 'text-rose-700' : row.status === 'paid' ? 'text-emerald-700' : 'text-slate-600')}>
                         {installmentStatusLabel(row.status)}
                       </p>
-                      <p className="text-[11px] text-slate-400">{loanStatusLabel(row.loanStatus)}</p>
+                      <p className="text-[11px] text-muted-foreground">{loanStatusLabel(row.loanStatus)}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
                       {row.lastReceiptNumber ? (
@@ -381,7 +381,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                       ) : (
                         'Sin recibo'
                       )}
-                      <p className="text-[11px] text-slate-400">{fmtDate(row.lastPaidAt)}</p>
+                      <p className="text-[11px] text-muted-foreground">{fmtDate(row.lastPaidAt)}</p>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap justify-end gap-1">
@@ -399,11 +399,11 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
         </div>
         </section>
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:col-span-4">
-          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card">
             <OpenNetworkTickets desk={desk} />
           </div>
-          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-3 py-1.5">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-3 py-1.5">
               <h2 className="text-[12px] font-semibold">Transferencias informadas</h2>
             </div>
             <TransferReviews />
@@ -423,14 +423,14 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
         <MetricTile label="Archivo" value={String(desk.receipts.length)} hint="Últimos comprobantes" />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-7">
-          <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-7">
+          <header className="shrink-0 border-b border-border px-3 py-1.5">
             <h2 className="text-[12px] font-semibold text-brand-navy-900">Comprobantes</h2>
-            <p className="text-[10px] text-slate-500">Mismo talón que ve el cliente</p>
+            <p className="text-[10px] text-muted-foreground">Mismo talón que ve el cliente</p>
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full min-w-[720px] text-left text-[12px]">
-              <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-1.5">Número</th>
                   <th className="px-3 py-1.5">Cliente</th>
@@ -441,10 +441,10 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
                   <th className="px-3 py-1.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {desk.receipts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
                       Todavía no hay comprobantes emitidos.
                     </td>
                   </tr>
@@ -486,25 +486,25 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
 export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
   return (
     <OpsFloor>
-      <div className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className="shrink-0 rounded-lg border border-border bg-card px-3 py-2">
         <p className="text-[12px] font-semibold">Cuenta corriente operativa</p>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted-foreground">
           Cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de red viven en Cobranzas hasta que se pagan o se anulan.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <header className="shrink-0 border-b border-border px-3 py-1.5">
           <h2 className="text-[12px] font-semibold text-brand-navy-900">Historial de movimientos</h2>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto divide-y divide-slate-100">
+        <div className="min-h-0 flex-1 overflow-auto divide-y divide-border">
           {desk.movements.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-500">Sin movimientos cargados.</p>
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">Sin movimientos cargados.</p>
           ) : (
             desk.movements.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-brand-navy-900">{row.title}</p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-muted-foreground">
                     {row.customerName} · {shortLoan(row.loanId)} · {fmtDate(row.at)}
                   </p>
                 </div>
@@ -513,7 +513,7 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
                     {row.kind === 'desembolso' ? '+' : row.kind === 'pago' ? '−' : ''}
                     {formatARS(row.amount)}
                   </p>
-                  <p className="text-[10px] text-slate-500">{paymentStatusLabel(row.status) === '—' ? row.status : paymentStatusLabel(row.status)}</p>
+                  <p className="text-[10px] text-muted-foreground">{paymentStatusLabel(row.status) === '—' ? row.status : paymentStatusLabel(row.status)}</p>
                   {row.href ? (
                     <Link href={row.href} className="text-[11px] font-medium text-brand-primary hover:underline">
                       Abrir
@@ -532,19 +532,19 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
 export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
   return (
     <OpsFloor>
-      <div className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className="shrink-0 rounded-lg border border-border bg-card px-3 py-2">
         <p className="text-[12px] font-semibold">Archivo legal</p>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted-foreground">
           Contratos de mutuo, pagarés y expediente. La intimación de mora se emite desde la ficha del cliente.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <header className="shrink-0 border-b border-border px-3 py-1.5">
           <h2 className="text-[12px] font-semibold text-brand-navy-900">Contratos</h2>
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[720px] text-left text-[12px]">
-            <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-1.5">Cliente</th>
                 <th className="px-3 py-1.5">Crédito</th>
@@ -554,10 +554,10 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
                 <th className="px-3 py-1.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {desk.contracts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                     Todavía no hay contratos emitidos.
                   </td>
                 </tr>

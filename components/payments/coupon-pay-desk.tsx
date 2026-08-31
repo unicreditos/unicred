@@ -104,7 +104,7 @@ export function CouponPayDesk({
 
   if (installment.status === 'paid' || installment.status === 'cancelled') {
     return (
-      <div className="rounded-xl border bg-white p-6 text-center">
+      <div className="rounded-xl border bg-card p-6 text-center">
         <p className="text-lg font-semibold">Esta cuota ya no está abierta</p>
         <p className="mt-1 text-sm text-muted-foreground">
           {installment.paidAt
@@ -141,12 +141,12 @@ export function CouponPayDesk({
   return (
     <div className="space-y-4">
       {mpBanner ? (
-        <p className="rounded-lg border bg-white px-4 py-3 text-sm text-slate-700">{mpBanner}</p>
+        <p className="rounded-lg border bg-card px-4 py-3 text-sm text-slate-700">{mpBanner}</p>
       ) : null}
     <div className="grid gap-6 lg:grid-cols-12">
-      <section className="space-y-4 rounded-xl border bg-white p-5 lg:col-span-7">
+      <section className="space-y-4 rounded-xl border bg-card p-5 lg:col-span-7">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cuota a pagar</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cuota a pagar</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">{formatARS(installment.amount)}</p>
           <p className="text-sm text-muted-foreground">
             Cuota {String(installment.number).padStart(2, '0')} · vence {due}
@@ -165,7 +165,7 @@ export function CouponPayDesk({
                 void start(c.id, false)
               }}
               className={`rounded-lg border p-3 text-left text-sm ${
-                method === c.id ? 'border-brand-primary bg-brand-primary/5' : 'border-slate-200'
+                method === c.id ? 'border-brand-primary bg-brand-primary/5' : 'border-border'
               }`}
             >
               <span className="font-semibold">{c.label}</span>
@@ -247,7 +247,7 @@ export function CouponPayDesk({
       </section>
 
       <aside className="space-y-4 lg:col-span-5">
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-card p-5">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             <QrCode className="h-4 w-4" /> {payway ? 'QR de pago' : 'QR Mercado Pago'}
           </p>
@@ -266,34 +266,34 @@ export function CouponPayDesk({
           <div className="mt-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: barcode }} />
         </div>
 
-        <form action={sendTransfer} className="space-y-3 rounded-xl border bg-white p-5">
+        <form action={sendTransfer} className="space-y-3 rounded-xl border bg-card p-5">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             <Landmark className="h-4 w-4" /> Transferencia a RM
           </p>
           <dl className="grid gap-1.5 text-xs">
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Titular</dt>
+              <dt className="text-muted-foreground">Titular</dt>
               <dd className="font-medium">{treasury.holder}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">CUIT</dt>
+              <dt className="text-muted-foreground">CUIT</dt>
               <dd className="font-mono">{treasury.cuit}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Banco</dt>
+              <dt className="text-muted-foreground">Banco</dt>
               <dd>{treasury.bank}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">CBU</dt>
+              <dt className="text-muted-foreground">CBU</dt>
               <dd className="font-mono">{treasury.cbu}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">N° cuenta</dt>
+              <dt className="text-muted-foreground">N° cuenta</dt>
               <dd className="font-mono">{treasury.accountNumber}</dd>
             </div>
             {treasury.alias ? (
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Alias</dt>
+                <dt className="text-muted-foreground">Alias</dt>
                 <dd className="font-mono">{treasury.alias}</dd>
               </div>
             ) : null}

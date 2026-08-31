@@ -42,7 +42,7 @@ const CHIP: Record<ClientFichaStatus, { label: string; className: string; dot: s
   },
   finalizado: {
     label: 'Finalizado',
-    className: 'bg-slate-100 text-slate-600 border-slate-200',
+    className: 'bg-muted text-slate-600 border-border',
     dot: 'bg-slate-400',
   },
 }
@@ -73,7 +73,7 @@ function shortId(id: string) {
 function Field({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className={cn('mt-1 truncate text-sm text-brand-navy-900', mono && 'font-mono')}>
         {value || value === 0 ? String(value) : '—'}
       </p>
@@ -83,19 +83,19 @@ function Field({ label, value, mono }: { label: string; value?: string | number 
 
 function MediaGrid({ items }: { items: Array<{ label: string; url: string; kind: 'image' | 'video' }> }) {
   if (!items.length) {
-    return <p className="px-4 py-8 text-center text-sm text-slate-500">Didit todavía no entregó archivos para esta sección.</p>
+    return <p className="px-4 py-8 text-center text-sm text-muted-foreground">Didit todavía no entregó archivos para esta sección.</p>
   }
   return (
     <div className="grid gap-3 p-4 sm:grid-cols-2">
       {items.map((item) => (
-        <figure key={`${item.label}-${item.url}`} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+        <figure key={`${item.label}-${item.url}`} className="overflow-hidden rounded-lg border border-border bg-muted">
           {item.kind === 'video' ? (
             <video src={item.url} controls className="aspect-video w-full bg-black object-contain" />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.url} alt={item.label} className="aspect-[4/3] w-full bg-white object-contain" />
+            <img src={item.url} alt={item.label} className="aspect-[4/3] w-full bg-card object-contain" />
           )}
-          <figcaption className="flex items-center justify-between gap-2 bg-white px-3 py-2 text-xs">
+          <figcaption className="flex items-center justify-between gap-2 bg-card px-3 py-2 text-xs">
             <span className="text-slate-600">{item.label}</span>
             <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-brand-primary hover:underline">
               Abrir
@@ -117,10 +117,10 @@ function Panel({
   children: ReactNode
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <header className="border-b border-slate-100 px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-brand-navy-900">{title}</h2>
-        {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
+        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
       </header>
       {children}
     </section>
@@ -260,7 +260,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
         />
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-lg border border-border bg-card">
         <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4">
           <div className="flex min-w-0 items-start gap-3">
             {portrait ? (
@@ -272,20 +272,20 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Titular</p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Titular</p>
               <h2 className="truncate text-lg font-semibold tracking-tight text-brand-navy-900">{ficha.user.name}</h2>
-              <p className="mt-0.5 font-mono text-[12px] text-slate-500">
+              <p className="mt-0.5 font-mono text-[12px] text-muted-foreground">
                 {groupDni(ficha.profile.dni)}
                 {ficha.profile.cuil ? ` · CUIL ${ficha.profile.cuil}` : ''}
               </p>
-              <p className="mt-1 truncate text-xs text-slate-500">{ficha.user.email}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{ficha.user.email}</p>
             </div>
           </div>
           <div className="text-right">
             <StatusChip status={ficha.chip} />
-            <p className="mt-2 text-[11px] text-slate-500">Cliente desde {fmtDate(ficha.user.createdAt)}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Cliente desde {fmtDate(ficha.user.createdAt)}</p>
             {ficha.kyc.sessionId ? (
-              <p className="mt-0.5 max-w-[16rem] truncate font-mono text-[10px] text-slate-400">Didit {ficha.kyc.sessionId}</p>
+              <p className="mt-0.5 max-w-[16rem] truncate font-mono text-[10px] text-muted-foreground">Didit {ficha.kyc.sessionId}</p>
             ) : null}
           </div>
         </div>
@@ -318,7 +318,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
         />
       </div>
 
-      <div className="flex w-fit flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      <div className="flex w-fit flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
         {(
           [
             ['cuenta', 'Cuenta'],
@@ -334,7 +334,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
             onClick={() => setTab(id)}
             className={cn(
               'h-8 rounded-md px-3 text-xs font-medium transition',
-              tab === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-slate-50',
+              tab === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-muted/60',
             )}
           >
             {label}
@@ -365,7 +365,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
 
           <Panel title="Historial de pagos" hint="Cada acreditación con su recibo, si ya se emitió">
             {ficha.payments.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">Este cliente todavía no tiene pagos.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Este cliente todavía no tiene pagos.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -393,7 +393,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                               {row.receiptNumber || 'Abrir'}
                             </a>
                           ) : (
-                            <span className="text-xs text-slate-400">—</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -405,7 +405,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
           </Panel>
 
           <Panel title="Movimientos de cuenta" hint="Cuotas, desembolsos y cobros de este titular">
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {[
                 ...ficha.payments.map((row) => ({
                   id: `p-${row.id}`,
@@ -443,7 +443,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                   <div key={row.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <div>
                       <p className="text-sm font-medium text-brand-navy-900">{row.title}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         {fmtDate(row.at)}
                         {row.extra ? ` · ${row.extra}` : ''}
                       </p>
@@ -466,12 +466,12 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
       {tab === 'identidad' ? (
         <div className="space-y-4">
           <Panel title="Estado de validación" hint="El DNI, la prueba de vida y el face match los define Didit.">
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {ficha.documents.map((doc) => (
                 <div key={doc.key} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-brand-navy-900">{doc.label}</p>
-                    <p className="text-xs text-slate-500">{doc.source}</p>
+                    <p className="text-xs text-muted-foreground">{doc.source}</p>
                   </div>
                   {doc.ok ? (
                     <span className="inline-flex items-center gap-2 text-xs font-medium text-emerald-700">
@@ -513,7 +513,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
             </Panel>
           ) : (
             <Panel title="Datos extraídos del DNI">
-              <p className="px-4 py-8 text-center text-sm text-slate-500">
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                 Esta persona todavía no tiene una decisión Didit. Pedile que complete la verificación en UNICRÉDITOS.
               </p>
             </Panel>
@@ -600,7 +600,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
         <div className="space-y-4">
           {ficha.credits.length === 0 ? (
             <Panel title="Cartera">
-              <p className="px-4 py-8 text-center text-sm text-slate-500">Este cliente todavía no tiene créditos.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Este cliente todavía no tiene créditos.</p>
             </Panel>
           ) : (
             ficha.credits.map((credit) => {
@@ -620,7 +620,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                           Expediente
                         </Link>
                       </div>
-                      <p className="text-xs text-slate-500">{credit.paidCount}/{credit.term} cuotas</p>
+                      <p className="text-xs text-muted-foreground">{credit.paidCount}/{credit.term} cuotas</p>
                     </div>
                     {credit.status === 'approved' ? (
                       <div className="flex flex-wrap gap-2">
@@ -672,7 +672,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                       <Field label="Cancelación (capital)" value={formatARS(credit.settlement.settlementAmount)} />
                       <Field label="Intereses a deducir" value={formatARS(credit.settlement.interestDeduction)} />
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
                     </div>
                     <div className="overflow-x-auto">
@@ -701,7 +701,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                                 ) : row.status === 'overdue' ? (
                                   <span className="text-xs font-medium text-rose-700">Vencida</span>
                                 ) : (
-                                  <span className="text-xs text-slate-500">Pendiente</span>
+                                  <span className="text-xs text-muted-foreground">Pendiente</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-xs">{fmtDate(row.paidAt)}</TableCell>
@@ -711,7 +711,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                                     {rec.receiptNumber || 'Ver'}
                                   </a>
                                 ) : (
-                                  <span className="text-xs text-slate-400">—</span>
+                                  <span className="text-xs text-muted-foreground">—</span>
                                 )}
                               </TableCell>
                             </TableRow>

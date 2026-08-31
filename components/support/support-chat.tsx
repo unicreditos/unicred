@@ -30,6 +30,8 @@ function formatWhen(value: string) {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
+    timeZone: 'America/Argentina/Buenos_Aires',
   })
 }
 
@@ -61,9 +63,9 @@ export function SupportThread({
 
   return (
     <div className={cn('flex flex-col', variant === 'ops' ? 'h-full min-h-0' : 'min-h-[420px]')}>
-      <div className="border-b border-slate-100 px-4 py-3">
+      <div className="border-b border-border px-4 py-3">
         {variant === 'ops' ? (
-          <p className="text-xs font-medium text-slate-600">
+          <p className="text-xs font-medium text-muted-foreground">
             {agentsOnline > 1
               ? `${agentsOnline} operadores en el panel.`
               : 'Estás en línea. El cliente ve este chat y las notificaciones en tiempo real.'}
@@ -79,7 +81,7 @@ export function SupportThread({
           </p>
         )}
         {lastAgentSeenAt ? (
-          <p className="mt-1 text-[11px] text-slate-500">Última vista de un operador: {formatWhen(lastAgentSeenAt)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Última vista de un operador: {formatWhen(lastAgentSeenAt)}</p>
         ) : null}
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
@@ -94,7 +96,7 @@ export function SupportThread({
               (myUserId ? msg.authorUserId === myUserId : variant === 'ops' && msg.authorRole === 'admin')
             if (msg.kind === 'system') {
               return (
-                <p key={msg.id} className="px-2 py-1 text-center text-[11px] text-slate-500">
+                <p key={msg.id} className="px-2 py-1 text-center text-[11px] text-muted-foreground">
                   {msg.body}
                 </p>
               )
@@ -104,14 +106,14 @@ export function SupportThread({
                 <div
                   className={cn(
                     'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
-                    mine ? 'bg-brand-primary text-white' : 'bg-slate-100 text-slate-800',
+                    mine ? 'bg-brand-primary text-white' : 'bg-muted text-foreground',
                   )}
                 >
                   <p className="text-[10px] font-semibold opacity-80">
                     {mine ? 'Vos' : msg.authorRole === 'admin' ? 'Operador' : msg.authorName}
                   </p>
                   <p className="whitespace-pre-wrap">{msg.body}</p>
-                  <p className={cn('mt-1 text-[10px]', mine ? 'text-white/70' : 'text-slate-400')}>
+                  <p className={cn('mt-1 text-[10px]', mine ? 'text-white/70' : 'text-muted-foreground')}>
                     {formatWhen(msg.createdAt)}
                   </p>
                 </div>
@@ -122,7 +124,7 @@ export function SupportThread({
         <div ref={endRef} />
       </div>
       <form
-        className="flex items-end gap-2 border-t border-slate-100 p-3"
+        className="flex items-end gap-2 border-t border-border p-3"
         onSubmit={(e) => {
           e.preventDefault()
           const body = draft.trim()
@@ -199,7 +201,7 @@ export function SupportChatPanel({
   }, [selectedId])
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -252,7 +254,7 @@ export function SupportChatPanel({
               }}
               className={cn(
                 'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium',
-                selected?.id === row.id ? 'bg-brand-primary text-white' : 'bg-slate-100 text-slate-600',
+                selected?.id === row.id ? 'bg-brand-primary text-white' : 'bg-muted text-muted-foreground',
               )}
             >
               {row.channel === 'chat' ? 'Chat' : row.subject.slice(0, 28)}

@@ -14,11 +14,15 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let closed = false
       const push = async () => {
+        if (closed) return
         try {
           const inbox = await getInbox(userId, role)
+          if (closed) return
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(inbox)}\n\n`))
         } catch {
+          if (closed) return
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ items: [], stamp: '', unreadHint: 0 })}\n\n`))
         }
       }
@@ -26,6 +30,7 @@ export async function GET(request: Request) {
       await push()
       const timer = setInterval(push, 12000)
       request.signal.addEventListener('abort', () => {
+        closed = true
         clearInterval(timer)
         controller.close()
       })

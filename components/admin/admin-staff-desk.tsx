@@ -18,7 +18,7 @@ export function AdminStaffDesk({ users, currentAdminId }: { users: AdminUserRow[
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {staff.length === 0 ? (
-          <p className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-muted-foreground">
+          <p className="rounded-lg border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
             No hay otras cuentas admin además de la sesión actual, o el rol no está en el perfil.
           </p>
         ) : (

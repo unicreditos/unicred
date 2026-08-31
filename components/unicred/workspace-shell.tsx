@@ -540,10 +540,10 @@ export function DecisionBanner({
     critical: 'border-rose-200 bg-rose-50 text-rose-950',
     warn: 'border-amber-200 bg-amber-50 text-amber-950',
     ok: 'border-emerald-200 bg-emerald-50 text-emerald-950',
-    info: 'border-slate-200 bg-white text-slate-900',
+    info: 'border-border bg-card text-foreground',
   } as const
   return (
-    <div className={cn('flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between', tones[tone])}>
+    <div className={cn('flex flex-col gap-3 rounded-xl border px-4 py-3 shadow-xs sm:flex-row sm:items-center sm:justify-between', tones[tone])}>
       <div className="min-w-0">
         <p className="text-sm font-semibold">{title}</p>
         {detail ? <p className="mt-0.5 text-[13px] opacity-80">{detail}</p> : null}
@@ -571,12 +571,12 @@ export function MetricTile({
         ? 'border-emerald-200'
         : tone === 'critical'
           ? 'border-rose-200'
-          : 'border-slate-200'
+          : 'border-border'
   return (
-    <div className={cn('rounded-lg border bg-white px-3 py-2', border)}>
-      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+    <div className={cn('rounded-xl border bg-card px-3 py-2 shadow-xs', border)}>
+      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <div className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight text-brand-navy-900">{value}</div>
-      {hint ? <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   )
 }
