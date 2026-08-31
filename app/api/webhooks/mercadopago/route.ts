@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     const paymentIds: string[] = []
     let orderExternalRef: string | null = body?.data?.external_reference ?? body?.external_reference ?? null
-    let orderId: string | null = looksLikeOrder ? mpPaymentId : null
+    const orderId: string | null = looksLikeOrder ? mpPaymentId : null
 
     if (looksLikeOrder) {
       const order = await getMercadoPagoQrOrder(mpPaymentId)

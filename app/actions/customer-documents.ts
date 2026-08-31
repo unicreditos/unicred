@@ -17,7 +17,6 @@ import {
 import {
   documentKindTitle,
   isCustomerDocKind,
-  type CustomerDocKind,
 } from '@/lib/documents/customer-view'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { canViewOwnedRecord } from '@/lib/legal/access'

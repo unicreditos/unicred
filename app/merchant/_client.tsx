@@ -50,19 +50,16 @@ import { TAX_CONDITION_LABELS } from "@/lib/arca/tax-condition"
 import { getDiditPublicConfig } from "@/app/actions/didit"
 import { registerMerchant, lookupMerchantAfip, createMerchantSale } from "@/app/actions/merchant"
 import { DiditVerifyButton } from "@/components/didit-verify-button"
-import { cn } from "@/lib/utils"
 import {
   KpiCard,
   SectionCard,
   LineChart,
   DonutChart,
-  ProgressBar,
   StatusChip,
 } from "@/components/unicred/dashboard-kit"
-import { DecisionBanner, MetricTile, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
+import { DecisionBanner, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
 import { SupportChatPanel } from "@/components/support/support-chat"
 import {
-  BadgeCheck,
   Banknote,
   BarChart3,
   Calculator,
@@ -73,18 +70,14 @@ import {
   CircleDot,
   Clock3,
   CreditCard,
-  Download,
   FileBarChart,
   FileSpreadsheet,
-  FileText,
   Handshake,
   Headphones,
   HelpCircle,
   Inbox,
   LayoutDashboard,
   Mail,
-  MessageCircle,
-  Phone,
   Receipt,
   Scale,
   Sparkles,
@@ -96,7 +89,6 @@ import {
   XCircle,
   Zap,
   AlertCircle,
-  FileJson,
 } from "lucide-react"
 
 type MerchantType = {

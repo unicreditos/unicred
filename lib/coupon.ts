@@ -1,4 +1,4 @@
-import { BRAND, publicBrandWebsite } from '@/lib/brand'
+import { publicBrandWebsite } from '@/lib/brand'
 import { formatARSDecimal } from '@/lib/finance'
 import { installmentPosPath as dashboardPosPath } from '@/lib/workspace-gate'
 

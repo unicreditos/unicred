@@ -27,10 +27,8 @@ import { adminLoanHref } from '@/lib/admin-nav'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -40,36 +38,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { csvDateSuffix, downloadCsv } from '@/lib/csv'
 import { formatARS, formatCBU, formatCVU } from '@/lib/finance'
-import { kycStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { DecisionBanner, MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import * as React from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import {
-  Activity,
   AlertTriangle,
-  Building2,
   CheckCircle2,
-  Clock,
-  Coins,
-  CreditCard,
-  Eye,
   FileCheck2,
   FileSpreadsheet,
   Filter,
-  LayoutDashboard,
-  Percent,
   Receipt as ReceiptIcon,
   RefreshCw,
   Search,
-  ShieldCheck,
-  TrendingUp,
   UserCheck,
   X,
-  XCircle,
 } from 'lucide-react'
 import { KYCReviewCard, type KYCAdminRow } from '@/components/admin/kyc-review-card'
 import { markDisbursementAsCredited } from '@/app/actions/banking'
