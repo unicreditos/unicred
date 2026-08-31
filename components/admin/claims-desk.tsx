@@ -46,6 +46,8 @@ export function AdminClaimsDesk() {
   const selectedId = selected?.id
 
   useEffect(() => {
+    // Lee ?case= recién montado: window no existe en el render de servidor.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitialCaseId(new URLSearchParams(window.location.search).get('case') ?? undefined)
   }, [])
 

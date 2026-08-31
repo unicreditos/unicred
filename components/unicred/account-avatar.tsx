@@ -37,9 +37,11 @@ export function AccountAvatar({
   const [preview, setPreview] = useState(image ?? '')
   const [pending, startTransition] = useTransition()
 
-  useEffect(() => {
+  const [prevImage, setPrevImage] = useState(image ?? '')
+  if (prevImage !== (image ?? '')) {
+    setPrevImage(image ?? '')
     setPreview(image ?? '')
-  }, [image])
+  }
 
   useEffect(() => {
     return () => {

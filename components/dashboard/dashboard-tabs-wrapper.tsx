@@ -1861,8 +1861,10 @@ function PagosPanel({
   const pendingIds = pending.map((row) => row.id).join(',')
 
   useEffect(() => {
+    // Preselecciona la cuota que llega por ?pay=/?method= en el deep link.
     if (!payFromUrl) return
     if (!pendingIds.split(',').includes(payFromUrl)) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds((ids) => (ids.includes(payFromUrl) ? ids : [...ids, payFromUrl]))
     if (
       methodFromUrl &&

@@ -103,7 +103,9 @@ export function MercadoPagoCheckoutBrick({
   )
 
   useEffect(() => {
+    // Inicializa el SDK externo de Mercado Pago; sistema externo, no estado derivable.
     initMercadoPago(publicKey, { locale: 'es-AR' })
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReady(true)
   }, [publicKey])
 

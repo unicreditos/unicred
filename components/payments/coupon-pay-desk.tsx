@@ -97,6 +97,8 @@ export function CouponPayDesk({
   }, [installment.id])
 
   useEffect(() => {
+    // Arranca el checkout con el medio por defecto apenas monta la pantalla de cobro.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void start('mercado_pago', false)
   }, [start])
 

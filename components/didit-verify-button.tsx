@@ -89,9 +89,11 @@ export function DiditVerifyButton({
   const onCompletedRef = useRef(onCompleted)
   const onErrorRef = useRef(onError)
   const completedRef = useRef(false)
-  onStartedRef.current = onStarted
-  onCompletedRef.current = onCompleted
-  onErrorRef.current = onError
+  useEffect(() => {
+    onStartedRef.current = onStarted
+    onCompletedRef.current = onCompleted
+    onErrorRef.current = onError
+  })
 
   const finish = useCallback(async (id: string, hinted?: string) => {
     const res = await syncDiditSession(id).catch(() => null)

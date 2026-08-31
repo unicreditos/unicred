@@ -196,6 +196,26 @@ export function LoansDashboard({
 
   const totals = useMemo(() => computeLoanStats(listed), [listed])
 
+  const overdueInstallments = useMemo(() => {
+    // "Días de mora" es relativo al momento de la consulta; no hay forma pura de expresarlo.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now()
+    return installments
+      .filter(
+        (inst) =>
+          (inst.status !== 'paid' && inst.status !== 'cancelled' && isOverdue(inst.dueDate, inst.status)) ||
+          (inst.paidAt && new Date(inst.paidAt) > new Date(inst.dueDate)),
+      )
+      .map((inst) => {
+        const due = new Date(inst.dueDate)
+        const paid = inst.paidAt ? new Date(inst.paidAt) : null
+        const days = paid
+          ? Math.max(0, Math.ceil((paid.getTime() - due.getTime()) / 86400000))
+          : Math.max(0, Math.ceil((now - due.getTime()) / 86400000))
+        return { ...inst, paid: Boolean(paid), days }
+      })
+  }, [installments])
+
   if (!selectedLoan) {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -681,11 +701,7 @@ export function LoansDashboard({
             </div>
           </CardHeader>
         </Card>
-        {installments.some(
-          (inst) =>
-            (inst.status !== 'paid' && inst.status !== 'cancelled' && isOverdue(inst.dueDate, inst.status)) ||
-            (inst.paidAt && new Date(inst.paidAt) > new Date(inst.dueDate)),
-        ) ? (
+        {overdueInstallments.length > 0 ? (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Historial de mora</CardTitle>
@@ -695,29 +711,18 @@ export function LoansDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {installments
-                  .filter(
-                    (inst) =>
-                      (inst.status !== 'paid' && inst.status !== 'cancelled' && isOverdue(inst.dueDate, inst.status)) ||
-                      (inst.paidAt && new Date(inst.paidAt) > new Date(inst.dueDate)),
-                  )
-                  .map((inst) => {
-                    const due = new Date(inst.dueDate)
-                    const paid = inst.paidAt ? new Date(inst.paidAt) : null
-                    const days = paid
-                      ? Math.max(0, Math.ceil((paid.getTime() - due.getTime()) / 86400000))
-                      : Math.max(0, Math.ceil((Date.now() - due.getTime()) / 86400000))
-                    return (
-                      <div key={inst.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                        <span>
-                          Cuota #{inst.number} · vence {formatDate(inst.dueDate)}
-                        </span>
-                        <span className="font-mono text-xs text-rose-700">
-                          {paid ? `Pagada con ${days} día${days === 1 ? '' : 's'} de atraso` : `${days} día${days === 1 ? '' : 's'} de mora`}
-                        </span>
-                      </div>
-                    )
-                  })}
+                {overdueInstallments.map((inst) => (
+                  <div key={inst.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                    <span>
+                      Cuota #{inst.number} · vence {formatDate(inst.dueDate)}
+                    </span>
+                    <span className="font-mono text-xs text-rose-700">
+                      {inst.paid
+                        ? `Pagada con ${inst.days} día${inst.days === 1 ? '' : 's'} de atraso`
+                        : `${inst.days} día${inst.days === 1 ? '' : 's'} de mora`}
+                    </span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

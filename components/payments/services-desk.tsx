@@ -45,9 +45,7 @@ export function ServicesDesk() {
   const provider: ServiceProvider | undefined =
     providers.find((p) => p.id === providerId) ?? providers[0]
 
-  useEffect(() => {
-    if (provider && provider.id !== providerId) setProviderId(provider.id)
-  }, [category, provider, providerId])
+  if (provider && provider.id !== providerId) setProviderId(provider.id)
 
   useEffect(() => {
     start(async () => {

@@ -34,12 +34,12 @@ export function WalletDesk({
   }, [])
 
   useEffect(() => {
+    // Trae el saldo apenas monta el panel; no hay valor derivable del estado local.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh().catch((err) => toast.error((err as Error).message))
   }, [refresh])
 
-  useEffect(() => {
-    if (!payId && pendingInstallments[0]) setPayId(pendingInstallments[0].id)
-  }, [payId, pendingInstallments])
+  if (!payId && pendingInstallments[0]) setPayId(pendingInstallments[0].id)
 
   async function send() {
     setBusy(true)

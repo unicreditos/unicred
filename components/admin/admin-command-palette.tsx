@@ -6,7 +6,7 @@ import { formatARS } from '@/lib/finance'
 import { cn } from '@/lib/utils'
 import { Building2, CreditCard, Search, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 type UserHit = {
   id: string
@@ -55,9 +55,7 @@ export function AdminCommandPalette({
   const router = useRouter()
   const [q, setQ] = useState('')
 
-  useEffect(() => {
-    if (!open) setQ('')
-  }, [open])
+  if (!open && q) setQ('')
 
   const term = q.trim().toLowerCase()
   const digits = q.replace(/\D/g, '')

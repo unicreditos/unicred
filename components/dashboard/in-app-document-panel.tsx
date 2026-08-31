@@ -33,6 +33,8 @@ export function InAppDocumentPanel({
 
   useEffect(() => {
     let cancelled = false
+    // Carga el documento apenas cambia kind/id; no hay valor derivable.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState('loading')
     setError('')
     void loadCustomerDocument(kind, id).then((result) => {

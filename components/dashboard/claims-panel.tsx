@@ -22,6 +22,8 @@ const CATEGORIES: { id: string; label: string }[] = [
 export function ClaimsPanel() {
   const [initialCaseId, setInitialCaseId] = useState<string | undefined>()
   useEffect(() => {
+    // Lee ?case= recién montado: window no existe en el render de servidor.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitialCaseId(new URLSearchParams(window.location.search).get('case') ?? undefined)
   }, [])
   const [category, setCategory] = useState('cobros')

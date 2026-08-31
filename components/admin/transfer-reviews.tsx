@@ -19,6 +19,8 @@ export function TransferReviews() {
   }
 
   useEffect(() => {
+    // Trae las transferencias pendientes apenas monta; no hay valor derivable.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load().catch((err) => toast.error((err as Error).message))
   }, [])
 

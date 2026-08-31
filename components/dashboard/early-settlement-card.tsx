@@ -18,6 +18,8 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
 
   useEffect(() => {
     let cancelled = false
+    // Cotiza la cancelación anticipada apenas cambia el crédito; no hay valor derivable.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     quoteEarlySettlement(loanId)
       .then((data) => {

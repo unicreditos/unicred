@@ -137,8 +137,11 @@ export function PayInstallmentDialog({
   )
 
   useEffect(() => {
+    // Ciclo de vida del diálogo de cobro: resetea/arranca la sesión de pago
+    // real contra Mercado Pago, no es estado derivable en el render.
     if (!open) {
       startedFor.current = ''
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSession(null)
       setChosen(isConcreteMethod(method) ? method : null)
       return
@@ -193,7 +196,7 @@ export function PayInstallmentDialog({
           : `Estado del cobro: ${status}.`,
       )
     },
-    [chosen, onClose, onSettled, session?.paymentId],
+    [chosen, onClose, onSettled, session],
   )
 
   const handleBrickError = useCallback((message: string) => {

@@ -43,8 +43,10 @@ export function AdminAnalyticsDesk({
   products: ProductRow[]
   opsDesk: AdminOpsDesk
 }) {
-  const now = Date.now()
   const derived = useMemo(() => {
+    // "Últimos 30 días" es relativo al momento de la consulta; no hay forma pura de expresarlo.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now()
     const last30 = loans.filter((l) => daysAgo(l.createdAt, 30, now))
     const approved = loans.filter((l) => l.status === 'approved' || l.status === 'active' || l.status === 'paid')
     const rejected = loans.filter((l) => l.status === 'rejected')
@@ -67,7 +69,7 @@ export function AdminAnalyticsDesk({
       rejectRate: loans.length ? Math.round((rejected.length / loans.length) * 100) : 0,
       byProduct: [...byProduct.values()].sort((a, b) => b.volume - a.volume),
     }
-  }, [loans, products, now])
+  }, [loans, products])
 
   return (
     <OpsFloor>
