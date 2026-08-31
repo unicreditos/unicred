@@ -4,6 +4,8 @@
  * No es dependencia de producción: puede faltar sin afectar health ni desembolsos.
  */
 
+import { timingSafeEqual } from 'node:crypto'
+
 export type PaywayEnv = 'sandbox' | 'production'
 
 export type PaywayConfig = {
@@ -330,5 +332,12 @@ export function validatePaywayWebhook(input: {
   const provided = [input.secretHeader, input.querySecret, bearer]
     .map((v) => String(v ?? '').trim())
     .filter(Boolean)
-  return provided.some((value) => expected.includes(value))
+  return provided.some((value) => expected.some((exp) => timingSafeStringEqual(value, exp)))
+}
+
+function timingSafeStringEqual(a: string, b: string) {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
 }

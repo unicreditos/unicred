@@ -22,7 +22,7 @@ export async function submitPublicInquiry(input: {
   message: string
 }) {
   const ip = await clientKey()
-  const limit = consumeRateLimit(`contact:${ip}`, 5, 15 * 60 * 1000)
+  const limit = await consumeRateLimit(`contact:${ip}`, 5, 15 * 60 * 1000)
   if (!limit.ok) {
     throw new Error('Demasiados mensajes desde esta red. Probá de nuevo en unos minutos.')
   }

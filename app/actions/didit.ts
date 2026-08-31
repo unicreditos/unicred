@@ -72,7 +72,7 @@ export async function startDiditVerification(input?: {
   }
 
   const userId = await requireUserId()
-  const limit = consumeRateLimit(`didit:${userId}`, 6, 10 * 60 * 1000)
+  const limit = await consumeRateLimit(`didit:${userId}`, 6, 10 * 60 * 1000)
   if (!limit.ok) {
     return { ok: false as const, error: 'Demasiados intentos de verificación. Esperá unos minutos.' }
   }
@@ -148,7 +148,7 @@ export async function startDiditSignupVerification(input: {
     return { ok: false as const, error: 'Didit no está configurado. Falta DIDIT_API_KEY.' }
   }
 
-  const limit = consumeRateLimit(`didit-signup:${input.dni || input.phone || 'anon'}`, 6, 10 * 60 * 1000)
+  const limit = await consumeRateLimit(`didit-signup:${input.dni || input.phone || 'anon'}`, 6, 10 * 60 * 1000)
   if (!limit.ok) {
     return { ok: false as const, error: 'Demasiados intentos de verificación. Esperá unos minutos.' }
   }

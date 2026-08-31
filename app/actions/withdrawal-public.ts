@@ -2,11 +2,10 @@
 
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
-import { disbursement, installment, loan, loanContract, profile, user as userTable } from '@/lib/db/schema'
-import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
+import { loan, loanContract, profile, user as userTable } from '@/lib/db/schema'
+import { applyLoanWithdrawal } from '@/lib/legal/withdrawal-apply'
 import { consumeRateLimit } from '@/lib/rate-limit'
-import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
-import { and, eq, ne, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 
 async function clientKey() {
@@ -14,74 +13,12 @@ async function clientKey() {
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
 }
 
-export async function applyLoanWithdrawal(loanId: string, userId: string) {
-  const [row] = await db
-    .select()
-    .from(loan)
-    .where(and(eq(loan.id, loanId), eq(loan.userId, userId)))
-    .limit(1)
-  if (!row) return { ok: false as const, error: 'Crédito no encontrado.' }
-  if (row.status === 'cancelled' || row.status === 'rejected') {
-    return { ok: false as const, error: 'Ese crédito ya no está vigente.' }
-  }
-
-  const [contract] = await db.select().from(loanContract).where(eq(loanContract.loanId, loanId)).limit(1)
-  if (!contract || contract.status !== 'accepted' || !contract.acceptedAt) {
-    return { ok: false as const, error: 'Solo aplica a un contrato ya aceptado.' }
-  }
-
-  if (
-    !canWithdrawAcceptance({
-      contractStatus: contract.status,
-      acceptedAt: contract.acceptedAt,
-      loanStatus: row.status,
-      disbursedAt: row.disbursedAt,
-    })
-  ) {
-    const deadline = new Date(contract.acceptedAt)
-    deadline.setDate(deadline.getDate() + WITHDRAWAL_DAYS)
-    if (new Date() > deadline) {
-      return {
-        ok: false as const,
-        error: `El plazo de ${WITHDRAWAL_DAYS} días corridos venció. Usá la cancelación anticipada del saldo.`,
-      }
-    }
-    if (row.disbursedAt || row.status === 'active') {
-      return {
-        ok: false as const,
-        error:
-          'El crédito ya se acreditó. Para arrepentirte hay que devolver el capital. Escribí a soporte o cancelá el saldo.',
-      }
-    }
-    return { ok: false as const, error: 'Este crédito no admite arrepentimiento en este estado.' }
-  }
-
-  const now = new Date()
-  await db
-    .update(loan)
-    .set({ status: 'cancelled', updatedAt: now, rejectionReason: 'Arrepentimiento Ley 24.240 art. 34' })
-    .where(eq(loan.id, loanId))
-  await db.update(loanContract).set({ status: 'withdrawn', updatedAt: now }).where(eq(loanContract.id, contract.id))
-  await db
-    .update(installment)
-    .set({ status: 'cancelled' })
-    .where(and(eq(installment.loanId, loanId), eq(installment.userId, userId), ne(installment.status, 'paid')))
-  await db
-    .update(disbursement)
-    .set({ status: 'cancelled', failureReason: 'Arrepentimiento Ley 24.240', updatedAt: now })
-    .where(and(eq(disbursement.loanId, loanId), ne(disbursement.status, 'credited')))
-
-  revalidateCustomer()
-  revalidateOps()
-  return { ok: true as const }
-}
-
 export async function withdrawLoanAcceptancePublic(input: {
   cuil: string
   email: string
   reference: string
 }) {
-  const limit = consumeRateLimit(`wd:${await clientKey()}`, 5, 10 * 60 * 1000)
+  const limit = await consumeRateLimit(`wd:${await clientKey()}`, 5, 10 * 60 * 1000)
   if (!limit.ok) {
     return { ok: false as const, error: 'Demasiados intentos. Esperá unos minutos o escribinos a soporte.' }
   }

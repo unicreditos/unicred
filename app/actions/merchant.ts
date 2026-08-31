@@ -91,7 +91,7 @@ export async function getMyMerchantDocuments() {
 
 export async function lookupMerchantAfip(rawCuit: string) {
   const userId = await assertRole('customer', 'merchant')
-  const limit = consumeRateLimit(`merch-afip:${await clientKey()}`, 10, 10 * 60 * 1000)
+  const limit = await consumeRateLimit(`merch-afip:${await clientKey()}`, 10, 10 * 60 * 1000)
   if (!limit.ok) {
     return { ok: false as const, error: 'Demasiadas consultas al padrón. Esperá unos minutos.' }
   }

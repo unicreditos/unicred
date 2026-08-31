@@ -44,7 +44,7 @@ async function isIdentifierTaken(cuil: string) {
 }
 
 export async function lookupRegistrationIdentity(input: { identifier: string; accountType: AccountKind }) {
-  const limit = consumeRateLimit(`id:${await clientKey()}`, 8, 10 * 60 * 1000)
+  const limit = await consumeRateLimit(`id:${await clientKey()}`, 8, 10 * 60 * 1000)
   if (!limit.ok) {
     return { ok: false as const, error: 'Demasiadas consultas. Esperá unos minutos e intentá de nuevo.' }
   }
