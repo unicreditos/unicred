@@ -5,13 +5,16 @@ import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
-import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
 import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
+import { loanPricingFields } from '@/lib/loan-rates'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
 import { diditApprovedForUser } from '@/lib/didit'
+import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
+import { applyLoanWithdrawal } from '@/app/actions/withdrawal-public'
 import { revalidateCustomer } from '@/lib/revalidate'
 import { assertRole, getOrCreateProfile, newId } from '@/lib/session'
 import { and, desc, eq, inArray } from 'drizzle-orm'
+import { headers } from 'next/headers'
 
 export async function getLoanProducts() {
   const rows = await db.select().from(loanProduct).where(eq(loanProduct.active, true))
@@ -59,6 +62,7 @@ async function loadAppRepaymentHistory(userId: string): Promise<AppRepaymentHist
 }
 
 async function requireCustomerReadyForCredit(userId: string) {
+  await ensureOriginacionSchema()
   const prof = await getOrCreateProfile()
   if (!prof) throw new Error('Unauthorized')
 
@@ -89,6 +93,12 @@ async function requireCustomerReadyForCredit(userId: string) {
     return {
       ok: false as const,
       error: 'Verificá tu identidad con Didit antes de solicitar un crédito. No se aceptan documentos cargados a mano.',
+    }
+  }
+  if (!prof.bcraConsentAt) {
+    return {
+      ok: false as const,
+      error: 'Autorizá la consulta a la Central de Deudores del BCRA (CENDEU) antes de solicitar.',
     }
   }
 
@@ -253,6 +263,19 @@ export async function updateProfile(input: {
   return { ok: true }
 }
 
+export async function grantBcraConsent() {
+  const userId = await assertRole('customer')
+  await ensureOriginacionSchema()
+  const h = await headers()
+  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+  await db
+    .update(profile)
+    .set({ bcraConsentAt: new Date(), bcraConsentIp: ip, updatedAt: new Date() })
+    .where(eq(profile.userId, userId))
+  revalidateCustomer()
+  return { ok: true as const }
+}
+
 /**
  * Solicita un préstamo: scoring + oferta por capacidad/historial, luego decide:
  * - rejected: no califica
@@ -333,10 +356,7 @@ export async function requestLoan(input: {
       principal: String(minAmount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(stub.tna),
-      installmentAmount: String(stub.installmentAmount),
-      totalAmount: String(stub.totalAmount),
-      cft: String(stub.cft),
+      ...loanPricingFields(stub),
       status: 'rejected',
       purpose: input.purpose.trim(),
       scoreAtApproval: score.score,
@@ -406,10 +426,7 @@ export async function requestLoan(input: {
       principal: String(amount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(amort.tna),
-      installmentAmount: String(amort.installmentAmount),
-      totalAmount: String(amort.totalAmount),
-      cft: String(amort.cft),
+      ...loanPricingFields(amort),
       status,
       purpose: input.purpose.trim(),
       scoreAtApproval: score.score,
@@ -534,65 +551,7 @@ export async function getLoanInstallments(loanId: string) {
 
 export async function withdrawLoanAcceptance(loanId: string) {
   const userId = await assertRole('customer')
-  const [row] = await db
-    .select()
-    .from(loan)
-    .where(and(eq(loan.id, loanId), eq(loan.userId, userId)))
-    .limit(1)
-  if (!row) return { ok: false as const, error: 'Crédito no encontrado.' }
-  if (row.status === 'cancelled' || row.status === 'rejected') {
-    return { ok: false as const, error: 'Ese crédito ya no está vigente.' }
-  }
-
-  const { loanContract } = await import('@/lib/db/schema')
-  const [contract] = await db
-    .select()
-    .from(loanContract)
-    .where(eq(loanContract.loanId, loanId))
-    .limit(1)
-  if (!contract || contract.status !== 'accepted' || !contract.acceptedAt) {
-    return { ok: false as const, error: 'Solo aplica a un contrato ya aceptado.' }
-  }
-
-  if (
-    !canWithdrawAcceptance({
-      contractStatus: contract.status,
-      acceptedAt: contract.acceptedAt,
-      loanStatus: row.status,
-      disbursedAt: row.disbursedAt,
-    })
-  ) {
-    const deadline = new Date(contract.acceptedAt)
-    deadline.setDate(deadline.getDate() + WITHDRAWAL_DAYS)
-    if (new Date() > deadline) {
-      return {
-        ok: false as const,
-        error: `El plazo de ${WITHDRAWAL_DAYS} días corridos venció. Usá la cancelación anticipada del saldo.`,
-      }
-    }
-    if (row.disbursedAt || row.status === 'active') {
-      return {
-        ok: false as const,
-        error:
-          'El crédito ya se acreditó. Para arrepentirte hay que devolver el capital. Escribí a soporte o cancelá el saldo.',
-      }
-    }
-    return { ok: false as const, error: 'Este crédito no admite arrepentimiento en este estado.' }
-  }
-
-  const now = new Date()
-  await db.update(loan).set({ status: 'cancelled', updatedAt: now, rejectionReason: 'Arrepentimiento Ley 24.240 art. 34' }).where(eq(loan.id, loanId))
-  await db
-    .update(loanContract)
-    .set({ status: 'withdrawn', updatedAt: now })
-    .where(eq(loanContract.id, contract.id))
-  await db
-    .update(installment)
-    .set({ status: 'cancelled', paidAt: now })
-    .where(and(eq(installment.loanId, loanId), eq(installment.userId, userId)))
-
-  revalidateCustomer()
-  return { ok: true as const }
+  return applyLoanWithdrawal(loanId, userId)
 }
 
 /*

@@ -1,6 +1,6 @@
 'use client'
 
-import { approveLoan, rejectLoan, markLoanAsActive, markLoanAsPaid, updateLoanManual, ensureLoanExpediente } from '@/app/actions/admin'
+import { approveLoan, rejectLoan, markLoanAsActive, markLoanAsPaid, updateLoanManual, ensureLoanExpediente, deleteLoanAdmin } from '@/app/actions/admin'
 import { issueIntimation } from '@/app/actions/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,11 +19,12 @@ import {
 import { formatARS } from '@/lib/finance'
 import { allowedAdminTransitions, LOAN_STATUS_LABELS, type LoanStatus } from '@/lib/loan-state'
 import { cn } from '@/lib/utils'
-import { Check, CheckCircle2, Clock, Edit3, FileText, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { Check, CheckCircle2, Clock, Edit3, Eye, FileText, Loader2, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { adminClientHref, adminLoanHref } from '@/lib/admin-nav'
 
 type LoanRow = {
   id: string
@@ -272,6 +273,23 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     })
   }
 
+  const handleDelete = (l: LoanRow) => {
+    if (!window.confirm(`¿Borrar el crédito ${shortId(l.id)}? Solo se elimina si está pendiente, rechazado o anulado.`)) return
+    startTransition(async () => {
+      try {
+        const r = await deleteLoanAdmin(l.id)
+        if (!r.ok) {
+          toast.error(r.error)
+          return
+        }
+        toast.success('Crédito eliminado')
+        router.refresh()
+      } catch (err: unknown) {
+        toast.error(actionError(err, 'No se pudo eliminar el crédito'))
+      }
+    })
+  }
+
   const renderActions = (l: LoanRow) => {
     if (l.status === 'pending') {
       return (
@@ -286,6 +304,9 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
           </Button>
           <Button size="sm" variant="outline" disabled={isPending} className="gap-1" onClick={() => openEdit(l)}>
             <Edit3 className="h-3.5 w-3.5" /> Editar
+          </Button>
+          <Button size="sm" variant="ghost" disabled={isPending} className="gap-1 text-destructive" onClick={() => handleDelete(l)}>
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
           </Button>
         </div>
       )
@@ -311,6 +332,9 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
           </Button>
           <Button size="sm" variant="outline" disabled={isPending} className="gap-1 text-amber-700 border-amber-200 hover:bg-amber-50" onClick={() => openEdit(l)}>
             <Edit3 className="h-3.5 w-3.5" /> Editar
+          </Button>
+          <Button size="sm" variant="ghost" disabled={isPending} className="gap-1 text-destructive" onClick={() => handleDelete(l)}>
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
           </Button>
         </div>
       )
@@ -340,9 +364,16 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
       )
     }
     return (
-      <Button size="sm" variant="outline" disabled={isPending} className="gap-1" onClick={() => openEdit(l)}>
-        <Edit3 className="h-3.5 w-3.5" /> Editar
-      </Button>
+      <div className="flex flex-wrap justify-end gap-1.5">
+        <Button size="sm" variant="outline" disabled={isPending} className="gap-1" onClick={() => openEdit(l)}>
+          <Edit3 className="h-3.5 w-3.5" /> Editar
+        </Button>
+        {l.status === 'cancelled' ? (
+          <Button size="sm" variant="ghost" disabled={isPending} className="gap-1 text-destructive" onClick={() => handleDelete(l)}>
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+          </Button>
+        ) : null}
+      </div>
     )
   }
 
@@ -373,9 +404,15 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
             )}
             {loans.map((l) => (
               <TableRow key={l.id} className={cn(l.rejectionReason && l.status === 'rejected' ? 'bg-rose-50/30' : '')}>
-                <TableCell className="font-mono text-xs">{shortId(l.id)}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  <Link href={adminLoanHref(l.id, l.status)} className="hover:underline">
+                    {shortId(l.id)}
+                  </Link>
+                </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">
-                  {shortId(l.userId)}
+                  <Link href={adminClientHref(l.userId)} className="hover:underline">
+                    {shortId(l.userId)}
+                  </Link>
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatARS(l.principal)}
@@ -444,7 +481,14 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
                   {formatDate(l.createdAt)}
                 </TableCell>
                 <TableCell className="text-right min-w-[220px]">
-                  {renderActions(l)}
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <Button size="sm" variant="ghost" className="h-8" asChild>
+                      <Link href={adminLoanHref(l.id, l.status)}>
+                        <Eye className="h-3.5 w-3.5" /> Expediente
+                      </Link>
+                    </Button>
+                    {renderActions(l)}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

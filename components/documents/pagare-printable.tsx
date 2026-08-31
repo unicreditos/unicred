@@ -64,9 +64,8 @@ export function PagarePrintable({ contract }: { contract: ContractDocData }) {
             contrato de préstamo (mutuo).
           </li>
           <li>
-            <strong>Intereses.</strong> Desde el vencimiento y hasta el efectivo pago, el capital
-            de este pagaré puede devengar los punitorios que, si se liquidan, se informan según
-            el contrato de préstamo, sin capitalización de oficio ni perjuicio de costas.
+            <strong>Intereses.</strong> {LEGAL_COPY.punitorios} Este pagaré no devenga punitorios
+            distintos de los del contrato de préstamo (mutuo).
           </li>
           <li>
             <strong>Endoso y cesión.</strong> El Acreedor puede endosar o ceder este pagaré. El

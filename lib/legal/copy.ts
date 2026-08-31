@@ -5,9 +5,9 @@
 
 import { BRAND, legalPartyLine } from '@/lib/brand'
 
-export const LEGAL_REVISION = '23/08/2026'
-export const LEGAL_TCG_VERSION = 'TCG-v9.1'
-export const LEGAL_PRIVACY_VERSION = 'Privacy-v4.0'
+export const LEGAL_REVISION = '30/08/2026'
+export const LEGAL_TCG_VERSION = 'TCG-v9.2'
+export const LEGAL_PRIVACY_VERSION = 'Privacy-v4.1'
 
 export const LEGAL_COPY = {
   contractTitle: 'Contrato de préstamo (mutuo con interés) y emisión de pagaré',
@@ -29,7 +29,18 @@ export const LEGAL_COPY = {
     'El CFT publicado es el costo del interés más IVA (TEA × 1,21), calculado por el motor UNICRÉDITOS. No es el indicador metodológico completo de un régimen de transparencia BCRA de entidad inscripta. Si hubiera otros cargos, se incluirían en la oferta antes de firmar.',
 
   cftContractNote:
-    'El CFT se informa como TEA × 1,21 (IVA sobre intereses), sin seguros ni gastos de otorgamiento al deudor en la versión vigente. La simulación previa es informativa; rigen este contrato y la liquidación de cada cuota.',
+    'El CFT se informa como TEA × 1,21 (IVA 21% sobre intereses), sin seguros ni gastos de otorgamiento al deudor en la versión vigente. No es el CFT metodológico de flujos de un sujeto BCRA. La simulación previa es informativa; rigen este contrato y la liquidación de cada cuota. TEA, TNA y CFT se consignan en la sección de costo.',
+
+  cftPublicLabel: 'CFT est. (IVA sobre intereses)',
+
+  punitorios:
+    'La tasa de interés punitorio de este mutuo es 0% (cero). UNICRÉDITOS no liquida ni capitaliza punitorios. En mora se exige el capital y los intereses compensatorios de la cuota vencida, más costas razonables de cobranza si correspondieran.',
+
+  walletLedger:
+    'El saldo de la billetera UNICRÉDITOS es un ledger interno. No es un CVU ni un alias Coelsa, ni una cuenta de un PSP inscripto. El crédito se acredita en el CBU, CVU o alias bancario a tu nombre cargado en Cuentas de desembolso.',
+
+  feAnnex:
+    'El recibo interno no reemplaza la factura electrónica ARCA del IVA sobre intereses. Esa factura se emite (o queda en cola de CAE) al cobrar cada cuota.',
 
   /** Consulta BCRA: sí con autorización. Reporte: solo si el régimen lo permite. */
   bcraConsulta:

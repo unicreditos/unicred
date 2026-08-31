@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       }
 
       await push()
-      const timer = setInterval(push, 8000)
+      const timer = setInterval(push, 12000)
       request.signal.addEventListener('abort', () => {
         clearInterval(timer)
         controller.close()

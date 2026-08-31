@@ -18,6 +18,7 @@ export default function UsuarioFinancieroPage() {
     { t: 'Domicilio', d: BRAND.address },
     { t: 'Sitio', d: BRAND.domain },
     { t: 'Atención', d: BRAND.supportEmail },
+    { t: 'Responsable de atención', d: `El operador legal (${BRAND.legalName}). Canal: ${BRAND.supportEmail}.` },
   ]
 
   const products = [

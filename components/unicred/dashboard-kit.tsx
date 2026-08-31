@@ -751,10 +751,10 @@ export function AppHeader({
 export function TrustBar() {
   const items = [
     { icon: <Landmark className="h-4 w-4" />, label: 'Consulta Central de Deudores BCRA' },
-    { icon: <FileCheck2 className="h-4 w-4" />, label: 'TNA y CFT informados' },
+    { icon: <FileCheck2 className="h-4 w-4" />, label: 'TNA y CFT antes de firmar' },
     { icon: <Clock className="h-4 w-4" />, label: 'Cuota fija · sistema francés' },
-    { icon: <Shield className="h-4 w-4" />, label: 'Datos protegidos · Ley 25.326' },
-    { icon: <Globe2 className="h-4 w-4" />, label: '100% digital en todo el país' },
+    { icon: <Shield className="h-4 w-4" />, label: 'Identidad Didit · Ley 25.326' },
+    { icon: <Globe2 className="h-4 w-4" />, label: 'Contrato y pagaré en tu panel' },
   ]
   return (
     <div className="w-full bg-brand-navy-800 text-slate-200">
@@ -774,33 +774,44 @@ export function TrustBar() {
 
 export function HeroLanding() {
   return (
-    <section className="relative overflow-hidden bg-brand-navy text-white">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-navy via-[#0a1f18] to-brand-primary-900" />
+    <section className="relative overflow-hidden border-b border-white/10 bg-brand-navy text-white">
+      <div className="absolute inset-0 bg-[#07140f]" />
       <div
-        className="pointer-events-none absolute -left-24 top-0 h-[480px] w-[480px] rounded-full bg-brand-primary/25 blur-3xl"
+        className="pointer-events-none absolute -left-28 top-8 h-[420px] w-[480px] rounded-full bg-brand-primary/20 blur-3xl"
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute -right-16 bottom-0 h-[360px] w-[360px] rounded-full bg-brand-cian-500/20 blur-3xl"
-        aria-hidden
-      />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-12 lg:gap-12 lg:py-24">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-12 lg:py-24">
         <div className="lg:col-span-7">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-cian-200">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
-            {GROUP.productLine}
+            {GROUP.productLine} · crédito en línea
           </p>
-          <h1 className="mt-6 text-[42px] font-bold leading-[1.05] tracking-tight text-white sm:text-[56px] lg:text-[64px]">
-            UNICRÉDITOS
+          <h1 className="mt-6 max-w-3xl text-[40px] font-bold leading-[1.06] tracking-tight text-white sm:text-[54px] lg:text-[60px]">
+            Un crédito que se entiende antes de pedirlo.
           </h1>
-          <p className="mt-4 max-w-xl text-xl font-medium leading-snug text-brand-cian-100 sm:text-2xl">
+          <p className="mt-5 max-w-xl text-lg font-medium leading-snug text-brand-cian-100 sm:text-xl">
             {BRAND.valueProp}
           </p>
-          <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75">
-            Préstamos digitales, compras en cuotas sin tarjeta, billetera y pagos de servicios. TNA y
-            CFT a la vista antes de firmar.
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-white/75">
+            Simulá la cuota, verificá tu identidad y consultamos la Central de Deudores del BCRA.
+            Firmás recién cuando ves TNA, CFT, plan de pagos y el contrato. Sin sucursal y con
+            reclamos formales, no canales informales de cobro.
           </p>
-          <dl className="mt-8 grid max-w-lg grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href="/simulador"
+              className="inline-flex items-center rounded-full bg-brand-primary px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-primary-600"
+            >
+              Simular mi crédito
+            </Link>
+            <Link
+              href="/sign-up"
+              className="inline-flex items-center rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Solicitar evaluación
+            </Link>
+          </div>
+          <dl className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
               <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
                 Tope del primer crédito
@@ -815,70 +826,51 @@ export function HeroLanding() {
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">3 a 48</dd>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 sm:col-span-1 col-span-2">
+            <div className="col-span-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 sm:col-span-1">
               <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
                 Antes de firmar
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">TNA y CFT</dd>
             </div>
           </dl>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center rounded-full bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-brand-primary/30 transition hover:bg-brand-primary-600"
-            >
-              Empezá ahora
-            </Link>
-            <Link
-              href="/simulador"
-              className="inline-flex items-center rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
-            >
-              Simular cuota
-            </Link>
-          </div>
         </div>
 
-        <div className="relative lg:col-span-5">
-          <div
-            className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-brand-primary/30 to-brand-cian-500/10 blur-2xl"
-            aria-hidden
-          />
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/5 p-6 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8">
+        <div className="lg:col-span-5">
+          <div className="rounded-[1.75rem] border border-white/15 bg-white/[0.06] p-6 sm:p-8">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-cian-200">
-              Una sola cuenta
+              Lo que sí hacemos
             </p>
             <ul className="mt-5 space-y-4">
               {[
-                { t: 'Préstamo digital', d: 'Hasta 48 cuotas fijas · KYC + BCRA' },
-                { t: 'Cuotas sin tarjeta', d: 'Tienda física y checkout online' },
-                { t: 'Billetera + servicios', d: 'Saldo, transferencias y recargas' },
+                {
+                  t: 'Costo completo a la vista',
+                  d: 'Cuota, TNA, CFT con IVA e intereses. Sin letra chica de último momento.',
+                },
+                {
+                  t: 'Persona verificada',
+                  d: 'Didit: DNI, prueba de vida y coincidencia facial. No hay crédito anónimo.',
+                },
+                {
+                  t: 'Evaluación con BCRA',
+                  d: 'Central de Deudores con tu autorización. Tope de cuota: 35% de ingresos.',
+                },
+                {
+                  t: 'Contrato descargable',
+                  d: `Mutuo, pagaré, cuponera y recibos. Operador: ${BRAND.legalName}`,
+                },
               ].map((item) => (
-                <li
-                  key={item.t}
-                  className="flex gap-3 border-b border-white/10 pb-4 last:border-0 last:pb-0"
-                >
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-primary" />
+                <li key={item.t} className="flex gap-3 border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-primary" />
                   <div>
                     <p className="font-bold text-white">{item.t}</p>
-                    <p className="mt-0.5 text-sm text-white/65">{item.d}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-white/65">{item.d}</p>
                   </div>
                 </li>
               ))}
             </ul>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Link
-                href="/comprar-en-cuotas"
-                className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/10"
-              >
-                Comprar en cuotas
-              </Link>
-              <Link
-                href="/prestamos"
-                className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/10"
-              >
-                Pedir préstamo
-              </Link>
-            </div>
+            <p className="mt-6 text-[11px] leading-relaxed text-white/55">
+              No somos un banco y no captamos depósitos. No afirmamos inscripción PNFC hasta publicar constancia.
+            </p>
           </div>
         </div>
       </div>

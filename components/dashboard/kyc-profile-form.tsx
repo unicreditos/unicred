@@ -1,6 +1,6 @@
 'use client'
 
-import { updateProfile } from '@/app/actions/loans'
+import { grantBcraConsent, updateProfile } from '@/app/actions/loans'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { formatARS } from '@/lib/finance'
 import { profile } from '@/lib/db/schema'
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AccountAvatar } from '@/components/unicred/account-avatar'
 import { CheckCircle2, Loader2 } from 'lucide-react'
@@ -48,6 +48,7 @@ export function KYCProfileForm({
   user?: { name?: string | null; email?: string | null; image?: string | null }
 }) {
   const router = useRouter()
+  const [consentPending, startConsent] = useTransition()
   const [formState, action, isPending] = useActionState(
     async (_prev: { ok?: boolean; error?: string; message?: string } | null, formData: FormData) => {
       try {
@@ -281,6 +282,36 @@ export function KYCProfileForm({
           </CardFooter>
         </form>
       </Card>
+      {!initialProfile?.bcraConsentAt ? (
+        <Card className="border-amber-200/80">
+          <CardHeader>
+            <CardTitle className="text-base">Autorización CENDEU</CardTitle>
+            <CardDescription>
+              Sin esta autorización no se puede consultar la Central de Deudores ni solicitar un crédito.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={consentPending}
+              onClick={() => {
+                startConsent(async () => {
+                  await grantBcraConsent()
+                  router.refresh()
+                })
+              }}
+            >
+              Autorizo la consulta a la Central de Deudores del BCRA
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Consulta CENDEU autorizada el{' '}
+          {new Date(initialProfile.bcraConsentAt).toLocaleString('es-AR')}.
+        </p>
+      )}
     </div>
   )
 }

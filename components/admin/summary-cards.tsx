@@ -26,6 +26,7 @@ export type StatsData = {
     rejected: number
     paid: number
     volume: number
+    outstanding?: number
   }
   users: { total: number; customers: number; merchants: number; admins: number }
   merchants: { total: number; pending: number; active: number; rejected: number }

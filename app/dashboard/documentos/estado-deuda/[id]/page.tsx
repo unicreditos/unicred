@@ -2,6 +2,7 @@ import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { EstadoDeudaPrintable } from '@/components/documents/estado-deuda-printable'
 import { Button } from '@/components/ui/button'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { loadContractPackForViewer } from '@/lib/legal/loan-pack'
@@ -11,9 +12,17 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EstadoDeudaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EstadoDeudaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
+  const id = String((await params).id ?? '').trim()
+  await keepCustomerInDashboard('estado-deuda', id, searchParams)
   const userId = await requireUserId()
-  const data = await loadContractPackForViewer(userId, String((await params).id ?? '').trim())
+  const data = await loadContractPackForViewer(userId, id)
   const backHref = await documentBackHref(userId)
 
   if (!data) {

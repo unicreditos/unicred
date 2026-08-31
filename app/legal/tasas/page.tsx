@@ -16,7 +16,7 @@ export default function TasasPage() {
     <PublicPageShell
       eyebrow="Transparencia"
       title="Comisiones, cargos y tasas"
-      description="Referencias del catálogo operativo. El CFT contractual se confirma en la oferta y el mutuo."
+      description="Referencias del catálogo operativo. TNA, TEA y CFT est. (IVA sobre intereses) se confirman en la oferta y el mutuo."
       icon={<Percent className="h-3.5 w-3.5" />}
       primaryAction={{ href: '/simulador', label: 'Simular cuota' }}
     >
@@ -27,7 +27,8 @@ export default function TasasPage() {
               <tr>
                 <th className="px-4 py-3">Producto</th>
                 <th className="px-4 py-3">TNA ref.</th>
-                <th className="px-4 py-3">CFT ref.</th>
+                <th className="px-4 py-3">TEA ref.</th>
+                <th className="px-4 py-3">CFT est.</th>
                 <th className="px-4 py-3">Plazo</th>
               </tr>
             </thead>
@@ -36,6 +37,7 @@ export default function TasasPage() {
                 <tr key={p.id} className="border-t border-border/60">
                   <td className="px-4 py-3 font-semibold text-brand-navy">{p.name}</td>
                   <td className="px-4 py-3 tabular-nums">{p.tnaLabel}</td>
+                  <td className="px-4 py-3 tabular-nums">{p.teaLabel}</td>
                   <td className="px-4 py-3 tabular-nums">{p.cftLabel}</td>
                   <td className="px-4 py-3">
                     {p.minTerm}–{p.maxTerm} meses
@@ -46,8 +48,9 @@ export default function TasasPage() {
           </table>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Sistema francés (cuota fija). Impuestos aplicables según normativa. Comisiones de comercio se
-          informan al adherir el local. No hay cargos ocultos post-firma fuera del contrato.
+          Sistema francés (cuota fija). CFT = TEA × 1,21 (IVA 21% sobre intereses), sin seguros ni
+          gastos de otorgamiento. Punitorios: 0%. Comisiones de comercio se informan al adherir el
+          local. No hay cargos ocultos post-firma fuera del contrato.
         </p>
       </PageSection>
     </PublicPageShell>

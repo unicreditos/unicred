@@ -18,7 +18,7 @@ import { revalidateOps } from '@/lib/revalidate'
 import { notifyDisbursementCredited } from '@/lib/notify-email'
 import { and, eq, sql, desc, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { formatCBU, formatCVU, formatAlias, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
+import { isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { persistBankLookup, toExtractedProfile } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { parseWalletDestination } from '@/lib/payments/cvu'
@@ -675,22 +675,12 @@ export async function markDisbursementAsCredited(
     .where(eq(disbursement.id, disbursementId))
     .limit(1)
   if (!d) throw new Error('Desembolso no encontrado')
-  if (d.status === 'credited') throw new Error('Desembolso ya acreditado')
+  if (d.status === 'credited' || d.status === 'completed') throw new Error('Desembolso ya acreditado')
 
   const now = new Date()
   // Determinístico: si el admin hace doble clic, el segundo intento choca contra
   // el número de comprobante ya emitido en vez de generar uno nuevo.
   const receiptNumber = `DES-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${d.id.slice(-8).toUpperCase()}`
-
-  const bank = d.bankAccountId
-    ? (
-        await db
-          .select()
-          .from(bankAccount)
-          .where(eq(bankAccount.id, d.bankAccountId))
-          .limit(1)
-      )[0]
-    : undefined
 
   const loan = d.loanId
     ? (
@@ -711,6 +701,35 @@ export async function markDisbursementAsCredited(
   if (loan && opts?.requireSignedContract !== false) {
     await requireAcceptedContract(loan.id)
   }
+
+  let destinationId = d.bankAccountId
+  if (!destinationId) {
+    const [dest] = await db
+      .select({ id: bankAccount.id })
+      .from(bankAccount)
+      .where(and(eq(bankAccount.userId, d.userId), eq(bankAccount.isActive, true)))
+      .orderBy(desc(bankAccount.isPrimary))
+      .limit(1)
+    destinationId = dest?.id ?? null
+    if (destinationId) {
+      await db.update(disbursement).set({ bankAccountId: destinationId, updatedAt: now }).where(eq(disbursement.id, d.id))
+    }
+  }
+  if (loan && !destinationId) {
+    throw new Error(
+      'El titular no tiene CBU/CVU de desembolso. Pedile que lo cargue en el panel antes de acreditar.',
+    )
+  }
+
+  const bank = destinationId
+    ? (
+        await db
+          .select()
+          .from(bankAccount)
+          .where(eq(bankAccount.id, destinationId))
+          .limit(1)
+      )[0]
+    : undefined
 
   const custRows = await db
     .select({

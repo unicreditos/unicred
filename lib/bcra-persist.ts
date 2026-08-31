@@ -8,6 +8,7 @@ import {
 } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { bcraCheck, profile } from '@/lib/db/schema'
+import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { newId } from '@/lib/session'
 import { eq } from 'drizzle-orm'
 
@@ -34,10 +35,26 @@ export async function persistBcraConsultation(opts: {
   userId: string
   cuil: string
   monthlyIncome?: number
+  skipConsent?: boolean
 }): Promise<PersistedBcraConsultation | { ok: false; error: string }> {
+  await ensureOriginacionSchema()
   const cuil = normalizeCuit(opts.cuil)
   if (!isValidCuit(cuil)) {
     return { ok: false, error: 'CUIL/CUIT inválido. Verificá los 11 dígitos.' }
+  }
+
+  if (!opts.skipConsent) {
+    const [consent] = await db
+      .select({ bcraConsentAt: profile.bcraConsentAt })
+      .from(profile)
+      .where(eq(profile.userId, opts.userId))
+      .limit(1)
+    if (!consent?.bcraConsentAt) {
+      return {
+        ok: false,
+        error: 'Autorizá la consulta a la Central de Deudores del BCRA (CENDEU) para continuar.',
+      }
+    }
   }
 
   const snapshot = await consultFullBcra(cuil)

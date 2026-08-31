@@ -1,13 +1,15 @@
 import { FeatureCard, Grid, PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { formatARS } from '@/lib/finance'
-import { COMERCIO_QUOTE, CONSUMO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { LEGAL_COPY } from '@/lib/legal/copy'
+import { COMERCIO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import { pageMetadata } from '@/lib/seo'
-import { BadgeCheck, Landmark, Scale, Shield, Store, Wallet } from 'lucide-react'
+import { BadgeCheck, Building2, Landmark, Scale, Shield, Wallet } from 'lucide-react'
 
 export const metadata = pageMetadata({
-  title: 'Productos · Créditos',
+  title: 'Productos · Créditos en línea',
   description:
-    'Préstamo personal, crédito comercial y consumo en comercios. TNA y CFT de referencia del catálogo operativo. Sujeto a evaluación.',
+    'Préstamo personal y crédito comercial PyME. TNA y CFT de referencia del catálogo operativo. Sujeto a evaluación.',
   path: '/productos',
 })
 
@@ -15,14 +17,15 @@ export default function ProductosPage() {
   const productos = [
     {
       icon: <Wallet className="h-6 w-6" />,
-      tag: 'Personas',
+      tag: 'Personas · producto principal',
       id: 'personal',
-      title: 'Préstamo Personal',
+      title: 'Préstamo personal',
       subtitle: `Cuota fija · TNA de referencia ${PERSONAL_QUOTE.tnaLabel}`,
       bullets: [
         `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)}`,
         `${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas mensuales fijas`,
-        'Acreditación cuando tesorería confirma el desembolso, no un plazo fijo de 24 hs',
+        `Primer crédito acotado a ${formatARS(FIRST_CREDIT_HARD_CAP)}`,
+        'Acreditación cuando tesorería confirma el desembolso',
         'Requisito: DNI + CUIL + CBU/CVU + ingresos + KYC Didit',
       ],
       rate: PERSONAL_QUOTE,
@@ -30,10 +33,10 @@ export default function ProductosPage() {
       tone: 'from-brand-primary/10 to-brand-cian-500/10 border-brand-primary/20',
     },
     {
-      icon: <Store className="h-6 w-6" />,
-      tag: 'PyME · Capital de trabajo',
+      icon: <Building2 className="h-6 w-6" />,
+      tag: 'PyME · capital de trabajo',
       id: 'comercial',
-      title: 'Crédito Comercial',
+      title: 'Crédito comercial',
       subtitle: 'Préstamo puntual. No es una línea revolvente.',
       bullets: [
         `Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)}`,
@@ -42,39 +45,23 @@ export default function ProductosPage() {
         'Evaluación con KYC y Central de Deudores',
       ],
       rate: COMERCIO_QUOTE,
-      cta: { href: '/sign-up', label: 'Solicitar línea comercial' },
+      cta: { href: '/sign-up', label: 'Solicitar crédito comercial' },
       tone: 'from-emerald-500/10 to-brand-cian-500/10 border-emerald-500/20',
-    },
-    {
-      icon: <Store className="h-6 w-6" />,
-      tag: 'Punto de venta',
-      id: 'consumo',
-      title: 'Crédito Consumo',
-      subtitle: 'El deudor es el cliente, no el comercio',
-      bullets: [
-        `${CONSUMO_QUOTE.minTerm} a ${CONSUMO_QUOTE.maxTerm} cuotas`,
-        `Hasta ${formatARS(CONSUMO_QUOTE.maxAmount)}`,
-        'El cliente debe tener cuenta UNICRÉDITOS y KYC aprobado',
-        'El comercio cobra el neto cuando UNICRÉDITOS acredita',
-      ],
-      rate: CONSUMO_QUOTE,
-      cta: { href: '/red-comercios', label: 'Ver red de comercios' },
-      tone: 'from-brand-cian-500/10 to-sky-400/10 border-brand-cian-500/20',
     },
   ]
 
   return (
     <PublicPageShell
-      eyebrow="Portafolio"
-      title="Nuestros productos de crédito"
-      description="Tres líneas de crédito más billetera, pagos de servicios y red de comercios. Las tasas salen del mismo catálogo que usa el simulador y el contrato."
+      eyebrow="Catálogo"
+      title="Crédito personal y crédito comercial"
+      description="Dos líneas de originación online. Las tasas salen del mismo catálogo que usa el simulador y el contrato."
       icon={<Wallet className="h-3.5 w-3.5" />}
       primaryAction={{ href: '/simulador', label: 'Abrir simulador' }}
       secondaryAction={{ href: '/contacto', label: 'Consultar' }}
     >
       <div className="space-y-6">
-        <PageSection eyebrow="Líneas disponibles" title="Elegí el producto que mejor se adapta">
-          <Grid cols={3}>
+        <PageSection eyebrow="Líneas disponibles" title="Elegí el producto">
+          <Grid cols={2}>
             {productos.map((p) => (
               <div id={p.id} key={p.title} className={`flex h-full scroll-mt-28 flex-col gap-4 rounded-3xl border bg-gradient-to-br p-6 ${p.tone}`}>
                 <div className="flex items-start justify-between">
@@ -105,7 +92,7 @@ export default function ProductosPage() {
                     </div>
                   </div>
                   <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-                    {p.rate.metricHint}. El CFT informado es la TEA más IVA 21% sobre intereses. No incluye seguros ni gastos extra; hoy el motor no los cobra. La tasa del contrato puede diferir según evaluación.
+                    {p.rate.metricHint}. {LEGAL_COPY.cftShort} La tasa del contrato puede diferir según evaluación.
                   </p>
                 </div>
                 <a href={p.cta.href} className="mt-auto inline-flex w-full items-center justify-center rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
@@ -116,14 +103,14 @@ export default function ProductosPage() {
           </Grid>
         </PageSection>
 
-        <PageSection eyebrow="Servicios que sí existen" title="Lo que podés hacer hoy">
+        <PageSection eyebrow="Cómo operamos" title="Lo que ves antes de firmar">
           <Grid cols={3}>
-            <FeatureCard icon={<Wallet className="h-5 w-5" />} title="Préstamo digital" description="Pedilo online, KYC Didit, BCRA y acreditación en tu CBU/CVU." />
-            <FeatureCard icon={<Store className="h-5 w-5" />} title="Cuotas sin tarjeta" description="Comprá en comercios físicos u online. Promo 0% si el local la absorbe." />
-            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Pagos y recargas" description="Servicios, impuestos y celular con saldo de billetera UNICRÉDITOS." />
+            <FeatureCard icon={<Wallet className="h-5 w-5" />} title="Crédito digital" description="Pedilo online, KYC Didit, BCRA y acreditación en tu CBU/CVU." />
             <FeatureCard icon={<Scale className="h-5 w-5" />} title="Situación BCRA" description="Consulta a la Central de Deudores con cuenta. El puntaje UNICRÉDITOS no es score oficial del BCRA." />
             <FeatureCard icon={<Shield className="h-5 w-5" />} title="Arrepentimiento y baja" description="Canales formales Ley 24.240: reclamos, 10 días de arrepentimiento y baja de servicio." />
-            <FeatureCard icon={<BadgeCheck className="h-5 w-5" />} title="Billetera propia" description="Saldo, P2P interno y egresos ejecutados desde tesorería RM." />
+            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="TNA y CFT" description="Costo completo en simulador, oferta y contrato. Sin letra chica de último momento." />
+            <FeatureCard icon={<BadgeCheck className="h-5 w-5" />} title="Tope de cuota" description="La cuota no supera el 35% de los ingresos declarados." />
+            <FeatureCard icon={<Building2 className="h-5 w-5" />} title="Operador SAS" description="RM International Group S.A.S., CUIT y domicilio publicados. No somos un banco." />
           </Grid>
         </PageSection>
 

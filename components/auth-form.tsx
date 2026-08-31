@@ -1,12 +1,11 @@
 'use client'
 
+import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { BrandLogo } from '@/components/unicred/dashboard-kit'
-import { BRAND } from '@/lib/brand'
 import { authClient } from '@/lib/auth-client'
+import { cn } from '@/lib/utils'
 import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -17,6 +16,9 @@ function safeCallbackUrl(value: string | null): string | null {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return null
   return value
 }
+
+const fieldClass =
+  'h-12 rounded-lg border-slate-200 bg-white px-3.5 text-sm placeholder:text-slate-400'
 
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
@@ -71,156 +73,119 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   }
 
   return (
-    <main className="relative grid min-h-svh lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0C1612] p-10 lg:flex">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              'linear-gradient(180deg, transparent 42%, rgba(7,16,12,0.85) 100%), radial-gradient(ellipse at 50% 110%, #20BD5A 0%, transparent 55%)',
-          }}
-        />
-        <svg
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-40 w-full text-black/35"
-          viewBox="0 0 1200 180"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <path
-            fill="currentColor"
-            d="M0 180V110h40v-40h18v40h22V70h28v40h16V90h20v90H0zM180 180V85h24v-28h16v28h20V60h30v28h18v92H180zM360 180V95h20V55h22v40h18V80h26v100H360zM520 180V70h18V40h22v30h16V58h28v30h20v92H520zM700 180V88h22V48h18v40h24V72h30v108H700zM900 180V100h16V62h20v38h18V78h26v102H900zM1040 180V82h20V50h24v32h18V68h28v112h70V180H1040z"
+    <AuthFloatLayout>
+      <h1 className="mb-7 text-center text-2xl font-semibold tracking-tight text-brand-navy-800">
+        {isSignUp ? 'Creá tu cuenta' : 'Bienvenido de nuevo'}
+      </h1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        {isSignUp && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="name" className="sr-only">
+              Nombre y apellido
+            </Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+              placeholder="Nombre y apellido"
+              className={fieldClass}
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email" className="sr-only">
+            Correo electrónico
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            placeholder="Ingresá el mail con el que te registraste"
+            className={fieldClass}
           />
-        </svg>
-        <BrandLogo showText light />
-        <div className="relative z-10 max-w-md space-y-4">
-          <p className="text-sm font-medium text-brand-cian-200">
-            {BRAND.slogan}
-          </p>
-          <h2 className="text-balance text-3xl font-bold leading-tight text-white">
-            {BRAND.valueProp}
-          </h2>
-          <p className="text-sm font-medium text-white/80">{BRAND.tagline}</p>
-          <p className="max-w-sm text-pretty text-slate-300/85">
-            Evaluamos tu solicitud con la Central de Deudores del BCRA y te mostramos TNA y CFT
-            antes de firmar. El tiempo de respuesta depende de Didit y de la consulta oficial.
-          </p>
         </div>
-        <p className="relative z-10 text-xs text-white/45">
-          UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por {BRAND.legalName} — {BRAND.domain}
-        </p>
-      </div>
-
-      <div className="flex items-center justify-center bg-[#F5F7FA] px-4 py-10">
-        <Card className="w-full max-w-sm rounded-2xl border-slate-200 p-6 shadow-lg shadow-slate-200/70">
-          <div className="mb-6 lg:hidden">
-            <BrandLogo showText />
-          </div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {isSignUp ? 'Creá tu cuenta' : 'Iniciar sesión'}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {isSignUp
-                ? 'Empezá a solicitar tu crédito hoy.'
-                : 'Accedé a tus créditos, cuotas y comprobantes.'}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {isSignUp && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="name">Nombre y apellido</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                  placeholder="Nombre y apellido"
-                />
-              </div>
-            )}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="vos@email.com"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <Label htmlFor="password">Contraseña</Label>
-                {!isSignUp && (
-                  <Link
-                    href="/recuperar-clave"
-                    className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
-                )}
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  placeholder="Mínimo 8 caracteres"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-700"
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {!isSignUp ? (
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary"
-                />
-                Recordarme
-              </label>
-            ) : null}
-
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-
-            <Button type="submit" disabled={loading} className="h-11 w-full font-semibold">
-              {loading ? 'Procesando...' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            {isSignUp ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}
-            <Link
-              href={isSignUp ? '/sign-in' : '/sign-up'}
-              className="font-medium text-primary underline-offset-4 hover:underline"
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password" className="sr-only">
+            Contraseña
+          </Label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+              placeholder="Tu contraseña"
+              className={cn(fieldClass, 'pr-11')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
-              {isSignUp ? 'Iniciar sesión' : 'Registrate'}
-            </Link>
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {!isSignUp ? (
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-primary"
+            />
+            Recordarme
+          </label>
+        ) : null}
+
+        {error && (
+          <p className="text-center text-sm text-destructive" role="alert">
+            {error}
           </p>
-        </Card>
-      </div>
-    </main>
+        )}
+
+        <p className="pt-1 text-center text-sm text-slate-500">
+          {isSignUp ? (
+            <Link href="/sign-in" className="hover:text-brand-navy-800 hover:underline">
+              ¿Ya tenés cuenta?
+            </Link>
+          ) : (
+            <>
+              <Link href="/recuperar-clave" className="hover:text-brand-navy-800 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+              <span className="mx-2 text-slate-300">|</span>
+              <Link href="/sign-up" className="hover:text-brand-navy-800 hover:underline">
+                No estoy registrado
+              </Link>
+            </>
+          )}
+        </p>
+
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <Button
+            type="button"
+            asChild
+            className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
+          >
+            <Link href={isSignUp ? '/sign-in' : '/'}>Volver</Link>
+          </Button>
+          <Button type="submit" disabled={loading} className="h-12 text-base font-semibold">
+            {loading ? 'Procesando...' : isSignUp ? 'Crear cuenta' : 'Ingresar'}
+          </Button>
+        </div>
+      </form>
+    </AuthFloatLayout>
   )
 }

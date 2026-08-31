@@ -103,6 +103,7 @@ export async function loadContractPack(userId: string, contractId: string): Prom
       term: loanRow?.term ?? 0,
       monthlyRate: loanRow?.monthlyRate ?? 0,
       tna: loanRow?.tna ?? null,
+      tea: loanRow?.tea ?? null,
       installmentAmount: loanRow?.installmentAmount ?? 0,
       totalAmount: loanRow?.totalAmount ?? 0,
       cft: loanRow?.cft ?? null,

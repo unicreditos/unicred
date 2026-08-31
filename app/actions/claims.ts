@@ -5,18 +5,14 @@ import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
 import { supportCase } from '@/lib/db/schema'
 import { notifySupportClaim } from '@/lib/notify-email'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
-import { assertRole, newId } from '@/lib/session'
+import { assertRole, getRoleForUser, newId } from '@/lib/session'
+import { asCategory, insertSupportMessage } from '@/lib/support'
 import { and, desc, eq } from 'drizzle-orm'
 
-const CATEGORIES = ['cobros', 'identidad', 'desembolso', 'contrato', 'otro'] as const
-export type ClaimCategory = (typeof CATEGORIES)[number]
-
-function asCategory(value: string): ClaimCategory {
-  return (CATEGORIES as readonly string[]).includes(value) ? (value as ClaimCategory) : 'otro'
-}
+export type ClaimCategory = 'cobros' | 'identidad' | 'desembolso' | 'contrato' | 'comercio' | 'otro'
 
 export async function listMyClaims() {
-  const userId = await assertRole('customer')
+  const userId = await assertRole('customer', 'merchant')
   await ensureSupportCaseTable()
   return db
     .select()
@@ -27,7 +23,8 @@ export async function listMyClaims() {
 }
 
 export async function createClaim(input: { category: string; subject: string; body: string }) {
-  const userId = await assertRole('customer')
+  const userId = await assertRole('customer', 'merchant')
+  const role = await getRoleForUser(userId)
   await ensureSupportCaseTable()
 
   const subject = String(input.subject ?? '').trim().slice(0, 160)
@@ -36,6 +33,7 @@ export async function createClaim(input: { category: string; subject: string; bo
   if (body.length < 20) throw new Error('Describí el reclamo con al menos 20 caracteres.')
 
   const id = newId('case')
+  const now = new Date()
   const [row] = await db
     .insert(supportCase)
     .values({
@@ -47,10 +45,19 @@ export async function createClaim(input: { category: string; subject: string; bo
       status: 'open',
       channel: 'dashboard',
       lawRef: 'Ley 24.240',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      waitingOn: 'agent',
+      lastMessageAt: now,
+      createdAt: now,
+      updatedAt: now,
     })
     .returning()
+
+  await insertSupportMessage({
+    caseId: row.id,
+    authorUserId: userId,
+    authorRole: role,
+    body,
+  })
 
   void notifySupportClaim({ userId, caseId: row.id, subject: row.subject })
   revalidateCustomer()
@@ -65,16 +72,23 @@ export async function listOpenClaimsAdmin() {
 }
 
 export async function respondClaimAdmin(id: string, response: string) {
-  await assertRole('admin')
+  const adminId = await assertRole('admin')
   await ensureSupportCaseTable()
   const text = String(response ?? '').trim().slice(0, 4000)
   if (text.length < 8) throw new Error('La respuesta debe tener al menos 8 caracteres.')
   const now = new Date()
+  await insertSupportMessage({
+    caseId: id,
+    authorUserId: adminId,
+    authorRole: 'admin',
+    body: text,
+  })
   await db
     .update(supportCase)
     .set({
       response: text,
       status: 'resolved',
+      waitingOn: 'none',
       respondedAt: now,
       updatedAt: now,
     })

@@ -2,6 +2,7 @@ import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { IntimacionPrintable } from '@/components/documents/intimacion-printable'
 import { Button } from '@/components/ui/button'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { documentBackHref, documentBackHrefForLoan } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { asMoraRows, evaluateIntimation } from '@/lib/legal/mora'
@@ -12,9 +13,17 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function IntimacionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function IntimacionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
+  const id = String((await params).id ?? '').trim()
+  await keepCustomerInDashboard('intimacion', id, searchParams)
   const userId = await requireUserId()
-  const data = await loadContractPackForViewer(userId, String((await params).id ?? '').trim())
+  const data = await loadContractPackForViewer(userId, id)
   const backHref = data
     ? await documentBackHrefForLoan(userId, data.loanId)
     : await documentBackHref(userId)

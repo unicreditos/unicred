@@ -11,6 +11,8 @@ import { getAllKYCReviews } from '@/app/actions/kyc'
 import { getAllDisbursements } from '@/app/actions/banking'
 import { getAdminClientFicha } from '@/app/actions/admin-ficha'
 import { getAdminOpsDesk } from '@/app/actions/admin-ops'
+import { getAdminOpsConfig } from '@/app/actions/admin-config'
+import { listAdminPayments } from '@/app/actions/admin-cases'
 import { AdminDashboard } from '@/components/admin/admin-dashboard'
 import { parseAdminTab } from '@/lib/admin-nav'
 import { db } from '@/lib/db'
@@ -22,6 +24,7 @@ import {
   loanProduct,
   loanContract,
 } from '@/lib/db/schema'
+import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
 import { eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
@@ -45,8 +48,9 @@ export default async function AdminPage({
     redirect('/sign-in')
   }
 
+  await ensureOriginacionSchema()
   const [p] = await db
-    .select()
+    .select({ role: profile.role })
     .from(profile)
     .where(eq(profile.userId, userId))
     .limit(1)
@@ -65,7 +69,7 @@ export default async function AdminPage({
         }))
     : Promise.resolve({ ficha: null, error: null as string | null })
 
-  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk] = await Promise.all([
+  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig] = await Promise.all([
     getAdminStats().catch((e) => { console.error('[admin] getAdminStats failed:', e.message); return { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any }),
     getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
     getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
@@ -98,6 +102,14 @@ export default async function AdminPage({
         openTickets: [],
         contracts: [],
       }
+    }),
+    listAdminPayments(200).catch((e) => {
+      console.error('[admin] listAdminPayments failed:', e.message)
+      return { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }
+    }),
+    getAdminOpsConfig().catch((e) => {
+      console.error('[admin] getAdminOpsConfig failed:', e.message)
+      return null
     }),
   ])
 
@@ -193,6 +205,8 @@ export default async function AdminPage({
       ficha={fichaResult.ficha}
       fichaError={fichaResult.error}
       opsDesk={opsDesk}
+      payments={payments}
+      opsConfig={opsConfig}
     />
   )
 }

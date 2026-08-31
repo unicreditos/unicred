@@ -16,9 +16,9 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   rapipago: 'Rapipago',
   ticket: 'Cupón de pago',
   transferencia_rm: 'Transferencia a RM / Brubank',
-  payway_qr: 'Payway QR (sandbox)',
-  payway_wallet: 'Billetera virtual (sandbox)',
-  payway_card: 'Tarjeta Payway (sandbox)',
+  payway_qr: 'QR UNICRÉDITOS',
+  payway_wallet: 'Billetera UNICRÉDITOS',
+  payway_card: 'Tarjeta',
 }
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -69,6 +69,7 @@ const DISBURSEMENT_STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente de acreditación',
   processing: 'En proceso',
   credited: 'Acreditado',
+  completed: 'Acreditado',
   failed: 'Fallido',
   cancelled: 'Anulado',
 }

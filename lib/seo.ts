@@ -49,6 +49,8 @@ export function organizationJsonLd() {
     legalName: 'RM International Group S.A.S.',
     url: absoluteUrl('/'),
     logo: absoluteUrl('/apple-icon'),
+    description:
+      'Créditos personales online en Argentina. TNA y CFT informados antes de firmar. Consulta a la Central de Deudores del BCRA con autorización del titular.',
     email: 'soporte@unicreditos.com',
     address: {
       '@type': 'PostalAddress',

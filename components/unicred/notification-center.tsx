@@ -4,11 +4,10 @@ import type { InboxItem, InboxPayload } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { Bell, CheckCircle2, CircleAlert, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-const SEEN_KEY = 'uc-inbox-seen'
-const BADGE_POLL_MS = 60_000
+const BADGE_POLL_MS = 15_000
 
 function toneIcon(tone: InboxItem['tone']) {
   if (tone === 'ok') return <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -17,23 +16,20 @@ function toneIcon(tone: InboxItem['tone']) {
   return <Info className="h-4 w-4 text-brand-primary" />
 }
 
+function applyRead(inbox: InboxPayload, ids?: string[]): InboxPayload {
+  const set = ids ? new Set(ids) : null
+  const items = inbox.items.map((item) => ({
+    ...item,
+    unread: set ? (item.unread && !set.has(item.id)) : false,
+  }))
+  return { ...inbox, items, unreadHint: items.filter((item) => item.unread).length }
+}
+
 export function NotificationCenter() {
   const router = useRouter()
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [inbox, setInbox] = useState<InboxPayload>({ items: [], stamp: '', unreadHint: 0 })
-  const seen = useSyncExternalStore(
-    (onStore) => {
-      window.addEventListener('storage', onStore)
-      window.addEventListener('uc-storage', onStore)
-      return () => {
-        window.removeEventListener('storage', onStore)
-        window.removeEventListener('uc-storage', onStore)
-      }
-    },
-    () => window.localStorage.getItem(SEEN_KEY) ?? '',
-    () => '',
-  )
   const lastStamp = useRef('')
 
   useEffect(() => {
@@ -54,12 +50,20 @@ export function NotificationCenter() {
 
   useEffect(() => {
     const apply = (next: InboxPayload) => {
-      setInbox(next)
-      if (lastStamp.current && next.stamp && next.stamp !== lastStamp.current) {
-        const fresh = next.items[0]
-        if (fresh) toast.message(fresh.title, { description: fresh.detail })
-      }
-      lastStamp.current = next.stamp
+      setInbox((prev) => {
+        const locallyRead = new Set(prev.items.filter((item) => item.unread === false).map((item) => item.id))
+        const items = next.items.map((item) => ({
+          ...item,
+          unread: Boolean(item.unread) && !locallyRead.has(item.id),
+        }))
+        const unreadStamp = items.find((item) => item.unread)?.at ?? ''
+        if (lastStamp.current && unreadStamp && unreadStamp !== lastStamp.current) {
+          const fresh = items.find((item) => item.unread)
+          if (fresh) toast.message(fresh.title, { description: fresh.detail })
+        }
+        if (unreadStamp) lastStamp.current = unreadStamp
+        return { ...next, items, unreadHint: items.filter((item) => item.unread).length }
+      })
     }
 
     const pull = () =>
@@ -75,43 +79,44 @@ export function NotificationCenter() {
       void pull()
     }, BADGE_POLL_MS)
 
-    return () => clearInterval(poll)
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
     let source: EventSource | null = null
-    if (typeof EventSource === 'undefined') return
-    source = new EventSource('/api/notifications/stream')
-    source.onmessage = (event) => {
-      try {
-        const next = JSON.parse(event.data) as InboxPayload
-        setInbox(next)
-        lastStamp.current = next.stamp
-      } catch {
-        /* payload incompleto */
+    if (typeof EventSource !== 'undefined') {
+      source = new EventSource('/api/notifications/stream')
+      source.onmessage = (event) => {
+        try {
+          apply(JSON.parse(event.data) as InboxPayload)
+        } catch {
+          /* payload incompleto */
+        }
       }
     }
-    return () => source?.close()
-  }, [open])
 
-  const unread = useMemo(() => {
-    if (!seen) return inbox.items.length
-    return inbox.items.filter((item) => item.at > seen).length
-  }, [inbox.items, seen])
+    return () => {
+      clearInterval(poll)
+      source?.close()
+    }
+  }, [])
 
-  const markRead = () => {
-    window.localStorage.setItem(SEEN_KEY, new Date().toISOString())
-    window.dispatchEvent(new Event('uc-storage'))
+  const markAll = () => {
+    setInbox((prev) => applyRead(prev))
+    void fetch('/api/notifications/read-all', { method: 'PUT' }).catch(() => null)
   }
+
+  const markOne = (id: string) => {
+    setInbox((prev) => applyRead(prev, [id]))
+    void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'PUT' }).catch(() => null)
+  }
+
+  const unread = inbox.unreadHint
 
   return (
     <div className="relative" ref={rootRef}>
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v)
-          if (!open) markRead()
+          const next = !open
+          setOpen(next)
+          if (next && unread > 0) markAll()
         }}
         className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
         aria-label="Notificaciones"
@@ -133,7 +138,7 @@ export function NotificationCenter() {
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
             <p className="text-sm font-semibold text-brand-navy-900">Notificaciones</p>
-            <button type="button" className="text-[11px] font-medium text-brand-primary" onClick={markRead}>
+            <button type="button" className="text-[11px] font-medium text-brand-primary" onClick={markAll}>
               Marcar leídas
             </button>
           </div>
@@ -146,13 +151,14 @@ export function NotificationCenter() {
                   key={item.id}
                   type="button"
                   onClick={() => {
+                    markOne(item.id)
                     setOpen(false)
                     router.push(item.href)
                     router.refresh()
                   }}
                   className={cn(
                     'flex w-full items-start gap-2.5 border-b border-slate-50 px-3 py-2.5 text-left hover:bg-slate-50',
-                    !seen || item.at > seen ? 'bg-sky-50/50' : '',
+                    item.unread ? 'bg-sky-50/50' : '',
                   )}
                 >
                   <span className="mt-0.5">{toneIcon(item.tone)}</span>

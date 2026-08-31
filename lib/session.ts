@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { profile, user as userTable } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 export type Role = 'customer' | 'merchant' | 'admin'
@@ -72,9 +72,26 @@ export async function getSession() {
   return auth.api.getSession({ headers: await headers() })
 }
 
+function isAuthSessionCookieName(name: string) {
+  return name.includes('session_token') || name.includes('better-auth.session')
+}
+
+/** Cookie huérfana: el proxy la trata como sesión y el panel no la valida. */
+async function clearStaleAuthCookies() {
+  try {
+    const jar = await cookies()
+    for (const cookie of jar.getAll()) {
+      if (isAuthSessionCookieName(cookie.name)) jar.delete(cookie.name)
+    }
+  } catch {
+    /* el redirect sigue igual si no se pudo borrar */
+  }
+}
+
 export async function requireUserId() {
   const session = await getSession()
   if (!session?.user) {
+    await clearStaleAuthCookies()
     redirect('/sign-in')
   }
   const [u] = await db

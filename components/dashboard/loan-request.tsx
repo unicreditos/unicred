@@ -361,7 +361,7 @@ export function LoanRequestSimulator({
                   <dd className="font-mono">{formatPercent(amortization.tea)}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">CFT (con IVA)</dt>
+                  <dt className="text-muted-foreground">CFT est. (IVA sobre intereses)</dt>
                   <dd className="font-mono">{formatPercent(amortization.cft)}</dd>
                 </div>
                 <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -402,7 +402,7 @@ export function LoanRequestSimulator({
                   <div>
                     <h3 className="text-lg font-semibold">
                       {resultModal.status === 'approved'
-                        ? '¡Tu crédito fue aprobado!'
+                        ? 'Calificado: el contrato está listo para firmar. El dinero se acredita después, por tesorería.'
                         : resultModal.status === 'rejected'
                           ? 'En este momento no podemos aprobar tu solicitud'
                           : 'Resultado de la solicitud'}
@@ -506,7 +506,7 @@ export function LoanRequestSimulator({
                 <Button
                   onClick={() => {
                     setResultModal(null)
-                    window.location.assign('/dashboard?tab=cuotas')
+                    router.push('/dashboard?tab=cuotas')
                   }}
                 >
                   Ver mi crédito

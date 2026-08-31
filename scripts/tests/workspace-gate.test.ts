@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { parsePrintDocumentPath } from '../../lib/documents/customer-view'
 import {
   installmentPosPath,
   isWorkspaceStayPath,
@@ -28,13 +29,14 @@ describe('panel autenticado', () => {
     assert.equal(legacyPedirRedirect('/pedir/cuenta'), '/dashboard')
     assert.equal(legacyPedirRedirect('/pedir/legal/terminos'), '/legal/terminos')
     assert.equal(legacyPedirRedirect('/pedir/pagar/inst_abc'), '/pagar/inst_abc')
-    assert.equal(legacyPedirRedirect('/pedir/docs/contrato/c1'), '/dashboard/documentos/contrato/c1')
+    assert.equal(legacyPedirRedirect('/pedir/docs/contrato/c1'), '/dashboard?tab=documentos_contrato&doc=contrato&docId=c1')
     assert.equal(legacyPedirRedirect('/dashboard'), null)
   })
 
-  it('con sesión no deja el sitio de marketing; el panel sí queda adentro', () => {
-    assert.equal(shouldBounceLoggedInToWorkspace('/'), true)
-    assert.equal(shouldBounceLoggedInToWorkspace('/sign-in'), true)
+  it('el inicio público y el crédito quedan visibles; login y panel no rebota', () => {
+    assert.equal(shouldBounceLoggedInToWorkspace('/'), false)
+    assert.equal(shouldBounceLoggedInToWorkspace('/sign-in'), false)
+    assert.equal(shouldBounceLoggedInToWorkspace('/sign-up'), false)
     assert.equal(shouldBounceLoggedInToWorkspace('/productos'), false)
     assert.equal(shouldBounceLoggedInToWorkspace('/prestamos'), false)
     assert.equal(shouldBounceLoggedInToWorkspace('/dashboard'), false)
@@ -50,5 +52,14 @@ describe('panel autenticado', () => {
     assert.equal(safeInternalPath('/dashboard?tab=pagos'), '/dashboard?tab=pagos')
     assert.equal(safeInternalPath('https://evil.example/'), null)
     assert.equal(safeInternalPath('//evil.example'), null)
+  })
+
+  it('las rutas de impresión de documentos se reconocen para devolver al panel', () => {
+    assert.deepEqual(parsePrintDocumentPath('/dashboard/documentos/contrato/5d23ace3-70c4-4b39-ad11-98b9776cfe0f'), {
+      kind: 'contrato',
+      id: '5d23ace3-70c4-4b39-ad11-98b9776cfe0f',
+    })
+    assert.deepEqual(parsePrintDocumentPath('/dashboard/documentos/pagare/abc'), { kind: 'pagare', id: 'abc' })
+    assert.equal(parsePrintDocumentPath('/dashboard'), null)
   })
 })

@@ -7,6 +7,7 @@ import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { installment, kycVerification, loan, loanProduct, merchant, merchantDocument, profile } from '@/lib/db/schema'
 import { computeFrenchAmortization } from '@/lib/finance'
+import { loanPricingFields } from '@/lib/loan-rates'
 import { ensureLoanContract, notifyContractReady } from '@/lib/legal/expediente'
 import { catalogByType } from '@/lib/loan-catalog'
 import {
@@ -400,10 +401,7 @@ export async function createMerchantSale(input: {
       principal: String(amount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(amort.tna),
-      installmentAmount: String(amort.installmentAmount),
-      totalAmount: String(amort.totalAmount),
-      cft: String(amort.cft),
+      ...loanPricingFields(amort),
       status,
       purpose,
       scoreAtApproval: score.score,
@@ -572,10 +570,7 @@ export async function requestConsumoAtMerchant(input: {
       principal: String(amount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(amort.tna),
-      installmentAmount: String(amort.installmentAmount),
-      totalAmount: String(amort.totalAmount),
-      cft: String(amort.cft),
+      ...loanPricingFields(amort),
       status,
       purpose,
       scoreAtApproval: score.score,

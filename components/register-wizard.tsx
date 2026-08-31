@@ -4,8 +4,8 @@ import { getDiditPublicConfig, getMyDiditSession } from '@/app/actions/didit'
 import { completeRegistration, lookupRegistrationIdentity } from '@/app/actions/register'
 import { DiditVerifyButton } from '@/components/didit-verify-button'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
+import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import type { DirectoIntent } from '@/directo/intent'
 import { directoSolicitarHref } from '@/directo/intent'
 import { authClient } from '@/lib/auth-client'
@@ -96,6 +95,7 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedBcraConsent, setAcceptedBcraConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [diditConfigured, setDiditConfigured] = useState<boolean | null>(null)
@@ -209,6 +209,10 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
       setError('Marcá que entendés que la cuenta no garantiza un crédito.')
       return
     }
+    if (!acceptedBcraConsent) {
+      setError('Autorizá la consulta a la Central de Deudores del BCRA (CENDEU).')
+      return
+    }
     setSaving(true)
     const created = await authClient.signUp.email({ email, password, name: name || email })
     if (created.error) {
@@ -243,6 +247,7 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
       representativeRole: accountType === 'comercio' ? representativeRole : undefined,
       confirmedIdentity,
       acceptedTerms,
+      acceptedBcraConsent,
       identity,
     })
     setSaving(false)
@@ -263,34 +268,13 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
   }
 
   return (
-    <main className="grid min-h-svh lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <div className="relative hidden flex-col justify-between bg-sidebar p-10 lg:flex">
-        <BrandLogo showText className="text-white [&_svg]:brightness-200" />
-        <div className="space-y-5">
-          <h2 className="text-balance text-3xl font-bold leading-tight text-sidebar-foreground">
-            Una cuenta UNICRÉDITOS. El crédito, después.
-          </h2>
-          <p className="max-w-md text-pretty text-sidebar-foreground/70">
-            Cualquier persona o comercio puede abrir una cuenta para gestionar créditos. Tener
-            cuenta no garantiza un préstamo: cada solicitud se evalúa por separado.
-          </p>
-          <ul className="space-y-2 text-sm text-sidebar-foreground/65">
-            <li>Validamos CUIT/CUIL, condición IVA (monotributo, RI o exento) y domicilio fiscal desde el padrón ARCA.</li>
-            <li>El domicilio se completa con el catálogo oficial de provincias y departamentos.</li>
-            <li>La identidad se valida en UNICRÉDITOS con Didit: DNI, prueba de vida y coincidencia facial, sin salir de la web.</li>
-          </ul>
-        </div>
-        <p className="text-xs text-sidebar-foreground/50">
-          UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por RM International Group S.A.S. — Argentina
-        </p>
-      </div>
-
-      <div className="flex items-start justify-center px-4 py-8">
-        <Card className="w-full max-w-2xl border-border p-6">
-          <div className="mb-5 lg:hidden">
-            <BrandLogo showText />
-          </div>
-          <ol className="mb-6 grid grid-cols-6 gap-1">
+    <AuthFloatLayout
+      size="wide"
+      className="max-w-2xl"
+      headline="Comenzá con UNICRÉDITOS"
+      lede="Abrí tu cuenta como persona o comercio. Validamos identidad, consultamos el BCRA y te mostramos TNA y CFT antes de firmar. Tener cuenta no garantiza un préstamo."
+    >
+      <ol className="mb-6 grid grid-cols-6 gap-1">
             {STEPS.filter((s) => s !== 'resultado').map((s, i) => (
               <li
                 key={s}
@@ -326,9 +310,18 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
                   onClick={() => setAccountType('comercio')}
                 />
               </div>
-              <Button className="w-full" disabled={!accountType} onClick={() => go('id')}>
-                Continuar
-              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  asChild
+                  className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
+                >
+                  <Link href="/">Volver</Link>
+                </Button>
+                <Button className="h-12 text-base font-semibold" disabled={!accountType} onClick={() => go('id')}>
+                  Continuar
+                </Button>
+              </div>
             </section>
           )}
 
@@ -706,6 +699,17 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
                 </Link>
                 .
               </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={acceptedBcraConsent}
+                  onChange={(e) => setAcceptedBcraConsent(e.target.checked)}
+                />
+                Autorizo a UNICRÉDITOS a consultar la Central de Deudores del BCRA (CENDEU) con mi
+                CUIL, para evaluar el crédito. Esta autorización es distinta de los términos de la
+                cuenta.
+              </label>
               {error && <Alert text={error} />}
               {alreadyRegistered && (
                 <p className="text-sm">
@@ -718,7 +722,7 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
                 <Button variant="outline" onClick={() => go('docs')}>
                   Volver
                 </Button>
-                <Button className="flex-1" disabled={saving || !email || password.length < 8 || !acceptedTerms} onClick={handleCreate}>
+                <Button className="flex-1" disabled={saving || !email || password.length < 8 || !acceptedTerms || !acceptedBcraConsent} onClick={handleCreate}>
                   {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
                   Crear cuenta y consultar BCRA
                 </Button>
@@ -760,13 +764,13 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="outline">
-                  <Link href="/dashboard/documentos/constancia-arca" target="_blank">
+                  <Link href="/dashboard?tab=documentos&doc=arca">
                     <Printer /> Constancia ARCA
                   </Link>
                 </Button>
                 {result.reportId && (
                   <Button asChild variant="outline">
-                    <Link href={`/dashboard/documentos/informe-bcra/${result.reportId}`} target="_blank">
+                    <Link href={`/dashboard?tab=documentos&doc=bcra&docId=${encodeURIComponent(result.reportId)}`}>
                       <Printer /> Informe BCRA
                     </Link>
                   </Button>
@@ -786,9 +790,7 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
               </Link>
             </p>
           )}
-        </Card>
-      </div>
-    </main>
+    </AuthFloatLayout>
   )
 }
 
@@ -801,7 +803,7 @@ function formatCuil(value: string) {
 function Header({ title, text }: { title: string; text: string }) {
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{text}</p>
     </div>
   )

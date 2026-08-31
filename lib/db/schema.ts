@@ -100,6 +100,8 @@ export const profile = pgTable('profile', {
   employmentStatus: text('employmentStatus'),
   kycStatus: text('kycStatus').notNull().default('pending'),
   creditScore: integer('creditScore'),
+  bcraConsentAt: tsCol('bcraConsentAt'),
+  bcraConsentIp: text('bcraConsentIp'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
 })
@@ -174,6 +176,7 @@ export const loan = pgTable('loan', {
   term: integer('term').notNull(),
   monthlyRate: numeric('monthlyRate', { precision: 6, scale: 3 }).notNull(),
   tna: numeric('tna', { precision: 6, scale: 3 }).notNull(),
+  tea: numeric('tea', { precision: 6, scale: 3 }),
   installmentAmount: numeric('installmentAmount', {
     precision: 14,
     scale: 2,
@@ -487,6 +490,33 @@ export const paymentReceipt = pgTable('payment_receipt', {
   index('payment_receipt_user_idx').on(t.userId),
 ])
 
+/** Factura electrónica ARCA (WsFE) del IVA sobre intereses de cada cuota. */
+export const arcaInvoice = pgTable('arca_invoice', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  loanId: text('loanId').references(() => loan.id, { onDelete: 'set null' }),
+  installmentId: text('installmentId').references(() => installment.id, { onDelete: 'set null' }),
+  cbteTipo: integer('cbteTipo').notNull().default(6),
+  ptoVta: integer('ptoVta').notNull().default(1),
+  cbteNro: integer('cbteNro'),
+  docTipo: integer('docTipo').notNull().default(80),
+  docNro: text('docNro').notNull(),
+  impNeto: numeric('impNeto', { precision: 14, scale: 2 }).notNull(),
+  impIva: numeric('impIva', { precision: 14, scale: 2 }).notNull(),
+  impTotal: numeric('impTotal', { precision: 14, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('ARS'),
+  status: text('status').notNull().default('pending_cae'),
+  cae: text('cae'),
+  caeVto: text('caeVto'),
+  arcaError: text('arcaError'),
+  issuedAt: tsCol('issuedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('arca_invoice_user_idx').on(t.userId),
+  uniqueIndex('arca_invoice_installment_unique').on(t.installmentId),
+])
+
 /* -------------------------- Métodos de Pago Guardados --------------------- */
 
 export const savedPaymentMethod = pgTable('saved_payment_method', {
@@ -580,11 +610,46 @@ export const supportCase = pgTable('support_case', {
   lawRef: text('lawRef').notNull().default('Ley 24.240'),
   response: text('response'),
   respondedAt: tsCol('respondedAt'),
+  assignedAdminId: text('assignedAdminId'),
+  relatedLoanId: text('relatedLoanId'),
+  waitingOn: text('waitingOn').notNull().default('agent'),
+  lastMessageAt: tsCol('lastMessageAt'),
+  lastAgentSeenAt: tsCol('lastAgentSeenAt'),
+  lastCustomerSeenAt: tsCol('lastCustomerSeenAt'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
 }, (t) => [
   index('support_case_user_idx').on(t.userId),
   index('support_case_status_idx').on(t.status),
+])
+
+export const supportMessage = pgTable('support_message', {
+  id: text('id').primaryKey(),
+  caseId: text('caseId').notNull().references(() => supportCase.id, { onDelete: 'cascade' }),
+  authorUserId: text('authorUserId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  authorRole: text('authorRole').notNull(),
+  body: text('body').notNull(),
+  kind: text('kind').notNull().default('message'),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('support_message_case_idx').on(t.caseId),
+])
+
+export const supportPresence = pgTable('support_presence', {
+  userId: text('userId').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),
+  viewingCaseId: text('viewingCaseId'),
+  lastSeenAt: tsCol('lastSeenAt').notNull().defaultNow(),
+})
+
+export const inboxReceipt = pgTable('inbox_receipt', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  itemId: text('itemId').notNull(),
+  readAt: tsCol('readAt').notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('inbox_receipt_user_item_unique').on(t.userId, t.itemId),
+  index('inbox_receipt_user_idx').on(t.userId),
 ])
 
 /* -------------------- Billetera virtual Payway / Prisma ------------------- */

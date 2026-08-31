@@ -1,6 +1,8 @@
 'use client'
 
 import { DashboardShell, isDashboardTab, type TabValue } from '@/components/dashboard/app-shell'
+import { CustomerDocumentsDesk } from '@/components/dashboard/customer-documents'
+import { InAppDocumentPanel } from '@/components/dashboard/in-app-document-panel'
 import { KYCProfileForm } from '@/components/dashboard/kyc-profile-form'
 import { BCRAScore } from '@/components/dashboard/bcra-score'
 import { LoanRequestSimulator } from '@/components/dashboard/loan-request'
@@ -55,7 +57,6 @@ import {
   BellRing,
   CheckCircle2,
   CreditCard,
-  FileCheck2,
   HelpCircle,
   Inbox,
   Sparkles,
@@ -67,9 +68,8 @@ import {
   Receipt,
   Star,
   Trash2,
-  Download,
+  ArrowLeft,
   ArrowRight,
-  Printer,
   Check,
   AlertCircle,
   Banknote,
@@ -78,7 +78,6 @@ import {
   Clock,
   X,
   Globe2,
-  Scale,
   FileText,
   Handshake,
   Pencil,
@@ -100,13 +99,11 @@ import { generateBCRAReport, generateLoanContract, acceptLoanContract, refinance
 import { withdrawLoanAcceptance } from '@/app/actions/loans'
 import { useSession } from '@/lib/auth-client'
 import { BRAND } from '@/lib/brand'
-import { canWithdrawAcceptance, WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
-import { asMoraRows, evaluateIntimation, evaluateRefinance, MAX_REFINANCES } from '@/lib/legal/mora'
-import { PayInstallmentDialog } from '@/components/payments/pay-installment-dialog'
+import { WITHDRAWAL_DAYS } from '@/lib/legal/withdrawal'
+import { isCustomerDocKind, type CustomerDocKind } from '@/lib/documents/customer-view'
+import { PayInstallmentDialog, payCta } from '@/components/payments/pay-installment-dialog'
 import { WalletDesk } from '@/components/payments/wallet-desk'
-import { ServicesDesk } from '@/components/payments/services-desk'
 import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
-import Link from 'next/link'
 
 type Profile = typeof profile.$inferSelect
 type LoanProduct = typeof loanProduct.$inferSelect
@@ -277,12 +274,40 @@ export function DashboardTabsWrapper({
     })
   }, [initialProfile?.cuil, lastBcraCheck, router])
 
+  const rawDoc = searchParams.get('doc')
+  const urlDocKind = isCustomerDocKind(rawDoc) ? rawDoc : null
+  const urlDocId = searchParams.get('docId')
+  const [docView, setDocView] = useState<{ kind: CustomerDocKind; id: string } | null>(() =>
+    urlDocKind && urlDocId ? { kind: urlDocKind, id: urlDocId } : null,
+  )
+  const urlDocKey = `${urlDocKind ?? ''}:${urlDocId ?? ''}`
+  const [syncedDocKey, setSyncedDocKey] = useState(urlDocKey)
+  if (urlDocKey !== syncedDocKey) {
+    setSyncedDocKey(urlDocKey)
+    setDocView(urlDocKind && urlDocId ? { kind: urlDocKind, id: urlDocId } : null)
+  }
+
   const setActiveTab = (t: TabValue) => {
     setActiveTabState(t)
-    const sp = new URLSearchParams(window.location.search)
-    sp.set('tab', t)
-    sp.delete('bank')
-    router.replace(`${window.location.pathname}?${sp.toString()}`, { scroll: false })
+    setDocView(null)
+    router.replace(`/dashboard?tab=${t}`, { scroll: false })
+  }
+
+  const activeDocKind = docView?.kind ?? null
+  const activeDocId = docView?.id ?? null
+  const openCustomerDoc = (kind: CustomerDocKind, id: string, tab: TabValue = activeTab) => {
+    setDocView({ kind, id })
+    setActiveTabState(tab)
+    const sp = new URLSearchParams()
+    sp.set('tab', tab)
+    sp.set('doc', kind)
+    sp.set('docId', id)
+    window.history.replaceState(null, '', `/dashboard?${sp.toString()}`)
+  }
+  const closeCustomerDoc = (tab: TabValue = activeTab) => {
+    setDocView(null)
+    setActiveTabState(tab)
+    router.replace(`/dashboard?tab=${tab}`, { scroll: false })
   }
 
   const score = initialProfile?.creditScore ?? null
@@ -591,14 +616,13 @@ export function DashboardTabsWrapper({
                 </header>
                 <div className="grid gap-2 p-3">
                   {[
-                    { t: 'Pagar cuota', d: 'Mercado Pago, efectivo, transferencia o billetera', tab: 'pagos' as TabValue },
+                    { t: 'Pagar cuota', d: 'Tarjeta, Pago Fácil, Rapipago, billetera o transferencia', tab: 'pagos' as TabValue },
                     { t: 'Billetera', d: 'CVU, saldo y transferencias UNICRÉDITOS', tab: 'billetera' as TabValue },
-                    { t: 'Pagos y recargas', d: 'Servicios, impuestos y celular', tab: 'servicios' as TabValue },
-                    { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas' as TabValue },
-                    { t: 'Contrato y pagaré', d: 'Expediente del crédito', tab: 'documentos' as TabValue },
+                    { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas_vigentes' as TabValue },
+                    { t: 'Contrato y pagaré', d: 'Expediente del crédito', tab: 'documentos_contrato' as TabValue },
                     { t: 'Cargar cuenta', d: 'CBU / CVU de desembolso', tab: 'bancos' as TabValue },
                     { t: 'Ayuda', d: 'FAQ y contacto', tab: 'ayuda' as TabValue },
-                    { t: 'Reclamos', d: 'Ley 24.240 · 10 días hábiles', tab: 'reclamos' as TabValue },
+                    { t: 'Soporte', d: 'Chat en línea y reclamo Ley 24.240', tab: 'reclamos' as TabValue },
                   ].map((a) => (
                     <button
                       key={a.tab}
@@ -786,9 +810,9 @@ export function DashboardTabsWrapper({
                   {[
                     { q: '¿Cuánto tarda la aprobación?', a: 'Si Didit y BCRA están en orden, la decisión suele salir el mismo día hábil. Casos con deuda en Central de Deudores pasan a revisión.' },
                     { q: '¿Qué documentos necesito?', a: 'La identidad se valida solo con Didit (DNI vigente y prueba de vida). No se aceptan fotos cargadas a mano. También necesitás CUIL y una cuenta propia (CBU, CVU o alias) para el desembolso.' },
-                    { q: '¿Puedo cancelar el crédito antes?', a: 'Sí. En Créditos ves la liquidación de cancelación: se cobra el capital remanente y se deducen intereses no devengados. Pagás con Mercado Pago. Después podés descargar la constancia de libre deuda.' },
+                    { q: '¿Puedo cancelar el crédito antes?', a: 'Sí. En Créditos ves la liquidación de cancelación: se cobra el capital remanente y se deducen intereses no devengados. Pagás desde tu cuenta UNICRÉDITOS. Después podés descargar la constancia de libre deuda.' },
                     { q: '¿Puedo arrepentirme?', a: `Sí, ${WITHDRAWAL_DAYS} días corridos desde la aceptación del contrato, si el crédito todavía no se acreditó. El botón está en Documentos.` },
-                    { q: '¿Qué pasa si me atraso con una cuota?', a: 'La cuota queda vencida en el cronograma. UNICRÉDITOS no liquida punitorios de oficio. Pagá desde Mercado Pago, tarjeta o transferencia.' },
+                    { q: '¿Qué pasa si me atraso con una cuota?', a: 'La cuota queda vencida en el cronograma. UNICRÉDITOS no liquida punitorios de oficio. Pagá desde tu cuenta: tarjeta, Pago Fácil, Rapipago, billetera o transferencia.' },
                     { q: '¿Cómo descargo un comprobante o el informe BCRA?', a: 'En Comprobantes y Documentos. El informe refleja la consulta a la Central de Deudores.' },
                     { q: '¿UNICRÉDITOS es un banco?', a: 'No. UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por RM International Group S.A.S. Consultamos la Central de Deudores del BCRA para evaluar. El crédito está sujeto a aprobación.' },
                   ].map((f, i) => (
@@ -879,16 +903,16 @@ export function DashboardTabsWrapper({
 
                 <SectionCard
                   title="¿No encontraste lo que buscabas?"
-                  description="Presentá un reclamo Ley 24.240. Plazo máximo de respuesta: 10 días hábiles."
+                  description="Chat en línea con operadores. Si no hay nadie, te avisamos cuando vean tu consulta. El reclamo formal tiene 10 días hábiles (Ley 24.240)."
                   icon={<FileText className="h-4 w-4 text-brand-primary" />}
                   className="flex-1"
                 >
                   <div className="space-y-3 text-sm">
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      El expediente queda en tu cuenta. Confirmamos por mail. No hay chat en vivo ni 0800 publicado.
+                      El chat y el expediente quedan en tu cuenta. Confirmamos por mail los reclamos formales. No hay WhatsApp ni 0800 publicado.
                     </p>
                     <Button className="w-full gap-1.5 shadow-sm" onClick={() => setActiveTab('reclamos')}>
-                      <Inbox className="h-4 w-4" /> Presentar reclamo
+                      <Inbox className="h-4 w-4" /> Abrir chat de soporte
                     </Button>
                     <Button variant="outline" className="w-full gap-1.5" asChild>
                       <a href={`mailto:${BRAND.supportEmail}`}>
@@ -913,7 +937,7 @@ export function DashboardTabsWrapper({
                 <DecisionBanner
                   tone="warn"
                   title={`Tenés ${activeLoansList.length} crédito${activeLoansList.length === 1 ? '' : 's'} vigente${activeLoansList.length === 1 ? '' : 's'}`}
-                  detail="No se puede originar otro préstamo hasta cancelar o terminar el ciclo actual. Pagá desde Mercado Pago o revisá el cronograma."
+                  detail="No se puede originar otro préstamo hasta cancelar o terminar el ciclo actual. Pagá la cuota desde tu cuenta o revisá el cronograma."
                   action={
                     <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas')}>
                       Ver créditos
@@ -1008,76 +1032,11 @@ export function DashboardTabsWrapper({
           {activeTab === 'scoring' && (
             <BCRAScore profile={initialProfile} lastBcraCheck={lastBcraCheck} autoConsult />
           )}
-          {activeTab === 'cuotas' && (
-            <>
-              <LoansDashboard loans={loans} />
-              <DocumentosPanel
-                profile={initialProfile}
-                loans={loans}
-                lastBcraCheck={lastBcraCheck}
-                bcraReports={bcraReports}
-                contracts={contracts}
-                installments={installmentsAll}
-                isPending={isPending}
-                onGenBCRA={(cid) =>
-                  startTransition(async () => {
-                    try {
-                      const r = await generateBCRAReport(cid)
-                      showToast('ok', `Informe ${r.reportNumber} generado.`)
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'Error al generar informe.')
-                    }
-                  })
-                }
-                onGenContract={(lid) =>
-                  startTransition(async () => {
-                    try {
-                      await generateLoanContract(lid)
-                      showToast('ok', 'Contrato generado. Revisá y aceptalo.')
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'Error al generar contrato.')
-                    }
-                  })
-                }
-                onAcceptContract={(cid) =>
-                  startTransition(async () => {
-                    try {
-                      const ip = (typeof window !== 'undefined' ? 'local-client' : '') || '0.0.0.0'
-                      const ua = typeof window !== 'undefined' ? window.navigator.userAgent : ''
-                      await acceptLoanContract(cid, { ip, ua })
-                      showToast('ok', 'Contrato y pagaré aceptados. El expediente quedó firmado.')
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'Error al aceptar.')
-                    }
-                  })
-                }
-                onRefinance={(loanId) =>
-                  startTransition(async () => {
-                    try {
-                      const r = await refinanceLoan(loanId)
-                      showToast('ok', `Refinanciación ${r.number}/2. El saldo se repartió en ${r.remainingCount} cuotas.`)
-                      router.refresh()
-                    } catch (e: any) {
-                      showToast('err', e?.message ?? 'No se pudo refinanciar.')
-                    }
-                  })
-                }
-                onWithdraw={(loanId) =>
-                  startTransition(async () => {
-                    const r = await withdrawLoanAcceptance(loanId)
-                    if (r.ok) {
-                      showToast('ok', 'Arrepentimiento registrado. El crédito y el contrato quedaron anulados.')
-                      router.refresh()
-                    } else {
-                      showToast('err', r.error)
-                    }
-                  })
-                }
-              />
-            </>
+          {activeTab === 'cuotas' || activeTab === 'cuotas_vigentes' ? (
+            <LoansDashboard loans={loans} view="vigentes" />
+          ) : null}
+          {activeTab === 'cuotas_historial' && (
+            <LoansDashboard loans={loans} view="historial" />
           )}
 
           {activeTab === 'kyc_biometrico' && (
@@ -1149,7 +1108,7 @@ export function DashboardTabsWrapper({
             />
           )}
 
-          {activeTab === 'pagos' && (
+          {activeTab === 'pagos' && !(activeDocKind === 'recibo' || activeDocKind === 'liquidacion') && (
             <>
               <PagosPanel
                 profile={initialProfile}
@@ -1164,6 +1123,10 @@ export function DashboardTabsWrapper({
                 receipts={paymentReceipts}
                 disbursements={disbursements}
                 payments={payments}
+                activeKind={activeDocKind}
+                activeId={activeDocId}
+                onOpen={(kind, id) => openCustomerDoc(kind, id, 'comprobantes')}
+                onBack={() => closeCustomerDoc('comprobantes')}
               />
             </>
           )}
@@ -1175,17 +1138,42 @@ export function DashboardTabsWrapper({
             />
           )}
 
-          {activeTab === 'servicios' && <ServicesDesk />}
+          {activeTab === 'servicios' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Pagos de servicios</CardTitle>
+                <CardDescription>
+                  Esta sección no está habilitada. Para cuotas de crédito usá Créditos → Pagar cuotas.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
 
-          {activeTab === 'documentos' && (
-            <DocumentosPanel
-              profile={initialProfile}
+          {(activeTab === 'documentos' ||
+            activeTab === 'documentos_contrato' ||
+            activeTab === 'documentos_pagare' ||
+            activeTab === 'documentos_talonario') && (
+            <CustomerDocumentsDesk
+              mode={
+                activeTab === 'documentos_contrato'
+                  ? 'contrato'
+                  : activeTab === 'documentos_pagare'
+                    ? 'pagare'
+                    : activeTab === 'documentos_talonario'
+                      ? 'talonario'
+                      : 'documentaciones'
+              }
+              ownerUserId={initialProfile?.userId ?? ''}
               loans={loans}
-              lastBcraCheck={lastBcraCheck}
-              bcraReports={bcraReports}
               contracts={contracts}
+              bcraReports={bcraReports}
               installments={installmentsAll}
+              lastBcraScore={lastBcraCheck?.computedScore}
+              activeKind={activeDocKind}
+              activeId={activeDocId}
               isPending={isPending}
+              onOpen={(kind, id) => openCustomerDoc(kind, id, activeTab)}
+              onBack={() => closeCustomerDoc(activeTab)}
               onGenBCRA={(cid) =>
                 startTransition(async () => {
                   try {
@@ -1251,6 +1239,10 @@ export function DashboardTabsWrapper({
               receipts={paymentReceipts}
               disbursements={disbursements}
               payments={payments}
+              activeKind={activeDocKind}
+              activeId={activeDocId}
+              onOpen={(kind, id) => openCustomerDoc(kind, id, 'comprobantes')}
+              onBack={() => closeCustomerDoc('comprobantes')}
             />
           )}
 
@@ -1840,6 +1832,7 @@ function BancosPanel({
   )
 }
 
+
 function PagosPanel({
   profile: _profile,
   loans: _loans,
@@ -1861,7 +1854,7 @@ function PagosPanel({
     .filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
     .sort((a, b) => new Date(a.dueDate as any).getTime() - new Date(b.dueDate as any).getTime())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [method, setMethod] = useState<any>('mercado_pago')
+  const [method, setMethod] = useState<any>('tarjeta_credito')
   const [payOpen, setPayOpen] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -1875,13 +1868,13 @@ function PagosPanel({
     setSelectedIds((ids) => (ids.includes(payFromUrl) ? ids : [...ids, payFromUrl]))
     if (
       methodFromUrl &&
-      ['mercado_pago', 'tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'mercadopago_wallet', 'transferencia_bancaria', 'payway_qr', 'payway_wallet', 'payway_card'].includes(
+      ['tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'transferencia_bancaria', 'payway_wallet'].includes(
         methodFromUrl,
       )
     ) {
       setMethod(methodFromUrl)
+      setPayOpen(true)
     }
-    setPayOpen(true)
   }, [payFromUrl, methodFromUrl, pendingIds])
 
   const toggle = (id: string) =>
@@ -1901,7 +1894,8 @@ function PagosPanel({
                 <Wallet className="h-5 w-5 text-primary" /> Mis cuotas · pagar desde la web
               </CardTitle>
               <CardDescription>
-                Caja de cobro: crédito, débito, tarjetas guardadas, Mercado Pago, Pago Fácil, Rapipago o transferencia. No salís del panel.
+                Pagá desde tu cuenta UNICRÉDITOS. Si elegís tarjeta se abre el punto de venta acá. El cupón de Pago
+                Fácil o Rapipago se emite recién cuando confirmás ese medio, porque vence.
               </CardDescription>
             </div>
             <Badge variant="outline" className="text-xs">
@@ -2048,13 +2042,10 @@ function PagosPanel({
                   <SelectValue>{paymentMethodLabel(method)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mercado_pago">Mercado Pago · todos los medios</SelectItem>
-                  <SelectItem value="pago_facil">Pago Fácil (efectivo)</SelectItem>
-                  <SelectItem value="rapipago">Rapipago (efectivo)</SelectItem>
-                  <SelectItem value="ticket">Cupón efectivo (Pago Fácil o Rapipago)</SelectItem>
                   <SelectItem value="tarjeta_credito">Tarjeta de crédito</SelectItem>
                   <SelectItem value="tarjeta_debito">Tarjeta de débito</SelectItem>
-                  <SelectItem value="mercadopago_wallet">Dinero en cuenta Mercado Pago</SelectItem>
+                  <SelectItem value="pago_facil">Pago Fácil (efectivo)</SelectItem>
+                  <SelectItem value="rapipago">Rapipago (efectivo)</SelectItem>
                   <SelectItem value="payway_wallet">Billetera UNICRÉDITOS</SelectItem>
                   <SelectItem value="transferencia_bancaria">Transferencia a RM (tesorería)</SelectItem>
                 </SelectContent>
@@ -2063,10 +2054,10 @@ function PagosPanel({
                 {method === 'transferencia_bancaria'
                   ? 'Vas a ver el CBU de RM International Group. Transferí, subí el comprobante y tesorería acredita cuando vea el dinero.'
                   : method === 'tarjeta_credito' || method === 'tarjeta_debito'
-                    ? 'Se abre el formulario de tarjeta en esta caja: una nueva o una ya guardada. El cobro no te saca del panel.'
+                    ? 'Se abre el formulario de tarjeta en este punto de venta. No tenés que entrar a tu cuenta de Mercado Pago.'
                     : method === 'payway_wallet'
                       ? 'Se abre tu billetera UNICRÉDITOS: CVU, saldo y pago inmediato de la cuota.'
-                      : 'El cobro se abre dentro de UNICRÉDITOS: tarjetas, cuenta Mercado Pago, Pago Fácil, Rapipago y QR.'}
+                      : 'Se emite solo el cupón de este medio. Tiene vencimiento: imprimilo o pagalo ahora.'}
               </p>
             </div>
 
@@ -2118,10 +2109,11 @@ function PagosPanel({
               onClick={() => setPayOpen(true)}
             >
               <Wallet className="h-4 w-4" />
-              {method === 'transferencia_bancaria' ? 'Informar transferencia' : 'Abrir caja'}
+              {payCta(method)}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
-              Mercado Pago acredita en tiempo real y emite el recibo cuando confirma el dinero. La transferencia a RM la concilia tesorería.
+              El cobro es del titular de la plataforma. Tarjeta se procesa en este punto de venta. Pago Fácil y Rapipago
+              se emiten al confirmar el medio. La transferencia a RM la concilia tesorería.
             </p>
             <PayInstallmentDialog
               open={payOpen}
@@ -2138,7 +2130,6 @@ function PagosPanel({
               }}
               email={payerEmail}
               method={method}
-              initialTab={method === 'transferencia_bancaria' ? 'transfer' : 'mp'}
               onSettled={() => router.refresh()}
               installments={pending
                 .filter((i) => selectedIds.includes(i.id))
@@ -2207,434 +2198,37 @@ function PagosPanel({
   )
 }
 
-function refinanceUsed(data: unknown) {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return 0
-  const list = (data as { refinanciaciones?: unknown[] }).refinanciaciones
-  return Array.isArray(list) ? list.length : 0
-}
-
-function lastRefinanceFromSignature(data: unknown) {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
-  const list = (data as { refinanciaciones?: Array<{ at?: string }> }).refinanciaciones
-  return list?.[list.length - 1]?.at ?? null
-}
-
-function DocumentosPanel({
-  profile: _profile,
-  loans,
-  lastBcraCheck,
-  bcraReports,
-  contracts,
-  installments,
-  isPending,
-  onGenBCRA,
-  onGenContract,
-  onAcceptContract,
-  onRefinance,
-  onWithdraw,
-}: {
-  profile: Profile | null
-  loans: Loan[]
-  lastBcraCheck: BcraCheck | null
-  bcraReports: BcraReportType[]
-  contracts: (LoanContract & { loan?: Loan | null })[]
-  installments: UpcomingInstallment[]
-  isPending: boolean
-  onGenBCRA: (checkId?: string | null) => void
-  onGenContract: (loanId: string) => void
-  onAcceptContract: (contractId: string) => void
-  onRefinance: (loanId: string) => void
-  onWithdraw: (loanId: string) => void
-}) {
-  const loantee = loans.filter((l) => l.status === 'approved' || l.status === 'active')
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-primary" /> Constancia ARCA
-          </CardTitle>
-          <CardDescription>
-            Razón social, domicilio fiscal e impuestos consultados al padrón con el certificado WSAA.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="gap-1.5">
-            <a href="/dashboard/documentos/constancia-arca" target="_blank" rel="noreferrer">
-              <Printer className="h-4 w-4" /> Ver e imprimir constancia
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Scale className="h-5 w-5 text-primary" /> Informes BCRA
-              </CardTitle>
-              <CardDescription>
-                Imprimí tu informe completo con branding y logo de UNICRÉDITOS.
-              </CardDescription>
-            </div>
-            <Badge variant="outline">{bcraReports.length} informes</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {lastBcraCheck ? (
-            <div className="rounded-xl border border-sky-200/60 bg-sky-50/50 p-4 dark:bg-sky-950/20 dark:border-sky-800/60">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Última consulta BCRA
-                  </p>
-                  <p className="font-mono text-xl font-bold text-sky-700 dark:text-sky-400">
-                    Score {lastBcraCheck.computedScore ?? '—'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(lastBcraCheck.createdAt as any).toLocaleString('es-AR')}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => onGenBCRA(lastBcraCheck.id)}
-                  className="gap-1.5"
-                >
-                  <FileCheck2 className="h-4 w-4" /> Generar informe imprimible
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-amber-200/60 bg-amber-50/40 p-4 dark:bg-amber-950/20 dark:border-amber-800/60">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                    Sin consulta BCRA previa
-                  </p>
-                  <p className="text-sm text-foreground/80">
-                    Podés generar un informe inicial usando los datos de tu perfil.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => onGenBCRA(null)}
-                  className="gap-1.5"
-                >
-                  <FileCheck2 className="h-4 w-4" /> Generar informe ahora
-                </Button>
-              </div>
-            </div>
-          )}
-          {bcraReports.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-8 text-center">
-              <Scale className="h-8 w-8 text-muted-foreground/60" />
-              <p className="text-xs font-medium">Sin informes generados aún</p>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => onGenBCRA(null)}
-                className="gap-1 mt-1"
-              >
-                <FileCheck2 className="h-3.5 w-3.5" /> Generar primer informe
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-auto pr-1">
-              {bcraReports.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 text-xs"
-                >
-                  <div>
-                    <p className="font-mono font-semibold text-foreground">
-                      {r.reportNumber}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Emisión: {new Date(r.createdAt as any).toLocaleDateString('es-AR')} · Score{' '}
-                      <span className="font-semibold">{r.scoreAtGeneration ?? '—'}</span>
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Link
-                      href={`/dashboard/documentos/informe-bcra/${r.id}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <Eye className="h-3.5 w-3.5" /> Ver
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/informe-bcra/${r.id}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" className="gap-1">
-                        <Printer className="h-3.5 w-3.5" /> Imprimir PDF
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5 text-primary" /> Contratos de préstamo
-              </CardTitle>
-              <CardDescription>
-                Expediente del acreedor: contrato de préstamo (mutuo), pagaré, estado de deuda e intimación. Firma electrónica Ley 25.506.
-              </CardDescription>
-            </div>
-            <Badge variant="outline">{contracts.length} contratos</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {loantee.length > 0 && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <p className="mb-2 text-xs font-medium text-primary-foreground/90 dark:text-foreground/90">
-                Préstamos sin contrato generado
-              </p>
-              <div className="space-y-1.5">
-                {loantee
-                  .filter((l) => !contracts.some((c) => c.loanId === l.id))
-                  .slice(0, 3)
-                  .map((l) => (
-                    <div
-                      key={l.id}
-                      className="flex items-center justify-between rounded-lg bg-background/70 p-2.5 text-xs"
-                    >
-                      <div>
-                        <p className="font-mono font-semibold">#{l.id.slice(0, 8)}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatARS(l.principal)} · {l.term} cuotas ·{' '}
-                          <span className="font-medium">{loanStatusLabel(l.status)}</span>
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        disabled={isPending}
-                        onClick={() => onGenContract(l.id)}
-                      >
-                        <FileText className="h-3.5 w-3.5" /> Generar contrato
-                      </Button>
-                    </div>
-                  ))}
-                {loantee.filter((l) => !contracts.some((c) => c.loanId === l.id)).length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Todos tus préstamos tienen contrato generado.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-          {contracts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-8 text-center">
-              <FileText className="h-8 w-8 text-muted-foreground/60" />
-              <p className="text-xs font-medium">Sin contratos emitidos</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-auto pr-1">
-              {contracts.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 text-xs"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-mono font-semibold text-foreground truncate">
-                        {c.templateName} v{c.version}
-                      </p>
-                      <Badge
-                        variant={c.status === 'accepted' ? 'default' : 'outline'}
-                        className={cn(
-                          'text-[10px]',
-                          c.status === 'accepted' && 'bg-emerald-500 hover:bg-emerald-500',
-                          c.status === 'pending_acceptance' &&
-                            'bg-amber-500/90 hover:bg-amber-500 border-0 text-white',
-                          c.status === 'rejected' && 'bg-rose-500 hover:bg-rose-500 border-0',
-                          c.status === 'withdrawn' && 'bg-slate-500 hover:bg-slate-500 border-0 text-white',
-                        )}
-                      >
-                        {c.status === 'accepted'
-                          ? '✓ Aceptado'
-                          : c.status === 'pending_acceptance'
-                            ? 'Pendiente firma'
-                            : c.status === 'rejected'
-                              ? 'Rechazado'
-                              : c.status === 'withdrawn'
-                                ? 'Arrepentido'
-                                : c.status}
-                      </Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      Emisión: {new Date(c.createdAt as any).toLocaleDateString('es-AR')}
-                      {c.acceptedAt &&
-                        ` · Aceptado: ${new Date(c.acceptedAt as any).toLocaleDateString('es-AR')}`}
-                      {c.acceptedIp && ` · IP ${c.acceptedIp}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Link
-                      href={`/dashboard/documentos/contrato/${c.id}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <Eye className="h-3.5 w-3.5" /> Contrato
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/pagare/${c.id}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        Pagaré
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/estado-deuda/${c.id}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        Deuda
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/cuponera/${c.loanId}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        Cuponera
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/cancelacion/${c.loanId}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        Cancelación
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/documentos/solvencia/${c.loanId}`}
-                      className="inline-flex"
-                    >
-                      <Button size="sm" variant="outline" className="gap-1">
-                        Solvencia
-                      </Button>
-                    </Link>
-                    {(c.loan ?? loans.find((l) => l.id === c.loanId))?.status === 'paid' ? (
-                      <Link
-                        href={`/dashboard/documentos/libre-deuda/${c.loanId}`}
-                        className="inline-flex"
-                      >
-                        <Button size="sm" variant="outline" className="gap-1">
-                          Libre deuda
-                        </Button>
-                      </Link>
-                    ) : null}
-                    {evaluateIntimation(
-                      asMoraRows(installments.filter((row) => row.loanId === c.loanId)),
-                      lastRefinanceFromSignature(c.signatureData),
-                    ).ok ? (
-                      <Link
-                        href={`/dashboard/documentos/intimacion/${c.id}`}
-                        className="inline-flex"
-                      >
-                        <Button size="sm" variant="outline" className="gap-1">
-                          Intimación
-                        </Button>
-                      </Link>
-                    ) : null}
-                    {c.status === 'accepted' &&
-                    evaluateRefinance(
-                      asMoraRows(installments.filter((row) => row.loanId === c.loanId)),
-                      refinanceUsed(c.signatureData),
-                    ).ok ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        disabled={isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Refinanciar el saldo en cuotas iguales? Quedan ${MAX_REFINANCES - refinanceUsed(c.signatureData)} de ${MAX_REFINANCES}.`,
-                            )
-                          ) {
-                            onRefinance(c.loanId)
-                          }
-                        }}
-                      >
-                        Refinanciar saldo
-                      </Button>
-                    ) : null}
-                    {c.status === 'pending_acceptance' && (
-                      <Button
-                        size="sm"
-                        className="gap-1"
-                        disabled={isPending}
-                        onClick={() => onAcceptContract(c.id)}
-                      >
-                        <Check className="h-3.5 w-3.5" /> Aceptar contrato y pagaré
-                      </Button>
-                    )}
-                    {canWithdrawAcceptance({
-                      contractStatus: c.status,
-                      acceptedAt: c.acceptedAt,
-                      loanStatus: (c.loan ?? loans.find((l) => l.id === c.loanId))?.status,
-                      disbursedAt: (c.loan ?? loans.find((l) => l.id === c.loanId))?.disbursedAt,
-                    }) ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        disabled={isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `¿Arrepentirte de este crédito? Tenés ${WITHDRAWAL_DAYS} días corridos desde la firma. Solo si todavía no se acreditó.`,
-                            )
-                          ) {
-                            onWithdraw(c.loanId)
-                          }
-                        }}
-                      >
-                        Arrepentirme ({WITHDRAWAL_DAYS} días)
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
 function ComprobantesPanel({
   receipts,
   disbursements,
   payments: _payments,
+  activeKind,
+  activeId,
+  onOpen,
+  onBack,
 }: {
   receipts: (PaymentReceiptType & { installment?: UpcomingInstallment | null })[]
   disbursements: (DisbursementType & { loan?: Loan | null })[]
   payments: PaymentType[]
+  activeKind: CustomerDocKind | null
+  activeId: string | null
+  onOpen: (kind: CustomerDocKind, id: string) => void
+  onBack: () => void
 }) {
   const [tab, setTab] = useState<'pagos' | 'desembolsos'>('pagos')
   const list = tab === 'pagos' ? receipts : (disbursements as any[])
+  const viewing = (activeKind === 'recibo' || activeKind === 'liquidacion') && activeId
+
+  if (viewing) {
+    return (
+      <div className="space-y-4">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" /> Todos los comprobantes
+        </Button>
+        <InAppDocumentPanel kind={activeKind} id={activeId} />
+      </div>
+    )
+  }
 
   return (
     <Card>
@@ -2772,55 +2366,24 @@ function ComprobantesPanel({
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Link
-                            href={`/dashboard/documentos/recibo/${targetId}`}
-                            className="inline-flex"
-                          >
-                            <Button size="sm" variant="outline" className="gap-1">
-                              <Eye className="h-3.5 w-3.5" /> Recibo
-                            </Button>
-                          </Link>
-                          {isRec ? (
-                            <Link
-                              href={`/dashboard/documentos/liquidacion/${targetId}`}
-                              className="inline-flex"
-                            >
-                              <Button size="sm" variant="outline" className="gap-1">
-                                Liquidación
-                              </Button>
-                            </Link>
-                          ) : null}
                           <Button
                             size="sm"
                             variant="outline"
                             className="gap-1"
-                            onClick={() => {
-                              if (typeof window !== 'undefined') {
-                                const w = window.open(
-                                  `/dashboard/documentos/recibo/${targetId}`,
-                                  '_blank',
-                                  'noopener,noreferrer',
-                                )
-                                if (w) {
-                                  const run = () => {
-                                    try { if (typeof w.print === 'function') w.print() } catch {}
-                                  }
-                                  w.addEventListener('load', run, { once: true })
-                                  setTimeout(run, 1800)
-                                }
-                              }
-                            }}
+                            onClick={() => onOpen('recibo', targetId)}
                           >
-                            <Printer className="h-3.5 w-3.5" /> Imprimir
+                            <Eye className="h-3.5 w-3.5" /> Recibo
                           </Button>
-                          <Link
-                            href={`/dashboard/documentos/recibo/${targetId}`}
-                            className="inline-flex"
-                          >
-                            <Button size="sm" className="gap-1">
-                              <Download className="h-3.5 w-3.5" /> PDF
+                          {isRec ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => onOpen('liquidacion', targetId)}
+                            >
+                              Liquidación
                             </Button>
-                          </Link>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>

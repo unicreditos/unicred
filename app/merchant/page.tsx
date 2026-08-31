@@ -8,7 +8,11 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
-export default async function MerchantPage() {
+export default async function MerchantPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; case?: string }>
+}) {
   await requireMerchant()
   const session = await getSession()
   if (!session?.user) redirect("/sign-in")
@@ -17,6 +21,7 @@ export default async function MerchantPage() {
   const sales = await getMerchantSales()
   const documents = await getMyMerchantDocuments()
   const titularDiditApproved = await getMyDiditApproved()
+  const params = await searchParams
 
   const user = {
     name: session.user.name ?? session.user.email ?? "Usuario",
@@ -24,8 +29,9 @@ export default async function MerchantPage() {
   }
 
   const status = (merchant as any)?.status as string | undefined
-  const defaultTab: "overview" | "profile" | "sales" | "customers" | "liquidations" =
-    merchant && status === "active" ? "overview" : "profile"
+  const defaultTab =
+    params.tab ||
+    (merchant && status === "active" ? "overview" : "profile")
 
   return (
     <MerchantTabsClient
@@ -33,6 +39,7 @@ export default async function MerchantPage() {
       merchant={merchant as any}
       sales={sales as any}
       defaultTab={defaultTab}
+      supportCaseId={params.case}
       titularDiditApproved={titularDiditApproved}
       documents={documents as any}
     />

@@ -547,7 +547,7 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
   if (!installmentIds.length) throw new Error('Elegí al menos una cuota.')
   await ensureWalletAccount(userId)
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [wallet] = await tx
       .select()
       .from(walletAccount)
@@ -647,6 +647,14 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
       receiptId: settled.receiptId ?? null,
       amount: total,
       balance: next,
+      localPaymentId: settled.localPaymentId ?? paymentId,
     }
   })
+
+  if (result.credited > 0 && result.localPaymentId) {
+    const { enqueueInvoicesForPayment } = await import('@/lib/arca/invoice')
+    void enqueueInvoicesForPayment(result.localPaymentId)
+  }
+
+  return result
 }

@@ -63,6 +63,11 @@ function checks(): EnvCheck[] {
       required: prod,
       detail: 'Sin esto el webhook de Didit se rechaza y el KYC no se actualiza solo.',
     },
+    {
+      name: 'AFIP_PTO_VTA',
+      required: false,
+      detail: 'Punto de venta WsFE para facturar IVA sobre intereses. Sin esto la factura queda en cola de CAE.',
+    },
   ]
 }
 

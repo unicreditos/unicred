@@ -262,6 +262,11 @@ export async function settlePaywayPayment(input: {
 
   const result = input.tx ? await run(input.tx) : await db.transaction(run)
 
+  if (!input.tx && result.credited > 0 && result.localPaymentId) {
+    const { enqueueInvoicesForPayment } = await import('@/lib/arca/invoice')
+    void enqueueInvoicesForPayment(result.localPaymentId)
+  }
+
   if (!result.receiptId && result.localPaymentId && result.credited > 0) {
     const [rcpt] = await db
       .select({ id: paymentReceipt.id })

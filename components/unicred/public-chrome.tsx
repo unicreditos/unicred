@@ -10,15 +10,16 @@ import {
   Building2,
   Calculator,
   ChevronDown,
+  FileCheck2,
   Handshake,
   Landmark,
   LayoutDashboard,
   Lock,
   Menu,
+  Percent,
   PhoneCall,
   Scale,
   Shield,
-  TrendingUp,
   Wallet,
   X,
 } from 'lucide-react'
@@ -27,37 +28,37 @@ import { useState } from 'react'
 
 export const MEGA_MENU = {
   personas: {
-    label: 'Clientes',
-    hint: 'Todo en una cuenta',
+    label: 'Crédito',
+    hint: 'Personas',
     items: [
-      { icon: Wallet, title: 'Préstamo digital', desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} · cuota fija`, href: '/prestamos' },
-      { icon: Handshake, title: 'Comprar en cuotas', desc: 'Sin tarjeta · físico y online', href: '/comprar-en-cuotas' },
-      { icon: Calculator, title: 'Pagos y recargas', desc: 'Servicios, impuestos y celular', href: '/pagos-servicios' },
-      { icon: Scale, title: 'Situación crediticia', desc: 'Consulta Central de Deudores BCRA', href: '/scoring' },
-      { icon: Calculator, title: 'Simulador', desc: 'TNA, CFT y total a devolver', href: '/simulador' },
-      { title: 'Ver todos los productos', featured: true, href: '/productos' },
+      { icon: Wallet, title: 'Préstamo personal', desc: `Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} · cuota fija`, href: '/prestamos' },
+      { icon: Calculator, title: 'Simulador', desc: 'Cuota, TNA, CFT y total a devolver', href: '/simulador' },
+      { icon: Scale, title: 'Evaluación BCRA', desc: 'Central de Deudores con tu autorización', href: '/scoring' },
+      { icon: Percent, title: 'Tasas y CFT', desc: 'Catálogo de referencia a la vista', href: '/legal/tasas' },
+      { icon: FileCheck2, title: 'Cómo se pide', desc: 'Identidad, oferta y desembolso', href: '/prestamos' },
+      { title: 'Solicitar evaluación', featured: true, href: '/sign-up' },
     ],
   },
   pymes: {
-    label: 'Comercios',
-    hint: 'Vendé en cuotas',
+    label: 'Empresas',
+    hint: 'Crédito comercial',
     items: [
-      { icon: Building2, title: 'Adherí tu comercio', desc: 'POS, QR y liquidaciones', href: '/comercios' },
-      { icon: TrendingUp, title: 'Red de comercios', desc: 'Dónde se compra con UNICRÉDITOS', href: '/red-comercios' },
-      { icon: Building2, title: 'Crédito comercial', desc: `Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)} para tu PyME`, href: '/productos#comercial' },
-      { title: 'Crear cuenta comercio', featured: true, href: '/sign-up' },
+      { icon: Building2, title: 'Crédito comercial', desc: `Hasta ${formatARS(COMERCIO_QUOTE.maxAmount)} · cuota fija`, href: '/productos#comercial' },
+      { icon: Handshake, title: 'Requisitos PyME', desc: 'CUIT, KYC y Central de Deudores', href: '/productos#comercial' },
+      { icon: Calculator, title: 'Simular línea', desc: 'Misma calculadora, producto comercial', href: '/simulador' },
+      { title: 'Solicitar crédito comercial', featured: true, href: '/sign-up' },
     ],
   },
   ayuda: {
     label: 'Ayuda',
-    hint: 'Atención y transparencia',
+    hint: 'Transparencia y reclamos',
     items: [
-      { icon: PhoneCall, title: 'Preguntas frecuentes', desc: 'Préstamos, cuotas y servicios', href: '/preguntas-frecuentes' },
+      { icon: PhoneCall, title: 'Preguntas frecuentes', desc: 'Crédito, tasas y desembolso', href: '/preguntas-frecuentes' },
       { icon: PhoneCall, title: 'Contacto', desc: 'Formulario y email de soporte', href: '/contacto' },
-      { icon: Landmark, title: 'Datos oficiales BCRA', desc: 'Tipo de cambio de referencia', href: '/datos-bcra' },
-      { icon: Scale, title: 'Usuario financiero', desc: 'Identificación y productos', href: '/legal/usuario-financiero' },
+      { icon: Scale, title: 'Usuario financiero', desc: 'Identificación del operador', href: '/legal/usuario-financiero' },
+      { icon: Landmark, title: 'Arrepentimiento', desc: '10 días corridos · Ley 24.240', href: '/legal/arrepentimiento' },
       { icon: Lock, title: 'Privacidad', desc: 'Tratamiento de datos personales', href: '/legal/privacidad' },
-      { title: 'Escribinos ahora', featured: true, href: '/contacto' },
+      { title: 'Presentar un reclamo', featured: true, href: '/contacto' },
     ],
   },
 } as const
@@ -190,7 +191,7 @@ export function PublicHeader({
                 <Link href="/sign-in">Ingresar</Link>
               </Button>
               <Button asChild className="font-bold tracking-tight shadow-sm shadow-brand-primary/20">
-                <Link href="/sign-up">Crear cuenta</Link>
+                <Link href="/sign-up">Solicitar crédito</Link>
               </Button>
             </>
           )}
@@ -280,23 +281,24 @@ export function PublicFooter() {
           </div>
 
           <div className="md:col-span-2">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Clientes</div>
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Crédito</div>
             <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
-              <li><Link href="/prestamos" className="hover:text-white">Préstamos digitales</Link></li>
-              <li><Link href="/comprar-en-cuotas" className="hover:text-white">Comprar en cuotas</Link></li>
-              <li><Link href="/pagos-servicios" className="hover:text-white">Pagos y recargas</Link></li>
+              <li><Link href="/prestamos" className="hover:text-white">Préstamo personal</Link></li>
+              <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
               <li><Link href="/simulador" className="hover:text-white">Simulador</Link></li>
-              <li><Link href="/sign-up" className="hover:text-white">Crear cuenta</Link></li>
+              <li><Link href="/scoring" className="hover:text-white">Evaluación BCRA</Link></li>
+              <li><Link href="/legal/tasas" className="hover:text-white">Tasas y CFT</Link></li>
+              <li><Link href="/sign-up" className="hover:text-white">Solicitar evaluación</Link></li>
             </ul>
           </div>
 
           <div className="md:col-span-3">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Comercios</div>
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Quién opera</div>
             <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
-              <li><Link href="/comercios" className="hover:text-white">Adherí tu comercio</Link></li>
-              <li><Link href="/red-comercios" className="hover:text-white">Red de comercios</Link></li>
-              <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
-              <li><Link href="/sign-up" className="hover:text-white">Crear cuenta</Link></li>
+              <li><Link href="/legal/usuario-financiero" className="hover:text-white">Usuario financiero</Link></li>
+              <li><Link href="/legal/arrepentimiento" className="hover:text-white">Arrepentimiento (10 días)</Link></li>
+              <li><Link href="/legal/defensa-consumidor" className="hover:text-white">Defensa del consumidor</Link></li>
+              <li><Link href="/contacto" className="hover:text-white">Reclamos formales</Link></li>
             </ul>
           </div>
 
@@ -364,13 +366,13 @@ export function PublicCtaBanner() {
               {BRAND.valueProp}
             </h2>
             <p className="mt-3 max-w-xl text-base text-slate-200/90">
-              {BRAND.slogan} Creá tu cuenta, cargá DNI y CUIL, y recibí una oferta con TNA, CFT y plan de cuotas
-              antes de firmar.
+              {BRAND.slogan} Creá tu cuenta, verificá identidad y, si el perfil califica, firmás con TNA,
+              CFT y plan de cuotas a la vista.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Button asChild className="bg-white font-bold tracking-tight text-brand-navy hover:bg-slate-100 shadow-lg shadow-brand-navy/30">
                 <Link href="/sign-up">
-                  Solicitar crédito <ArrowRight className="ml-1.5 h-4 w-4" />
+                  Solicitar evaluación <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="border-white/20 bg-white/5 font-semibold text-white hover:bg-white/10">

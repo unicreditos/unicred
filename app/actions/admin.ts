@@ -11,10 +11,12 @@ import {
   bcraVariable,
   bankAccount,
   loanContract,
+  payment,
+  paymentReceipt,
   user as userTable,
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
-import { desc, eq, sql, and, ne, inArray } from 'drizzle-orm'
+import { desc, eq, sql, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
@@ -23,6 +25,7 @@ import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
+import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { diditApprovedForUser } from '@/lib/didit'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import {
@@ -57,7 +60,12 @@ function isoDate(value: Date | string | null | undefined) {
 export async function requireAdmin() {
   const session = await getSession()
   if (!session?.user) throw new Error('Unauthorized')
-  const [p] = await db.select().from(profile).where(eq(profile.userId, session.user.id)).limit(1)
+  await ensureOriginacionSchema()
+  const [p] = await db
+    .select({ role: profile.role })
+    .from(profile)
+    .where(eq(profile.userId, session.user.id))
+    .limit(1)
   if (!p || p.role !== 'admin') throw new Error('Forbidden')
   return session.user.id
 }
@@ -72,6 +80,7 @@ export async function getAdminStats() {
       rejected: sql<number>`count(*) filter (where ${loan.status} = 'rejected')::int`,
       paid: sql<number>`count(*) filter (where ${loan.status} = 'paid')::int`,
       volume: sql<number>`coalesce(sum(${loan.principal}) filter (where ${loan.status} in ('active','approved','paid')), 0)`,
+      outstanding: sql<number>`coalesce(sum(${loan.principal}) filter (where ${loan.status} = 'active'), 0)`,
     })
     .from(loan)
 
@@ -117,6 +126,8 @@ export async function getAllLoans() {
     return {
       id: r.id,
       userId: r.userId,
+      merchantId: r.merchantId,
+      productId: r.productId,
       principal: r.principal,
       term: r.term,
       status: r.status,
@@ -205,6 +216,135 @@ export async function setMerchantStatus(id: string, status: 'active' | 'rejected
 
   revalidatePath('/admin')
   return { ok: true, updatedBy: adminUserId }
+}
+
+const BOOK_LOAN_STATUSES = ['approved', 'active', 'paid', 'disbursed'] as const
+const PURGEABLE_LOAN_STATUSES = ['pending', 'rejected', 'cancelled'] as const
+
+function isBookLoan(status: string) {
+  return (BOOK_LOAN_STATUSES as readonly string[]).includes(status)
+}
+
+function canPurgeLoan(status: string) {
+  return (PURGEABLE_LOAN_STATUSES as readonly string[]).includes(status)
+}
+
+async function purgeUnbookedLoan(loanId: string) {
+  await db.transaction(async (tx) => {
+    await tx.delete(paymentReceipt).where(eq(paymentReceipt.loanId, loanId))
+    await tx.delete(payment).where(eq(payment.loanId, loanId))
+    await tx.delete(loan).where(eq(loan.id, loanId))
+  })
+}
+
+export async function updateMerchantAdmin(
+  id: string,
+  input: {
+    businessName?: string
+    legalName?: string
+    cuit?: string
+    category?: string
+    phone?: string
+    city?: string
+    province?: string
+    address?: string
+    commissionRate?: string | number
+  },
+) {
+  const adminUserId = await requireAdmin()
+  const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
+  if (!existing) throw new Error('Comercio no encontrado')
+
+  const businessName = input.businessName?.trim()
+  if (businessName !== undefined && businessName.length < 2) {
+    throw new Error('El nombre de fantasía no puede quedar vacío.')
+  }
+
+  let cuit = existing.cuit
+  if (input.cuit !== undefined) {
+    const digits = input.cuit.replace(/\D/g, '')
+    if (digits.length !== 11) throw new Error('El CUIT tiene que tener 11 dígitos.')
+    const formatted = `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`
+    const [dup] = await db
+      .select({ id: merchant.id })
+      .from(merchant)
+      .where(and(or(eq(merchant.cuit, digits), eq(merchant.cuit, formatted)), ne(merchant.id, id)))
+      .limit(1)
+    if (dup) throw new Error('Ese CUIT ya está en otro comercio.')
+    cuit = formatted
+  }
+
+  let commissionRate = existing.commissionRate
+  if (input.commissionRate !== undefined && input.commissionRate !== '') {
+    const n = typeof input.commissionRate === 'number' ? input.commissionRate : Number(String(input.commissionRate).replace(',', '.'))
+    if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error('La comisión tiene que estar entre 0 y 100.')
+    commissionRate = n.toFixed(2)
+  }
+
+  const patch = {
+    businessName: businessName ?? existing.businessName,
+    legalName: input.legalName !== undefined ? input.legalName.trim() || null : existing.legalName,
+    cuit,
+    category: input.category !== undefined ? input.category.trim() || null : existing.category,
+    phone: input.phone !== undefined ? input.phone.trim() || null : existing.phone,
+    city: input.city !== undefined ? input.city.trim() || null : existing.city,
+    province: input.province !== undefined ? input.province.trim() || null : existing.province,
+    address: input.address !== undefined ? input.address.trim() || null : existing.address,
+    commissionRate,
+    updatedAt: new Date(),
+  }
+
+  await db.update(merchant).set(patch).where(eq(merchant.id, id))
+
+  await recordAudit({
+    actorUserId: adminUserId,
+    action: 'MERCHANT_EDITED',
+    entityType: 'merchant',
+    entityId: id,
+    targetUserId: existing.userId,
+    severity: 'info',
+    summary: `Comercio ${patch.businessName} editado`,
+    changes: diffFields(existing as any, patch as any),
+  })
+
+  revalidatePath('/admin')
+  revalidatePath(`/admin/comercios/${id}`)
+  return { ok: true, by: adminUserId }
+}
+
+export async function deleteMerchantAdmin(id: string) {
+  const adminUserId = await requireAdmin()
+  const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
+  if (!existing) throw new Error('Comercio no encontrado')
+
+  const linked = await db.select({ id: loan.id, status: loan.status }).from(loan).where(eq(loan.merchantId, id))
+  const book = linked.filter((l) => isBookLoan(l.status))
+  if (book.length > 0) {
+    throw new Error('Este comercio tiene créditos calificados o vigentes. No se borra: rechazalo o liquidá la cartera.')
+  }
+
+  await db.transaction(async (tx) => {
+    if (linked.length) {
+      await tx.update(loan).set({ merchantId: null, updatedAt: new Date() }).where(eq(loan.merchantId, id))
+    }
+    await tx.update(payment).set({ merchantId: null, updatedAt: new Date() }).where(eq(payment.merchantId, id))
+    await tx.delete(merchant).where(eq(merchant.id, id))
+  })
+
+  await syncUserRole(existing.userId, 'customer')
+
+  await recordAudit({
+    actorUserId: adminUserId,
+    action: 'MERCHANT_DELETED',
+    entityType: 'merchant',
+    entityId: id,
+    targetUserId: existing.userId,
+    severity: 'error',
+    summary: `Comercio eliminado: ${existing.businessName}`,
+  })
+
+  revalidatePath('/admin')
+  return { ok: true, by: adminUserId }
 }
 
 export async function getMerchantDocumentsForAdmin(merchantId: string) {
@@ -304,6 +444,7 @@ export async function approveLoan(
         term,
         monthlyRate: String(monthlyRate),
         tna: String(amort.tna),
+        tea: String(amort.tea),
         cft: String(amort.cft),
         installmentAmount: amort.installmentAmount.toFixed(2),
         totalAmount: amort.totalAmount.toFixed(2),
@@ -499,6 +640,34 @@ export async function updateLoanManual(
 
   revalidatePath('/admin')
   return { ok: true as const, updatedBy: adminUserId }
+  } catch (err) {
+    return actionFail(err)
+  }
+}
+
+export async function deleteLoanAdmin(id: string) {
+  try {
+    const adminUserId = await requireAdmin()
+    const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
+    if (!existing) throw new Error('Préstamo no encontrado')
+    if (!canPurgeLoan(existing.status)) {
+      throw new Error('Solo se borran créditos pendientes, rechazados o anulados. Uno vigente o calificado no se elimina.')
+    }
+
+    await purgeUnbookedLoan(id)
+
+    await recordAudit({
+      actorUserId: adminUserId,
+      action: 'LOAN_DELETED',
+      entityType: 'loan',
+      entityId: id,
+      targetUserId: existing.userId,
+      severity: 'error',
+      summary: `Crédito ${existing.status} eliminado · ${existing.principal} ARS`,
+    })
+
+    revalidatePath('/admin')
+    return { ok: true as const, by: adminUserId }
   } catch (err) {
     return actionFail(err)
   }
@@ -1036,15 +1205,32 @@ export async function setUserBanned(userId: string, banned: boolean) {
 export async function deleteUserAdmin(userId: string) {
   const adminUserId = await requireAdmin()
   if (userId === adminUserId) throw new Error('No podés eliminar tu propia cuenta')
-  const [p] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1)
+  const [p] = await db.select({ role: profile.role, kycStatus: profile.kycStatus }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (p?.role === 'admin') throw new Error('No se elimina un administrador')
 
-  const [loanAgg] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(loan)
-    .where(eq(loan.userId, userId))
-  if ((loanAgg?.n ?? 0) > 0) {
-    throw new Error('Este usuario tiene historial de créditos. No se elimina: bloquealo.')
+  const loans = await db.select({ id: loan.id, status: loan.status }).from(loan).where(eq(loan.userId, userId))
+  const bookAsBorrower = loans.filter((l) => isBookLoan(l.status))
+  if (bookAsBorrower.length > 0) {
+    throw new Error('Este usuario tiene créditos calificados o vigentes. No se elimina: bloquealo.')
+  }
+
+  const [shop] = await db.select({ id: merchant.id }).from(merchant).where(eq(merchant.userId, userId)).limit(1)
+  if (shop) {
+    const originated = await db.select({ id: loan.id, status: loan.status }).from(loan).where(eq(loan.merchantId, shop.id))
+    if (originated.some((l) => isBookLoan(l.status))) {
+      throw new Error('El comercio de este usuario tiene cartera viva. No se elimina.')
+    }
+    await db.update(loan).set({ merchantId: null, updatedAt: new Date() }).where(eq(loan.merchantId, shop.id))
+    await db.update(payment).set({ merchantId: null, updatedAt: new Date() }).where(eq(payment.merchantId, shop.id))
+  }
+
+  for (const row of loans.filter((l) => canPurgeLoan(l.status))) {
+    await purgeUnbookedLoan(row.id)
+  }
+
+  const leftover = await db.select({ id: loan.id, status: loan.status }).from(loan).where(eq(loan.userId, userId))
+  if (leftover.length > 0) {
+    throw new Error('Quedaron créditos que no se pueden borrar. Bloqueá al usuario.')
   }
 
   const [target] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
@@ -1056,7 +1242,7 @@ export async function deleteUserAdmin(userId: string) {
     entityType: 'user',
     entityId: userId,
     severity: 'error',
-    summary: `Usuario eliminado: ${target?.email ?? userId}`,
+    summary: `Usuario eliminado: ${target?.email ?? userId}${p?.kycStatus === 'rejected' ? ' (KYC rechazado)' : ''}`,
   })
 
   revalidatePath('/admin')

@@ -9,7 +9,6 @@ import {
   payment,
   paymentReceipt,
   profile,
-  supportCase,
   user as userTable,
 } from '@/lib/db/schema'
 import { ensureLoanContract } from '@/lib/legal/expediente'
@@ -25,6 +24,7 @@ import { SERVICE_CATEGORIES, SERVICE_PROVIDERS } from '@/lib/services/catalog'
 import { getRoleForUser, newId } from '@/lib/session'
 import { createDiditSession, diditApprovedForUser, isDiditConfigured } from '@/lib/didit'
 import { computeFrenchAmortization, frenchAmortizationSchedule } from '@/lib/finance'
+import { loanPricingFields } from '@/lib/loan-rates'
 import {
   computeCreditOffer,
   decideUnderwriting,
@@ -399,10 +399,7 @@ export async function mobileApplyLoan(
       principal: String(amount || product.minAmount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(amort.tna),
-      installmentAmount: String(amort.installmentAmount),
-      totalAmount: String(amort.totalAmount),
-      cft: String(amort.cft),
+      ...loanPricingFields(amort),
       status: 'rejected',
       purpose,
       scoreAtApproval: score.score,
@@ -435,10 +432,7 @@ export async function mobileApplyLoan(
       principal: String(amount),
       term,
       monthlyRate: String(monthlyRate),
-      tna: String(amort.tna),
-      installmentAmount: String(amort.installmentAmount),
-      totalAmount: String(amort.totalAmount),
-      cft: String(amort.cft),
+      ...loanPricingFields(amort),
       status,
       purpose,
       scoreAtApproval: score.score,
@@ -475,6 +469,7 @@ export async function mobileCalculateCredit(input: {
     totalPayment: amort.totalAmount,
     totalInterest: amort.totalInterest,
     tnaRate: amort.tna / 100,
+    teaRate: amort.tea / 100,
     cftRate: amort.cft / 100,
     adminFee: 0,
     amortizationSchedule: schedule.map((row) => ({
@@ -918,17 +913,13 @@ export async function mobileServicesPay(
 export async function mobileNotifications(userId: string, page = 1, limit = 20) {
   const role = await getRoleForUser(userId)
   const inbox = await getInbox(userId, role)
-  const meta = await getMobileMeta(userId)
-  const readIds = new Set(
-    Array.isArray(meta.readNotificationIds) ? (meta.readNotificationIds as string[]) : [],
-  )
   const all = inbox.items.map((it) => ({
     id: it.id,
     title: it.title,
     message: it.detail,
     type: it.tone,
-    read: readIds.has(it.id),
-    readAt: readIds.has(it.id) ? new Date().toISOString() : null,
+    read: it.unread === false,
+    readAt: it.unread === false ? it.at : null,
     data: { href: it.href },
     createdAt: it.at,
   }))
@@ -938,17 +929,19 @@ export async function mobileNotifications(userId: string, page = 1, limit = 20) 
 }
 
 export async function mobileNotificationRead(userId: string, id: string) {
-  const meta = await getMobileMeta(userId)
-  const readIds = Array.isArray(meta.readNotificationIds) ? [...(meta.readNotificationIds as string[])] : []
-  if (!readIds.includes(id)) readIds.push(id)
-  await writeMobileMeta(userId, { readNotificationIds: readIds })
+  const { markItemsRead } = await import('@/lib/inbox-read')
+  await markItemsRead(userId, [id])
   return { success: true }
 }
 
 export async function mobileNotificationReadAll(userId: string) {
   const role = await getRoleForUser(userId)
   const inbox = await getInbox(userId, role)
-  await writeMobileMeta(userId, { readNotificationIds: inbox.items.map((it) => it.id) })
+  const { markItemsRead } = await import('@/lib/inbox-read')
+  await markItemsRead(
+    userId,
+    inbox.items.map((it) => it.id),
+  )
   return { success: true }
 }
 
@@ -972,52 +965,44 @@ export async function mobileSetNotifPrefs(userId: string, input: OcrBag) {
 /* ----------------------------- Support / FAQ ---------------------------- */
 
 export async function mobileSupportList(userId: string, page = 1, limit = 50) {
-  const rows = await db
-    .select()
-    .from(supportCase)
-    .where(and(eq(supportCase.userId, userId), eq(supportCase.category, 'mobile_chat')))
-    .orderBy(asc(supportCase.createdAt))
-  const items: { id: string; message: string; isFromUser: boolean; createdAt: string }[] = []
-  for (const r of rows) {
-    items.push({
-      id: r.id,
-      message: r.body,
-      isFromUser: true,
-      createdAt: r.createdAt.toISOString(),
-    })
-    if (r.response) {
-      items.push({
-        id: `${r.id}_bot`,
-        message: r.response,
-        isFromUser: false,
-        createdAt: (r.respondedAt || r.createdAt).toISOString(),
-      })
-    }
-  }
+  const { getOrOpenChatCase, listThread } = await import('@/lib/support')
+  const row = await getOrOpenChatCase(userId)
+  const thread = await listThread(row.id)
+  const items = thread.map((m) => ({
+    id: m.id,
+    message: m.body,
+    isFromUser: m.authorUserId === userId && m.kind !== 'system',
+    createdAt: m.createdAt,
+  }))
   const start = (page - 1) * limit
   const slice = items.slice(start, start + limit)
   return { items: slice, total: items.length, page, totalPages: Math.max(1, Math.ceil(items.length / limit)) }
 }
 
 export async function mobileSupportPost(userId: string, message: string) {
-  const now = new Date()
-  const id = newId('sup')
-  const auto =
-    'Gracias por escribirnos. Un asesor de UNICRÉDITOS te responderá a la brevedad. También podés gestionar tu cuenta en www.unicreditos.com.'
-  await db.insert(supportCase).values({
-    id,
-    userId,
-    category: 'mobile_chat',
-    subject: 'Chat app',
+  const { getOrOpenChatCase, insertSupportMessage, listThread } = await import('@/lib/support')
+  const { getRoleForUser } = await import('@/lib/session')
+  const role = await getRoleForUser(userId)
+  const row = await getOrOpenChatCase(userId)
+  const saved = await insertSupportMessage({
+    caseId: row.id,
+    authorUserId: userId,
+    authorRole: role === 'admin' ? 'admin' : role,
     body: message,
-    status: 'open',
-    channel: 'mobile',
-    response: auto,
-    respondedAt: now,
-    createdAt: now,
-    updatedAt: now,
   })
-  return { id, message, isFromUser: true, createdAt: now.toISOString() }
+  const thread = await listThread(row.id)
+  return {
+    id: saved.id,
+    message: saved.body,
+    isFromUser: true,
+    createdAt: saved.createdAt.toISOString(),
+    thread: thread.map((m) => ({
+      id: m.id,
+      message: m.body,
+      isFromUser: m.authorUserId === userId && m.kind !== 'system',
+      createdAt: m.createdAt,
+    })),
+  }
 }
 
 /* ----------------------------- Upload / push ---------------------------- */

@@ -1,4 +1,4 @@
-/** Rutas donde una sesión no debe rebotar al panel. El marketing institucional sí rebota; /directo no. */
+/** Rutas donde una sesión no debe rebotar al panel. Home y crédito público se ven con sesión; /directo también. */
 
 const WORKSPACE_PREFIXES = ['/dashboard', '/admin', '/merchant', '/api/', '/verification/']
 
@@ -6,6 +6,17 @@ const WORKSPACE_EXACT = new Set([
   '/recuperar-clave',
   '/restablecer-clave',
 ])
+
+/** Login/alta: el proxy no puede validar la sesión, solo ve el nombre de cookie. */
+const AUTH_ENTRY_PATHS = new Set(['/sign-in', '/sign-up'])
+
+export function isAuthEntryPath(pathname: string) {
+  return (
+    AUTH_ENTRY_PATHS.has(pathname) ||
+    pathname.startsWith('/sign-in/') ||
+    pathname.startsWith('/sign-up/')
+  )
+}
 
 export function installmentPosPath(installmentId: string, method?: string | null) {
   const q = new URLSearchParams({ tab: 'pagos', pay: installmentId })
@@ -33,18 +44,20 @@ export function legacyPedirRedirect(pathname: string): string | null {
   const pagar = pathname.match(/^\/pedir\/pagar\/([^/]+)\/?$/)
   if (pagar) return `/pagar/${pagar[1]}`
   const contrato = pathname.match(/^\/pedir\/docs\/contrato\/([^/]+)\/?$/)
-  if (contrato) return `/dashboard/documentos/contrato/${contrato[1]}`
+  if (contrato) return `/dashboard?tab=documentos_contrato&doc=contrato&docId=${contrato[1]}`
   const pagare = pathname.match(/^\/pedir\/docs\/pagare\/([^/]+)\/?$/)
-  if (pagare) return `/dashboard/documentos/pagare/${pagare[1]}`
+  if (pagare) return `/dashboard?tab=documentos_pagare&doc=pagare&docId=${pagare[1]}`
   const cuponera = pathname.match(/^\/pedir\/docs\/cuponera\/([^/]+)\/?$/)
-  if (cuponera) return `/dashboard/documentos/cuponera/${cuponera[1]}`
+  if (cuponera) return `/dashboard?tab=documentos_talonario&doc=talonario&docId=${cuponera[1]}`
   return '/'
 }
 
 export function isWorkspaceStayPath(pathname: string) {
+  if (pathname === '/') return true
   if (WORKSPACE_PREFIXES.some((prefix) => pathname === prefix.replace(/\/$/, '') || pathname.startsWith(prefix))) {
     return true
   }
+  if (isAuthEntryPath(pathname)) return true
   if (WORKSPACE_EXACT.has(pathname) || pathname.startsWith('/restablecer-clave/')) return true
   if (pathname.startsWith('/legal/')) return true
   if (pathname === '/directo' || pathname.startsWith('/directo/')) return true
@@ -67,7 +80,7 @@ export function isWorkspaceStayPath(pathname: string) {
   return false
 }
 
-/** Sitio público / login: con sesión hay que volver al panel. */
+/** Login, alta, home y páginas de crédito: no rebotar al panel. */
 export function shouldBounceLoggedInToWorkspace(pathname: string) {
   if (isWorkspaceStayPath(pathname)) return false
   if (publicPayInstallmentId(pathname)) return false

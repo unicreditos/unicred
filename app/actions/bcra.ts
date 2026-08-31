@@ -66,6 +66,7 @@ export async function consultBcraByCuil(cuilInput: string) {
       userId: owner.userId,
       cuil,
       monthlyIncome: Number(owner.monthlyIncome ?? 0),
+      skipConsent: true,
     })
     if (!saved.ok) return saved
     snapshot = saved.snapshot

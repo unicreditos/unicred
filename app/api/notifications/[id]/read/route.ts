@@ -1,46 +1,8 @@
 import { requireMobileUserId } from '@/lib/mobile/auth'
 import { mobileJson, mobileOptions } from '@/lib/mobile/cors'
-import {
-  requireMobileAdmin,
-  mobileApplyLoan,
-  mobileLoanDetail,
-  mobileLoanContract,
-  mobileSignLoan,
-  mobileCalculateCredit,
-  mobileCreatePayment,
-  mobilePaymentHistory,
-  mobilePaymentReceipt,
-  mobileWalletTopup,
-  mobileWalletTransfer,
-  mobileWalletPayout,
-  mobileWalletPayInstallments,
-  mobileServicesMine,
-  mobileServicesPay,
-  mobileListDocuments,
-  mobileVerifyIdentity,
-  mobileNotificationRead,
-  mobileNotificationReadAll,
-  mobileGetNotifPrefs,
-  mobileSetNotifPrefs,
-  mobileSupportList,
-  mobileSupportPost,
-  mobilePresign,
-  mobileUploadComplete,
-  mobileFileUrl,
-  mobileFileDelete,
-  mobilePushRegister,
-  mobilePushDelete,
-  mobileAdminDashboard,
-  mobileAdminLoans,
-  mobileAdminApproveLoan,
-  mobileAdminRejectLoan,
-  mobileAdminDisburseLoan,
-  mobileAdminCustomers,
-  mobileAdminSetScore,
-  mobileAdminKycApprove,
-  mobileAdminKycReject,
-  mobileAdminPayments,
-} from '@/lib/mobile/ops'
+import { markItemsRead } from '@/lib/inbox-read'
+import { getSession } from '@/lib/session'
+import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -49,15 +11,30 @@ export function OPTIONS(req: Request) {
   return mobileOptions(req)
 }
 
-export async function PUT(req: Request,{ params }: { params: Promise<Record<string, string>> }) {
+async function resolveUserId(req: Request) {
+  const bearer = req.headers.get('authorization')
+  if (bearer?.toLowerCase().startsWith('bearer ')) {
+    return requireMobileUserId(req)
+  }
+  const session = await getSession()
+  return session?.user?.id ?? null
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<Record<string, string>> }) {
   try {
-    const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('PUT') ? await req.json().catch(() => ({})) : {}
-    const id = String((await params).id); return mobileJson(req, await mobileNotificationRead(userId, id))
+    const userId = await resolveUserId(req)
+    if (!userId) {
+      if (req.headers.get('authorization')) return mobileJson(req, { message: 'unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'unauthorized' }, { status: 401 })
+    }
+    const id = String((await params).id ?? '')
+    const result = await markItemsRead(userId, [id])
+    if (req.headers.get('authorization')) return mobileJson(req, { success: true, ...result })
+    return NextResponse.json({ success: true, ...result })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'
-    const status = /unauthor/i.test(message) || message === 'unauthorized' ? 401 : /No autorizado/i.test(message) ? 403 : 400
-    return mobileJson(req, { message }, { status })
+    const status = /unauthor/i.test(message) ? 401 : 400
+    if (req.headers.get('authorization')) return mobileJson(req, { message }, { status })
+    return NextResponse.json({ message }, { status })
   }
 }

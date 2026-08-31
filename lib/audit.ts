@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { adminAuditLog, user as userTable } from '@/lib/db/schema'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 export type AuditSeverity = 'info' | 'warning' | 'error'
 
@@ -67,4 +67,13 @@ export function diffFields<T extends Record<string, unknown>>(
 
 export async function getAuditLog(limit = 100) {
   return db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(limit)
+}
+
+export async function getAuditLogForEntity(entityType: string, entityId: string, limit = 40) {
+  return db
+    .select()
+    .from(adminAuditLog)
+    .where(and(eq(adminAuditLog.entityType, entityType), eq(adminAuditLog.entityId, entityId)))
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(limit)
 }

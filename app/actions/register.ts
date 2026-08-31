@@ -19,6 +19,7 @@ import {
 import { evaluateMerchantKyb, type RepresentativeRole } from '@/lib/merchant-kyb'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { getOrCreateProfile, getSession, newId } from '@/lib/session'
+import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { eq } from 'drizzle-orm'
 import { cookies, headers } from 'next/headers'
 
@@ -102,6 +103,7 @@ export type CompleteRegistrationInput = {
   representativeRole?: RepresentativeRole
   confirmedIdentity: boolean
   acceptedTerms: boolean
+  acceptedBcraConsent: boolean
   identity?: IdentityMatch | null
 }
 
@@ -116,6 +118,12 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   }
   if (!input.acceptedTerms) {
     return { ok: false as const, error: 'Tenés que aceptar que la cuenta no garantiza un crédito.' }
+  }
+  if (!input.acceptedBcraConsent) {
+    return {
+      ok: false as const,
+      error: 'Tenés que autorizar la consulta a la Central de Deudores del BCRA (CENDEU).',
+    }
   }
 
   const cuil = normalizeCuit(input.cuil)
@@ -170,10 +178,12 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   }
 
   const userId = session.user.id
+  await ensureOriginacionSchema()
   await getOrCreateProfile()
   const now = new Date()
   const income = Number(input.monthlyIncome) || 0
   const accountRole = input.accountType === 'comercio' ? 'merchant' : 'customer'
+  const consentIp = await clientKey()
 
   await db
     .update(profile)
@@ -191,6 +201,8 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       monthlyIncome: String(income),
       employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : ''),
       kycStatus: 'pending',
+      bcraConsentAt: now,
+      bcraConsentIp: consentIp,
       updatedAt: now,
     })
     .where(eq(profile.userId, userId))

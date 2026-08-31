@@ -4,9 +4,9 @@ import { getMyWallet, payWithWallet, sendFromWallet } from '@/app/actions/wallet
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatARS, formatARSDecimal, formatCVU, displayAlias } from '@/lib/finance'
+import { formatARS, formatARSDecimal } from '@/lib/finance'
 import { cn } from '@/lib/utils'
-import { ArrowDownLeft, ArrowUpRight, Copy, Loader2, WalletCards } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Loader2, WalletCards } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -40,11 +40,6 @@ export function WalletDesk({
   useEffect(() => {
     if (!payId && pendingInstallments[0]) setPayId(pendingInstallments[0].id)
   }, [payId, pendingInstallments])
-
-  async function copy(label: string, value: string) {
-    await navigator.clipboard.writeText(value)
-    toast.success(`${label} copiado`)
-  }
 
   async function send() {
     setBusy(true)
@@ -113,36 +108,13 @@ export function WalletDesk({
             <p className="font-semibold capitalize text-white">{wallet.status === 'active' ? 'Activa' : wallet.status}</p>
           </div>
         </div>
-        <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+        <div className="grid gap-px bg-white/10 sm:grid-cols-1">
           <div className="bg-black/25 px-5 py-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">CVU</p>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="font-mono text-sm tracking-wide">{formatCVU(wallet.cvu)}</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 text-white hover:bg-white/10 hover:text-white"
-                onClick={() => void copy('CVU', wallet.cvu)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-          <div className="bg-black/25 px-5 py-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Alias</p>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="font-mono text-sm">{displayAlias(wallet.alias)}</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 text-white hover:bg-white/10 hover:text-white"
-                onClick={() => void copy('Alias', wallet.alias)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Ledger interno</p>
+            <p className="mt-1 text-sm text-white/85">
+              Saldo de cuenta propia UNICRÉDITOS. No es un CVU Coelsa ni un alias de un PSP. El
+              préstamo se acredita en el CBU/CVU bancario de Cuentas de desembolso.
+            </p>
           </div>
         </div>
       </div>
@@ -169,14 +141,11 @@ export function WalletDesk({
         {panel === 'ingresar' ? (
           <div className="mt-4 space-y-3">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Transferí a tu CVU o alias desde tu banco o billetera. El saldo se acredita automáticamente cuando
-              Payway confirma el ingreso. No hay cargas simuladas ni de prueba.
+              El saldo de esta billetera es un ledger interno. No publiques ni copies un CVU: UNICRÉDITOS no
+              emite CVU Coelsa. Para recibir el préstamo usá Cuentas de desembolso (CBU/CVU bancario a tu nombre).
             </p>
-            <div className="rounded-xl border bg-slate-50 p-3 text-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">CVU</p>
-              <p className="mt-1 font-mono">{formatCVU(wallet.cvu)}</p>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Alias</p>
-              <p className="mt-1 font-mono">{displayAlias(wallet.alias)}</p>
+            <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-700">
+              Referencia interna de tesorería: {wallet.id.slice(0, 8).toUpperCase()}
             </div>
           </div>
         ) : null}
@@ -357,11 +326,6 @@ export function WalletPayBox({
       .catch((err) => toast.error((err as Error).message))
   }, [])
 
-  async function copy(value: string, label: string) {
-    await navigator.clipboard.writeText(value)
-    toast.success(`${label} copiado`)
-  }
-
   async function pay() {
     setBusy(true)
     try {
@@ -393,26 +357,7 @@ export function WalletPayBox({
       <div className="rounded-lg border bg-slate-50 p-3">
         <p className="text-[11px] uppercase tracking-wide text-slate-500">Saldo</p>
         <p className="text-xl font-semibold tabular-nums">{formatARSDecimal(wallet.balance)}</p>
-        <dl className="mt-2 space-y-1 text-xs">
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-500">CVU</dt>
-            <dd className="font-mono">
-              {formatCVU(wallet.cvu)}{' '}
-              <button type="button" className="text-brand-primary" onClick={() => void copy(wallet.cvu, 'CVU')}>
-                copiar
-              </button>
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-500">Alias</dt>
-            <dd className="font-mono">
-              {displayAlias(wallet.alias)}{' '}
-              <button type="button" className="text-brand-primary" onClick={() => void copy(wallet.alias, 'Alias')}>
-                copiar
-              </button>
-            </dd>
-          </div>
-        </dl>
+        <p className="mt-2 text-xs text-slate-600">Ledger interno · no es CVU Coelsa.</p>
       </div>
       {enough ? (
         <Button type="button" className="w-full font-semibold" disabled={busy} onClick={() => void pay()}>

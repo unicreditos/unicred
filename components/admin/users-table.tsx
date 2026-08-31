@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -49,10 +48,18 @@ import {
   updateUserAdmin,
   type AdminUserRow,
 } from '@/app/actions/admin'
-import { MetricTile } from '@/components/unicred/workspace-shell'
-import { adminUrl } from '@/lib/admin-nav'
+import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
+import { adminClientHref } from '@/lib/admin-nav'
 
-export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; currentAdminId: string }) {
+export function UsersTable({
+  users,
+  currentAdminId,
+  embedded = false,
+}: {
+  users: AdminUserRow[]
+  currentAdminId: string
+  embedded?: boolean
+}) {
   const router = useRouter()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('all')
@@ -107,27 +114,32 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
     })
   }
 
+  const Floor = embedded ? 'div' : OpsFloor
+  const floorClass = embedded ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : undefined
+
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <Floor className={floorClass}>
+      {embedded ? null : (
+      <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-4">
         <MetricTile label="Usuarios" value={users.length.toLocaleString('es-AR')} hint="Clientes, comercios y operadores" />
         <MetricTile label="Clientes" value={String(users.filter((u) => (u.role || 'customer') === 'customer').length)} />
         <MetricTile label="Comercios" value={String(users.filter((u) => u.role === 'merchant').length)} />
         <MetricTile label="Bloqueados" value={String(bannedCount)} tone={bannedCount ? 'warn' : 'ok'} hint="Sin acceso a la plataforma" />
       </div>
+      )}
 
-      <Card>
-        <CardHeader className="space-y-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="h-4 w-4" /> Personas
-          </CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative min-w-[220px] flex-1">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-white">
+        <header className="shrink-0 space-y-2 border-b px-3 py-2">
+          <h2 className="flex items-center gap-2 text-[12px] font-semibold">
+            <Users className="h-3.5 w-3.5" /> Personas
+          </h2>
+          <div className="flex flex-wrap gap-1.5">
+            <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-9 pl-8" placeholder="Nombre, email, CUIL o DNI" value={q} onChange={(e) => setQ(e.target.value)} />
+              <Input className="h-8 pl-8" placeholder="Nombre, email, CUIL o DNI" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <Select value={role} onValueChange={(v) => setRole(v ?? 'all')}>
-              <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los roles</SelectItem>
                 <SelectItem value="customer">Cliente</SelectItem>
@@ -136,7 +148,7 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-[150px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
                 <SelectItem value="active">Habilitados</SelectItem>
@@ -145,9 +157,8 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
               </SelectContent>
             </Select>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+        </header>
+        <div className="min-h-0 flex-1 overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,7 +182,7 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
                 {filtered.map((u) => (
                   <TableRow key={u.id} className={u.banned ? 'opacity-70' : undefined}>
                     <TableCell>
-                      <Link href={adminUrl('usuarios', u.id)} className="text-sm font-medium hover:underline">
+                      <Link href={adminClientHref(u.id)} className="text-sm font-medium hover:underline">
                         {u.name}
                       </Link>
                       <p className="text-xs text-muted-foreground">{u.email}</p>
@@ -202,7 +213,7 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
                     <TableCell className="text-right">
                       <div className="flex flex-wrap justify-end gap-1.5">
                         <Button size="sm" variant="outline" className="h-8" asChild>
-                          <Link href={adminUrl('usuarios', u.id)}>
+                          <Link href={adminClientHref(u.id)}>
                             <FolderOpen className="mr-1 h-3.5 w-3.5" /> Ficha
                           </Link>
                         </Button>
@@ -244,9 +255,8 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
                 ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent className="sm:max-w-lg">
@@ -337,13 +347,13 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><ShieldOff className="h-4 w-4" /> Eliminar usuario</DialogTitle>
             <DialogDescription>
-              Solo se elimina si no tiene créditos. Si hay historial, bloquealo. Esta acción no se revierte.
+              Se borra la cuenta si no tiene créditos vigentes o calificados. Las solicitudes pendientes o rechazadas se limpian con la baja. Esta acción no se revierte.
             </DialogDescription>
           </DialogHeader>
           {del ? (
             <p className="text-sm">
               {del.name} · {del.email}
-              {del.loansCount ? <span className="block mt-2 text-amber-700">Tiene {del.loansCount} crédito(s). El sistema va a rechazar la baja.</span> : null}
+              {del.loansCount ? <span className="block mt-2 text-amber-700">Tiene {del.loansCount} crédito(s). Si alguno está vigente o calificado, la baja se rechaza. Los pendientes o rechazados se borran juntos.</span> : null}
             </p>
           ) : null}
           <DialogFooter>
@@ -370,6 +380,6 @@ export function UsersTable({ users, currentAdminId }: { users: AdminUserRow[]; c
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Floor>
   )
 }

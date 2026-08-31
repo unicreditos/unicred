@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 export const metadata: Metadata = {
   ...pageMetadata({
     title: 'Ingresar',
-    description: 'Accedé a tus créditos, cuotas y comprobantes de UNICRÉDITOS.',
+    description: 'Accedé a tus créditos, documentos y comprobantes de UNICRÉDITOS.',
     path: '/sign-in',
     noIndex: true,
   }),

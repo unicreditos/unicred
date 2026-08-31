@@ -4,6 +4,7 @@ import { LiquidacionPrintable } from '@/components/documents/liquidacion-printab
 import { Button } from '@/components/ui/button'
 import { db } from '@/lib/db'
 import { paymentReceipt, profile, user } from '@/lib/db/schema'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { canViewOwnedRecord, receiptBackHrefForRole } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { getRoleForUser, requireUserId } from '@/lib/session'
@@ -25,11 +26,18 @@ function parseJson(value: unknown) {
   return value
 }
 
-export default async function LiquidacionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LiquidacionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   const backHref = receiptBackHrefForRole(role)
   const id = String((await params).id ?? '').trim()
+  await keepCustomerInDashboard('liquidacion', id, searchParams)
   const [receiptRaw] = await db
     .select()
     .from(paymentReceipt)

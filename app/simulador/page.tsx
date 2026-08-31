@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { pageMetadata } from '@/lib/seo'
 
 export const metadata = pageMetadata({
-  title: 'Simulador de Créditos Online',
-  description: 'Simulá préstamos personales, comerciales y consumo. Calculá cuotas, TNA y CFT en segundos.',
+  title: 'Simulador de crédito online',
+  description:
+    'Simulá un préstamo personal o comercial. Calculá cuota, TNA y CFT. Los valores son informativos y no constituyen oferta.',
   path: '/simulador',
 })
 
@@ -15,14 +16,14 @@ export default function SimuladorPage() {
     <PublicPageShell
       eyebrow="Herramienta gratuita"
       title="Simulador de crédito online"
-      description="Ajustá monto y plazo. En segundos ves cuota estimada, TNA, CFT con IVA y total a devolver. Sin compromiso y sin costo."
+      description="Ajustá monto y plazo. Ves cuota estimada, TNA, TEA y CFT (IVA sobre intereses). Sin compromiso. No es una oferta."
       icon={<Calculator className="h-3.5 w-3.5" />}
       primaryAction={{ href: '/sign-up', label: 'Solicitar este crédito' }}
       secondaryAction={{ href: '/productos', label: 'Ver productos' }}
     >
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <PageSection eyebrow="Calculadora TNA · CFT · CFT EA" title="Simulá en 3 pasos">
+          <PageSection eyebrow="Calculadora TNA · TEA · CFT" title="Simulá en 3 pasos">
             <LoanSimulator />
             <div className="mt-6 flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span className="rounded-full bg-slate-100 px-3 py-1">🔒 Sin compromiso</span>
@@ -35,8 +36,8 @@ export default function SimuladorPage() {
           <PageSection eyebrow="Por qué usar el simulador" title="Tomá decisiones informadas">
             <ul className="space-y-3 text-sm leading-relaxed text-slate-700">
               {[
-                'Cuota estimada según TNA, plazo y sistema de amortización francés.',
-                'Total a devolver, intereses estimados y CFT con IVA en la misma pantalla.',
+                'Cuota estimada según TNA, TEA, plazo y sistema francés.',
+                'Total a devolver, intereses estimados y CFT = TEA × 1,21 (IVA sobre intereses).',
                 'Compará plazos de 3, 12, 24 y 48 cuotas antes de solicitar.',
                 'La oferta contractual puede diferir según evaluación de capacidad de pago.',
               ].map(x => (
@@ -49,9 +50,9 @@ export default function SimuladorPage() {
 
           <PageSection eyebrow="Glosario" title="Qué significan las tasas">
             <dl className="space-y-3 text-sm">
-              <div><dt className="font-semibold text-slate-900">TNA · Tasa Nominal Anual</dt><dd className="text-muted-foreground">Interés anual sin capitalizar. Base para calcular cuotas.</dd></div>
-              <div><dt className="font-semibold text-slate-900">CFT · Costo Financiero Total</dt><dd className="text-muted-foreground">Suma de intereses, gastos, comisiones e IVA · Ley 25.065.</dd></div>
-              <div><dt className="font-semibold text-slate-900">CFT EA · CFT Efectivo Anual</dt><dd className="text-muted-foreground">Costo anualizado efectivo · te dice el costo real del préstamo.</dd></div>
+              <div><dt className="font-semibold text-slate-900">TNA · Tasa Nominal Anual</dt><dd className="text-muted-foreground">TEM × 12. Interés anual sin capitalizar.</dd></div>
+              <div><dt className="font-semibold text-slate-900">TEA · Tasa Efectiva Anual</dt><dd className="text-muted-foreground">(1 + TEM)^12 − 1. Exigida por Ley 24.240 art. 36 inc. d.</dd></div>
+              <div><dt className="font-semibold text-slate-900">CFT est. (IVA sobre intereses)</dt><dd className="text-muted-foreground">TEA × 1,21. Sin seguros ni gastos. No es el CFT de flujos de un sujeto BCRA. Este mutuo se informa por Ley 24.240, no por la Ley de tarjetas 25.065.</dd></div>
             </dl>
           </PageSection>
 
@@ -60,14 +61,14 @@ export default function SimuladorPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-primary shadow-sm ring-1 ring-slate-200"><FileText className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Documentación lista en 2 minutos</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Creá tu cuenta → Cargá DNI/CUIL → Indicá CBU y ingresos → Recibí oferta pre aprobada.</p>
-                  <Link href="/sign-up" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-primary hover:underline">Crear cuenta gratuita →</Link>
+                  <h3 className="text-sm font-semibold text-slate-900">Siguiente paso: evaluación</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Creá tu cuenta → verificá DNI con Didit → indicá CBU e ingresos → si calificás, firmás con TNA y CFT a la vista.</p>
+                  <Link href="/sign-up" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-primary hover:underline">Solicitar evaluación →</Link>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800 ring-1 ring-emerald-200/60">
-              <ShieldCheck className="h-4 w-4 shrink-0" /> Datos cifrados SSL · Nivel bancario · No compartimos tu información con terceros.
+              <ShieldCheck className="h-4 w-4 shrink-0" /> Datos cifrados. Ley 25.326. No hay WhatsApp ni 0800 como canal de cobro.
             </div>
           </PageSection>
         </aside>

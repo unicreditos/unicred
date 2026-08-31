@@ -60,6 +60,7 @@ import {
   StatusChip,
 } from "@/components/unicred/dashboard-kit"
 import { DecisionBanner, MetricTile, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
+import { SupportChatPanel } from "@/components/support/support-chat"
 import {
   BadgeCheck,
   Banknote,
@@ -227,6 +228,7 @@ export function MerchantTabsClient({
   merchant,
   sales,
   defaultTab,
+  supportCaseId,
   titularDiditApproved = false,
   documents = [],
 }: {
@@ -234,6 +236,7 @@ export function MerchantTabsClient({
   merchant: MerchantType | null
   sales: SaleType[]
   defaultTab?: string
+  supportCaseId?: string
   titularDiditApproved?: boolean
   documents?: MerchantDocRow[]
 }) {
@@ -396,7 +399,7 @@ export function MerchantTabsClient({
               </TabsContent>
               <TabsContent value="ayuda">
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <AyudaTab />
+                  <AyudaTab initialCaseId={supportCaseId} />
                 </div>
               </TabsContent>
             </Tabs>
@@ -2311,7 +2314,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
   )
 }
 
-function AyudaTab() {
+function AyudaTab({ initialCaseId }: { initialCaseId?: string }) {
   const faqs = [
     { q: "¿Cuándo se acredita el dinero de mi venta?", a: "Tesorería transfiere cuando confirma el desembolso del crédito del cliente. No hay plazo fijo de 24 a 48 horas." },
     { q: "¿Qué comisión cobra UNICRÉDITOS?", a: "La comisión por operación se acuerda comercialmente. La ves en Datos del Comercio y en cada liquidación." },
@@ -2322,7 +2325,9 @@ function AyudaTab() {
   const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-12">
+    <div className="space-y-6">
+      <SupportChatPanel audience="merchant" initialCaseId={initialCaseId} />
+      <div className="grid gap-6 lg:grid-cols-12">
       <div className="lg:col-span-8 space-y-5">
         <Card>
           <CardHeader>
@@ -2369,7 +2374,7 @@ function AyudaTab() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Headphones className="h-4 w-4 text-brand-primary" /> Atención al comercio
             </CardTitle>
-            <CardDescription>Lunes a viernes, 9 a 18 hs. Sin WhatsApp ni 0800 publicado.</CardDescription>
+            <CardDescription>Chat en línea en este panel. Lunes a viernes, 9 a 18 hs. Sin WhatsApp ni 0800 publicado.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button variant="outline" className="w-full justify-start gap-2" asChild>
@@ -2419,6 +2424,7 @@ function AyudaTab() {
             </Button>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   )

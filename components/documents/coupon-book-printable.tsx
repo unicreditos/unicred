@@ -6,18 +6,13 @@ import {
   DocumentSection,
   DocumentSheet,
 } from '@/components/documents/document-frame'
-import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber, installmentPayUrl } from '@/lib/coupon'
-import { db } from '@/lib/db'
-import { loan } from '@/lib/db/schema'
-import { ensureLoanCouponMpQrs } from '@/lib/payments/installment-mp-qr'
-import { ensureLoanCouponTickets, type InstallmentCashTicket } from '@/lib/payments/installment-mp-ticket'
+import { barcodeSvg, couponCode, formatBarcodeHuman } from '@/lib/coupon'
 import { treasuryForClient } from '@/lib/treasury'
+import { installmentPosPath } from '@/lib/workspace-gate'
 import { BRAND, publicBrandWebsite } from '@/lib/brand'
 import { docDate, docDateShort, docShortId, installmentStatusLabel } from '@/lib/document-format'
 import { formatARSDecimal, formatCBU, formatPercent } from '@/lib/finance'
 import type { ContractDocData, InstallmentDoc } from '@/lib/legal/types'
-import { eq } from 'drizzle-orm'
-import QRCode from 'qrcode'
 
 function isOpenCoupon(status: string) {
   return status !== 'paid' && status !== 'cancelled'
@@ -63,52 +58,6 @@ function PrintBarcode({ value, height = 52 }: { value: string; height?: number }
   )
 }
 
-function NetworkCouponBand({
-  label,
-  ticket,
-  qr,
-}: {
-  label: string
-  ticket: InstallmentCashTicket | null
-  qr: string | null
-}) {
-  const operation = ticket?.operationNumber?.replace(/\s+/g, '') || null
-  const barcode = ticket?.barcode?.replace(/\s+/g, '') || null
-  const barcodeIsOperation = Boolean(operation && barcode && operation === barcode)
-  return (
-    <section className="cuponera-network">
-      <div className="cuponera-network-head">
-        <strong>{label}</strong>
-        {ticket?.expiresAt ? <span>Válido hasta {docDateShort(ticket.expiresAt)}</span> : null}
-      </div>
-      {operation ? (
-        <div className="cuponera-op">
-          <p className="cuponera-op-label">Nº de operación</p>
-          <p className="cuponera-op-number">{formatOperationNumber(operation)}</p>
-          <p className="cuponera-op-hint">Dictá este número en la caja. En muchos locales no piden el código de barras.</p>
-        </div>
-      ) : null}
-      {barcode && !barcodeIsOperation ? (
-        <>
-          <p className="cuponera-kicker">Código de barras</p>
-          <PrintBarcode value={barcode} height={48} />
-        </>
-      ) : null}
-      {!operation && !barcode && qr ? (
-        <div className="cuponera-network-fallback">
-          <img src={qr} alt={`Ticket ${label}`} />
-          <p>No hay número de operación. Mostrá este QR en el local.</p>
-        </div>
-      ) : null}
-      {!operation && !barcode && !qr ? (
-        <p className="cuponera-missing">
-          Cupón no emitido. Reimprimí esta cuponera o pagá en {publicSiteHost()}.
-        </p>
-      ) : null}
-    </section>
-  )
-}
-
 function CouponTalon({
   index,
   total,
@@ -116,13 +65,8 @@ function CouponTalon({
   contract,
   row,
   code,
-  qr,
   payUrl,
-  cash,
-  pagoFacilQr,
-  rapipagoQr,
   treasury,
-  qrError,
 }: {
   index: number
   total: number
@@ -130,13 +74,8 @@ function CouponTalon({
   contract: ContractDocData
   row: InstallmentDoc
   code: string
-  qr: string | null
   payUrl: string
-  cash: { pagoFacil: InstallmentCashTicket | null; rapipago: InstallmentCashTicket | null } | null
-  pagoFacilQr: string | null
-  rapipagoQr: string | null
   treasury: ReturnType<typeof treasuryForClient>
-  qrError: string | null
 }) {
   const term = contract.loan.term
   const overdue = row.status === 'overdue'
@@ -175,31 +114,20 @@ function CouponTalon({
         </div>
       </div>
 
-      <div className="cuponera-pay-grid">
-        <div className="cuponera-qr-col">
-          {qr ? (
-            <>
-              <img src={qr} alt={`QR Mercado Pago de la cuota ${row.number}`} className="cuponera-qr" />
-              <p className="cuponera-qr-caption">QR Mercado Pago</p>
-            </>
-          ) : (
-            <p className="cuponera-missing">{qrError || 'QR Mercado Pago no emitido'}</p>
-          )}
-        </div>
-        <div className="cuponera-pay-copy">
-          <p className="cuponera-kicker">Cómo pagar</p>
-          <ol>
-            <li>Escaneá el QR con Mercado Pago u otra billetera.</li>
-            <li>En Pago Fácil o Rapipago dictá el Nº de operación o mostrá el código de barras.</li>
-            <li>Por transferencia usá el CBU o alias y el concepto de abajo.</li>
-          </ol>
-          <p className="cuponera-kicker">Código UNICRÉDITOS</p>
-          <PrintBarcode value={code} height={40} />
-        </div>
+      <div className="cuponera-pay-copy">
+        <p className="cuponera-kicker">Cómo pagar</p>
+        <ol>
+          <li>Entrá a tu cuenta UNICRÉDITOS y elegí Pagar cuotas.</li>
+          <li>Si pagás con tarjeta, se abre el punto de venta en el panel. No hace falta entrar a Mercado Pago.</li>
+          <li>
+            Si elegís Pago Fácil o Rapipago, el cupón se emite en ese momento (tiene vencimiento). No se imprimen todos
+            juntos.
+          </li>
+          <li>Por transferencia usá el CBU o alias y el concepto de abajo.</li>
+        </ol>
+        <p className="cuponera-kicker">Código UNICRÉDITOS</p>
+        <PrintBarcode value={code} height={40} />
       </div>
-
-      <NetworkCouponBand label="Pago Fácil" ticket={cash?.pagoFacil ?? null} qr={pagoFacilQr} />
-      <NetworkCouponBand label="Rapipago" ticket={cash?.rapipago ?? null} qr={rapipagoQr} />
 
       <footer className="cuponera-coupon-foot">
         <p>
@@ -213,7 +141,7 @@ function CouponTalon({
           {' · '}N° {treasury.accountNumber}
         </p>
         <p className="cuponera-mono">Concepto / referencia: {code}</p>
-        {payUrl ? <p className="cuponera-mono">Pagar en la web: {payUrl.replace(/^https?:\/\//, '')}</p> : null}
+        {payUrl ? <p className="cuponera-mono">Pagar en tu cuenta: {payUrl.replace(/^https?:\/\//, '')}</p> : null}
       </footer>
     </article>
   )
@@ -223,59 +151,19 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
   const treasury = treasuryForClient()
   const open = contract.installments.filter((row) => isOpenCoupon(row.status))
   const bookCode = couponBookCode(contract.loanId)
-  let qrError: string | null = null
-  let ticketError: string | null = null
-  let payloads: Awaited<ReturnType<typeof ensureLoanCouponMpQrs>> = {}
-  let tickets: Awaited<ReturnType<typeof ensureLoanCouponTickets>> = {}
-  try {
-    const [loanRow] = await db
-      .select({ userId: loan.userId })
-      .from(loan)
-      .where(eq(loan.id, contract.loanId))
-      .limit(1)
-    if (loanRow) {
-      const [qrResult, ticketResult] = await Promise.all([
-        ensureLoanCouponMpQrs(contract.loanId, loanRow.userId),
-        ensureLoanCouponTickets(contract.loanId, loanRow.userId).catch((err) => {
-          ticketError = err instanceof Error ? err.message : 'No se emitieron los cupones de Pago Fácil / Rapipago.'
-          return {} as Awaited<ReturnType<typeof ensureLoanCouponTickets>>
-        }),
-      ])
-      payloads = qrResult
-      tickets = ticketResult
-    }
-  } catch (err) {
-    qrError = err instanceof Error ? err.message : 'Mercado Pago no emitió el QR de las cuotas.'
-  }
-
-  const coupons = await Promise.all(
-    open.map(async (row) => {
-      const code = couponCode({
-        loanId: contract.loanId,
-        number: row.number,
-        dueDate: row.dueDate,
-        amount: row.amount,
-      })
-      const payUrl = row.id ? installmentPayUrl(row.id) : ''
-      const qrData = row.id ? payloads[row.id]?.qrData : null
-      const cash = row.id ? tickets[row.id] : null
-      const qr =
-        qrData
-          ? await QRCode.toDataURL(qrData, { margin: 1, width: 280, color: { dark: '#0f172a', light: '#ffffff' } })
-          : null
-      const pagoFacilQr =
-        !cash?.pagoFacil?.operationNumber && !cash?.pagoFacil?.barcode && cash?.pagoFacil?.ticketUrl
-          ? await QRCode.toDataURL(cash.pagoFacil.ticketUrl, { margin: 1, width: 160, color: { dark: '#0f172a', light: '#ffffff' } })
-          : null
-      const rapipagoQr =
-        !cash?.rapipago?.operationNumber && !cash?.rapipago?.barcode && cash?.rapipago?.ticketUrl
-          ? await QRCode.toDataURL(cash.rapipago.ticketUrl, { margin: 1, width: 160, color: { dark: '#0f172a', light: '#ffffff' } })
-          : null
-      return { row, code, qr, payUrl, cash, pagoFacilQr, rapipagoQr }
-    }),
-  )
-
   const site = publicSiteHost()
+  const origin = publicBrandWebsite().replace(/\/$/, '')
+
+  const coupons = open.map((row) => {
+    const code = couponCode({
+      loanId: contract.loanId,
+      number: row.number,
+      dueDate: row.dueDate,
+      amount: row.amount,
+    })
+    const payUrl = row.id ? `${origin}${installmentPosPath(row.id)}` : ''
+    return { row, code, payUrl }
+  })
 
   return (
     <DocumentSheet className="cuponera-book">
@@ -283,7 +171,7 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
         <DocumentLetterhead
           kind="estado"
           title="Cuponera de cuotas"
-          subtitle="Chequera de pago: cada talón trae QR Mercado Pago, Pago Fácil, Rapipago y los datos de transferencia, con el importe exacto de esa cuota."
+          subtitle="Cronograma de cuotas. Pagá desde tu cuenta UNICRÉDITOS. El cupón de Pago Fácil o Rapipago se emite al elegir ese medio, porque vence."
           number={bookCode}
           issuedAt={docDate(new Date())}
           status={open.length ? `${open.length} talón${open.length === 1 ? '' : 'es'} pendiente${open.length === 1 ? '' : 's'}` : 'Cancelada'}
@@ -326,14 +214,11 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
           </DocumentFieldGrid>
           <div className="cuponera-howto">
             <p>
-              Cada talón abierto es autónomo: llevá esa hoja al local o escaneala desde el celular.
-              En Pago Fácil y Rapipago dictá el Nº de operación; si te piden escanear, mostrá el
-              código de barras. El cobro se acredita cuando Mercado Pago o la transferencia
-              confirman el dinero. Los cupones de red vencen a los 30 días; si se vencieron, volvé
-              a imprimir esta cuponera o entrá a {site}/pagar/…
+              Este talonario es el cronograma del crédito. Para pagar con tarjeta, Pago Fácil o Rapipago ingresá a tu
+              cuenta UNICRÉDITOS → Créditos → Pagar cuotas. El cupón de red se emite recién cuando elegís ese medio,
+              porque tiene fecha de vencimiento. La transferencia a tesorería usa el CBU de abajo y el código UNICRÉDITOS
+              de cada talón. Sitio: {site}.
             </p>
-            {qrError ? <p className="cuponera-alert">{qrError}</p> : null}
-            {ticketError ? <p className="cuponera-alert">{ticketError}</p> : null}
           </div>
         </DocumentSection>
 
@@ -364,7 +249,7 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
 
         <DocumentFooter
           documentId={bookCode}
-          extra={`${BRAND.legalName} · CBU ${formatCBU(treasury.cbu)} · ${treasury.bank}. El QR es Mercado Pago. En Pago Fácil y Rapipago el dato principal es el Nº de operación; el código de barras es para escanear. Concepto de transferencia: código UNICRÉDITOS del talón.`}
+          extra={`${BRAND.legalName} · CBU ${formatCBU(treasury.cbu)} · ${treasury.bank}. Pagá desde tu cuenta UNICRÉDITOS. El cupón de Pago Fácil o Rapipago se emite al elegir ese medio. Concepto de transferencia: código UNICRÉDITOS del talón.`}
         />
       </div>
 
@@ -378,13 +263,8 @@ export async function CouponBookPrintable({ contract }: { contract: ContractDocD
             contract={contract}
             row={item.row}
             code={item.code}
-            qr={item.qr}
             payUrl={item.payUrl}
-            cash={item.cash ?? null}
-            pagoFacilQr={item.pagoFacilQr}
-            rapipagoQr={item.rapipagoQr}
             treasury={treasury}
-            qrError={qrError}
           />
         ))}
       </div>

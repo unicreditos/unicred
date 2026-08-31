@@ -8,7 +8,21 @@ export type BrickChannel =
   | 'account_money'
 
 export function brickPaymentMethods(channel: BrickChannel = 'all') {
-  if (channel === 'ticket' || channel === 'pago_facil' || channel === 'rapipago') {
+  if (channel === 'pago_facil') {
+    return {
+      ticket: 'all' as const,
+      maxInstallments: 1,
+      excludedPaymentMethods: [{ id: 'rapipago' }],
+    }
+  }
+  if (channel === 'rapipago') {
+    return {
+      ticket: 'all' as const,
+      maxInstallments: 1,
+      excludedPaymentMethods: [{ id: 'pagofacil' }],
+    }
+  }
+  if (channel === 'ticket') {
     return { ticket: 'all' as const, maxInstallments: 1 }
   }
   if (channel === 'credit_card') {
@@ -24,7 +38,6 @@ export function brickPaymentMethods(channel: BrickChannel = 'all') {
     creditCard: 'all' as const,
     debitCard: 'all' as const,
     ticket: 'all' as const,
-    mercadoPago: 'all' as const,
     maxInstallments: 12,
   }
 }

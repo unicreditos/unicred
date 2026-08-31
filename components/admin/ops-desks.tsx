@@ -10,9 +10,10 @@ import {
   type OpsOpenTicket,
 } from '@/app/actions/admin-ops'
 import { TransferReviews } from '@/components/admin/transfer-reviews'
+import { ArcaInvoicesDesk } from '@/components/admin/arca-invoices-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import { adminUrl } from '@/lib/admin-nav'
 import { formatOperationNumber } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
@@ -280,91 +281,92 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
   }, [desk.installments, filter, now])
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <DecisionBanner
-        tone={desk.kpis.overdueCount ? 'warn' : 'ok'}
-        title={desk.kpis.overdueCount ? `${desk.kpis.overdueCount} cuotas en mora` : 'Cartera al día'}
-        detail={`${desk.kpis.pendingReview} transferencias a verificar · ${desk.kpis.openTickets} cupones de red abiertos · ${desk.kpis.due7Count} vencen en 7 días · mercado Argentina / ARS`}
-      />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <OpsFloor>
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-between gap-3 rounded-lg border px-3 py-2',
+          desk.kpis.overdueCount ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50',
+        )}
+      >
+        <div>
+          <p className="text-[13px] font-semibold">
+            {desk.kpis.overdueCount ? `${desk.kpis.overdueCount} cuotas en mora` : 'Cartera al día'}
+          </p>
+          <p className="text-[11px] text-slate-600">
+            {desk.kpis.pendingReview} transferencias a verificar · {desk.kpis.openTickets} cupones de red · {desk.kpis.due7Count} vencen en 7 días
+          </p>
+        </div>
+      </div>
+      <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-5">
         <MetricTile label="Mora" value={formatARS(desk.kpis.overdueAmount)} hint={`${desk.kpis.overdueCount} cuotas`} tone={desk.kpis.overdueCount ? 'critical' : 'ok'} />
-        <MetricTile label="Vence en 7 días" value={formatARS(desk.kpis.due7Amount)} hint={`${desk.kpis.due7Count} cuotas`} tone={desk.kpis.due7Count ? 'warn' : 'ok'} />
-        <MetricTile label="Cobrado este mes" value={formatARS(desk.kpis.collectedMonth)} hint={`${desk.kpis.receiptsMonth} recibos`} />
-        <MetricTile label="A verificar" value={String(desk.kpis.pendingReview)} hint="Transferencias RM / Brubank" tone={desk.kpis.pendingReview ? 'warn' : 'ok'} />
-        <MetricTile label="Cupones abiertos" value={String(desk.kpis.openTickets)} hint="Pago Fácil / Rapipago pendientes" tone={desk.kpis.openTickets ? 'warn' : 'ok'} />
+        <MetricTile label="Vence 7 días" value={formatARS(desk.kpis.due7Amount)} hint={`${desk.kpis.due7Count} cuotas`} tone={desk.kpis.due7Count ? 'warn' : 'ok'} />
+        <MetricTile label="Cobrado mes" value={formatARS(desk.kpis.collectedMonth)} hint={`${desk.kpis.receiptsMonth} recibos`} />
+        <MetricTile label="A verificar" value={String(desk.kpis.pendingReview)} hint="RM / Brubank" tone={desk.kpis.pendingReview ? 'warn' : 'ok'} />
+        <MetricTile label="Cupones" value={String(desk.kpis.openTickets)} hint="Pago Fácil / Rapipago" tone={desk.kpis.openTickets ? 'warn' : 'ok'} />
       </div>
 
-      <OpenNetworkTickets desk={desk} />
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-brand-navy-900">Transferencias informadas</h2>
-        <TransferReviews />
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold text-brand-navy-900">Mesa de cobranzas</h2>
-            <p className="text-xs text-slate-500">Cuotas, último pago y recibo. El estado se actualiza al acreditar.</p>
-          </div>
-          <div className="flex flex-wrap gap-1 rounded-lg bg-slate-50 p-1">
-            {(
-              [
-                ['overdue', 'Vencidas'],
-                ['due7', '7 días'],
-                ['paid', 'Cobradas'],
-                ['all', 'Todas'],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setFilter(id)}
-                className={cn(
-                  'h-8 rounded-md px-3 text-xs font-medium',
-                  filter === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-white',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-2">Cliente</th>
-                <th className="px-4 py-2">Crédito</th>
-                <th className="px-4 py-2">Cuota</th>
-                <th className="px-4 py-2">Vence</th>
-                <th className="px-4 py-2 text-right">Monto</th>
-                <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2">Último pago</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.length === 0 ? (
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-8">
+          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-1.5">
+            <h2 className="text-[12px] font-semibold">Mesa de cobranzas</h2>
+            <div className="flex flex-wrap gap-1 rounded-md bg-slate-50 p-0.5">
+              {(
+                [
+                  ['overdue', 'Vencidas'],
+                  ['due7', '7 días'],
+                  ['paid', 'Cobradas'],
+                  ['all', 'Todas'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilter(id)}
+                  className={cn(
+                    'h-7 rounded px-2 text-[11px] font-medium',
+                    filter === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-white',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </header>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[820px] text-left text-[12px]">
+              <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">
-                    No hay cuotas en este filtro.
-                  </td>
+                  <th className="px-3 py-1.5">Cliente</th>
+                  <th className="px-3 py-1.5">Crédito</th>
+                  <th className="px-3 py-1.5">Cuota</th>
+                  <th className="px-3 py-1.5">Vence</th>
+                  <th className="px-3 py-1.5 text-right">Monto</th>
+                  <th className="px-3 py-1.5">Estado</th>
+                  <th className="px-3 py-1.5">Último pago</th>
+                  <th className="px-3 py-1.5" />
                 </tr>
-              ) : (
-                rows.slice(0, 200).map((row) => (
-                  <tr key={row.id} className="align-top">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-brand-navy-900">{row.customerName}</p>
-                      <p className="text-[11px] text-slate-500">{row.customerEmail}</p>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                      No hay cuotas en este filtro.
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">{shortLoan(row.loanId)}</td>
-                    <td className="px-4 py-3">#{row.number}</td>
-                    <td className="px-4 py-3">
-                      <p>{fmtDate(row.dueDate)}</p>
-                      {row.daysLate > 0 ? <p className="text-[11px] text-rose-600">{row.daysLate} días de atraso</p> : null}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
+                  </tr>
+                ) : (
+                  rows.slice(0, 200).map((row) => (
+                    <tr key={row.id} className="align-top">
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-brand-navy-900">{row.customerName}</p>
+                        <p className="text-[10px] text-slate-500">{row.customerEmail}</p>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px]">{shortLoan(row.loanId)}</td>
+                      <td className="px-3 py-2">#{row.number}</td>
+                      <td className="px-3 py-2">
+                        <p>{fmtDate(row.dueDate)}</p>
+                        {row.daysLate > 0 ? <p className="text-[10px] text-rose-600">{row.daysLate} d atraso</p> : null}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
                     <td className="px-4 py-3">
                       <p className={cn('text-xs font-medium', row.status === 'overdue' ? 'text-rose-700' : row.status === 'paid' ? 'text-emerald-700' : 'text-slate-600')}>
                         {installmentStatusLabel(row.status)}
@@ -381,9 +383,9 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                       )}
                       <p className="text-[11px] text-slate-400">{fmtDate(row.lastPaidAt)}</p>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button asChild size="sm" variant="ghost" className="h-8">
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button asChild size="sm" variant="ghost" className="h-7 text-[11px]">
                           <Link href={adminUrl('usuarios', row.userId)}>Cuenta</Link>
                         </Button>
                         <CollectDialog row={row} onDone={() => router.refresh()} />
@@ -395,105 +397,123 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
+        </section>
+        <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:col-span-4">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
+            <OpenNetworkTickets desk={desk} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-100 px-3 py-1.5">
+              <h2 className="text-[12px] font-semibold">Transferencias informadas</h2>
+            </div>
+            <TransferReviews />
+          </div>
+        </div>
+      </div>
+    </OpsFloor>
   )
 }
 
 export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+    <OpsFloor>
+      <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-3">
         <MetricTile label="Recibos este mes" value={String(desk.kpis.receiptsMonth)} hint="Pagos y desembolsos emitidos" />
         <MetricTile label="Cobrado este mes" value={formatARS(desk.kpis.collectedMonth)} />
         <MetricTile label="Archivo" value={String(desk.receipts.length)} hint="Últimos comprobantes" />
       </div>
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Comprobantes</h2>
-          <p className="text-xs text-slate-500">Recibos de cobro y acreditación. Se abren con el mismo talón que ve el cliente.</p>
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-2">Número</th>
-                <th className="px-4 py-2">Cliente</th>
-                <th className="px-4 py-2">Tipo</th>
-                <th className="px-4 py-2">Medio</th>
-                <th className="px-4 py-2 text-right">Monto</th>
-                <th className="px-4 py-2">Fecha</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {desk.receipts.length === 0 ? (
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-7">
+          <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+            <h2 className="text-[12px] font-semibold text-brand-navy-900">Comprobantes</h2>
+            <p className="text-[10px] text-slate-500">Mismo talón que ve el cliente</p>
+          </header>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[720px] text-left text-[12px]">
+              <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
-                    Todavía no hay comprobantes emitidos.
-                  </td>
+                  <th className="px-3 py-1.5">Número</th>
+                  <th className="px-3 py-1.5">Cliente</th>
+                  <th className="px-3 py-1.5">Tipo</th>
+                  <th className="px-3 py-1.5">Medio</th>
+                  <th className="px-3 py-1.5 text-right">Monto</th>
+                  <th className="px-3 py-1.5">Fecha</th>
+                  <th className="px-3 py-1.5" />
                 </tr>
-              ) : (
-                desk.receipts.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3 font-mono text-xs">{row.receiptNumber}</td>
-                    <td className="px-4 py-3">
-                      <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
-                        {row.customerName}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-xs">{row.statusHint}</td>
-                    <td className="px-4 py-3 text-xs">{paymentMethodLabel(row.method)}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
-                    <td className="px-4 py-3 text-xs">{fmtDate(row.paidAt || row.issuedAt)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button asChild size="sm" variant="outline" className="h-8">
-                        <a href={row.href} target="_blank" rel="noreferrer">
-                          <ReceiptText className="h-3.5 w-3.5" /> Ver
-                        </a>
-                      </Button>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {desk.receipts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                      Todavía no hay comprobantes emitidos.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  desk.receipts.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-2 font-mono text-[11px]">{row.receiptNumber}</td>
+                      <td className="px-3 py-2">
+                        <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
+                          {row.customerName}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-[11px]">{row.statusHint}</td>
+                      <td className="px-3 py-2 text-[11px]">{paymentMethodLabel(row.method)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
+                      <td className="px-3 py-2 text-[11px]">{fmtDate(row.paidAt || row.issuedAt)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Button asChild size="sm" variant="outline" className="h-7">
+                          <a href={row.href} target="_blank" rel="noreferrer">
+                            <ReceiptText className="h-3.5 w-3.5" /> Ver
+                          </a>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div className="min-h-0 overflow-auto lg:col-span-5">
+          <ArcaInvoicesDesk />
         </div>
-      </section>
-    </div>
+      </div>
+    </OpsFloor>
   )
 }
 
 export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <DecisionBanner
-        tone="info"
-        title="Cuenta corriente operativa"
-        detail="Solo cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de Pago Fácil / Rapipago pendientes no son un movimiento: viven en Cobranzas hasta que el cliente paga o tesorería los anula."
-      />
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Historial de movimientos</h2>
+    <OpsFloor>
+      <div className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
+        <p className="text-[12px] font-semibold">Cuenta corriente operativa</p>
+        <p className="text-[11px] text-slate-500">
+          Cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de red viven en Cobranzas hasta que se pagan o se anulan.
+        </p>
+      </div>
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+          <h2 className="text-[12px] font-semibold text-brand-navy-900">Historial de movimientos</h2>
         </header>
-        <div className="divide-y divide-slate-100">
+        <div className="min-h-0 flex-1 overflow-auto divide-y divide-slate-100">
           {desk.movements.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-slate-500">Sin movimientos cargados.</p>
+            <p className="px-3 py-8 text-center text-sm text-slate-500">Sin movimientos cargados.</p>
           ) : (
             desk.movements.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-brand-navy-900">{row.title}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[13px] font-medium text-brand-navy-900">{row.title}</p>
+                  <p className="text-[11px] text-slate-500">
                     {row.customerName} · {shortLoan(row.loanId)} · {fmtDate(row.at)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className={cn('font-mono text-sm tabular-nums', row.kind === 'desembolso' ? 'text-emerald-700' : row.status === 'overdue' ? 'text-rose-700' : 'text-brand-navy-900')}>
+                  <p className={cn('font-mono text-[13px] tabular-nums', row.kind === 'desembolso' ? 'text-emerald-700' : row.status === 'overdue' ? 'text-rose-700' : 'text-brand-navy-900')}>
                     {row.kind === 'desembolso' ? '+' : row.kind === 'pago' ? '−' : ''}
                     {formatARS(row.amount)}
                   </p>
-                  <p className="text-[11px] text-slate-500">{paymentStatusLabel(row.status) === '—' ? row.status : paymentStatusLabel(row.status)}</p>
+                  <p className="text-[10px] text-slate-500">{paymentStatusLabel(row.status) === '—' ? row.status : paymentStatusLabel(row.status)}</p>
                   {row.href ? (
                     <Link href={row.href} className="text-[11px] font-medium text-brand-primary hover:underline">
                       Abrir
@@ -505,61 +525,62 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
           )}
         </div>
       </section>
-    </div>
+    </OpsFloor>
   )
 }
 
 export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <DecisionBanner
-        tone="info"
-        title="Archivo legal"
-        detail="Contratos de mutuo, pagarés y expediente por crédito. La intimación de mora se emite desde la ficha del cliente cuando corresponde."
-      />
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Contratos</h2>
+    <OpsFloor>
+      <div className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
+        <p className="text-[12px] font-semibold">Archivo legal</p>
+        <p className="text-[11px] text-slate-500">
+          Contratos de mutuo, pagarés y expediente. La intimación de mora se emite desde la ficha del cliente.
+        </p>
+      </div>
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <header className="shrink-0 border-b border-slate-100 px-3 py-1.5">
+          <h2 className="text-[12px] font-semibold text-brand-navy-900">Contratos</h2>
         </header>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full min-w-[720px] text-left text-[12px]">
+            <thead className="sticky top-0 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-2">Cliente</th>
-                <th className="px-4 py-2">Crédito</th>
-                <th className="px-4 py-2 text-right">Capital</th>
-                <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2">Aceptado</th>
-                <th className="px-4 py-2" />
+                <th className="px-3 py-1.5">Cliente</th>
+                <th className="px-3 py-1.5">Crédito</th>
+                <th className="px-3 py-1.5 text-right">Capital</th>
+                <th className="px-3 py-1.5">Estado</th>
+                <th className="px-3 py-1.5">Aceptado</th>
+                <th className="px-3 py-1.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {desk.contracts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
                     Todavía no hay contratos emitidos.
                   </td>
                 </tr>
               ) : (
                 desk.contracts.map((row) => (
                   <tr key={row.id}>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <Link href={adminUrl('usuarios', row.userId)} className="font-medium hover:underline">
                         {row.customerName}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">{shortLoan(row.loanId)}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{formatARS(row.principal)}</td>
-                    <td className="px-4 py-3 text-xs">{row.status === 'accepted' ? 'Firmado' : row.status === 'generated' ? 'Pendiente de firma' : row.status}</td>
-                    <td className="px-4 py-3 text-xs">{fmtDate(row.acceptedAt || row.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button asChild size="sm" variant="outline" className="h-8">
+                    <td className="px-3 py-2 font-mono text-[11px]">{shortLoan(row.loanId)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{formatARS(row.principal)}</td>
+                    <td className="px-3 py-2 text-[11px]">{row.status === 'accepted' ? 'Firmado' : row.status === 'generated' ? 'Pendiente de firma' : row.status}</td>
+                    <td className="px-3 py-2 text-[11px]">{fmtDate(row.acceptedAt || row.createdAt)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <Button asChild size="sm" variant="outline" className="h-7">
                           <a href={row.contractHref} target="_blank" rel="noreferrer">
                             <ExternalLink className="h-3.5 w-3.5" /> Contrato
                           </a>
                         </Button>
-                        <Button asChild size="sm" variant="ghost" className="h-8">
+                        <Button asChild size="sm" variant="ghost" className="h-7">
                           <a href={row.pagareHref} target="_blank" rel="noreferrer">
                             Pagaré
                           </a>
@@ -573,6 +594,6 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
           </table>
         </div>
       </section>
-    </div>
+    </OpsFloor>
   )
 }

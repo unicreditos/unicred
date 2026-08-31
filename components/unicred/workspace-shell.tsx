@@ -10,11 +10,12 @@ import {
 import { AccountAvatar } from '@/components/unicred/account-avatar'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { NotificationCenter } from '@/components/unicred/notification-center'
+import { SupportPresenceBeacon } from '@/components/support/support-chat'
 import { signOut } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 import { ChevronDown, LayoutGrid, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search, User, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 
 export type WorkspaceRole = 'customer' | 'admin' | 'merchant'
 
@@ -35,7 +36,7 @@ export type WorkspaceNavItem = {
 
 const ROLE_META: Record<WorkspaceRole, { eyebrow: string; homeLabel: string; homeHref: string }> = {
   customer: { eyebrow: 'Cuenta', homeLabel: 'Inicio', homeHref: '/dashboard' },
-  admin: { eyebrow: 'Ejecutivo', homeLabel: 'Dashboard', homeHref: '/admin' },
+  admin: { eyebrow: 'Backoffice', homeLabel: 'Dashboard', homeHref: '/admin' },
   merchant: { eyebrow: 'Comercio', homeLabel: 'Inicio', homeHref: '/merchant' },
 }
 
@@ -96,6 +97,7 @@ export function WorkspaceShell({
   onProfile,
   accountItems,
   mobileTabs,
+  onSearchRequest,
 }: {
   role: WorkspaceRole
   nav: WorkspaceNavItem[]
@@ -108,6 +110,7 @@ export function WorkspaceShell({
   onProfile?: () => void
   accountItems?: { label: string; onSelect: () => void }[]
   mobileTabs?: WorkspaceNavItem[]
+  onSearchRequest?: () => void
 }) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -122,6 +125,20 @@ export function WorkspaceShell({
   const [closedMenus, setClosedMenus] = useState<Record<string, boolean>>({})
   const [query, setQuery] = useState('')
   const meta = ROLE_META[role]
+  const fillViewport = role === 'admin'
+
+  useEffect(() => {
+    if (!onSearchRequest) return
+    const openSearch = onSearchRequest
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        openSearch()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onSearchRequest])
   const activeParent = nav.find((n) => n.id === activeId || n.children?.some((c) => c.id === activeId))
   const activeChild = activeParent?.children?.find((c) => c.id === activeId)
   const active = activeParent && (activeChild ? { ...activeParent, label: activeChild.label } : activeParent)
@@ -269,10 +286,11 @@ export function WorkspaceShell({
   )
 
   return (
-    <div className="flex min-h-svh bg-[#F4F6F9] text-foreground">
+    <div className="flex h-svh overflow-hidden bg-[#F4F6F9] text-foreground">
+      <SupportPresenceBeacon />
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 hidden flex-col bg-brand-navy-900 transition-[width] duration-200 md:flex',
+          'no-print fixed inset-y-0 left-0 z-40 hidden flex-col bg-brand-navy-900 transition-[width] duration-200 md:flex',
           collapsed ? 'w-20' : 'w-[248px]',
         )}
       >
@@ -326,8 +344,8 @@ export function WorkspaceShell({
         </div>
       ) : null}
 
-      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col transition-[padding] duration-200', collapsed ? 'md:pl-20' : 'md:pl-[248px]')}>
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white px-4 sm:px-6">
+      <div className={cn('flex h-svh min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-200', collapsed ? 'md:pl-20' : 'md:pl-[248px]')}>
+        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white px-4 sm:px-6">
           <button
             type="button"
             className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 md:hidden"
@@ -342,28 +360,39 @@ export function WorkspaceShell({
             </div>
             {subtitle ? <p className="truncate text-[12px] text-slate-500">{subtitle}</p> : null}
           </div>
-          <form
-            className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex"
-            role="search"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const q = query.trim()
-              if (!q) return
-              const enc = encodeURIComponent(q)
-              if (role === 'admin') router.push(`/admin?tab=solicitudes&q=${enc}`)
-              else if (role === 'merchant') router.push(`/merchant?tab=sales&q=${enc}`)
-              else router.push(`/dashboard?tab=cuotas&q=${enc}`)
-            }}
-          >
-            <Search className="h-4 w-4 text-slate-400" aria-hidden />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={role === 'admin' ? 'Buscar solicitudes' : 'Buscar créditos'}
-              aria-label={role === 'admin' ? 'Buscar solicitudes' : 'Buscar créditos'}
-              className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
-            />
-          </form>
+          {onSearchRequest ? (
+            <button
+              type="button"
+              onClick={onSearchRequest}
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left lg:flex"
+            >
+              <Search className="h-4 w-4 text-slate-400" aria-hidden />
+              <span className="flex-1 text-[13px] text-slate-400">Buscar cliente, CUIL, crédito…</span>
+              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-400">Ctrl K</kbd>
+            </button>
+          ) : (
+            <form
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const q = query.trim()
+                if (!q) return
+                const enc = encodeURIComponent(q)
+                if (role === 'merchant') router.push(`/merchant?tab=sales&q=${enc}`)
+                else router.push(`/dashboard?tab=cuotas&q=${enc}`)
+              }}
+            >
+              <Search className="h-4 w-4 text-slate-400" aria-hidden />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar créditos"
+                aria-label="Buscar créditos"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
+              />
+            </form>
+          )}
           <NotificationCenter />
           {clientReady ? (
             <DropdownMenu>
@@ -426,11 +455,19 @@ export function WorkspaceShell({
             </div>
           )}
         </header>
-        <main className={cn('flex-1 px-4 py-5 sm:px-6 lg:px-8', mobileTabs?.length ? 'pb-24 md:pb-8' : '')}>{children}</main>
+        <main
+          className={cn(
+            'min-h-0 flex-1 px-3 py-3 sm:px-4 lg:px-5',
+            fillViewport ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+            mobileTabs?.length ? 'pb-24 md:pb-3' : '',
+          )}
+        >
+          {children}
+        </main>
       </div>
 
       {mobileTabs?.length ? (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
+        <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5">
             {(mobileTabs.length ? mobileTabs : nav).slice(0, 4).map((item) => {
               const Icon = item.icon
@@ -536,10 +573,19 @@ export function MetricTile({
           ? 'border-rose-200'
           : 'border-slate-200'
   return (
-    <div className={cn('rounded-lg border bg-white px-4 py-3', border)}>
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
-      <div className="mt-1.5 text-[22px] font-semibold tabular-nums tracking-tight text-brand-navy-900">{value}</div>
-      {hint ? <p className="mt-1 text-[12px] text-slate-500">{hint}</p> : null}
+    <div className={cn('rounded-lg border bg-white px-3 py-2', border)}>
+      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <div className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight text-brand-navy-900">{value}</div>
+      {hint ? <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p> : null}
+    </div>
+  )
+}
+
+/** Piso operativo: llena el panel y deja el scroll adentro de cada mesa. */
+export function OpsFloor({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden', className)}>
+      {children}
     </div>
   )
 }

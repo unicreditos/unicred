@@ -13,10 +13,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
-import { adminUrl } from '@/lib/admin-nav'
+import { adminUrl, adminLoanHref } from '@/lib/admin-nav'
 import { groupDni, initials } from '@/lib/didit-capture'
 import { formatARS } from '@/lib/finance'
-import { loanStatusLabel, paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
+import { disbursementStatusLabel, loanStatusLabel, paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { ArrowLeft, CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -421,8 +421,8 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                     at: credit.disbursedAt,
                     title: `Desembolso ${shortId(credit.id)}`,
                     amount: credit.principal,
-                    tone: credit.disbursementStatus === 'credited' ? 'out' : 'wait',
-                    extra: credit.disbursementStatus,
+                    tone: credit.disbursementStatus === 'credited' || credit.disbursementStatus === 'completed' ? 'out' : 'wait',
+                    extra: disbursementStatusLabel(credit.disbursementStatus),
                   },
                   ...credit.installments
                     .filter((row) => row.status !== 'pending')
@@ -616,6 +616,9 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                       <div className="flex items-center gap-2">
                         <StatusChip status={credit.chip} />
                         <span className="text-xs font-medium text-slate-600">{loanStatusLabel(credit.status)}</span>
+                        <Link href={adminLoanHref(credit.id, credit.status)} className="text-xs text-brand-primary hover:underline">
+                          Expediente
+                        </Link>
                       </div>
                       <p className="text-xs text-slate-500">{credit.paidCount}/{credit.term} cuotas</p>
                     </div>

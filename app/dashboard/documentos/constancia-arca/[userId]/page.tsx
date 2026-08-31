@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { loadConstanciaForUser } from '@/lib/arca/constancia-store'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { canViewOwnedRecord, documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { requireUserId } from '@/lib/session'
@@ -13,10 +14,17 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ArcaConstanciaPage({ params }: { params: Promise<{ userId: string }> }) {
-  const viewerId = await requireUserId()
+export default async function ArcaConstanciaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ userId: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
   const { userId: rawId } = await params
   const ownerId = String(rawId ?? '').trim()
+  await keepCustomerInDashboard('arca', ownerId, searchParams)
+  const viewerId = await requireUserId()
   const backHref = await documentBackHref(viewerId, ownerId)
 
   if (!ownerId || !(await canViewOwnedRecord(viewerId, ownerId))) {

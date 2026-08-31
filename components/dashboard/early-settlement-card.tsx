@@ -43,7 +43,7 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
             <p className="text-sm text-muted-foreground">Ya podés descargar la constancia de libre deuda.</p>
           </div>
           <Button asChild size="sm" variant="outline">
-            <Link href={`/dashboard/documentos/libre-deuda/${loanId}`}>Libre deuda</Link>
+            <Link href={`/dashboard?tab=documentos&doc=libre-deuda&docId=${encodeURIComponent(loanId)}`}>Libre deuda</Link>
           </Button>
         </CardContent>
       </Card>
@@ -123,7 +123,7 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
                 Pagar cancelación
               </Button>
               <Button asChild variant="outline" size="default" className="gap-1.5">
-                <Link href={`/dashboard/documentos/cancelacion/${loanId}`}>
+                <Link href={`/dashboard?tab=documentos&doc=cancelacion&docId=${encodeURIComponent(loanId)}`}>
                   <FileText className="h-4 w-4" />
                   Ver liquidación
                 </Link>

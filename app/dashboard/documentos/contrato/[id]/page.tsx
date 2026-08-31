@@ -2,6 +2,7 @@ import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { LoanContractPrintable } from '@/components/documents/loan-contract-printable'
 import { Button } from '@/components/ui/button'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { loadContractPackForViewer } from '@/lib/legal/loan-pack'
@@ -11,10 +12,18 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ContractPage({ params }: { params: Promise<{ id: string }> }) {
-  const userId = await requireUserId()
+export default async function ContractPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
   const { id: rawId } = await params
-  const data = await loadContractPackForViewer(userId, String(rawId ?? '').trim())
+  const id = String(rawId ?? '').trim()
+  await keepCustomerInDashboard('contrato', id, searchParams)
+  const userId = await requireUserId()
+  const data = await loadContractPackForViewer(userId, id)
   const backHref = await documentBackHref(userId)
 
   if (!data) {

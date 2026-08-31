@@ -160,6 +160,58 @@ async function main() {
           `ALTER TABLE "merchant_document" ADD CONSTRAINT "merchant_document_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE cascade;`,
         )
         fixes.push(`CREATE INDEX IF NOT EXISTS "merchant_document_merchant_idx" ON "merchant_document" ("merchantId");`)
+      } else if (name === 'arca_invoice') {
+        fixes.push(`CREATE TABLE IF NOT EXISTS "arca_invoice" (
+  "id" text PRIMARY KEY NOT NULL,
+  "userId" text NOT NULL,
+  "loanId" text,
+  "installmentId" text,
+  "cbteTipo" integer NOT NULL DEFAULT 6,
+  "ptoVta" integer NOT NULL DEFAULT 1,
+  "cbteNro" integer,
+  "docTipo" integer NOT NULL DEFAULT 80,
+  "docNro" text NOT NULL,
+  "impNeto" numeric(14, 2) NOT NULL,
+  "impIva" numeric(14, 2) NOT NULL,
+  "impTotal" numeric(14, 2) NOT NULL,
+  currency text NOT NULL DEFAULT 'ARS',
+  status text NOT NULL DEFAULT 'pending_cae',
+  cae text,
+  "caeVto" text,
+  "arcaError" text,
+  "issuedAt" timestamp with time zone,
+  "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+  "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);`)
+        fixes.push(`CREATE INDEX IF NOT EXISTS "arca_invoice_user_idx" ON "arca_invoice" ("userId");`)
+        fixes.push(`CREATE UNIQUE INDEX IF NOT EXISTS "arca_invoice_installment_unique" ON "arca_invoice" ("installmentId");`)
+      } else if (name === 'support_message') {
+        fixes.push(`CREATE TABLE IF NOT EXISTS "support_message" (
+  "id" text PRIMARY KEY NOT NULL,
+  "caseId" text NOT NULL,
+  "authorUserId" text NOT NULL,
+  "authorRole" text NOT NULL,
+  body text NOT NULL,
+  kind text NOT NULL DEFAULT 'message',
+  "createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);`)
+        fixes.push(`CREATE INDEX IF NOT EXISTS "support_message_case_idx" ON "support_message" ("caseId");`)
+      } else if (name === 'support_presence') {
+        fixes.push(`CREATE TABLE IF NOT EXISTS "support_presence" (
+  "userId" text PRIMARY KEY NOT NULL,
+  role text NOT NULL,
+  "viewingCaseId" text,
+  "lastSeenAt" timestamp with time zone DEFAULT now() NOT NULL
+);`)
+      } else if (name === 'inbox_receipt') {
+        fixes.push(`CREATE TABLE IF NOT EXISTS "inbox_receipt" (
+  "id" text PRIMARY KEY NOT NULL,
+  "userId" text NOT NULL,
+  "itemId" text NOT NULL,
+  "readAt" timestamp with time zone DEFAULT now() NOT NULL
+);`)
+        fixes.push(`CREATE UNIQUE INDEX IF NOT EXISTS "inbox_receipt_user_item_unique" ON "inbox_receipt" ("userId", "itemId");`)
+        fixes.push(`CREATE INDEX IF NOT EXISTS "inbox_receipt_user_idx" ON "inbox_receipt" ("userId");`)
       } else {
         problems.push(`  → ejecutá npm run db:push para crear ${name}`)
       }

@@ -14,6 +14,9 @@ export type Amortization = {
 
 export const IVA_INTERESES = 0.21
 
+/** Punitorios del mutuo personal/comercial vigente: 0% cuantificado (art. 36 inc. h). */
+export const PUNITORY_RATE = 0
+
 /** CFT informado = TEA con IVA sobre intereses, sin gastos ni seguros extra. */
 export function estimatedCftFromMonthlyRate(monthlyRatePercent: number): number {
   if (!Number.isFinite(monthlyRatePercent) || monthlyRatePercent <= 0) return 0

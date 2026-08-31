@@ -3,8 +3,12 @@ import { describe, it } from 'node:test'
 import {
   computeFrenchAmortization,
   IVA_INTERESES,
+  PUNITORY_RATE,
   maxPrincipalFromInstallment,
 } from '../../lib/finance'
+import { frenchInstallmentSplit } from '../../lib/legal/money-words'
+import { resolvedTea } from '../../lib/loan-rates'
+import { opnfcBand, OPNFC_THRESHOLD_ARS } from '../../lib/compliance/opnfc'
 import {
   documentPdfBaseName,
   sanitizePdfFileName,
@@ -203,15 +207,43 @@ describe('nombres PDF por documento', () => {
 
 describe('copy legal canónico E2E textual', () => {
   it('versión y claims regulatorios alineados', () => {
-    assert.equal(LEGAL_REVISION, '23/08/2026')
-    assert.equal(LEGAL_TCG_VERSION, 'TCG-v9.1')
-    assert.equal(LEGAL_PRIVACY_VERSION, 'Privacy-v4.0')
+    assert.equal(LEGAL_REVISION, '30/08/2026')
+    assert.equal(LEGAL_TCG_VERSION, 'TCG-v9.2')
+    assert.equal(LEGAL_PRIVACY_VERSION, 'Privacy-v4.1')
     assert.match(LEGAL_COPY.contractTitle, /préstamo \(mutuo/)
     assert.match(LEGAL_COPY.mutuoExplain, /1525/)
     assert.match(LEGAL_COPY.nonBank, /PNFC/)
     assert.match(LEGAL_COPY.cftContractNote, /TEA × 1,21/)
+    assert.match(LEGAL_COPY.punitorios, /0%/)
+    assert.match(LEGAL_COPY.walletLedger, /No es un CVU/)
     assert.match(LEGAL_COPY.bcraReporte, /únicamente cuando corresponda/)
     assert.match(LEGAL_COPY.jurisdiction, /24\.240/)
+    assert.doesNotMatch(LEGAL_COPY.cftContractNote, /25\.065/)
     assert.doesNotMatch(LEGAL_COPY.bcraReporteShort, /se reportará automáticamente/)
+  })
+})
+
+describe('TEA, punitorios y OPNFC', () => {
+  it('resuelve TEA persistida o la recalcula de la TEM', () => {
+    assert.equal(resolvedTea({ tea: 138.18, monthlyRate: 7.5 }), 138.18)
+    const fromTem = resolvedTea({ tea: null, monthlyRate: 7.5 })
+    assert.equal(fromTem, computeFrenchAmortization(100_000, 12, 7.5).tea)
+  })
+
+  it('punitorios contractuales son 0%', () => {
+    assert.equal(PUNITORY_RATE, 0)
+  })
+
+  it('IVA de intereses de una cuota es 21% del interés francés', () => {
+    const split = frenchInstallmentSplit(500_000, 7.5, 12, 1)
+    const iva = Math.round(split.interest * IVA_INTERESES * 100) / 100
+    assert.ok(split.interest > 0)
+    assert.equal(iva, Math.round(split.interest * 0.21 * 100) / 100)
+  })
+
+  it('umbral PNFC de 10 millones', () => {
+    assert.equal(opnfcBand(0), 'below')
+    assert.equal(opnfcBand(8_000_000), 'approaching')
+    assert.equal(opnfcBand(OPNFC_THRESHOLD_ARS), 'threshold_crossed')
   })
 })

@@ -4,17 +4,23 @@ import {
   AdminAppShell,
   type AdminTabId,
 } from '@/components/admin/admin-app-shell'
+import { AdminCommandPalette } from '@/components/admin/admin-command-palette'
 import { AdminContent } from '@/components/admin/admin-content'
 import type { ClientFicha } from '@/app/actions/admin-ficha'
 import type { AdminOpsDesk } from '@/app/actions/admin-ops'
+import type { AdminOpsConfig } from '@/app/actions/admin-config'
+import type { AdminPaymentsDesk } from '@/app/actions/admin-cases'
 import { adminUrl } from '@/lib/admin-nav'
 import type { VariableBCRA } from '@/lib/bcra'
 import type { StatsData } from '@/components/admin/summary-cards'
 import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
 
 type LoanData = Array<{
   id: string
   userId: string
+  merchantId?: string | null
+  productId?: string | null
   principal: string | number
   term: number
   status: string
@@ -53,6 +59,8 @@ export function AdminDashboard({
   ficha = null,
   fichaError = null,
   opsDesk,
+  payments,
+  opsConfig = null,
 }: {
   user: {
     id: string
@@ -75,14 +83,31 @@ export function AdminDashboard({
   ficha?: ClientFicha | null
   fichaError?: string | null
   opsDesk: AdminOpsDesk
+  payments?: AdminPaymentsDesk
+  opsConfig?: AdminOpsConfig | null
 }) {
   const router = useRouter()
+  const [searchOpen, setSearchOpen] = useState(false)
   const tab = personaId ? 'usuarios' : activeTab
   const personaName = ficha?.user.name ?? users.find((u) => u.id === personaId)?.name
 
   function go(next: AdminTabId) {
     router.push(adminUrl(next))
   }
+
+  const counts = useMemo(
+    () => ({
+      pendingLoans: loans.filter((l) => l.status === 'pending').length,
+      pendingKyc: kycList.filter((k: { status: string }) =>
+        ['pending_review', 'pending', 'reviewing', 'submitted', 'in_review'].includes(k.status),
+      ).length,
+      overdue: opsDesk.kpis.overdueCount,
+      pendingDisb: disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
+        .length,
+      pendingMerchants: merchants.filter((m) => m.status === 'pending').length,
+    }),
+    [loans, kycList, opsDesk.kpis.overdueCount, disbursementList, merchants],
+  )
 
   return (
     <AdminAppShell
@@ -96,7 +121,17 @@ export function AdminDashboard({
       onTabChange={go}
       title={personaId ? (personaName || 'Ficha de cliente') : undefined}
       subtitle={personaId ? 'Cuenta, cobranzas, recibos y expediente' : undefined}
+      counts={counts}
+      onSearchRequest={() => setSearchOpen(true)}
     >
+      <AdminCommandPalette
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        users={users}
+        loans={loans}
+        merchants={merchants}
+        onNavigate={go}
+      />
       <AdminContent
         activeTab={tab}
         personaId={personaId}
@@ -115,6 +150,8 @@ export function AdminDashboard({
         auditLog={auditLog}
         currentAdminId={user?.id ?? ''}
         onNavigate={go}
+        payments={payments}
+        opsConfig={opsConfig}
       />
     </AdminAppShell>
   )

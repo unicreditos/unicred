@@ -19,23 +19,39 @@ export function ActivityInbox({ onOpenHref }: { onOpenHref: (href: string) => vo
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/notifications')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('No se pudo cargar la actividad.'))))
-      .then((data) => {
-        if (!cancelled) setInbox(data)
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message)
-      })
+    const pull = () =>
+      fetch('/api/notifications')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('No se pudo cargar la actividad.'))))
+        .then((data) => {
+          if (!cancelled) setInbox(data)
+        })
+        .catch((err: Error) => {
+          if (!cancelled) setError(err.message)
+        })
+    void pull()
+    const timer = setInterval(() => void pull(), 15_000)
+    let source: EventSource | null = null
+    if (typeof EventSource !== 'undefined') {
+      source = new EventSource('/api/notifications/stream')
+      source.onmessage = (event) => {
+        try {
+          if (!cancelled) setInbox(JSON.parse(event.data) as InboxPayload)
+        } catch {
+          /* payload incompleto */
+        }
+      }
+    }
     return () => {
       cancelled = true
+      clearInterval(timer)
+      source?.close()
     }
   }, [])
 
   return (
     <SectionCard
       title="Actividad"
-      description="Vencimientos, pagos, desembolsos y reclamos de tu cuenta."
+      description="Vencimientos, pagos, desembolsos y mensajes de soporte. El badge de la campana se limpia al leer."
       icon={<BellRing className="h-4.5 w-4.5 text-brand-primary" />}
     >
       {!inbox && !error ? (
@@ -52,9 +68,22 @@ export function ActivityInbox({ onOpenHref }: { onOpenHref: (href: string) => vo
             <button
               key={item.id}
               type="button"
-              onClick={() => onOpenHref(item.href)}
+              onClick={() => {
+                void fetch(`/api/notifications/${encodeURIComponent(item.id)}/read`, { method: 'PUT' }).catch(() => null)
+                setInbox((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        items: prev.items.map((it) => (it.id === item.id ? { ...it, unread: false } : it)),
+                        unreadHint: Math.max(0, prev.unreadHint - (item.unread ? 1 : 0)),
+                      }
+                    : prev,
+                )
+                onOpenHref(item.href)
+              }}
               className={cn(
                 'flex w-full items-start gap-3 rounded-xl border border-border/60 bg-background p-4 text-left transition hover:border-brand-primary/30 hover:bg-brand-primary-50/30',
+                item.unread ? 'border-brand-primary/40 bg-sky-50/50' : '',
               )}
             >
               <span className="mt-0.5">{toneIcon(item.tone)}</span>

@@ -37,6 +37,7 @@ export type ContractDocData = {
     term: number
     monthlyRate: string | number
     tna?: string | number | null
+    tea?: string | number | null
     installmentAmount: string | number
     totalAmount: string | number
     cft?: string | number | null

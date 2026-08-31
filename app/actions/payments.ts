@@ -21,8 +21,7 @@ import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email
 import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, ensureMercadoPagoCustomer, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
-import { attachMercadoPagoQr, ensureLoanCouponMpQrs, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
-import { ensureLoanCouponTickets } from '@/lib/payments/installment-mp-ticket'
+import { attachMercadoPagoQr, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
 import { isPaywayConfigured, isPaywayMethod, lookupPaywayBin, paywayAllowsSimulate } from '@/lib/payway'
 import { openPaywayCheckout } from '@/lib/payments/payway-checkout'
@@ -659,14 +658,9 @@ export async function getLoanCouponQrs(loanId: string) {
   if (!loanRow || !(await canViewOwnedRecord(userId, loanRow.userId))) {
     throw new Error('No podés ver la cuponera de este crédito.')
   }
-  const [qrs, tickets] = await Promise.all([
-    ensureLoanCouponMpQrs(id, loanRow.userId),
-    ensureLoanCouponTickets(id, loanRow.userId).catch((err) => {
-      console.error('[payments] cupones Pago Fácil/Rapipago:', (err as Error).message)
-      return {} as Awaited<ReturnType<typeof ensureLoanCouponTickets>>
-    }),
-  ])
-  return { qrs, tickets }
+  // No pre-emitir QR ni cupones de Pago Fácil/Rapipago: vencen y solo se
+  // generan cuando el cliente elige ese medio al pagar la cuota.
+  return { qrs: {}, tickets: {} }
 }
 
 export async function reportCouponTransfer(installmentId: string, formData: FormData) {
@@ -965,6 +959,9 @@ export async function applyPaymentToInstallment(
       createdAt: now,
     })
   })
+
+  const { enqueueInterestInvoices } = await import('@/lib/arca/invoice')
+  enqueueInterestInvoices([installmentId])
 
   revalidateCustomer()
   if (opts?.notify !== false) {

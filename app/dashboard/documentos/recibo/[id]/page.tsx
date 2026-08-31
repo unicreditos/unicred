@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { receiptBranding } from '@/lib/brand'
 import { db } from '@/lib/db'
 import { paymentReceipt, disbursement, profile, user, bankAccount } from '@/lib/db/schema'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { canViewOwnedRecord, receiptBackHrefForRole } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { getRoleForUser, requireUserId } from '@/lib/session'
@@ -42,12 +43,19 @@ async function getIdentity(userId: string) {
   return { p: rows[0]?.profile ?? null, u: rows[0]?.user ?? null }
 }
 
-export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReceiptPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
+  const { id: rawId } = await params
+  const id = String(rawId ?? '').trim()
+  await keepCustomerInDashboard('recibo', id, searchParams)
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   const backHref = receiptBackHrefForRole(role)
-  const { id: rawId } = await params
-  const id = String(rawId ?? '').trim()
 
   const [receiptRaw] = await db
     .select()

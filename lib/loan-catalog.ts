@@ -58,8 +58,9 @@ export function catalogQuote(type: LoanCatalogType) {
     cft: amort.cft,
     installmentAmount: amort.installmentAmount,
     tnaLabel: formatPercent(amort.tna),
+    teaLabel: formatPercent(amort.tea),
     cftLabel: formatPercent(amort.cft),
-    metric: `TNA ${formatPercent(amort.tna)} · CFT ${formatPercent(amort.cft)}`,
+    metric: `TNA ${formatPercent(amort.tna)} · TEA ${formatPercent(amort.tea)} · CFT ${formatPercent(amort.cft)}`,
     metricHint: `Referencia ${product.referenceAmount.toLocaleString('es-AR')} a ${product.referenceTerm} meses · solo interés e IVA`,
   }
 }

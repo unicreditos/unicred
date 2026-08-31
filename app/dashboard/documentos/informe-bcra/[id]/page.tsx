@@ -1,8 +1,10 @@
 import { BCRAReportPrintable } from '@/components/documents/bcra-report-printable'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { Button } from '@/components/ui/button'
+import { snapshotFromStored } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { bcraReport, profile, user } from '@/lib/db/schema'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
 import { canViewOwnedRecord, documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { requireUserId } from '@/lib/session'
@@ -12,11 +14,18 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function BCRAReportPage({ params }: { params: Promise<{ id: string }> }) {
-  const userId = await requireUserId()
-  const backHref = await documentBackHref(userId)
+export default async function BCRAReportPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ embed?: string | string[] }>
+}) {
   const { id: rawId } = await params
   const id = String(rawId ?? '').trim()
+  await keepCustomerInDashboard('bcra', id, searchParams)
+  const userId = await requireUserId()
+  const backHref = await documentBackHref(userId)
   if (!id) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
@@ -126,7 +135,10 @@ export default async function BCRAReportPage({ params }: { params: Promise<{ id:
       meta={`Informe ${reportNumber}`}
       fileName={documentPdfBaseName('Informe-BCRA', String(reportNumber))}
     >
-      <BCRAReportPrintable report={data} />
+      <BCRAReportPrintable
+        report={data}
+        extract={snapshotFromStored(data.fullReportData, data.customer.cuil ?? undefined)}
+      />
     </DocumentPreviewShell>
   )
 }

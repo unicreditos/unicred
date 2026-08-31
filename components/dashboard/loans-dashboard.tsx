@@ -21,12 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getLoanCouponQrs, getPublicTreasury } from '@/app/actions/payments'
-import { barcodeSvg, couponCode, formatBarcodeHuman, formatOperationNumber, installmentPosPath } from '@/lib/coupon'
 import { formatARS, formatPercent } from '@/lib/finance'
-import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
-import type { InstallmentCashCoupons } from '@/lib/payments/installment-mp-ticket'
-import QRCode from 'qrcode'
 import Link from 'next/link'
 import { installment, loan } from '@/lib/db/schema'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -140,7 +135,26 @@ function isWithdrawn(status: string) {
   return status === 'cancelled'
 }
 
-export function LoansDashboard({ loans }: { loans: Loan[] }) {
+export type LoansDashboardView = 'all' | 'vigentes' | 'historial'
+
+function filterLoans(loans: Loan[], view: LoansDashboardView) {
+  if (view === 'vigentes') {
+    return loans.filter((l) => l.status === 'pending' || l.status === 'approved' || l.status === 'active')
+  }
+  if (view === 'historial') {
+    return loans.filter((l) => l.status === 'paid' || l.status === 'rejected' || l.status === 'cancelled')
+  }
+  return loans
+}
+
+export function LoansDashboard({
+  loans,
+  view = 'all',
+}: {
+  loans: Loan[]
+  view?: LoansDashboardView
+}) {
+  const listed = useMemo(() => filterLoans(loans, view), [loans, view])
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null)
   const [installments, setInstallments] = useState<Installment[]>([])
   const [loadingInstallments, setLoadingInstallments] = useState(false)
@@ -159,7 +173,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
     }
   }, [])
 
-  const selectedLoan = loans.find((l) => l.id === selectedLoanId)
+  const selectedLoan = listed.find((l) => l.id === selectedLoanId)
   const shouldLoad = Boolean(selectedLoanId && selectedLoan && isFundedLoan(selectedLoan.status))
 
   // El cronograma corresponde a un crédito puntual: al cambiar la selección se
@@ -180,7 +194,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
     void loadInstallments(selectedLoanId)
   }, [shouldLoad, selectedLoanId, loadInstallments])
 
-  const totals = useMemo(() => computeLoanStats(loans), [loans])
+  const totals = useMemo(() => computeLoanStats(listed), [listed])
 
   if (!selectedLoan) {
     return (
@@ -188,7 +202,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total solicitudes"
-            value={String(loans.length)}
+            value={String(listed.length)}
             icon={CreditCard}
             tone="bg-primary/10 text-primary"
           />
@@ -220,15 +234,19 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
                 <LayoutDashboardLocalIcon />
               </div>
               <div>
-                <CardTitle>Mis préstamos y solicitudes</CardTitle>
+                <CardTitle>
+                  {view === 'historial' ? 'Historial de créditos' : view === 'vigentes' ? 'Créditos vigentes' : 'Mis préstamos y solicitudes'}
+                </CardTitle>
                 <CardDescription>
-                  Historial de solicitudes. Solo los créditos activos generan cuotas y deuda.
+                  {view === 'historial'
+                    ? 'Créditos cancelados, rechazados o anulados.'
+                    : 'Solo los créditos activos generan cuotas y deuda. El cupón de Pago Fácil o Rapipago se emite al pagar.'}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {loans.length === 0 ? (
+            {listed.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-12 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <Inbox className="h-6 w-6" />
@@ -244,7 +262,7 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
               </div>
             ) : (
               <div className="divide-y divide-border rounded-lg border border-border">
-                {loans.map((l) => {
+                {listed.map((l) => {
                   const s = LOAN_STATUS[l.status] ?? LOAN_STATUS.pending
                   const rejected = isTerminalRejected(l.status)
                   return (
@@ -649,23 +667,19 @@ export function LoansDashboard({ loans }: { loans: Loan[] }) {
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <CardTitle className="text-base">Talonario / cuponera</CardTitle>
+                <CardTitle className="text-base">Talonario</CardTitle>
                 <CardDescription>
-                  Cada talón abierto tiene el QR de Mercado Pago y, en Pago Fácil y Rapipago, el Nº de operación para dictar en caja. También podés transferir a Brubank.
+                  Cronograma de este crédito. El cupón de Pago Fácil o Rapipago se emite cuando elegís ese medio en
+                  Pagar, porque tiene vencimiento.
                 </CardDescription>
               </div>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/dashboard/documentos/cuponera/${selectedLoan.id}`}>Imprimir cuponera</Link>
+                <Link href={`/dashboard?tab=documentos_talonario&doc=talonario&docId=${encodeURIComponent(selectedLoan.id)}`}>
+                  Ver cronograma
+                </Link>
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            {installments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Todavía no hay talones para este crédito.</p>
-            ) : (
-              <LoanCouponBook loanId={selectedLoan.id} installments={installments} />
-            )}
-          </CardContent>
         </Card>
         {installments.some(
           (inst) =>
@@ -819,170 +833,5 @@ function LayoutDashboardLocalIcon() {
       <rect width="7" height="9" x="14" y="12" rx="1" />
       <rect width="7" height="5" x="3" y="16" rx="1" />
     </svg>
-  )
-}
-
-function CashTicketMini({
-  label,
-  ticket,
-}: {
-  label: string
-  ticket: { barcode: string | null; operationNumber?: string | null; expiresAt: string } | null
-}) {
-  const operation = ticket?.operationNumber?.replace(/\s+/g, '') || null
-  const barcode = ticket?.barcode?.replace(/\s+/g, '') || null
-  const showBarcode = Boolean(barcode && barcode !== operation)
-  let svg: string | null = null
-  if (showBarcode && barcode) {
-    try {
-      svg = barcodeSvg(barcode, { height: 36, module: 1, showText: false, fit: true })
-    } catch {
-      svg = null
-    }
-  }
-  return (
-    <div className="rounded-md border border-border/80 bg-muted/30 px-2 py-1.5">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      {operation ? (
-        <div className="mt-1 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Nº de operación</p>
-          <p className="font-mono text-lg font-bold tracking-[0.12em] text-foreground">
-            {formatOperationNumber(operation)}
-          </p>
-        </div>
-      ) : null}
-      {svg ? (
-        <div className="cuponera-barcode mt-1">
-          <div dangerouslySetInnerHTML={{ __html: svg }} />
-          {barcode ? (
-            <p className="mt-1 text-center font-mono text-[10px] leading-snug tracking-wide">
-              {formatBarcodeHuman(barcode)}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {!operation && !svg ? (
-        <p className="mt-1 text-[10px] text-muted-foreground">Sin cupón emitido</p>
-      ) : null}
-    </div>
-  )
-}
-
-function LoanCouponBook({
-  loanId,
-  installments,
-}: {
-  loanId: string
-  installments: Installment[]
-}) {
-  const [qrs, setQrs] = useState<Record<string, string>>({})
-  const [tickets, setTickets] = useState<Record<string, InstallmentCashCoupons>>({})
-  const [cbu, setCbu] = useState<string | null>(null)
-
-  useEffect(() => {
-    void getPublicTreasury()
-      .then((t) => setCbu(t.cbu))
-      .catch(() => setCbu(null))
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    void getLoanCouponQrs(loanId)
-      .then(async (payloads) => {
-        const pairs = await Promise.all(
-          Object.entries(payloads.qrs ?? {}).map(async ([id, payload]) => {
-            if (!isMercadoPagoEmvQr(payload.qrData)) return null
-            const data = await QRCode.toDataURL(payload.qrData, { margin: 1, width: 180 })
-            return [id, data] as const
-          }),
-        )
-        if (cancelled) return
-        setQrs(Object.fromEntries(pairs.filter((row): row is readonly [string, string] => Boolean(row))))
-        setTickets(payloads.tickets ?? {})
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setQrs({})
-          setTickets({})
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [loanId, installments])
-
-  return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {installments.map((row) => {
-        const code = couponCode({
-          loanId,
-          number: row.number,
-          dueDate: row.dueDate,
-          amount: row.amount,
-        })
-        const open = row.status !== 'paid' && row.status !== 'cancelled'
-        return (
-          <div key={row.id} className="rounded-lg border border-border p-3">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm font-semibold">Cuota {String(row.number).padStart(2, '0')}</p>
-                <p className="text-xs text-muted-foreground">
-                  Vence {formatDate(row.dueDate)} · {formatARS(row.amount)}
-                </p>
-              </div>
-              <Badge variant={row.status === 'paid' ? 'default' : row.status === 'cancelled' ? 'outline' : 'secondary'}>
-                {row.status === 'paid' ? 'Pagada' : row.status === 'cancelled' ? 'Anulada' : 'Pendiente'}
-              </Badge>
-            </div>
-            <p className="mb-2 text-xs text-muted-foreground">
-              Fecha de pago:{' '}
-              {row.paidAt
-                ? formatDate(row.paidAt)
-                : row.status === 'paid' || row.status === 'cancelled'
-                  ? 'Sin registrar'
-                  : '—'}
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              {open && qrs[row.id] ? (
-                <div className="flex flex-col items-center">
-                  <img src={qrs[row.id]} alt={`QR para pagar la cuota ${row.number}`} className="h-28 w-28" />
-                  <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Escaneá para pagar
-                  </p>
-                </div>
-              ) : null}
-              <div className="cuponera-barcode min-w-0 flex-1">
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: barcodeSvg(code, { height: 36, module: 1, showText: false, fit: true }),
-                  }}
-                />
-                <p className="mt-1 text-center font-mono text-[10px] leading-snug tracking-wide">
-                  {formatBarcodeHuman(code)}
-                </p>
-              </div>
-            </div>
-            {open ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <CashTicketMini label="Pago Fácil" ticket={tickets[row.id]?.pagoFacil ?? null} />
-                <CashTicketMini label="Rapipago" ticket={tickets[row.id]?.rapipago ?? null} />
-              </div>
-            ) : null}
-            {open ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button asChild size="sm">
-                  <Link href={installmentPosPath(row.id, 'tarjeta_credito')}>Pagar con tarjeta</Link>
-                </Button>
-                {cbu ? (
-                  <p className="text-[10px] text-muted-foreground">
-                    Transferencia CBU {cbu}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
-    </div>
   )
 }

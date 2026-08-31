@@ -78,7 +78,8 @@ export function RequestPasswordResetForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            placeholder="vos@email.com"
+            placeholder="Ingresá el mail de tu cuenta"
+            className="h-12 rounded-lg border-slate-200 px-3.5"
           />
         </div>
 
@@ -88,9 +89,18 @@ export function RequestPasswordResetForm() {
           </p>
         )}
 
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? 'Enviando…' : 'Enviarme el enlace'}
-        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            type="button"
+            asChild
+            className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
+          >
+            <Link href="/sign-in">Volver</Link>
+          </Button>
+          <Button type="submit" disabled={loading} className="h-12 text-base font-semibold">
+            {loading ? 'Enviando…' : 'Enviarme el enlace'}
+          </Button>
+        </div>
       </form>
     </AuthShell>
   )

@@ -216,6 +216,16 @@
   width: min(210mm, calc(100% - 2rem));
 }
 
+.document-preview-root.is-embed {
+  min-height: 0;
+  background: #fff;
+}
+
+.document-preview-root.is-embed .document-preview-canvas {
+  margin: 0 auto 1.5rem;
+  width: min(210mm, 100%);
+}
+
 .document-sheet {
   container-type: inline-size;
   container-name: docsheet;
@@ -582,11 +592,22 @@
     color: #111 !important;
   }
   .document-preview-root,
-  .document-preview-canvas {
+  .document-preview-canvas,
+  .in-app-doc-stage,
+  .in-app-doc-canvas {
     margin: 0 !important;
     width: auto !important;
     max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
     background: #fff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
   }
   .document-sheet,
   .print-page {
@@ -977,6 +998,11 @@
 .uc-gradient-navy {
   background-image: linear-gradient(135deg, #07100C 0%, #0C1612 48%, #157A3B 100%);
 }
+.auth-float-pattern {
+  background-image: url('/auth-pattern.svg');
+  background-size: 240px 150px;
+}
+
 .uc-gradient-brand {
   background-image: linear-gradient(135deg, #20BD5A 0%, #157A3B 100%);
 }

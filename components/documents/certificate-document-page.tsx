@@ -2,6 +2,8 @@ import { CertificatePrintable } from '@/components/documents/certificate-printab
 import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { Button } from '@/components/ui/button'
+import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { type CustomerDocKind } from '@/lib/documents/customer-view'
 import { documentBackHref, documentBackHrefForLoan } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { loadLoanCertificateForViewer, type LoanCertificateKind } from '@/lib/legal/loan-pack'
@@ -24,15 +26,24 @@ const META: Record<LoanCertificateKind, { title: string; blocked: string }> = {
   },
 }
 
+function certificateKind(kind: LoanCertificateKind): CustomerDocKind {
+  if (kind === 'libre_deuda') return 'libre-deuda'
+  if (kind === 'cancelacion') return 'cancelacion'
+  return 'solvencia'
+}
+
 export async function CertificateDocumentPage({
   kind,
   loanId: rawId,
+  searchParams,
 }: {
   kind: LoanCertificateKind
   loanId: string
+  searchParams?: Promise<{ embed?: string | string[] }>
 }) {
-  const userId = await requireUserId()
   const loanId = String(rawId ?? '').trim()
+  await keepCustomerInDashboard(certificateKind(kind), loanId, searchParams)
+  const userId = await requireUserId()
   const data = await loadLoanCertificateForViewer(userId, loanId, kind)
   const backHref = data ? await documentBackHrefForLoan(userId, loanId) : await documentBackHref(userId)
   const copy = META[kind]

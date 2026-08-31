@@ -1,27 +1,30 @@
 import { FeatureCard, Grid, PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
+import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
+import { LEGAL_COPY } from '@/lib/legal/copy'
 import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import { pageMetadata } from '@/lib/seo'
-import { BadgeCheck, Banknote, FileCheck2, ShieldCheck, Smartphone } from 'lucide-react'
+import { BadgeCheck, Banknote, FileCheck2, Scale, ShieldCheck, Smartphone } from 'lucide-react'
 
 export const metadata = pageMetadata({
-  title: 'Préstamos digitales',
+  title: 'Préstamo personal online',
   description:
-    'Pedí tu préstamo personal 100% online. Validá identidad, consultá BCRA y recibí la acreditación en tu CBU/CVU. Cuotas fijas con TNA y CFT a la vista.',
+    'Crédito personal 100% digital. Validá identidad, consultá BCRA y recibí la acreditación en tu CBU/CVU. Cuotas fijas con TNA y CFT a la vista.',
   path: '/prestamos',
 })
 
 export default function PrestamosPage() {
   return (
     <PublicPageShell
-      eyebrow="Préstamos digitales"
-      title="Pedilo online. Lo acreditamos en tu cuenta."
-      description={`Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. Sin sucursal, con KYC biométrico y Central de Deudores BCRA.`}
+      eyebrow="Crédito en línea"
+      title="Pedilo online. Lo evaluamos. Lo acreditamos en tu cuenta."
+      description={`Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. El primer crédito está acotado a ${formatARS(FIRST_CREDIT_HARD_CAP)}. Sin sucursal, con KYC biométrico y Central de Deudores BCRA.`}
       icon={<Banknote className="h-3.5 w-3.5" />}
-      primaryAction={{ href: '/sign-up', label: 'Solicitar ahora' }}
+      primaryAction={{ href: '/sign-up', label: 'Solicitar evaluación' }}
       secondaryAction={{ href: '/simulador', label: 'Simular cuota' }}
     >
-      <PageSection eyebrow="En 3 pasos" title="¿Cómo saco mi préstamo?">
+      <PageSection eyebrow="En 3 pasos" title="Cómo se pide el crédito">
         <Grid cols={3}>
           <FeatureCard
             icon={<Smartphone className="h-5 w-5" />}
@@ -31,7 +34,7 @@ export default function PrestamosPage() {
           <FeatureCard
             icon={<ShieldCheck className="h-5 w-5" />}
             title="2 · Validá tu identidad"
-            description="Didit verifica DNI y prueba de vida. Consultamos la Central de Deudores del BCRA."
+            description="Didit verifica DNI y prueba de vida. Consultamos la Central de Deudores del BCRA con tu autorización."
           />
           <FeatureCard
             icon={<Banknote className="h-5 w-5" />}
@@ -55,7 +58,7 @@ export default function PrestamosPage() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">{PERSONAL_QUOTE.metricHint}. Sujeto a evaluación.</p>
+        <p className="mt-3 text-xs text-muted-foreground">{PERSONAL_QUOTE.metricHint}. Sujeto a evaluación. {LEGAL_COPY.cftShort}</p>
       </PageSection>
 
       <PageSection eyebrow="Requisitos" title="Qué necesitás">
@@ -76,13 +79,13 @@ export default function PrestamosPage() {
         </ul>
       </PageSection>
 
-      <PageSection eyebrow="Más que un préstamo" title="Todo en la misma cuenta">
+      <PageSection eyebrow="Transparencia" title="Qué queda por escrito">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: FileCheck2, t: 'TNA y CFT', d: 'Siempre a la vista antes de firmar.' },
-            { icon: Banknote, t: 'Billetera', d: 'Pagá cuotas, servicios y transferí.' },
-            { icon: FileCheck2, t: 'Documentos', d: 'Contrato, pagaré, cuponera y libre deuda.' },
-            { icon: ShieldCheck, t: 'Arrepentimiento', d: '10 días corridos según normativa.' },
+            { icon: Scale, t: 'Mutuo y pagaré', d: 'Contrato, cuponera y recibos en tu panel.' },
+            { icon: ShieldCheck, t: 'Arrepentimiento', d: '10 días corridos según Ley 24.240.' },
+            { icon: Banknote, t: 'Operador', d: `${BRAND.legalName} · CUIT ${BRAND.cuit}.` },
           ].map((x) => (
             <div key={x.t} className="rounded-2xl border border-brand-primary/10 bg-brand-primary/5 p-4">
               <x.icon className="h-5 w-5 text-brand-primary" />
@@ -91,6 +94,7 @@ export default function PrestamosPage() {
             </div>
           ))}
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">{LEGAL_COPY.nonBank}</p>
       </PageSection>
     </PublicPageShell>
   )

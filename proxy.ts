@@ -1,5 +1,6 @@
 import { CANONICAL_HOST, shouldRedirectHost } from '@/lib/site'
 import { loggedInSignupBouncePath } from '@/directo/intent'
+import { customerDashboardDocUrl, parsePrintDocumentPath } from '@/lib/documents/customer-view'
 import {
   installmentPosPath,
   legacyPedirRedirect,
@@ -19,12 +20,17 @@ const DASHBOARD_TABS = new Set([
   'mis_solicitudes',
   'scoring',
   'cuotas',
+  'cuotas_vigentes',
+  'cuotas_historial',
   'pagos',
   'billetera',
   'servicios',
   'comprobantes',
   'bancos',
   'documentos',
+  'documentos_contrato',
+  'documentos_pagare',
+  'documentos_talonario',
   'ayuda',
   'cuenta',
   'reclamos',
@@ -41,7 +47,8 @@ function hasSessionCookie(request: NextRequest) {
     .getAll()
     .some(
       (cookie) =>
-        cookie.name.includes('session_token') || cookie.name.includes('better-auth.session'),
+        Boolean(cookie.value?.trim()) &&
+        (cookie.name.includes('session_token') || cookie.name.includes('better-auth.session')),
     )
 }
 
@@ -60,8 +67,25 @@ export function proxy(request: NextRequest) {
   const fromPedir = legacyPedirRedirect(pathname)
   if (fromPedir) {
     const url = request.nextUrl.clone()
-    url.pathname = fromPedir
+    const dest = new URL(fromPedir, url)
+    url.pathname = dest.pathname
+    url.search = dest.search
     return NextResponse.redirect(url, 308)
+  }
+
+  const printed = parsePrintDocumentPath(pathname)
+  if (printed) {
+    const embed = request.nextUrl.searchParams.get('embed') === '1'
+    const print = request.nextUrl.searchParams.get('print') === '1'
+    const referer = request.headers.get('referer') ?? ''
+    const fromAdmin = referer.includes('/admin')
+    if (!embed && !print && !fromAdmin) {
+      const url = request.nextUrl.clone()
+      const dest = new URL(customerDashboardDocUrl(printed.kind, printed.id), url)
+      url.pathname = dest.pathname
+      url.search = dest.search
+      return NextResponse.redirect(url)
+    }
   }
 
   const dashboardLeaf = pathname.match(/^\/dashboard\/([^/]+)\/?$/)

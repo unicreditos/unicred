@@ -8,6 +8,7 @@ import {
   installment,
   profile,
   disbursement,
+  bankAccount,
   user as userTable,
 } from '@/lib/db/schema'
 import { recordAudit } from '@/lib/audit'
@@ -153,6 +154,24 @@ export async function acceptLoanContract(
   if (!loanRow) throw new Error('Crédito no encontrado')
   if (loanRow.status !== 'approved' && loanRow.status !== 'active') {
     throw new Error('El contrato sólo se puede aceptar sobre un crédito aprobado.')
+  }
+
+  const [destination] = await db
+    .select({
+      id: bankAccount.id,
+      cbu: bankAccount.cbu,
+      cvu: bankAccount.cvu,
+      alias: bankAccount.alias,
+      isActive: bankAccount.isActive,
+    })
+    .from(bankAccount)
+    .where(and(eq(bankAccount.userId, userId), eq(bankAccount.isActive, true)))
+    .orderBy(desc(bankAccount.isPrimary))
+    .limit(1)
+  if (!destination || !(destination.cbu || destination.cvu || destination.alias)) {
+    throw new Error(
+      'Cargá un CBU, CVU o alias a tu nombre en Cuentas de desembolso antes de firmar. El crédito no se gira a terceros ni a la billetera interna.',
+    )
   }
 
   const identRows = await db

@@ -1,19 +1,15 @@
 'use client'
 
-import { consultPaywayBin, createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, simulatePaywayCheckout, type PaymentMethod } from '@/app/actions/payments'
+import { createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, type PaymentMethod } from '@/app/actions/payments'
 import { MercadoPagoCheckoutBrick, type BrickChannel } from '@/components/payments/mp-checkout-brick'
 import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { barcodeSvg, couponCode } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
-import { isMercadoPagoEmvQr } from '@/lib/payments/mp-qr-payload'
-import { isPaywayQr, paywayQrLabel } from '@/lib/payments/payway-qr'
 import { cn } from '@/lib/utils'
-import QRCode from 'qrcode'
-import { Landmark, QrCode, Wallet, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 type InstallmentPay = {
@@ -24,10 +20,29 @@ type InstallmentPay = {
   loanId: string
 }
 
-type Tab = 'mp' | 'transfer'
+const CUSTOMER_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
+  { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Formulario en este punto de venta. No hace falta entrar a Mercado Pago.' },
+  { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Formulario en este punto de venta. No hace falta entrar a Mercado Pago.' },
+  { id: 'pago_facil', label: 'Pago Fácil', hint: 'Se emite el cupón ahora. Tiene vencimiento: pagalo o imprimilo en el momento.' },
+  { id: 'rapipago', label: 'Rapipago', hint: 'Se emite el cupón ahora. Tiene vencimiento: pagalo o imprimilo en el momento.' },
+  { id: 'payway_wallet', label: 'Billetera UNICRÉDITOS', hint: 'Saldo y CVU de tu cuenta. El cobro queda en esta plataforma.' },
+  { id: 'transferencia_bancaria', label: 'Transferencia a RM', hint: 'Transferí al CBU de tesorería y subí el comprobante.' },
+]
 
-function isPaywayCheckout(method: PaymentMethod) {
-  return method === 'payway_qr' || method === 'payway_wallet' || method === 'payway_card'
+function isConcreteMethod(method: PaymentMethod | undefined): method is PaymentMethod {
+  return CUSTOMER_METHODS.some((row) => row.id === method)
+}
+
+function isCardMethod(method: PaymentMethod) {
+  return method === 'tarjeta_credito' || method === 'tarjeta_debito'
+}
+
+function isTicketMethod(method: PaymentMethod) {
+  return method === 'pago_facil' || method === 'rapipago' || method === 'ticket'
+}
+
+function needsMpSession(method: PaymentMethod) {
+  return isCardMethod(method) || isTicketMethod(method)
 }
 
 function toBrickChannel(method: PaymentMethod): BrickChannel {
@@ -36,8 +51,18 @@ function toBrickChannel(method: PaymentMethod): BrickChannel {
   if (method === 'ticket' || method === 'efectivo') return 'ticket'
   if (method === 'tarjeta_credito') return 'credit_card'
   if (method === 'tarjeta_debito') return 'debit_card'
-  if (method === 'mercadopago_wallet' || method === 'cvu') return 'account_money'
-  return 'all'
+  return 'credit_card'
+}
+
+function payCta(method: PaymentMethod) {
+  if (method === 'tarjeta_credito') return 'Pagar con tarjeta de crédito'
+  if (method === 'tarjeta_debito') return 'Pagar con tarjeta de débito'
+  if (method === 'pago_facil') return 'Emitir cupón Pago Fácil'
+  if (method === 'rapipago') return 'Emitir cupón Rapipago'
+  if (method === 'ticket') return 'Emitir cupón de efectivo'
+  if (method === 'transferencia_bancaria') return 'Informar transferencia'
+  if (method === 'payway_wallet') return 'Pagar con billetera UNICRÉDITOS'
+  return 'Pagar'
 }
 
 export function PayInstallmentDialog({
@@ -45,8 +70,7 @@ export function PayInstallmentDialog({
   onClose,
   installments,
   email,
-  initialTab = 'mp',
-  method = 'mercado_pago',
+  method,
   returnPath,
   onSettled,
 }: {
@@ -54,12 +78,11 @@ export function PayInstallmentDialog({
   onClose: () => void
   installments: InstallmentPay[]
   email?: string | null
-  initialTab?: Tab
   method?: PaymentMethod
   returnPath?: string
   onSettled?: () => void
 }) {
-  const [tab, setTab] = useState<Tab>(initialTab)
+  const [chosen, setChosen] = useState<PaymentMethod | null>(isConcreteMethod(method) ? method : null)
   const [busy, setBusy] = useState(false)
   const [session, setSession] = useState<{
     paymentId: string
@@ -72,87 +95,65 @@ export function PayInstallmentDialog({
     mpCustomerId: string | null
     mpCardIds: string[]
     gateway: string | null
-    simulateAllowed?: boolean
   } | null>(null)
-  const [qr, setQr] = useState<string | null>(null)
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
   const startedFor = useRef('')
   const idsKey = installments.map((row) => row.id).join(',')
 
   const total = installments.reduce((sum, row) => sum + Number(row.amount), 0)
-  const single = installments.length === 1 ? installments[0] : null
-  const coupon = useMemo(() => {
-    if (!single) return session?.coupon ?? null
-    return couponCode({
-      loanId: single.loanId,
-      number: single.number,
-      dueDate: single.dueDate,
-      amount: single.amount,
-    })
-  }, [single, session?.coupon])
-  const barcode = coupon ? barcodeSvg(coupon) : null
 
-  useEffect(() => {
-    const payload = session?.qrData
-    if (!payload) {
-      setQr(null)
-      return
-    }
-    if (!isMercadoPagoEmvQr(payload) && !isPaywayQr(payload) && !/^https?:\/\//i.test(payload)) {
-      setQr(null)
-      return
-    }
-    void QRCode.toDataURL(payload, { margin: 1, width: 240 }).then(setQr)
-  }, [session?.qrData])
-
-  const startMp = useCallback(async () => {
-    setBusy(true)
-    try {
-      const r = await createPaymentLink(
-        installments.map((row) => row.id),
-        method,
-        returnPath ? { returnPath } : undefined,
-      )
-      if (r.gateway !== 'payway' && (!r.publicKey || !r.externalPreferenceId)) {
-        throw new Error('Falta la public key o la preferencia de Mercado Pago.')
+  const startMp = useCallback(
+    async (channel: PaymentMethod) => {
+      setBusy(true)
+      try {
+        const r = await createPaymentLink(
+          installments.map((row) => row.id),
+          channel,
+          returnPath ? { returnPath } : undefined,
+        )
+        if (!r.publicKey || !r.externalPreferenceId) {
+          throw new Error('Falta la clave pública o la preferencia de cobro.')
+        }
+        setSession({
+          paymentId: r.paymentId,
+          preferenceId: r.externalPreferenceId ?? r.paymentId,
+          publicKey: r.publicKey ?? null,
+          amount: r.amount,
+          paymentLinkUrl: r.paymentLinkUrl ?? '',
+          coupon: r.coupon,
+          qrData: r.qrData ?? null,
+          mpCustomerId: r.mpCustomerId ?? null,
+          mpCardIds: r.mpCardIds ?? [],
+          gateway: r.gateway ?? 'mercado_pago',
+        })
+      } catch (err) {
+        toast.error((err as Error).message)
+        startedFor.current = ''
+      } finally {
+        setBusy(false)
       }
-      setSession({
-        paymentId: r.paymentId,
-        preferenceId: r.externalPreferenceId ?? r.paymentId,
-        publicKey: r.publicKey ?? null,
-        amount: r.amount,
-        paymentLinkUrl: r.paymentLinkUrl ?? '',
-        coupon: r.coupon,
-        qrData: r.qrData ?? null,
-        mpCustomerId: r.mpCustomerId ?? null,
-        mpCardIds: r.mpCardIds ?? [],
-        gateway: r.gateway ?? 'mercado_pago',
-        simulateAllowed: 'simulateAllowed' in r ? Boolean(r.simulateAllowed) : false,
-      })
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }, [installments, method, returnPath])
+    },
+    [installments, returnPath],
+  )
 
   useEffect(() => {
     if (!open) {
       startedFor.current = ''
+      setSession(null)
+      setChosen(isConcreteMethod(method) ? method : null)
       return
     }
-    setTab(initialTab)
+    setChosen(isConcreteMethod(method) ? method : null)
     void getCollectionAccount().then(setTreasury).catch(() => setTreasury(null))
-    if (initialTab !== 'mp') return
-    if (method === 'payway_wallet') {
-      startedFor.current = `${idsKey}:${method}`
-      return
-    }
-    const key = `${idsKey}:${method}`
+  }, [open, method, idsKey])
+
+  useEffect(() => {
+    if (!open || !chosen || !needsMpSession(chosen)) return
+    const key = `${idsKey}:${chosen}`
     if (startedFor.current === key) return
     startedFor.current = key
-    void startMp()
-  }, [open, idsKey, initialTab, method, startMp])
+    void startMp(chosen)
+  }, [open, chosen, idsKey, startMp])
 
   const handlePaid = useCallback(
     async (status: string, extra?: { receiptId?: string | null; credited?: number }) => {
@@ -163,7 +164,7 @@ export function PayInstallmentDialog({
         return
       }
       if (status === 'approved' && session?.paymentId) {
-        toast.message('Confirmando el cobro con Mercado Pago…')
+        toast.message('Confirmando el cobro…')
         for (let i = 0; i < 12; i++) {
           await new Promise((r) => setTimeout(r, 2500))
           try {
@@ -178,17 +179,21 @@ export function PayInstallmentDialog({
             /* reintento */
           }
         }
-        toast.message('El cobro fue aceptado. El recibo aparece cuando Mercado Pago confirma el dinero.')
+        toast.message('El cobro fue aceptado. El recibo aparece cuando se confirma el dinero.')
         onClose()
         return
       }
       if (status === 'rejected') {
-        toast.error('Mercado Pago no pudo cobrar. Probá otro medio.')
+        toast.error('No se pudo cobrar. Probá otra tarjeta u otro medio.')
         return
       }
-      toast.message(`Mercado Pago: ${status}. Si es cupón, pagalo en la red y el recibo se emite al acreditar.`)
+      toast.message(
+        isTicketMethod(chosen ?? 'ticket')
+          ? 'Cupón emitido. Pagalo en la red antes del vencimiento. El recibo se emite al acreditar.'
+          : `Estado del cobro: ${status}.`,
+      )
     },
-    [onClose, onSettled, session?.paymentId],
+    [chosen, onClose, onSettled, session?.paymentId],
   )
 
   const handleBrickError = useCallback((message: string) => {
@@ -214,146 +219,60 @@ export function PayInstallmentDialog({
     }
   }
 
+  const title =
+    installments.length === 1
+      ? `Cuota ${String(installments[0].number).padStart(2, '0')} · ${formatARS(total)}`
+      : `${installments.length} cuotas · ${formatARS(total)}`
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold text-brand-navy-900">Caja UNICRÉDITOS</h2>
-            <p className="text-xs text-slate-500">
-              {installments.length === 1
-                ? `Cuota ${String(installments[0].number).padStart(2, '0')} · ${formatARS(total)}`
-                : `${installments.length} cuotas · ${formatARS(total)}`}
-            </p>
+            <h2 className="text-base font-semibold text-brand-navy-900">Punto de venta UNICRÉDITOS</h2>
+            <p className="text-xs text-slate-500">{title}</p>
           </div>
           <Button type="button" size="sm" variant="ghost" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </header>
 
-        <div className="flex gap-2 border-b border-slate-100 px-4 py-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={tab === 'mp' ? 'default' : 'outline'}
-            onClick={() => {
-              setTab('mp')
-              if (!session) void startMp()
-            }}
-          >
-            <Wallet className="h-3.5 w-3.5" /> {method === 'payway_wallet' ? 'Billetera UNICRÉDITOS' : isPaywayCheckout(method) ? 'Checkout Payway' : 'Mercado Pago'}
-          </Button>
-          <Button type="button" size="sm" variant={tab === 'transfer' ? 'default' : 'outline'} onClick={() => setTab('transfer')}>
-            <Landmark className="h-3.5 w-3.5" /> Transferencia RM
-          </Button>
-        </div>
-
-        {tab === 'mp' ? (
-          <div className="space-y-4 p-4">
-            {method === 'payway_wallet' ? (
-              <WalletPayBox
-                installmentIds={installments.map((row) => row.id)}
-                amount={total}
-                onSettled={() => {
-                  onSettled?.()
-                  onClose()
-                }}
-              />
-            ) : isPaywayCheckout(method) ? (
-              <PaywaySandboxPanel
-                session={session}
-                busy={busy}
-                qr={qr}
-                total={total}
-                coupon={coupon}
-                barcode={barcode}
-                method={method}
-                onRetry={() => void startMp()}
-                onSimulate={async (outcome) => {
-                  if (!session?.paymentId) return
-                  setBusy(true)
-                  try {
-                    const r = await simulatePaywayCheckout(session.paymentId, outcome)
-                    if (r.settled) {
-                      toast.success('Pago acreditado. El recibo quedó en tu panel.')
-                      onSettled?.()
-                      onClose()
-                      return
-                    }
-                    if (outcome === 'rejected') toast.error('Cobro rechazado.')
-                    else toast.message('El cobro aún no se acreditó. Revisá el estado en el panel.')
-                  } catch (err) {
-                    toast.error((err as Error).message)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              />
-            ) : session?.publicKey ? (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-600">
-                  {method === 'tarjeta_credito' || method === 'tarjeta_debito'
-                    ? 'Cargá una tarjeta nueva o elegí una guardada. El cobro queda en esta caja; no hace falta salir al sitio de Mercado Pago.'
-                    : 'Pagá con tarjeta, dinero en cuenta, Pago Fácil o Rapipago. El recibo se emite cuando Mercado Pago confirma el dinero.'}
-                </p>
-                {session.paymentLinkUrl && method !== 'tarjeta_credito' && method !== 'tarjeta_debito' ? (
-                  <Button type="button" variant="outline" className="w-full" onClick={() => (window.location.href = session.paymentLinkUrl)}>
-                    Abrir Mercado Pago (web o app)
-                  </Button>
-                ) : null}
-                <MercadoPagoCheckoutBrick
-                  publicKey={session.publicKey}
-                  amount={session.amount}
-                  email={email}
-                  localPaymentId={session.paymentId}
-                  channel={toBrickChannel(method)}
-                  customerId={session.mpCustomerId}
-                  cardIds={session.mpCardIds}
-                  onPaid={handlePaid}
-                  onError={handleBrickError}
-                />
-              </div>
-            ) : (
-              <Button type="button" className="w-full" disabled={busy} onClick={() => void startMp()}>
-                {busy ? 'Abriendo Mercado Pago…' : 'Reintentar cobro Mercado Pago'}
-              </Button>
-            )}
-
-            {method === 'payway_wallet' || isPaywayCheckout(method) ? null : (
-            <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <summary className="cursor-pointer text-xs font-medium text-slate-600">
-                Pagar con QR o talón desde la app
-              </summary>
-              <div className="mt-3 flex flex-wrap items-start gap-4">
-                {qr ? (
-                  <div className="flex flex-col items-center">
-                    <img src={qr} alt="QR de pago Mercado Pago" className="h-36 w-36" />
-                    <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-                      <QrCode className="h-3.5 w-3.5" /> QR Mercado Pago
-                    </p>
-                    <p className="max-w-[180px] text-center text-[10px] text-slate-500">
-                      {formatARS(session?.amount ?? total)}. Escaneá con la app Mercado Pago. Importe cerrado de esta cuota.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {session && !session.qrData
-                      ? 'Mercado Pago no emitió el QR de esta cuota. Usá el checkout web o reintentá.'
-                      : 'Generando QR Mercado Pago…'}
-                  </p>
-                )}
-                {coupon && barcode ? (
-                  <div className="min-w-0 flex-1 overflow-x-auto">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Talón de la cuota</p>
-                    <div dangerouslySetInnerHTML={{ __html: barcode }} />
-                    <p className="mt-1 font-mono text-[11px] text-slate-600">{coupon}</p>
-                  </div>
-                ) : null}
-              </div>
-            </details>
-            )}
+        {!chosen ? (
+          <div className="space-y-3 p-4">
+            <p className="text-sm text-slate-600">
+              Elegí el medio. El pago se hace desde tu cuenta UNICRÉDITOS. Si es tarjeta, se abre el formulario acá
+              mismo. Si es Pago Fácil o Rapipago, el cupón se emite ahora porque vence.
+            </p>
+            <div className="grid gap-2">
+              {CUSTOMER_METHODS.map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-left hover:border-brand-primary/40 hover:bg-slate-50"
+                  onClick={() => {
+                    setSession(null)
+                    startedFor.current = ''
+                    setChosen(row.id)
+                  }}
+                >
+                  <p className="text-sm font-semibold text-brand-navy-900">{row.label}</p>
+                  <p className="text-[11px] text-slate-500">{row.hint}</p>
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
+        ) : chosen === 'payway_wallet' ? (
+          <div className="p-4">
+            <WalletPayBox
+              installmentIds={installments.map((row) => row.id)}
+              amount={total}
+              onSettled={() => {
+                onSettled?.()
+                onClose()
+              }}
+            />
+          </div>
+        ) : chosen === 'transferencia_bancaria' ? (
           <form action={sendTransfer} className="space-y-4 p-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Cuenta corriente RM</p>
@@ -368,7 +287,9 @@ export function PayInstallmentDialog({
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-slate-500">Banco</dt>
-                  <dd>{treasury?.bank} · {treasury?.accountType}</dd>
+                  <dd>
+                    {treasury?.bank} · {treasury?.accountType}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-slate-500">CBU</dt>
@@ -386,8 +307,8 @@ export function PayInstallmentDialog({
                 ) : null}
               </dl>
               <p className="mt-2 text-[11px] text-slate-500">
-                Transferí {formatARS(total)}. En el concepto usá {coupon ?? 'el ID del crédito y el n° de cuota'}.
-                La cuota no se marca paga hasta que tesorería vea el dinero en Brubank.
+                Transferí {formatARS(total)}. En el concepto usá el ID del crédito y el n° de cuota. La cuota no se
+                marca paga hasta que tesorería vea el dinero en Brubank.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -408,121 +329,44 @@ export function PayInstallmentDialog({
               Informar transferencia
             </Button>
           </form>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PaywaySandboxPanel({
-  session,
-  busy,
-  qr,
-  total,
-  coupon,
-  barcode,
-  method,
-  onRetry,
-  onSimulate,
-}: {
-  session: {
-    paymentId: string
-    amount: number
-    paymentLinkUrl: string
-    qrData: string | null
-    simulateAllowed?: boolean
-  } | null
-  busy: boolean
-  qr: string | null
-  total: number
-  coupon: string | null
-  barcode: string | null
-  method: PaymentMethod
-  onRetry: () => void
-  onSimulate: (outcome: 'approved' | 'rejected') => Promise<void>
-}) {
-  const [bin, setBin] = useState('')
-  const [binInfo, setBinInfo] = useState<string | null>(null)
-
-  if (!session) {
-    return (
-      <Button type="button" className="w-full" disabled={busy} onClick={onRetry}>
-        {busy ? 'Abriendo Payway…' : 'Reintentar cobro Payway'}
-      </Button>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-      <p className="rounded-lg border border-brand-primary/20 bg-brand-primary/5 px-3 py-2 text-xs text-brand-navy">
-        {session.simulateAllowed
-          ? 'Entorno de desarrollo Payway: usá simular cobro para acreditar el recibo.'
-          : 'Checkout Payway. El cobro se confirma cuando el riel acredita el pago.'}
-      </p>
-      <div className="flex flex-wrap items-start gap-4">
-        {qr ? (
-          <div className="flex flex-col items-center">
-            <img src={qr} alt="QR Payway sandbox" className="h-36 w-36" />
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-              <QrCode className="h-3.5 w-3.5" /> {paywayQrLabel(method)}
-            </p>
-            <p className="max-w-[180px] text-center text-[10px] text-slate-500">
-              {formatARS(session.amount || total)}. En sandbox el cobro se acredita con el botón de simulación.
-            </p>
-          </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Generando checkout Payway…</p>
+          <div className="space-y-4 p-4">
+            <p className="text-xs font-medium text-slate-600">
+              {isCardMethod(chosen)
+                ? 'Cargá los datos de la tarjeta como en un punto de venta. El cobro es de UNICRÉDITOS: no tenés que entrar a tu cuenta de Mercado Pago.'
+                : 'Se emite solo el cupón de este medio. Tiene fecha de vencimiento: imprimilo o pagalo ahora.'}
+            </p>
+            {session?.publicKey ? (
+              <MercadoPagoCheckoutBrick
+                publicKey={session.publicKey}
+                amount={session.amount}
+                email={email}
+                localPaymentId={session.paymentId}
+                channel={toBrickChannel(chosen)}
+                customerId={session.mpCustomerId}
+                cardIds={session.mpCardIds}
+                onPaid={handlePaid}
+                onError={handleBrickError}
+              />
+            ) : (
+              <Button type="button" className="w-full" disabled={busy} onClick={() => void startMp(chosen)}>
+                {busy ? 'Abriendo…' : payCta(chosen)}
+              </Button>
+            )}
+            <button
+              type="button"
+              className="text-xs text-slate-500 underline"
+              onClick={() => {
+                setChosen(null)
+                setSession(null)
+                startedFor.current = ''
+              }}
+            >
+              Elegir otro medio
+            </button>
+          </div>
         )}
-        {coupon && barcode ? (
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Talón de la cuota</p>
-            <div dangerouslySetInnerHTML={{ __html: barcode }} />
-            <p className="mt-1 font-mono text-[11px] text-slate-600">{coupon}</p>
-          </div>
-        ) : null}
       </div>
-      {method === 'payway_card' ? (
-        <form
-          className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_auto]"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void consultPaywayBin(bin)
-              .then((info) => setBinInfo(`${info.brand} · ${info.kind} · ${info.bank} (${info.source})`))
-              .catch((err) => {
-                setBinInfo(null)
-                toast.error((err as Error).message)
-              })
-          }}
-        >
-          <div className="space-y-1">
-            <Label htmlFor="payway-bin">Consultar BIN (6 dígitos)</Label>
-            <Input
-              id="payway-bin"
-              inputMode="numeric"
-              maxLength={8}
-              placeholder="450799"
-              value={bin}
-              onChange={(e) => setBin(e.target.value)}
-            />
-          </div>
-          <Button type="submit" variant="outline" className="self-end">
-            Consultar
-          </Button>
-          {binInfo ? <p className="sm:col-span-2 text-xs text-slate-600">{binInfo}</p> : null}
-        </form>
-      ) : null}
-      {session.simulateAllowed ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button type="button" disabled={busy} onClick={() => void onSimulate('approved')}>
-            {busy ? 'Acreditando…' : 'Simular cobro aprobado'}
-          </Button>
-          <Button type="button" variant="outline" disabled={busy} onClick={() => void onSimulate('rejected')}>
-            Simular rechazo
-          </Button>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">Sandbox de simulación deshabilitado (PAYWAY_ENV=production).</p>
-      )}
     </div>
   )
 }
@@ -551,3 +395,5 @@ export function PayInstallmentButton({
     </>
   )
 }
+
+export { payCta, isConcreteMethod, CUSTOMER_METHODS }

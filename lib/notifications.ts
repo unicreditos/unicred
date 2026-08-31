@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
 import {
   disbursement,
   installment,
@@ -7,9 +8,11 @@ import {
   merchant,
   payment,
   supportCase,
+  supportMessage,
   user as userTable,
 } from '@/lib/db/schema'
 import { formatARS } from '@/lib/finance'
+import { loadReadItemIds } from '@/lib/inbox-read'
 import type { Role } from '@/lib/session'
 import { and, desc, eq, inArray, lt } from 'drizzle-orm'
 
@@ -22,6 +25,7 @@ export type InboxItem = {
   at: string
   href: string
   tone: InboxTone
+  unread?: boolean
 }
 
 export type InboxPayload = {
@@ -200,7 +204,7 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
         title: row.status === 'resolved' ? 'Reclamo respondido' : 'Reclamo en curso',
         detail: row.subject,
         at: iso(row.respondedAt ?? row.createdAt),
-        href: '/dashboard?tab=reclamos',
+        href: `/dashboard?tab=reclamos&case=${row.id}`,
         tone: row.status === 'resolved' ? 'ok' : 'info',
       })
     }
@@ -394,7 +398,7 @@ async function adminInbox(): Promise<InboxItem[]> {
         title: 'Reclamo Ley 24.240',
         detail: row.subject,
         at: iso(row.createdAt),
-        href: '/admin?tab=reclamos',
+        href: `/admin?tab=reclamos&case=${row.id}`,
         tone: 'warn',
       })
     }
@@ -405,10 +409,83 @@ async function adminInbox(): Promise<InboxItem[]> {
   return sortItems(items)
 }
 
+function supportHref(role: Role, caseId: string) {
+  if (role === 'admin') return `/admin?tab=reclamos&case=${caseId}`
+  if (role === 'merchant') return `/merchant?tab=ayuda&case=${caseId}`
+  return `/dashboard?tab=reclamos&case=${caseId}`
+}
+
+async function appendSupportMessages(items: InboxItem[], userId: string, role: Role) {
+  try {
+    await ensureSupportCaseTable()
+    const rows =
+      role === 'admin'
+        ? await db
+            .select({
+              id: supportMessage.id,
+              caseId: supportMessage.caseId,
+              body: supportMessage.body,
+              createdAt: supportMessage.createdAt,
+              authorRole: supportMessage.authorRole,
+              kind: supportMessage.kind,
+            })
+            .from(supportMessage)
+            .innerJoin(supportCase, eq(supportMessage.caseId, supportCase.id))
+            .where(inArray(supportMessage.authorRole, ['customer', 'merchant']))
+            .orderBy(desc(supportMessage.createdAt))
+            .limit(8)
+        : await db
+            .select({
+              id: supportMessage.id,
+              caseId: supportMessage.caseId,
+              body: supportMessage.body,
+              createdAt: supportMessage.createdAt,
+              authorRole: supportMessage.authorRole,
+              kind: supportMessage.kind,
+            })
+            .from(supportMessage)
+            .innerJoin(supportCase, eq(supportMessage.caseId, supportCase.id))
+            .where(
+              and(
+                eq(supportCase.userId, userId),
+                inArray(supportMessage.authorRole, ['admin', 'system']),
+              ),
+            )
+            .orderBy(desc(supportMessage.createdAt))
+            .limit(8)
+
+    for (const row of rows) {
+      items.push({
+        id: `msg-${row.id}`,
+        title:
+          row.kind === 'system'
+            ? 'Un operador vio tu consulta'
+            : role === 'admin'
+              ? 'Mensaje de soporte'
+              : 'Nuevo mensaje de soporte',
+        detail: row.body.slice(0, 140),
+        at: iso(row.createdAt),
+        href: supportHref(role, row.caseId),
+        tone: row.kind === 'system' ? 'info' : 'warn',
+      })
+    }
+  } catch {
+    /* tablas de chat aún no creadas */
+  }
+}
+
 export async function getInbox(userId: string, role: Role): Promise<InboxPayload> {
   const items =
     role === 'admin' ? await adminInbox() : role === 'merchant' ? await merchantInbox(userId) : await customerInbox(userId)
-  const stamp = items[0]?.at ?? new Date(0).toISOString()
-  return { items, stamp, unreadHint: items.length }
+  await appendSupportMessages(items, userId, role)
+  const sorted = sortItems(items)
+  const readIds = await loadReadItemIds(userId)
+  const annotated = sorted.map((item) => ({ ...item, unread: !readIds.has(item.id) }))
+  const stamp = annotated.find((item) => item.unread)?.at ?? annotated[0]?.at ?? new Date(0).toISOString()
+  return {
+    items: annotated,
+    stamp,
+    unreadHint: annotated.filter((item) => item.unread).length,
+  }
 }
 

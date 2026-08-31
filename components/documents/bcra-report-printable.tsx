@@ -7,13 +7,13 @@ import {
   DocumentSection,
   DocumentSheet,
 } from '@/components/documents/document-frame'
-import { snapshotFromStored } from '@/lib/bcra'
+import type { FullBcraSnapshot } from '@/lib/bcra'
 import { BRAND, legalCuitLabel } from '@/lib/brand'
 import { docDate, docDateTime } from '@/lib/document-format'
 import { formatARSDecimal } from '@/lib/finance'
 import { cn } from '@/lib/utils'
 
-type BCRAReportData = {
+export type BCRAReportData = {
   id: string
   reportNumber: string
   scoreAtGeneration: number | null
@@ -65,9 +65,14 @@ function situationMeta(value: number | null | undefined) {
   return map[value] ?? String(value)
 }
 
-export function BCRAReportPrintable({ report }: { report: BCRAReportData }) {
+export function BCRAReportPrintable({
+  report,
+  extract = null,
+}: {
+  report: BCRAReportData
+  extract?: FullBcraSnapshot | null
+}) {
   const score = scoreMeta(report.scoreAtGeneration)
-  const extract = snapshotFromStored(report.fullReportData, report.customer?.cuil ?? undefined)
   const branding = report.branding ?? {}
 
   return (

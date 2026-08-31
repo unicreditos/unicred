@@ -1,13 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import {
-  formatPeriodoBcra,
-  SITUACION_BCRA,
-  type BcraDeudaEntidad,
-  type BcraPeriodoResumen,
-  type FullBcraSnapshot,
-} from '@/lib/bcra'
+import { formatPeriodoBcra, SITUACION_BCRA } from '@/lib/bcra-labels'
+import type { BcraDeudaEntidad, BcraPeriodoResumen, FullBcraSnapshot } from '@/lib/bcra'
 import { formatARS, formatDateArg } from '@/lib/finance'
 
 function sitLabel(n?: number | null) {

@@ -21,8 +21,8 @@ export default function TerminosPage() {
     {
       id: '2', t: '2 · Servicios financieros',
       p: [
-        'Los servicios ofrecidos incluyen: préstamo personal digital, crédito de consumo en cuotas (tienda física y online, con promociones 0% absorbidas por el comercio cuando corresponda), financiación a comercios adheridos, billetera virtual UNICRÉDITOS (saldo, transferencias P2P y egresos vía tesorería), pagos de servicios y recargas, pagos de cuotas a través de Mercado Pago y otros medios habilitados, consulta a la Central de Deudores del BCRA, scoring UNICRÉDITOS, verificación de identidad (KYC) y paneles de cliente, comercio y administración.',
-        'UNICRÉDITOS no es una entidad financiera autorizada por el BCRA, no capta depósitos y no está inscrita como Proveedor No Financiero de Crédito (PNFC, Com. A 7146 / A 7532) hasta que esa constancia se publique aquí. El CBU, CVU o alias se usa para desembolsar el crédito a tu nombre.',
+        'Los servicios ofrecidos al público son: préstamo personal digital y financiación comercial PyME (mutuo con interés, CCCN arts. 1525 y ss.). El cobro de cuotas puede hacerse por Mercado Pago, transferencia a RM International Group S.A.S. o saldo de ledger interno. La billetera interna no es un CVU Coelsa ni una cuenta PSP. Consulta a la Central de Deudores del BCRA, scoring UNICRÉDITOS, verificación de identidad (Didit) y paneles de cliente, comercio y administración.',
+        'UNICRÉDITOS no es una entidad financiera autorizada por el BCRA, no capta depósitos y no está inscrita como Proveedor No Financiero de Crédito (PNFC) hasta que esa constancia se publique aquí. El CBU, CVU o alias bancario a nombre del titular se usa para desembolsar el crédito.',
         'Cada línea de producto podrá contar con condiciones particulares (monto mínimo/máximo, plazo, tasas, garantías, comisiones). Tales condiciones se informan en el simulador, oferta y contrato de préstamo (mutuo con interés, CCCN arts. 1525 y ss.), previo a la aceptación final del Usuario. “Préstamo” y “mutuo” designan el mismo negocio jurídico.',
       ],
     },
@@ -30,16 +30,16 @@ export default function TerminosPage() {
       id: '3', t: '3 · Requisitos de elegibilidad y KYC',
       p: [
         'DNI argentino o pasaporte con residencia permanente; CUIL/CUIT propio; CBU/CVU activo a nombre del titular; ingresos comprobables; no inhabilitaciones legales vigentes; no sanción grave UIF/BCRA.',
-        'El Usuario autoriza expresamente consultas a Central de Deudores del BCRA, Cámara de Riesgos, agencias de información crediticia, fuentes públicas y bases de datos oficiales conforme RG BCRA A 7610 y normativa vigente.',
+        'El Usuario autoriza expresamente, con un consentimiento específico al alta o en el panel, la consulta a la Central de Deudores del BCRA (CENDEU) y fuentes permitidas para evaluar el crédito.',
         'UNICRÉDITOS se reserva el derecho de solicitar documentación complementaria, ejecutar verificación biométrica DNI + selfie y verificación de ingresos (CBU SALDO, recibos, monotributo) a fin de cumplir normativa ALA/FT UIF y Know Your Customer.',
       ],
     },
     {
       id: '4', t: '4 · Tasas, comisiones, TNA, CFT, CFT EA',
       p: [
-        'TNA: tasa nominal anual = tasa mensual × 12. TEA: tasa efectiva anual capitalizada. CFT informado en simulador y contrato = TEA incrementada por IVA 21% sobre intereses. Hoy no se suman seguros, gastos de otorgamiento ni comisiones al deudor. Si en el futuro se cobran, se informarán en la oferta antes de firmar y se incluirán en el CFT.',
-        'El CFT publicado no es el indicador metodológico completo de un régimen de transparencia BCRA de entidad inscripta. Es el costo del interés más IVA, calculado por el motor de UNICRÉDITOS. La Ley 25.065 regula tarjetas de crédito; este mutuo se informa por Ley 24.240.',
-        'Toda modificación de tasas en créditos de tasa variable se notificará al Usuario con 10 días corridos de antelación mínima, vía panel, email y/o por el medio que UNICRÉDITOS elija, en conformidad a la normativa aplicable.',
+        'TNA: tasa nominal anual = tasa mensual × 12. TEA: tasa efectiva anual = (1 + TEM)^12 − 1. CFT informado = TEA × 1,21 (IVA 21% sobre intereses). Hoy no se suman seguros, gastos de otorgamiento ni comisiones al deudor. Si en el futuro se cobran, se informarán en la oferta antes de firmar.',
+        'El CFT publicado no es el indicador metodológico completo de un régimen de transparencia BCRA de entidad inscripta. Es el costo del interés más IVA, calculado por el motor de UNICRÉDITOS. Este mutuo se informa por Ley 24.240 art. 36, no por la Ley 25.065 (tarjetas de crédito).',
+        'Los créditos del catálogo vigente son de cuota fija (sistema francés). No hay tasa variable. Si en el futuro se ofreciera un producto de tasa variable, se informaría en la oferta de ese crédito con 10 días de antelación a cualquier cambio.',
       ],
     },
     {
@@ -53,7 +53,7 @@ export default function TerminosPage() {
     {
       id: '6', t: '6 · Mora, intereses punitorios y cobranza',
       p: [
-        'La mora se registra en el cronograma. Los punitorios, si se aplican, se informan en el contrato de ese crédito. UNICRÉDITOS no capitaliza punitorios de oficio en el sistema actual. La intimación no es automática: la emite un administrador y solo sobre cuotas con al menos 30 días de atraso.',
+        'La mora se registra en el cronograma. La tasa de interés punitorio es 0% (cero): UNICRÉDITOS no liquida ni capitaliza punitorios. En mora se exige el capital y los intereses compensatorios de la cuota vencida. La intimación no es automática: la emite un administrador y solo sobre cuotas con al menos 30 días de atraso.',
         'Los atrasos relevantes podrán informarse a bases de informes comerciales y, únicamente cuando corresponda según el régimen de información vigente y la normativa aplicable, a la Central de Deudores del BCRA. No se afirma capacidad de reporte BCRA si la sociedad no está alcanzada por ese régimen.',
         'Sin perjuicio de lo anterior, el Usuario podrá acogerse a planes de regularización, refinanciación, reestructuración, extensión y programas de recuperación crediticia a criterio de UNICRÉDITOS.',
       ],
@@ -123,15 +123,15 @@ export default function TerminosPage() {
     {
       id: '16', t: '16 · Derecho de arrepentimiento',
       p: [
-        'En contrataciones a distancia, el Usuario puede arrepentirse dentro de los 10 días corridos desde la aceptación del contrato (Ley 24.240 art. 34), desde el panel, si el crédito todavía no se acreditó. UNICRÉDITOS anula el contrato y el cronograma.',
+        'En contrataciones a distancia, el Usuario puede arrepentirse dentro de los 10 días corridos desde la aceptación del contrato (Ley 24.240 art. 34) desde el panel o desde /legal/arrepentimiento (CUIL + email + contrato), si el crédito todavía no se acreditó. UNICRÉDITOS anula el contrato y el cronograma.',
         'Si el dinero ya se acreditó, el arrepentimiento exige devolver el capital. Hasta que tesorería confirme la devolución, el crédito sigue vigente. También puede usarse la cancelación anticipada.',
       ],
     },
     {
       id: '17', t: '17 · Vigencia',
       p: [
-        'Esta versión rige desde el 23/08/2026 y sustituye a TCG-v9.0.',
-        'Versión: TCG-v9.1 · última revisión 23/08/2026.',
+        'Esta versión rige desde el 30/08/2026 y sustituye a TCG-v9.1.',
+        'Versión: TCG-v9.2 · última revisión 30/08/2026.',
       ],
     },
   ]

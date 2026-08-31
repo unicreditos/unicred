@@ -1,3 +1,4 @@
+import { documentPrintPath } from '@/lib/documents/customer-view'
 import Link from 'next/link'
 
 export function DocumentPackLinks({
@@ -12,16 +13,16 @@ export function DocumentPackLinks({
   intimable?: boolean
 }) {
   const items = [
-    contractId ? { href: `/dashboard/documentos/contrato/${contractId}`, label: 'Contrato' } : null,
-    contractId ? { href: `/dashboard/documentos/pagare/${contractId}`, label: 'Pagaré' } : null,
-    contractId ? { href: `/dashboard/documentos/estado-deuda/${contractId}`, label: 'Estado de deuda' } : null,
-    loanId ? { href: `/dashboard/documentos/cuponera/${loanId}`, label: 'Cuponera' } : null,
-    contractId && intimable ? { href: `/dashboard/documentos/intimacion/${contractId}`, label: 'Intimación' } : null,
-    loanId ? { href: `/dashboard/documentos/solvencia/${loanId}`, label: 'Solvencia' } : null,
-    loanId ? { href: `/dashboard/documentos/libre-deuda/${loanId}`, label: 'Libre deuda' } : null,
-    loanId ? { href: `/dashboard/documentos/cancelacion/${loanId}`, label: 'Cancelación' } : null,
-    receiptId ? { href: `/dashboard/documentos/recibo/${receiptId}`, label: 'Recibo' } : null,
-    receiptId ? { href: `/dashboard/documentos/liquidacion/${receiptId}`, label: 'Liquidación' } : null,
+    contractId ? { href: documentPrintPath('contrato', contractId), label: 'Contrato' } : null,
+    contractId ? { href: documentPrintPath('pagare', contractId), label: 'Pagaré' } : null,
+    contractId ? { href: documentPrintPath('estado-deuda', contractId), label: 'Estado de deuda' } : null,
+    loanId ? { href: documentPrintPath('talonario', loanId), label: 'Cuponera' } : null,
+    contractId && intimable ? { href: documentPrintPath('intimacion', contractId), label: 'Intimación' } : null,
+    loanId ? { href: documentPrintPath('solvencia', loanId), label: 'Solvencia' } : null,
+    loanId ? { href: documentPrintPath('libre-deuda', loanId), label: 'Libre deuda' } : null,
+    loanId ? { href: documentPrintPath('cancelacion', loanId), label: 'Cancelación' } : null,
+    receiptId ? { href: documentPrintPath('recibo', receiptId), label: 'Recibo' } : null,
+    receiptId ? { href: documentPrintPath('liquidacion', receiptId), label: 'Liquidación' } : null,
   ].filter(Boolean) as { href: string; label: string }[]
 
   if (!items.length) return null

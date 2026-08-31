@@ -14,8 +14,9 @@ import {
   docShortId,
   installmentStatusLabel,
 } from '@/lib/document-format'
-import { formatARSDecimal, formatCBU, formatCVU, formatPercent } from '@/lib/finance'
+import { formatARSDecimal, formatCBU, formatCVU, formatPercent, PUNITORY_RATE } from '@/lib/finance'
 import { LEGAL_COPY, LEGAL_REVISION } from '@/lib/legal/copy'
+import { resolvedTea } from '@/lib/loan-rates'
 import { amountInWords } from '@/lib/legal/money-words'
 import type { ContractAccount, ContractDocData, InstallmentDoc } from '@/lib/legal/types'
 
@@ -174,8 +175,23 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
               <td className="num">{rate(contract.loan.tna)}</td>
             </tr>
             <tr>
-              <td>Costo financiero total (CFT)</td>
+              <td>Tasa efectiva anual (TEA)</td>
+              <td className="num">
+                {rate(
+                  resolvedTea({
+                    tea: contract.loan.tea,
+                    monthlyRate: contract.loan.monthlyRate,
+                  }),
+                )}
+              </td>
+            </tr>
+            <tr>
+              <td>{LEGAL_COPY.cftPublicLabel}</td>
               <td className="num">{rate(contract.loan.cft)}</td>
+            </tr>
+            <tr>
+              <td>Interés punitorio</td>
+              <td className="num">{rate(PUNITORY_RATE)}</td>
             </tr>
             <tr>
               <td>Cuota teórica (sistema francés)</td>
@@ -196,10 +212,11 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
 
       <DocumentSection number="05" title="Desembolso y cuenta de acreditación">
         <p className="mb-3 text-[13px] leading-relaxed text-slate-700">
-          El capital se acreditará en la cuenta de titularidad del Prestatario dentro de los dos
-          (2) días hábiles posteriores a la aceptación, sujeto a tesorería, validación de la
-          cuenta y ausencia de alertas de fraude o ALA/FT. El Prestamista no gira a cuentas de
-          terceros. La acreditación libera al Prestamista de la obligación de entrega.
+          El capital se acreditará en la cuenta de titularidad del Prestatario cuando tesorería
+          confirme la transferencia, sujeto a validación de la cuenta y ausencia de alertas de
+          fraude o ALA/FT. El Prestamista no gira a cuentas de terceros ni a la billetera interna.
+          No hay plazo automático de 24 o 48 horas. La acreditación libera al Prestamista de la
+          obligación de entrega.
         </p>
         {account ? (
           <DocumentFieldGrid>
@@ -267,9 +284,7 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
             pueda cursar.
           </li>
           <li>
-            <strong>Punitorios.</strong> El sistema no liquida ni capitaliza punitorios de
-            oficio. Si se aplican, la administración los liquidará e informará por separado, sin
-            capitalización ilícita. Hasta entonces solo se exige el importe de la cuota vencida.
+            <strong>Punitorios.</strong> {LEGAL_COPY.punitorios}
           </li>
           <li>
             <strong>Caducidad de plazos.</strong> El Acreedor puede declarar caducos los plazos y

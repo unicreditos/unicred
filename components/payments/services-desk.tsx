@@ -127,8 +127,8 @@ export function ServicesDesk() {
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Button asChild variant="outline" className="font-semibold">
-              <Link href={`/dashboard/documentos/recibo/${success.receiptId}`} target="_blank">
-                <Download className="mr-2 h-4 w-4" /> Descargar
+              <Link href={`/dashboard?tab=comprobantes&doc=recibo&docId=${encodeURIComponent(success.receiptId)}`}>
+                <Download className="mr-2 h-4 w-4" /> Ver recibo
               </Link>
             </Button>
             <Button className="font-bold" onClick={() => setSuccess(null)}>
@@ -270,9 +270,8 @@ export function ServicesDesk() {
                   <div className="font-bold tabular-nums text-rose-600">−{formatARS(row.amount)}</div>
                   {row.receiptId ? (
                     <Link
-                      href={`/dashboard/documentos/recibo/${row.receiptId}`}
+                      href={`/dashboard?tab=comprobantes&doc=recibo&docId=${encodeURIComponent(row.receiptId)}`}
                       className="text-xs font-semibold text-brand-primary hover:underline"
-                      target="_blank"
                     >
                       Recibo
                     </Link>

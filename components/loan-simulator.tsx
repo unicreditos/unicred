@@ -100,12 +100,19 @@ export function LoanSimulator({
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">TNA</dt>
-            <dd className="font-mono text-foreground">{formatPercent(result.tna)}</dd>
+            <dd className="font-mono font-semibold text-foreground">{formatPercent(result.tna)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">CFT (IVA incluido)</dt>
+            <dt className="text-muted-foreground">TEA</dt>
+            <dd className="font-mono font-semibold text-foreground">{formatPercent(result.tea)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">CFT est. (IVA sobre intereses)</dt>
             <dd className="font-mono font-semibold text-foreground">{formatPercent(result.cft)}</dd>
           </div>
+          <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
+            CFT = TEA × 1,21. Sin seguros ni gastos de otorgamiento. Simulación informativa: no es oferta.
+          </p>
         </dl>
 
         {cta && (

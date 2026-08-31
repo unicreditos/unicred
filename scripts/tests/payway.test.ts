@@ -42,14 +42,20 @@ describe('Payway sandbox', () => {
     assert.equal(paywayQrLabel('payway_wallet').includes('Billetera'), true)
   })
 
-  it('la simulación queda habilitada fuera de production', () => {
-    const previous = process.env.PAYWAY_ENV
+  it('la simulación exige flag local y nunca corre en production', () => {
+    const previousEnv = process.env.PAYWAY_ENV
+    const previousFlag = process.env.ALLOW_PAYWAY_SIMULATE
     process.env.PAYWAY_ENV = 'sandbox'
+    delete process.env.ALLOW_PAYWAY_SIMULATE
+    assert.equal(paywayAllowsSimulate(), false)
+    process.env.ALLOW_PAYWAY_SIMULATE = '1'
     assert.equal(paywayAllowsSimulate(), true)
     process.env.PAYWAY_ENV = 'production'
     assert.equal(paywayAllowsSimulate(), false)
-    if (previous === undefined) delete process.env.PAYWAY_ENV
-    else process.env.PAYWAY_ENV = previous
+    if (previousEnv === undefined) delete process.env.PAYWAY_ENV
+    else process.env.PAYWAY_ENV = previousEnv
+    if (previousFlag === undefined) delete process.env.ALLOW_PAYWAY_SIMULATE
+    else process.env.ALLOW_PAYWAY_SIMULATE = previousFlag
   })
 
   it('el webhook exige PAYWAY_WEBHOOK_SECRET', () => {

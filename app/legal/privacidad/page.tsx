@@ -21,7 +21,7 @@ export default function PrivacidadPage() {
     {
       t: '2 · Alcance y bases legales',
       p: [
-        'La presente política regula toda colección, tratamiento, almacenamiento, intercambio, eliminación y/o supresión de datos personales que UNICRÉDITOS lleva a cabo conforme normativa vigente: Ley 25.326 (PDPL), RG AAIP 78/2019 (norma complementaria), Ley 25.065, RG BCRA, Ley 25.246 (ALA/FT), Defensa del Consumidor y normativa sectorial aplicable.',
+        'La presente política regula toda colección, tratamiento, almacenamiento, intercambio, eliminación y/o supresión de datos personales que UNICRÉDITOS lleva a cabo conforme normativa vigente: Ley 25.326 (PDPL), RG AAIP 78/2019, Ley 24.240, consultas BCRA/CENDEU con autorización del titular, Ley 25.246 (ALA/FT) y normativa sectorial. La Ley 25.065 (tarjetas) no aplica a este mutuo.',
         'Bases legales: consentimiento; ejecución de contrato y medidas precontractuales; obligaciones legales (consulta BCRA con tu autorización, conservación de comprobantes); interés legítimo de prevención de fraude.',
       ],
     },
@@ -46,7 +46,7 @@ export default function PrivacidadPage() {
     {
       t: '5 · Compartición y transferencias',
       p: [
-        'Compartición con autoridades y entes de control: BCRA, UIF, AFIP, AAIP, jueces y tribunales, fuerzas de seguridad, ministerios, conforme obligación legal o solicitud válida.',
+        'Compartición con autoridades y entes de control: BCRA, UIF, ARCA, AAIP, jueces y tribunales, fuerzas de seguridad, ministerios, conforme obligación legal o solicitud válida.',
         'Encargados actuales: Didit (verificación de identidad y biometría, verify.didit.me); Mercado Pago (cobro de cuotas); Neon/Postgres u otro hosting de base de datos; Vercel u otro hosting de la aplicación. Cada uno trata solo lo necesario para su servicio. Didit y Mercado Pago pueden almacenar datos fuera de Argentina; el titular acepta esa transferencia al usar KYC o pagar.',
         'UNICRÉDITOS NO vende datos personales a terceros para fines comerciales sin consentimiento previo expreso e inequívoco del titular.',
       ],
@@ -108,7 +108,7 @@ export default function PrivacidadPage() {
       p: [
         'Esta política podrá actualizarse por razones regulatorias, de producto, nuevas finalidades o cambio responsable. Versión nueva se publica en /legal/privacidad con fecha de vigencia.',
         'Cambios materiales se notificarán por email, panel y/o comunicaciones oficiales con 15 días hábiles de antelación.',
-        'Versión actual: Privacy-v4.0 · vigente desde 23/08/2026 · fecha última revisión 23/08/2026.',
+        'Versión actual: Privacy-v4.1 · vigente desde 30/08/2026 · fecha última revisión 30/08/2026.',
       ],
     },
     {
