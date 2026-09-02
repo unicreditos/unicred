@@ -12,6 +12,7 @@ import { CobranzasDesk, ComprobantesDesk, LegalesDesk, MovimientosDesk } from '@
 import { AdminClaimsDesk } from '@/components/admin/claims-desk'
 import { AdminControlTower } from '@/components/admin/admin-control-tower'
 import { AdminPaymentsDesk } from '@/components/admin/admin-payments-desk'
+import { AdminApprovalsDesk } from '@/components/admin/admin-approvals-desk'
 import { AdminAnalyticsDesk } from '@/components/admin/admin-analytics-desk'
 import { AdminStaffDesk } from '@/components/admin/admin-staff-desk'
 import { AdminProductsDesk } from '@/components/admin/admin-products-desk'
@@ -724,6 +725,10 @@ export function AdminContent({
 
   if (activeTab === 'pagos') {
     return <AdminPaymentsDesk desk={payments} />
+  }
+
+  if (activeTab === 'aprobaciones') {
+    return <AdminApprovalsDesk disbursementList={disbursementList} />
   }
 
   if (activeTab === 'analytics') {

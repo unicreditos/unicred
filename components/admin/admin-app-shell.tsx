@@ -3,6 +3,7 @@
 import { type AdminTabId } from '@/lib/admin-nav'
 import { WorkspaceShell, type WorkspaceNavItem } from '@/components/unicred/workspace-shell'
 import {
+  BadgeCheck,
   Banknote,
   BarChart3,
   ClipboardList,
@@ -31,6 +32,7 @@ export type AdminNavCounts = {
   overdue?: number
   pendingDisb?: number
   pendingMerchants?: number
+  pendingApprovals?: number
 }
 
 /**
@@ -52,6 +54,7 @@ export function buildAdminNav(counts: AdminNavCounts = {}): WorkspaceNavItem[] {
     { id: 'comercios', label: 'Comercios', icon: Store, group: 'Originación', count: counts.pendingMerchants },
 
     // Cobranzas y tesorería — dinero que entra y sale de la cartera
+    { id: 'aprobaciones', label: 'Aprobaciones', icon: BadgeCheck, group: 'Cobranzas y tesorería', count: counts.pendingApprovals },
     { id: 'cobranzas', label: 'Cobranzas', icon: ReceiptText, group: 'Cobranzas y tesorería', count: counts.overdue },
     { id: 'pagos', label: 'Pagos', icon: Wallet, group: 'Cobranzas y tesorería' },
     { id: 'desembolsos', label: 'Desembolsos', icon: Banknote, group: 'Cobranzas y tesorería', count: counts.pendingDisb },
@@ -84,6 +87,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   base_clientes: { title: 'Clientes', subtitle: 'Alta, ficha, bloqueo y baja' },
   scoring: { title: 'Riesgo / CENDEU', subtitle: 'Consulta a Central de Deudores' },
   bcra: { title: 'Variables BCRA', subtitle: 'Tasas y series oficiales' },
+  aprobaciones: { title: 'Aprobaciones', subtitle: 'Acreditar transferencias a cuenta y desembolsos pendientes' },
   cobranzas: { title: 'Cobranzas', subtitle: 'Mora, vencimientos y registro de cobro' },
   desembolsos: { title: 'Desembolsos', subtitle: 'Acreditación en cuenta del tomador' },
   cobros: { title: 'Transferencias a tesorería', subtitle: 'Verificar acreditación' },

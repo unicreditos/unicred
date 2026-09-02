@@ -50,6 +50,35 @@ import {
 } from '@/app/actions/admin'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import { adminClientHref } from '@/lib/admin-nav'
+import { cn } from '@/lib/utils'
+
+function kycLabel(status?: string | null) {
+  switch (status) {
+    case 'approved':
+      return 'Aprobado'
+    case 'rejected':
+      return 'Rechazado'
+    case 'submitted':
+      return 'Presentado'
+    case 'reviewing':
+      return 'En revisión'
+    default:
+      return 'Pendiente'
+  }
+}
+
+function kycTone(status?: string | null) {
+  if (status === 'approved') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+  if (status === 'rejected') return 'border-rose-200 bg-rose-50 text-rose-800'
+  if (status === 'reviewing' || status === 'submitted') return 'border-amber-200 bg-amber-50 text-amber-800'
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
+function roleTone(role?: string | null) {
+  if (role === 'admin') return 'border-violet-200 bg-violet-50 text-violet-800'
+  if (role === 'merchant') return 'border-sky-200 bg-sky-50 text-sky-800'
+  return 'border-slate-200 bg-slate-50 text-slate-700'
+}
 
 export function UsersTable({
   users,
@@ -132,6 +161,9 @@ export function UsersTable({
         <header className="shrink-0 space-y-2 border-b px-3 py-2">
           <h2 className="flex items-center gap-2 text-[12px] font-semibold">
             <Users className="h-3.5 w-3.5" /> Personas
+            <span className="ml-1 rounded-md bg-muted px-1.5 py-px text-[11px] font-normal tabular-nums text-muted-foreground">
+              {filtered.length}
+            </span>
           </h2>
           <div className="flex flex-wrap gap-1.5">
             <div className="relative min-w-[200px] flex-1">
@@ -160,15 +192,15 @@ export function UsersTable({
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <TableHead>Persona</TableHead>
-                  <TableHead>Rol</TableHead>
                   <TableHead>Identidad</TableHead>
+                  <TableHead>Rol</TableHead>
                   <TableHead>KYC</TableHead>
-                  <TableHead className="text-right">Créditos</TableHead>
-                  <TableHead>Acceso</TableHead>
-                  <TableHead className="text-right">Operar</TableHead>
+                  <TableHead className="text-center">Créditos</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,50 +212,70 @@ export function UsersTable({
                   </TableRow>
                 )}
                 {filtered.map((u) => (
-                  <TableRow key={u.id} className={u.banned ? 'opacity-70' : undefined}>
-                    <TableCell>
-                      <Link href={adminClientHref(u.id)} className="text-sm font-medium hover:underline">
-                        {u.name}
+                  <TableRow key={u.id} className={u.banned ? 'opacity-60' : undefined}>
+                    {/* Persona: nombre clickeable + email */}
+                    <TableCell className="max-w-[220px]">
+                      <Link href={adminClientHref(u.id)} className="block truncate text-sm font-semibold text-brand-navy-900 hover:underline">
+                        {u.name || 'Sin nombre'}
                       </Link>
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                      <p className="truncate text-xs text-muted-foreground">{u.email}</p>
                     </TableCell>
-                    <TableCell className="text-xs">
-                      {u.role === 'admin' ? 'Operador' : u.role === 'merchant' ? 'Comercio' : 'Cliente'}
-                    </TableCell>
+                    {/* Identidad: CUIL/DNI + teléfono */}
                     <TableCell className="font-mono text-xs">
-                      {u.cuil || u.dni || '—'}
+                      {u.cuil ? <div>CUIL {u.cuil}</div> : u.dni ? <div>DNI {u.dni}</div> : <span className="text-muted-foreground">—</span>}
                       {u.phone ? <div className="text-muted-foreground">{u.phone}</div> : null}
                     </TableCell>
+                    {/* Rol con color */}
                     <TableCell>
-                      <Badge variant="outline" className="text-[11px]">
-                        {u.kycStatus === 'approved' ? 'Aprobado' : u.kycStatus === 'rejected' ? 'Rechazado' : u.kycStatus === 'submitted' ? 'Presentado' : 'Pendiente'}
+                      <Badge variant="outline" className={cn('text-[11px]', roleTone(u.role))}>
+                        {u.role === 'admin' ? 'Operador' : u.role === 'merchant' ? 'Comercio' : 'Cliente'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
-                      {u.loansCount}
-                      {u.activeLoans ? <span className="block text-[11px] text-amber-700">{u.activeLoans} vigentes</span> : null}
-                    </TableCell>
+                    {/* KYC con semáforo */}
                     <TableCell>
-                      {u.banned ? (
-                        <Badge variant="destructive">Bloqueado</Badge>
+                      <Badge variant="outline" className={cn('text-[11px]', kycTone(u.kycStatus))}>
+                        {kycLabel(u.kycStatus)}
+                      </Badge>
+                    </TableCell>
+                    {/* Créditos: total y vigentes */}
+                    <TableCell className="text-center">
+                      {u.loansCount ? (
+                        <div className="inline-flex flex-col items-center">
+                          <span className="text-sm font-semibold tabular-nums">{u.loansCount}</span>
+                          {u.activeLoans ? (
+                            <span className="text-[10px] font-medium text-emerald-700">{u.activeLoans} vigente{u.activeLoans > 1 ? 's' : ''}</span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">sin vigentes</span>
+                          )}
+                        </div>
                       ) : (
-                        <Badge variant="outline" className="border-emerald-200 text-emerald-800">Habilitado</Badge>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    {/* Estado de acceso */}
+                    <TableCell>
+                      {u.banned ? (
+                        <Badge variant="destructive" className="text-[11px]">Bloqueado</Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[11px] text-emerald-800">Habilitado</Badge>
+                      )}
+                    </TableCell>
+                    {/* Acciones: Ficha destacada, resto en menú compacto */}
                     <TableCell className="text-right">
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        <Button size="sm" variant="outline" className="h-8" asChild>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button size="sm" className="h-8 gap-1" asChild>
                           <Link href={adminClientHref(u.id)}>
-                            <FolderOpen className="mr-1 h-3.5 w-3.5" /> Ficha
+                            <FolderOpen className="h-3.5 w-3.5" /> Ver ficha
                           </Link>
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => openEdit(u)}>
-                          <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Editar datos" onClick={() => openEdit(u)}>
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8"
+                          className="h-8 w-8 p-0"
+                          title={u.banned ? 'Rehabilitar acceso' : 'Bloquear acceso'}
                           disabled={pending || u.id === currentAdminId || u.role === 'admin'}
                           onClick={() =>
                             start(async () => {
@@ -237,17 +289,17 @@ export function UsersTable({
                             })
                           }
                         >
-                          {u.banned ? <Unlock className="mr-1 h-3.5 w-3.5" /> : <Ban className="mr-1 h-3.5 w-3.5" />}
-                          {u.banned ? 'Habilitar' : 'Bloquear'}
+                          {u.banned ? <Unlock className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 text-destructive"
+                          className="h-8 w-8 p-0 text-destructive"
+                          title="Eliminar usuario"
                           disabled={pending || u.id === currentAdminId || u.role === 'admin'}
                           onClick={() => setDel(u)}
                         >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>

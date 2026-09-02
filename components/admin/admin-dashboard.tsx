@@ -105,8 +105,12 @@ export function AdminDashboard({
       pendingDisb: disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
         .length,
       pendingMerchants: merchants.filter((m) => m.status === 'pending').length,
+      // Aprobaciones = desembolsos por acreditar + revisiones de pago pendientes.
+      pendingApprovals:
+        disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
+          .length + (opsDesk.kpis.pendingReview ?? 0),
     }),
-    [loans, kycList, opsDesk.kpis.overdueCount, disbursementList, merchants],
+    [loans, kycList, opsDesk.kpis.overdueCount, opsDesk.kpis.pendingReview, disbursementList, merchants],
   )
 
   return (

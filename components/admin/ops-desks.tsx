@@ -415,6 +415,19 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
 }
 
 export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
+  const [query, setQuery] = useState('')
+  const filteredReceipts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return desk.receipts
+    return desk.receipts.filter((row) =>
+      [row.receiptNumber, row.customerName, row.statusHint, paymentMethodLabel(row.method)]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q),
+    )
+  }, [desk.receipts, query])
+
   return (
     <OpsFloor>
       <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -424,9 +437,17 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
         <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-7">
-          <header className="shrink-0 border-b border-border px-3 py-1.5">
-            <h2 className="text-[12px] font-semibold text-brand-navy-900">Comprobantes</h2>
-            <p className="text-[10px] text-muted-foreground">Mismo talón que ve el cliente</p>
+          <header className="shrink-0 space-y-1.5 border-b border-border px-3 py-2">
+            <div>
+              <h2 className="text-[12px] font-semibold text-brand-navy-900">Comprobantes</h2>
+              <p className="text-[10px] text-muted-foreground">Mismo talón que ve el cliente · pagos y desembolsos</p>
+            </div>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por número, cliente, tipo o medio"
+              className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-brand-primary"
+            />
           </header>
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full min-w-[720px] text-left text-[12px]">
@@ -442,14 +463,14 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {desk.receipts.length === 0 ? (
+                {filteredReceipts.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
-                      Todavía no hay comprobantes emitidos.
+                      {query ? 'Ningún comprobante coincide con la búsqueda.' : 'Todavía no hay comprobantes emitidos.'}
                     </td>
                   </tr>
                 ) : (
-                  desk.receipts.map((row) => (
+                  filteredReceipts.map((row) => (
                     <tr key={row.id}>
                       <td className="px-3 py-2 font-mono text-[11px]">{row.receiptNumber}</td>
                       <td className="px-3 py-2">
