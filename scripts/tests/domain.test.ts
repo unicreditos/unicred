@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { parseAdminTab } from '../../lib/admin-nav'
 import { computeFrenchAmortization, IVA_INTERESES, maxPrincipalFromInstallment } from '../../lib/finance'
-import { allowedAdminTransitions, canAdminTransition, canTransition } from '../../lib/loan-state'
+import {
+  allowedAdminTransitions,
+  canActivateOnCollection,
+  canAdminTransition,
+  canSettleOnCollection,
+  canTransition,
+} from '../../lib/loan-state'
 import { LOAN_CATALOG } from '../../lib/loan-catalog'
 import { computeCreditOffer, FIRST_CREDIT_HARD_CAP } from '../../lib/loan-underwriting'
 import { LEGAL_COPY } from '../../lib/legal/copy'
@@ -105,6 +111,23 @@ describe('máquina de estados', () => {
     assert.equal(canAdminTransition('approved', 'paid'), false)
     assert.ok(allowedAdminTransitions('rejected').includes('approved'))
     assert.equal(allowedAdminTransitions('rejected').includes('active'), false)
+  })
+
+  it('un cobro tardío no reactiva ni cierra un crédito cancelled/rejected', () => {
+    // active: recién desembolsado (approved) o ya vigente pueden pasar a active
+    assert.equal(canActivateOnCollection('approved'), true)
+    assert.equal(canActivateOnCollection('active'), true)
+    // un crédito cerrado no se reactiva por un pago que llega tarde
+    assert.equal(canActivateOnCollection('cancelled'), false)
+    assert.equal(canActivateOnCollection('rejected'), false)
+    assert.equal(canActivateOnCollection('paid'), false)
+    assert.equal(canActivateOnCollection('pending'), false)
+    // paid: solo desde vigente (o idempotente desde paid)
+    assert.equal(canSettleOnCollection('active'), true)
+    assert.equal(canSettleOnCollection('paid'), true)
+    assert.equal(canSettleOnCollection('cancelled'), false)
+    assert.equal(canSettleOnCollection('rejected'), false)
+    assert.equal(canSettleOnCollection('approved'), false)
   })
 })
 

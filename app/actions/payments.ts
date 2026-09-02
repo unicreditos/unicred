@@ -11,6 +11,7 @@ import {
   user as userTable,
 } from '@/lib/db/schema'
 import { assertRole, getSession, assertAdmin, getRoleForUser, requireUserId } from '@/lib/session'
+import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
 import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
 import { couponCode } from '@/lib/coupon'
@@ -912,9 +913,13 @@ export async function applyPaymentToInstallment(
 
     const instsAfter = await tx.select().from(installment).where(eq(installment.loanId, inst.loanId))
     const paidCount = instsAfter.filter((i) => i.status === 'paid').length
+    // Nunca reactivar ni cerrar un crédito cancelled/rejected por un cobro tardío:
+    // solo transicionar si la máquina de estados lo permite desde el estado actual.
     if (paidCount === instsAfter.length) {
-      await tx.update(loan).set({ status: 'paid', updatedAt: now } as any).where(eq(loan.id, inst.loanId))
-    } else if (loanObj.status !== 'active' && loanObj.status !== 'paid') {
+      if (canSettleOnCollection(loanObj.status)) {
+        await tx.update(loan).set({ status: 'paid', updatedAt: now } as any).where(eq(loan.id, inst.loanId))
+      }
+    } else if (canActivateOnCollection(loanObj.status) && loanObj.status !== 'active') {
       await tx.update(loan).set({ status: 'active', updatedAt: now } as any).where(eq(loan.id, inst.loanId))
     }
 

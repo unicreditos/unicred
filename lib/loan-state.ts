@@ -103,3 +103,24 @@ export function allowedAdminTransitions(from: string): LoanStatus[] {
   const next = ADMIN_TRANSITIONS[from].filter((status) => status !== 'active')
   return [from, ...next.filter((status) => status !== from)]
 }
+
+/**
+ * Un cobro de cuota puede dejar el crédito "vigente" (active) solo si el
+ * crédito venía de un estado que legítimamente puede pasar a active según
+ * la máquina de estados: 'approved' (recién desembolsado) o ya 'active'.
+ * Nunca reactiva un crédito 'cancelled', 'rejected' o ya 'paid'.
+ * Evita que un pago tardío resucite un crédito cerrado.
+ */
+export function canActivateOnCollection(from: string): boolean {
+  return from === 'approved' || from === 'active'
+}
+
+/**
+ * Un cobro puede dejar el crédito "cancelado" (paid) solo si venía de un
+ * estado que puede pasar a paid: 'active' o ya 'paid' (idempotente).
+ * Un crédito 'cancelled'/'rejected' que recibe un cobro NO se marca paid;
+ * queda como está para revisión manual.
+ */
+export function canSettleOnCollection(from: string): boolean {
+  return from === 'active' || from === 'paid'
+}

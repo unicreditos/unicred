@@ -1,5 +1,6 @@
 import { bankAccount, disbursement, installment, loan } from '@/lib/db/schema'
 import { computeFrenchAmortization } from '@/lib/finance'
+import { canTransition } from '@/lib/loan-state'
 import { newId } from '@/lib/session'
 import { and, desc, eq } from 'drizzle-orm'
 
@@ -138,6 +139,18 @@ export async function activateLoanAfterDisbursement(
   },
 ) {
   const now = input.now ?? new Date()
+  // Solo activar si la máquina de estados lo permite (approved→active). Evita
+  // que un desembolso reactive un crédito cancelled/rejected por error.
+  const [current] = await tx
+    .select({ status: loan.status })
+    .from(loan)
+    .where(eq(loan.id, input.loanId))
+    .limit(1)
+  if (current && !canTransition(current.status, 'active')) {
+    throw new Error(
+      `No se puede activar el crédito: transición inválida desde "${current.status}".`,
+    )
+  }
   await rebuildUnpaidInstallmentPlan(tx, { ...input, from: now })
   await tx
     .update(loan)

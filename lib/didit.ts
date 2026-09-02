@@ -4,6 +4,8 @@ import { diditSession, diditWebhookLog, kycVerification, merchant, profile } fro
 import { newId } from '@/lib/session'
 import { eq } from 'drizzle-orm'
 import { notifyKycDecision } from '@/lib/notify-email'
+import { parseDiditCapture, kycMediaBundle } from '@/lib/didit-capture'
+import { persistKycMedia } from '@/lib/didit-media'
 
 const DIDIT_API = 'https://verification.didit.me'
 const WEBHOOK_MAX_SKEW_SECONDS = 300
@@ -473,6 +475,41 @@ export async function applyDiditDecision(input: {
     .update(profile)
     .set({ kycStatus, updatedAt: now })
     .where(eq(profile.userId, userId))
+
+  // Persistir la evidencia biométrica cuando el KYC queda aprobado. Didit sirve
+  // las capturas desde URLs efímeras; si no las bajamos, se pierden al expirar.
+  // Tolerante a fallos: un error de descarga no debe romper la aprobación.
+  if (kycStatus === 'approved' && decision) {
+    try {
+      const capture = parseDiditCapture(decision, { sessionId: input.sessionId, status: input.status })
+      const bundle = kycMediaBundle(capture)
+      const liveVideo = capture.liveness
+        .flatMap((l) => l.media)
+        .find((m) => m.kind === 'video')?.url
+      const persisted = await persistKycMedia(
+        { front: bundle.front, back: bundle.back, selfie: bundle.selfie, video: liveVideo },
+        {
+          dniFrontImageUrl: existing?.dniFrontImageUrl ?? null,
+          dniBackImageUrl: existing?.dniBackImageUrl ?? null,
+          selfieImageUrl: existing?.selfieImageUrl ?? null,
+          videoUrl: existing?.videoUrl ?? null,
+        },
+      )
+      if (
+        persisted.dniFrontImageUrl ||
+        persisted.dniBackImageUrl ||
+        persisted.selfieImageUrl ||
+        persisted.videoUrl
+      ) {
+        await db
+          .update(kycVerification)
+          .set({ ...persisted, updatedAt: new Date() })
+          .where(eq(kycVerification.userId, userId))
+      }
+    } catch (err) {
+      console.warn('[didit] no se pudo persistir la evidencia biométrica:', (err as Error).message)
+    }
+  }
 
   if ((kycStatus === 'approved' || kycStatus === 'rejected') && previousKyc !== kycStatus) {
     await notifyKycDecision({ userId, status: kycStatus })

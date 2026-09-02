@@ -34,6 +34,7 @@ import {
   splitBalanceEvenly,
 } from '@/lib/legal/mora'
 import { persistBcraReportForUser } from '@/lib/bcra-report'
+import { canTransition } from '@/lib/loan-state'
 import { assertRole, getRoleForUser } from '@/lib/session'
 import { and, eq, desc, ne } from 'drizzle-orm'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
@@ -253,10 +254,20 @@ export async function rejectLoanContract(contractId: string, reason: string) {
       })
       .where(and(eq(loanContract.id, contractId), eq(loanContract.userId, userId)))
     if (c?.loanId) {
-      await tx
-        .update(loan)
-        .set({ status: 'rejected', rejectionReason: reason.trim(), updatedAt: new Date() })
+      // Rechazar el contrato solo lleva el crédito a 'rejected' si la máquina de
+      // estados lo permite (pending/approved). Un crédito ya vigente/cancelado no
+      // se rechaza por esta vía: se corrige desde el back office.
+      const [loanRow] = await tx
+        .select({ status: loan.status })
+        .from(loan)
         .where(eq(loan.id, c.loanId))
+        .limit(1)
+      if (loanRow && canTransition(loanRow.status, 'rejected')) {
+        await tx
+          .update(loan)
+          .set({ status: 'rejected', rejectionReason: reason.trim(), updatedAt: new Date() })
+          .where(eq(loan.id, c.loanId))
+      }
       await tx
         .update(disbursement)
         .set({

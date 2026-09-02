@@ -6,6 +6,7 @@
 import { db } from '@/lib/db'
 import { installment, loan, payment as paymentTable, paymentReceipt } from '@/lib/db/schema'
 import { receiptBranding } from '@/lib/brand'
+import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
 import { getPaymentMP } from '@/lib/mercadopago'
 import { and, desc, eq, inArray, or } from 'drizzle-orm'
 
@@ -321,7 +322,8 @@ export async function settleMercadoPagoPayment(input: {
       for (const inst of loanUnpaid) {
         await tx.update(installment).set({ status: 'paid', paidAt: now }).where(eq(installment.id, inst.id))
       }
-      if (loanRow && loanRow.status !== 'paid') {
+      // No cerrar como 'paid' un crédito cancelled/rejected: solo si la máquina de estados lo permite.
+      if (loanRow && loanRow.status !== 'paid' && canSettleOnCollection(loanRow.status)) {
         await tx.update(loan).set({ status: 'paid', updatedAt: now }).where(eq(loan.id, loanId))
       }
 
@@ -389,8 +391,12 @@ export async function settleMercadoPagoPayment(input: {
     if (loanId) {
       allInsts = await tx.select().from(installment).where(eq(installment.loanId, loanId))
       const paidCount = allInsts.filter((i) => i.status === 'paid').length
-      const nextLoan = paidCount === allInsts.length && allInsts.length > 0 ? 'paid' : 'active'
-      if (loanRow && loanRow.status !== nextLoan && loanRow.status !== 'paid') {
+      const fullyPaid = paidCount === allInsts.length && allInsts.length > 0
+      const nextLoan = fullyPaid ? 'paid' : 'active'
+      // Un cobro no reactiva ni cierra un crédito cancelled/rejected: solo
+      // transiciona si la máquina de estados lo permite desde el estado actual.
+      const allowed = fullyPaid ? canSettleOnCollection(loanRow?.status ?? '') : canActivateOnCollection(loanRow?.status ?? '')
+      if (loanRow && allowed && loanRow.status !== nextLoan && loanRow.status !== 'paid') {
         await tx.update(loan).set({ status: nextLoan, updatedAt: now }).where(eq(loan.id, loanId))
       }
     }
