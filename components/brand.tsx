@@ -36,7 +36,7 @@ export function Logo({
               invert ? 'text-sidebar-foreground/60' : 'text-muted-foreground',
             )}
           >
-            {GROUP.name}
+            {GROUP.productLine}
           </span>
         </span>
       )}

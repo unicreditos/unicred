@@ -8,23 +8,26 @@ import {
   groupSiblingUnits,
 } from '../../lib/brand'
 
-describe('Grupo Emprenor', () => {
-  it('presenta UNICRÉDITOS como unidad operada por la SAS, no por otro CUIT', () => {
-    assert.equal(GROUP.name, 'Grupo Emprenor')
-    assert.equal(GROUP.productLine, 'Un producto Grupo Emprenor')
+describe('marca UNIPAGOS · RM International', () => {
+  it('presenta UNICRÉDITOS como unidad de UNIPAGOS operada por la SAS, no por otro CUIT', () => {
+    assert.equal(GROUP.name, 'RM International')
+    assert.equal(GROUP.parentBrand, 'UNIPAGOS')
+    assert.equal(GROUP.productLine, 'Una unidad de UNIPAGOS')
+    assert.doesNotMatch(GROUP.name, /Emprenor/i)
     const line = groupOperatorLine()
-    assert.match(line, /unidad de créditos de Grupo Emprenor/)
+    assert.match(line, /unidad de negocios de UNIPAGOS/)
     assert.match(line, /RM International Group S\.A\.S/)
     assert.match(line, /30-71603601-0/)
-    assert.doesNotMatch(line, /20-40154622-8|Guerrero|Vespucio/)
+    assert.doesNotMatch(line, /Emprenor|20-40154622-8|Guerrero|Vespucio/)
     assert.equal(BRAND.address.includes('Maipú'), true)
   })
 
-  it('lista las hermanas públicas y no se enlaza a sí mismo', () => {
+  it('lista UNIPAGOS como marca hermana y no se enlaza a sí mismo', () => {
     const siblings = groupSiblingUnits()
     const ids = siblings.map((unit) => unit.id)
-    assert.deepEqual(ids, ['emprenor', 'fixya', 'emitia', 'myemprenor', 'unipagos'])
+    assert.deepEqual(ids, ['unipagos'])
     assert.ok(siblings.every((unit) => unit.href.startsWith('https://')))
+    assert.ok(GROUP.units.every((unit) => !/emprenor|fixya|emitia/i.test(unit.id)))
     assert.equal(
       GROUP.units.some((unit) => unit.id === 'unicreditos' && 'current' in unit && unit.current),
       true,

@@ -4,9 +4,10 @@
  * de RM International Group S.A.S. El CUIT de marca no se toma del
  * certificado WSAA (puede ser de otro titular).
  *
- * UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por
- * esa SAS. No se publica el CUIT de otras personas ni el domicilio de
- * obra del NOA en el mutuo.
+ * UNICRÉDITOS es una unidad de negocios de UNIPAGOS (unipagos.com.ar).
+ * Ambas son marcas comerciales de RM International Group S.A.S., que
+ * opera el mutuo. No se publica el CUIT de otras personas ni domicilios
+ * ajenos en el contrato.
  */
 
 function readEnv(...names: string[]) {
@@ -30,45 +31,27 @@ const COMPANY_ADDRESS =
 const resolvedCuit = formatCuit(readEnv('NEXT_PUBLIC_BRAND_CUIT', 'BRAND_CUIT')) || COMPANY_CUIT
 const resolvedAddress = readEnv('NEXT_PUBLIC_BRAND_ADDRESS', 'BRAND_ADDRESS') || COMPANY_ADDRESS
 
+/**
+ * Ecosistema RM International. UNICRÉDITOS es una unidad de negocios de
+ * UNIPAGOS; ambas son marcas comerciales de RM International Group S.A.S.
+ * `GROUP` describe esa relación (nombre conservado por compatibilidad de imports).
+ */
 export const GROUP = {
-  name: 'Grupo Emprenor',
-  productLine: 'Un producto Grupo Emprenor',
-  home: 'https://www.emprenor.com.ar/',
+  name: 'RM International',
+  parentBrand: 'UNIPAGOS',
+  productLine: 'Una unidad de UNIPAGOS',
+  home: 'https://unipagos.com.ar/',
   units: [
     {
-      id: 'emprenor',
-      name: 'EMPRENOR',
-      role: 'Construcción e instalaciones',
-      href: 'https://www.emprenor.com.ar/',
-    },
-    {
-      id: 'fixya',
-      name: 'FixYa',
-      role: 'Marketplace de oficios',
-      href: 'https://fixya.emprenor.com/',
-    },
-    {
-      id: 'emitia',
-      name: 'EMITIA',
-      role: 'Facturación electrónica',
-      href: 'https://www.emitia.com.ar/',
-    },
-    {
-      id: 'myemprenor',
-      name: 'MyEmprenor',
-      role: 'Gestión de obras',
-      href: 'https://www.myemprenor.online/',
-    },
-    {
       id: 'unipagos',
-      name: 'UniPagos',
-      role: 'Pagos',
-      href: 'https://unipagos.com/',
+      name: 'UNIPAGOS',
+      role: 'Plataforma de pagos y cobranzas',
+      href: 'https://unipagos.com.ar/',
     },
     {
       id: 'unicreditos',
       name: 'UNICRÉDITOS',
-      role: 'Créditos',
+      role: 'Créditos en línea',
       href: 'https://www.unicreditos.com/',
       current: true,
     },
@@ -131,9 +114,9 @@ export function legalPartyLine() {
   return `${BRAND.legalName} (${BRAND.legalForm}, CUIT ${legalCuitLabel()}), domicilio ${BRAND.address}`
 }
 
-/** Pie público: unidad de grupo + operador del mutuo (SAS). */
+/** Pie público: unidad de negocios + operador del mutuo (SAS). */
 export function groupOperatorLine() {
-  return `${BRAND.company} es la unidad de créditos de ${GROUP.name}, operada por ${BRAND.legalName} (CUIT ${legalCuitLabel()}).`
+  return `${BRAND.company} es una unidad de negocios de ${GROUP.parentBrand}. Ambas son marcas comerciales de ${BRAND.legalName} (CUIT ${legalCuitLabel()}), que opera el mutuo.`
 }
 
 export function groupSiblingUnits() {

@@ -33,9 +33,9 @@ describe('campaña /directo', () => {
     assert.match(DIRECTO.weDont.join(' '), /PNFC/)
     assert.doesNotMatch(DIRECTO.heroTitle, /aprobaci[oó]n (inmediata|garantizada)/i)
     assert.doesNotMatch(DIRECTO.heroLead, /en minutos te depositamos/i)
-    assert.match(DIRECTO.heroLead, /Grupo Emprenor/)
+    assert.match(DIRECTO.heroLead, /UNIPAGOS/)
     assert.match(DIRECTO.heroLead, /RM International Group/)
-    assert.match(DIRECTO.heroKicker, /Grupo Emprenor/)
+    assert.match(DIRECTO.heroKicker, /UNIPAGOS/)
   })
 
   it('dice el tope del primer crédito y no vende 3 millones como si fueran el primer desembolso', () => {

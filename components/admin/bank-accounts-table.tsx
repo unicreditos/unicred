@@ -647,7 +647,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
                   className="lowercase"
                   value={editForm.alias}
                   onChange={(e) => setEditForm((f) => ({ ...f, alias: normalizeBankAlias(e.target.value) }))}
-                  placeholder="emprenor"
+                  placeholder="unicreditos"
                 />
               </div>
               <div className="space-y-1.5">

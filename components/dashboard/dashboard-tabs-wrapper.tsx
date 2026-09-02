@@ -817,7 +817,7 @@ export function DashboardTabsWrapper({
                     { q: '¿Puedo arrepentirme?', a: `Sí, ${WITHDRAWAL_DAYS} días corridos desde la aceptación del contrato, si el crédito todavía no se acreditó. El botón está en Documentos.` },
                     { q: '¿Qué pasa si me atraso con una cuota?', a: 'La cuota queda vencida en el cronograma. UNICRÉDITOS no liquida punitorios de oficio. Pagá desde tu cuenta: tarjeta, Pago Fácil, Rapipago, billetera o transferencia.' },
                     { q: '¿Cómo descargo un comprobante o el informe BCRA?', a: 'En Comprobantes y Documentos. El informe refleja la consulta a la Central de Deudores.' },
-                    { q: '¿UNICRÉDITOS es un banco?', a: 'No. UNICRÉDITOS es la unidad de créditos de Grupo Emprenor, operada por RM International Group S.A.S. Consultamos la Central de Deudores del BCRA para evaluar. El crédito está sujeto a aprobación.' },
+                    { q: '¿UNICRÉDITOS es un banco?', a: 'No. UNICRÉDITOS es una unidad de negocios de UNIPAGOS; ambas son marcas comerciales de RM International Group S.A.S. Consultamos la Central de Deudores del BCRA para evaluar. El crédito está sujeto a aprobación.' },
                   ].map((f, i) => (
                     <details
                       key={i}

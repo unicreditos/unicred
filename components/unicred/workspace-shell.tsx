@@ -318,9 +318,9 @@ export function WorkspaceShell({
           {collapsed ? null : (
             <p
               className="mt-2 px-1 text-[10px] leading-relaxed text-white/35"
-              aria-label="UNICRÉDITOS · Grupo Emprenor. Créditos sujetos a evaluación"
+              aria-label="UNICRÉDITOS · una unidad de UNIPAGOS. Créditos sujetos a evaluación"
             >
-              <span className="block">UNICRÉDITOS · Grupo Emprenor</span>
+              <span className="block">UNICRÉDITOS · una unidad de UNIPAGOS</span>
               <span className="block" aria-hidden="true">
                 Créditos sujetos a evaluación
               </span>

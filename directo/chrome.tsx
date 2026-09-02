@@ -80,7 +80,7 @@ export function DirectoFooter() {
         <a href={`mailto:${DIRECTO.contactEmail}`}>{DIRECTO.contactEmail}</a>
         <small>{DIRECTO.companyLine}</small>
         <small>{groupOperatorLine()}</small>
-        <nav aria-label={GROUP.name}>
+        <nav aria-label={`Marcas de ${GROUP.name}`}>
           {groupSiblingUnits().map((unit) => (
             <a key={unit.id} href={unit.href} target="_blank" rel="noopener noreferrer">
               {unit.name}

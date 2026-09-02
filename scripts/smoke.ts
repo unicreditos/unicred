@@ -46,11 +46,11 @@ async function main() {
     // Sitio principal
     probe('home', '/', {
       status: [200],
-      bodyIncludes: ['UNICRÉDITOS', 'Grupo Emprenor', 'Tope del primer crédito'],
+      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Tope del primer crédito'],
     }),
     probe('login', '/sign-in', {
       status: [200],
-      bodyIncludes: ['UNICRÉDITOS', 'Grupo Emprenor', 'Central de Deudores'],
+      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Central de Deudores'],
     }),
     probe('productos', '/productos', { status: [200] }),
     probe('simulador', '/simulador', { status: [200] }),
@@ -69,7 +69,7 @@ async function main() {
     probe('dashboard sin sesión', '/dashboard', { status: [307, 308, 302] }),
     probe('directo', '/directo', {
       status: [200],
-      bodyIncludes: ['primer crédito', 'UNICRÉDITOS', 'Grupo Emprenor'],
+      bodyIncludes: ['primer crédito', 'UNICRÉDITOS', 'UNIPAGOS'],
     }),
     probe('directo productos', '/directo/productos', {
       status: [200],

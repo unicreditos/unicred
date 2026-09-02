@@ -47,6 +47,11 @@ export function organizationJsonLd() {
     '@type': 'Organization',
     name: SITE_NAME,
     legalName: 'RM International Group S.A.S.',
+    parentOrganization: {
+      '@type': 'Organization',
+      name: 'UNIPAGOS',
+      url: 'https://unipagos.com.ar/',
+    },
     url: absoluteUrl('/'),
     logo: absoluteUrl('/apple-icon'),
     description:
@@ -60,7 +65,7 @@ export function organizationJsonLd() {
       addressCountry: 'AR',
     },
     sameAs: [
-      'https://www.emprenor.com.ar/',
+      'https://unipagos.com.ar/',
       'https://www.unicreditos.com/',
     ],
   }

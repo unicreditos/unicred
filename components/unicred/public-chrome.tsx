@@ -319,7 +319,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-10 border-t border-white/10 pt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">{GROUP.name}</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Marcas de {GROUP.name}</div>
           <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-200/80">
             {groupSiblingUnits().map((unit) => (
               <li key={unit.id}>
