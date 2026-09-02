@@ -457,8 +457,10 @@ export function WorkspaceShell({
         </header>
         <main
           className={cn(
-            'min-h-0 flex-1 px-3 py-3 sm:px-4 lg:px-5',
-            fillViewport ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+            'min-h-0 flex-1 overflow-y-auto px-3 py-3 uc-scroll-thin sm:px-4 lg:px-5',
+            // Admin: el piso operativo llena la altura disponible pero nunca recorta;
+            // si el contenido excede el viewport, el <main> hace scroll natural.
+            fillViewport ? 'flex flex-col' : '',
             mobileTabs?.length ? 'pb-24 md:pb-3' : '',
           )}
         >
@@ -581,10 +583,23 @@ export function MetricTile({
   )
 }
 
-/** Piso operativo: llena el panel y deja el scroll adentro de cada mesa. */
+/**
+ * Piso operativo: llena la altura disponible del panel (los hijos con
+ * `flex-1 overflow-auto` scrollean internamente en pantallas grandes),
+ * pero usa `min-h` en vez de forzar la altura del viewport, así en
+ * laptops chicas o secciones muy cargadas el contenido crece y el
+ * `<main>` scrollea en lugar de comprimir las tablas a una franja.
+ */
 export function OpsFloor({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden', className)}>
+    <div
+      className={cn(
+        'flex w-full flex-1 flex-col gap-2',
+        // min-h fija el piso base; el contenido puede empujar y desbordar hacia el scroll del <main>.
+        'min-h-[calc(100svh-8.5rem)]',
+        className,
+      )}
+    >
       {children}
     </div>
   )

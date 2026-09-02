@@ -52,10 +52,12 @@ export function trustedOrigins() {
   for (const host of LEGACY_HOSTS) add(`https://${host}`)
 
   if (process.env.NODE_ENV === 'development') {
-    add('http://localhost:3000')
-    add('http://127.0.0.1:3000')
-    add('http://localhost:8081')
-    add('http://127.0.0.1:8081')
+    // Next elige 3001/3002 si 3000 está ocupado; sin estos, better-auth
+    // rechaza el login local con "Invalid origin".
+    for (const port of [3000, 3001, 3002, 3003, 8081]) {
+      add(`http://localhost:${port}`)
+      add(`http://127.0.0.1:${port}`)
+    }
   }
   add('unicreditos://')
   add('exp://localhost:8081')

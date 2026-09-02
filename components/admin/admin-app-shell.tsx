@@ -33,24 +33,38 @@ export type AdminNavCounts = {
   pendingMerchants?: number
 }
 
+/**
+ * Navegación del backoffice, agrupada por área de negocio.
+ * Cada grupo es un módulo con una responsabilidad clara; los grupos
+ * son colapsables (estado por usuario) para no saturar el sidebar.
+ */
 export function buildAdminNav(counts: AdminNavCounts = {}): WorkspaceNavItem[] {
   return [
+    // Control — visión general y métricas
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, group: 'Control' },
     { id: 'analytics', label: 'Analítica', icon: BarChart3, group: 'Control' },
+
+    // Originación — desde la solicitud hasta el alta del cliente/comercio
     { id: 'solicitudes', label: 'Solicitudes', icon: ClipboardList, group: 'Originación' },
     { id: 'creditos', label: 'Créditos', icon: CreditCard, group: 'Originación', count: counts.pendingLoans },
     { id: 'usuarios', label: 'Clientes', icon: Users, group: 'Originación' },
     { id: 'kyc', label: 'Identidad', icon: ShieldCheck, group: 'Originación', count: counts.pendingKyc },
     { id: 'comercios', label: 'Comercios', icon: Store, group: 'Originación', count: counts.pendingMerchants },
-    { id: 'cobranzas', label: 'Cobranzas', icon: ReceiptText, group: 'Cartera', count: counts.overdue },
-    { id: 'pagos', label: 'Pagos', icon: Wallet, group: 'Cartera' },
-    { id: 'desembolsos', label: 'Desembolsos', icon: Banknote, group: 'Cartera', count: counts.pendingDisb },
-    { id: 'cartera_activa', label: 'Cartera activa', icon: CreditCard, group: 'Cartera' },
-    { id: 'comprobantes', label: 'Comprobantes', icon: ReceiptText, group: 'Cartera' },
-    { id: 'movimientos', label: 'Finanzas', icon: Landmark, group: 'Cartera' },
-    { id: 'cuentas-bancarias', label: 'Cuentas CBU', icon: Landmark, group: 'Cartera' },
+
+    // Cobranzas y tesorería — dinero que entra y sale de la cartera
+    { id: 'cobranzas', label: 'Cobranzas', icon: ReceiptText, group: 'Cobranzas y tesorería', count: counts.overdue },
+    { id: 'pagos', label: 'Pagos', icon: Wallet, group: 'Cobranzas y tesorería' },
+    { id: 'desembolsos', label: 'Desembolsos', icon: Banknote, group: 'Cobranzas y tesorería', count: counts.pendingDisb },
+    { id: 'cartera_activa', label: 'Cartera activa', icon: CreditCard, group: 'Cobranzas y tesorería' },
+    { id: 'comprobantes', label: 'Comprobantes', icon: ReceiptText, group: 'Cobranzas y tesorería' },
+    { id: 'movimientos', label: 'Finanzas', icon: Landmark, group: 'Cobranzas y tesorería' },
+    { id: 'cuentas-bancarias', label: 'Cuentas CBU', icon: Landmark, group: 'Cobranzas y tesorería' },
+
+    // Riesgo — evaluación crediticia y datos BCRA
     { id: 'scoring', label: 'Riesgo / CENDEU', icon: ShieldAlert, group: 'Riesgo' },
     { id: 'bcra', label: 'Variables BCRA', icon: ShieldAlert, group: 'Riesgo' },
+
+    // Sistema — legal, soporte, auditoría y configuración
     { id: 'legales', label: 'Contratos', icon: Scale, group: 'Sistema' },
     { id: 'reclamos', label: 'Soporte', icon: Headphones, group: 'Sistema' },
     { id: 'logs_auditoria', label: 'Auditoría', icon: ShieldCheck, group: 'Sistema' },
