@@ -421,7 +421,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     {statusBadge(l.status)}
-                    {l.rejectionReason && (
+                    {l.status === 'rejected' && l.rejectionReason && (
                       <span className="text-[10px] text-rose-600 line-clamp-2 max-w-[200px]">
                         Motivo: {l.rejectionReason}
                       </span>

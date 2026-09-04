@@ -5,6 +5,7 @@ import { getMyDiditApproved } from "@/app/actions/didit"
 import { MerchantTabsClient } from "@/app/merchant/_client"
 
 export const metadata = {
+  title: 'Panel de comercio',
   robots: { index: false, follow: false },
 }
 

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
+  bankAccount,
   installment,
   kycVerification,
   loan,
@@ -1235,6 +1236,16 @@ export async function mobileAdminDisburseLoan(adminId: string, id: string) {
   // El desembolso solo activa el crédito si el cliente ya firmó el contrato
   // (mismo requisito que Tesorería en el panel web).
   await requireAcceptedContract(id)
+  // Sin CBU/CVU de destino no hay adónde acreditar: mismo gate que
+  // markDisbursementAsCredited en el panel web (app/actions/banking.ts).
+  const [destination] = await db
+    .select({ id: bankAccount.id })
+    .from(bankAccount)
+    .where(and(eq(bankAccount.userId, existing.userId), eq(bankAccount.isActive, true)))
+    .limit(1)
+  if (!destination) {
+    throw new Error('El titular no tiene CBU/CVU de desembolso cargado.')
+  }
   const now = new Date()
   await db.transaction(async (tx) => {
     await ensureLoanContract(

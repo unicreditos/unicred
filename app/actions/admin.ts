@@ -22,7 +22,7 @@ import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
-import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
@@ -107,7 +107,6 @@ export async function getAdminStats() {
 
 export async function getAllLoans() {
   await requireAdmin()
-  await syncOverdueInstallments()
   const rows = await db.select().from(loan).orderBy(desc(loan.createdAt)).limit(100)
   const ids = rows.map((r) => r.id)
   const contracts = ids.length
@@ -568,7 +567,6 @@ export async function updateLoanManual(
     }
     assertAdminTransition(existing.status, opts.status)
     updates.status = opts.status
-    if (opts.status === 'approved') updates.rejectionReason = null
   }
   if (opts.monthlyRate !== undefined && opts.monthlyRate !== null && opts.monthlyRate !== '') {
     updates.monthlyRate = String(opts.monthlyRate)
@@ -576,12 +574,15 @@ export async function updateLoanManual(
   if (opts.scoreAtApproval !== undefined && opts.scoreAtApproval !== null) {
     updates.scoreAtApproval = opts.scoreAtApproval
   }
-  if (opts.rejectionReason !== undefined) {
-    updates.rejectionReason = opts.rejectionReason
-  }
   if (opts.disbursedAt !== undefined && opts.disbursedAt !== null && opts.disbursedAt !== '') {
     updates.disbursedAt = new Date(opts.disbursedAt)
   }
+
+  const nextStatus = (updates.status ?? existing.status) as string
+  // El motivo de rechazo solo vale si el crédito queda "rejected": al salir de
+  // ese estado se limpia siempre, sin importar qué haya quedado escrito en el
+  // formulario, para que un crédito aprobado/activo no arrastre un motivo viejo.
+  updates.rejectionReason = nextStatus === 'rejected' ? (opts.rejectionReason ?? existing.rejectionReason) : null
 
   const nextPrincipal = Number(updates.principal ?? existing.principal)
   const nextTerm = Number(updates.term ?? existing.term)
@@ -596,7 +597,6 @@ export async function updateLoanManual(
     updates.totalAmount = amort.totalAmount.toFixed(2)
   }
 
-  const nextStatus = (updates.status ?? existing.status) as string
   let contractId: string | null = null
 
   await db.transaction(async (tx) => {
