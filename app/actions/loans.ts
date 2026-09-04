@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
+import { getActiveRiskRules } from '@/lib/risk-rules'
 import { loanPricingFields } from '@/lib/loan-rates'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
 import { diditApprovedForUser } from '@/lib/didit'
@@ -161,6 +162,7 @@ export async function evaluateLoanOffer(input: { productId: string; term: number
   }
 
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: consulted.score.score,
     monthlyIncome,
@@ -169,6 +171,7 @@ export async function evaluateLoanOffer(input: { productId: string; term: number
     productMinAmount: Number(product.minAmount),
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   return {
@@ -224,7 +227,7 @@ export async function updateProfile(input: {
   }
 
   const [existingProf] = await db
-    .select({ kycStatus: profile.kycStatus })
+    .select({ kycStatus: profile.kycStatus, cuil: profile.cuil, dni: profile.dni })
     .from(profile)
     .where(eq(profile.userId, userId))
     .limit(1)
@@ -239,26 +242,40 @@ export async function updateProfile(input: {
       ),
     )
     .limit(1)
-  const keepApproved = existingProf?.kycStatus === 'approved' || Boolean(diditOk)
+  // Un DNI/CUIL nuevo es una identidad distinta a la que Didit verificó:
+  // nunca conservar "approved" sobre datos de identidad que cambiaron.
+  const identityChanged =
+    Boolean(existingProf) && (existingProf!.cuil !== cuilClean || existingProf!.dni !== dniClean)
+  const keepApproved = !identityChanged && (existingProf?.kycStatus === 'approved' || Boolean(diditOk))
 
-  await db
-    .update(profile)
-    .set({
-      cuil: cuilClean,
-      dni: dniClean,
-      phone: String(input.phone ?? '').trim(),
-      birthDate: input.birthDate,
-      province: input.province.trim(),
-      department: input.department?.trim() || null,
-      city: input.city.trim(),
-      postalCode: input.postalCode?.trim() || null,
-      address: input.address.trim(),
-      monthlyIncome: String(incomeNum),
-      employmentStatus: input.employmentStatus.trim(),
-      kycStatus: keepApproved ? 'approved' : 'submitted',
-      updatedAt: new Date(),
-    })
-    .where(eq(profile.userId, userId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(profile)
+      .set({
+        cuil: cuilClean,
+        dni: dniClean,
+        phone: String(input.phone ?? '').trim(),
+        birthDate: input.birthDate,
+        province: input.province.trim(),
+        department: input.department?.trim() || null,
+        city: input.city.trim(),
+        postalCode: input.postalCode?.trim() || null,
+        address: input.address.trim(),
+        monthlyIncome: String(incomeNum),
+        employmentStatus: input.employmentStatus.trim(),
+        kycStatus: keepApproved ? 'approved' : 'submitted',
+        updatedAt: new Date(),
+      })
+      .where(eq(profile.userId, userId))
+
+    if (identityChanged) {
+      // Invalida la verificación previa: hace falta re-verificar la identidad nueva.
+      await tx
+        .update(kycVerification)
+        .set({ status: 'pending', updatedAt: new Date(), reviewedBy: 'identity_changed' })
+        .where(and(eq(kycVerification.userId, userId), eq(kycVerification.status, 'approved')))
+    }
+  })
   revalidateCustomer()
   return { ok: true }
 }
@@ -334,6 +351,7 @@ export async function requestLoan(input: {
   const deuda = consulted.snapshot.deudas
 
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: score.score,
     monthlyIncome,
@@ -342,6 +360,7 @@ export async function requestLoan(input: {
     productMinAmount: minAmount,
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   if (!offer.eligible || offer.maxAmount < minAmount) {
@@ -398,6 +417,7 @@ export async function requestLoan(input: {
     monthlyIncome,
     worstSituation: deuda.worstSituation,
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
+    rules,
   })
 
   let status: 'pending' | 'approved' | 'rejected'

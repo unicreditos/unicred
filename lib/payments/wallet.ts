@@ -25,6 +25,8 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 
 const MAX_SANDBOX_LOAD = 5_000_000
 const MAX_TRANSFER = 10_000_000
+/** Techo de sanidad para un solo evento de acreditación entrante (webhook). No es un límite de negocio: es un freno ante un payload malformado o forjado. */
+export const MAX_INBOUND_WEBHOOK_CREDIT = 5_000_000
 
 function money(value: unknown) {
   const n = typeof value === 'string' ? parseFloat(value) : Number(value)
@@ -419,7 +421,12 @@ export async function requestTreasuryPayout(
   const payoutId = crypto.randomUUID()
   const reference = `UC-OUT-${Date.now().toString().slice(-8)}`
 
-  const walletId = await db.transaction(async (tx) => {
+  // Outbox: el débito y los asientos quedan confirmados ('queued') dentro de
+  // la transacción; el riel externo (HTTP a Payway) corre después del commit
+  // para no sostener el lock de la billetera durante la llamada de red. Si
+  // Payway falla o el proceso se cae antes de actualizar el payout, la plata
+  // ya está debitada y registrada — el payout queda 'queued' para reconciliar.
+  const rowLock = await db.transaction(async (tx) => {
     const [wallet] = await tx
       .select()
       .from(walletAccount)
@@ -440,19 +447,8 @@ export async function requestTreasuryPayout(
       throw new Error(`Saldo insuficiente. Tenés ${balance.toLocaleString('es-AR')}.`)
     }
 
-    const rail = await executeExternalRail({
-      reference,
-      amount: value,
-      originCvu: wallet.cvu,
-      originAlias: wallet.alias,
-      destination,
-      concept: note,
-      pomeloSourceAccountId: wallet.pomeloAccountId,
-    })
-
     const next = round2(balance - value)
     const now = new Date()
-    const status = rail.ok && !rail.queued ? 'executed' : 'queued'
 
     await tx
       .update(walletAccount)
@@ -463,7 +459,7 @@ export async function requestTreasuryPayout(
       id: payoutId,
       userId,
       walletId: wallet.id,
-      status,
+      status: 'queued',
       amount: String(value.toFixed(2)),
       currency: 'ARS',
       destinationKind: destination.kind,
@@ -471,9 +467,7 @@ export async function requestTreasuryPayout(
       concept: note,
       reference,
       treasuryCbu: TREASURY_ACCOUNT.cbu,
-      rail: rail.rail,
-      providerPayload: rail.providerPayload as any,
-      executedAt: status === 'executed' ? now : null,
+      rail: 'treasury_rm',
       createdAt: now,
       updatedAt: now,
     })
@@ -489,14 +483,44 @@ export async function requestTreasuryPayout(
       payoutId,
       externalId: `payout-${reference}`,
       reference,
-      notes: `A ${destination.kind.toUpperCase()} ${destination.value} · ${note} · Origen: tesorería RM · ${rail.message ?? ''}`,
+      notes: `A ${destination.kind.toUpperCase()} ${destination.value} · ${note} · Origen: tesorería RM`,
       createdAt: now,
     })
 
-    return wallet.id
+    return { walletId: wallet.id, originCvu: wallet.cvu, originAlias: wallet.alias, pomeloSourceAccountId: wallet.pomeloAccountId }
   })
 
-  return loadSnapshot(userId, walletId)
+  try {
+    const rail = await executeExternalRail({
+      reference,
+      amount: value,
+      originCvu: rowLock.originCvu,
+      originAlias: rowLock.originAlias,
+      destination,
+      concept: note,
+      pomeloSourceAccountId: rowLock.pomeloSourceAccountId,
+    })
+    const status = rail.ok && !rail.queued ? 'executed' : 'queued'
+    await db
+      .update(walletPayout)
+      .set({
+        status,
+        rail: rail.rail,
+        providerPayload: rail.providerPayload as any,
+        executedAt: status === 'executed' ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(walletPayout.id, payoutId))
+  } catch (err) {
+    // El débito ya está confirmado en el ledger; el payout queda 'queued'
+    // para que la reconciliación de tesorería lo reintente.
+    await db
+      .update(walletPayout)
+      .set({ failureReason: err instanceof Error ? err.message : 'error_riel', updatedAt: new Date() })
+      .where(eq(walletPayout.id, payoutId))
+  }
+
+  return loadSnapshot(userId, rowLock.walletId)
 }
 
 /** Compat: detecta P2P interno o egreso por tesorería RM. */

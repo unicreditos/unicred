@@ -16,13 +16,14 @@ import {
   user as userTable,
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { desc, eq, sql, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
-import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
@@ -107,7 +108,6 @@ export async function getAdminStats() {
 
 export async function getAllLoans() {
   await requireAdmin()
-  await syncOverdueInstallments()
   const rows = await db.select().from(loan).orderBy(desc(loan.createdAt)).limit(100)
   const ids = rows.map((r) => r.id)
   const contracts = ids.length
@@ -147,7 +147,7 @@ export async function getPendingMerchants() {
 }
 
 export async function setMerchantStatus(id: string, status: 'active' | 'rejected') {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
   if (status === 'active') {
@@ -406,10 +406,16 @@ export async function approveLoan(
   },
 ) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.approve')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'approved')
+  // La solicitud puede llevar días en cola: si el KYC/Didit del titular cambió
+  // o se invalidó mientras tanto (p. ej. cambió DNI/CUIL), no se aprueba a
+  // ciegas sobre una identidad que ya no está verificada.
+  if (!(await diditApprovedForUser(existing.userId))) {
+    throw new Error('El titular no tiene Didit aprobado vigente. Pedile que reverifique su identidad antes de aprobar.')
+  }
 
   // Las condiciones finales las fija el admin; si cambian, el plan de cuotas se recalcula.
   const principal =
@@ -497,7 +503,7 @@ export async function approveLoan(
 
 export async function rejectLoan(id: string, reason: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.reject')
   if (!reason || !reason.trim()) throw new Error('Motivo de rechazo obligatorio')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -551,7 +557,7 @@ export async function updateLoanManual(
   },
 ) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
 
@@ -568,7 +574,6 @@ export async function updateLoanManual(
     }
     assertAdminTransition(existing.status, opts.status)
     updates.status = opts.status
-    if (opts.status === 'approved') updates.rejectionReason = null
   }
   if (opts.monthlyRate !== undefined && opts.monthlyRate !== null && opts.monthlyRate !== '') {
     updates.monthlyRate = String(opts.monthlyRate)
@@ -576,12 +581,15 @@ export async function updateLoanManual(
   if (opts.scoreAtApproval !== undefined && opts.scoreAtApproval !== null) {
     updates.scoreAtApproval = opts.scoreAtApproval
   }
-  if (opts.rejectionReason !== undefined) {
-    updates.rejectionReason = opts.rejectionReason
-  }
   if (opts.disbursedAt !== undefined && opts.disbursedAt !== null && opts.disbursedAt !== '') {
     updates.disbursedAt = new Date(opts.disbursedAt)
   }
+
+  const nextStatus = (updates.status ?? existing.status) as string
+  // El motivo de rechazo solo vale si el crédito queda "rejected": al salir de
+  // ese estado se limpia siempre, sin importar qué haya quedado escrito en el
+  // formulario, para que un crédito aprobado/activo no arrastre un motivo viejo.
+  updates.rejectionReason = nextStatus === 'rejected' ? (opts.rejectionReason ?? existing.rejectionReason) : null
 
   const nextPrincipal = Number(updates.principal ?? existing.principal)
   const nextTerm = Number(updates.term ?? existing.term)
@@ -596,7 +604,6 @@ export async function updateLoanManual(
     updates.totalAmount = amort.totalAmount.toFixed(2)
   }
 
-  const nextStatus = (updates.status ?? existing.status) as string
   let contractId: string | null = null
 
   await db.transaction(async (tx) => {
@@ -1064,6 +1071,7 @@ export type AdminUserRow = {
   banned: boolean | null
   createdAt: Date
   role: string | null
+  adminRoleId: string | null
   cuil: string | null
   dni: string | null
   phone: string | null
@@ -1084,6 +1092,7 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
       banned: userTable.banned,
       createdAt: userTable.createdAt,
       role: profile.role,
+      adminRoleId: profile.adminRoleId,
       cuil: profile.cuil,
       dni: profile.dni,
       phone: profile.phone,
@@ -1114,7 +1123,9 @@ export async function updateUserAdmin(
     province?: string
   },
 ) {
-  const adminUserId = await requireAdmin()
+  // Cambiar el rol (customer/merchant/admin) es más sensible que editar datos de contacto:
+  // exige users.manage además de ser admin. El resto de los campos alcanza con requireAdmin().
+  const adminUserId = input.role ? await requirePermission('users.manage') : await requireAdmin()
   if (userId === adminUserId && input.role && input.role !== 'admin') {
     throw new Error('No podés quitarte el rol admin a vos mismo')
   }
@@ -1181,7 +1192,7 @@ export async function updateUserAdmin(
 }
 
 export async function setUserBanned(userId: string, banned: boolean) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('users.manage')
   if (userId === adminUserId) throw new Error('No podés bloquear tu propia sesión')
   const [p] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (p?.role === 'admin' && banned) throw new Error('No se bloquea un administrador. Primero cambiale el rol.')
@@ -1203,7 +1214,7 @@ export async function setUserBanned(userId: string, banned: boolean) {
 }
 
 export async function deleteUserAdmin(userId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('users.manage')
   if (userId === adminUserId) throw new Error('No podés eliminar tu propia cuenta')
   const [p] = await db.select({ role: profile.role, kycStatus: profile.kycStatus }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (p?.role === 'admin') throw new Error('No se elimina un administrador')

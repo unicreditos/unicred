@@ -26,12 +26,15 @@ import {
 } from '@/lib/db/schema'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
+import { getAdminPermissions, listAdminRoles } from '@/lib/rbac'
+import { listRiskRuleVersions } from '@/lib/risk-rules'
 import { eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
+  title: 'Backoffice',
   robots: { index: false, follow: false },
 }
 
@@ -60,6 +63,8 @@ export default async function AdminPage({
     redirect(getDashboardUrlByRole(role))
   }
 
+  const myPermissions = Array.from(await getAdminPermissions(userId))
+
   const fichaPromise = personaId
     ? getAdminClientFicha(personaId)
         .then((ficha) => ({ ficha, error: null as string | null }))
@@ -69,21 +74,55 @@ export default async function AdminPage({
         }))
     : Promise.resolve({ ficha: null, error: null as string | null })
 
-  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig] = await Promise.all([
-    getAdminStats().catch((e) => { console.error('[admin] getAdminStats failed:', e.message); return { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any }),
-    getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
-    getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
-    getBcraVariables().catch((e) => { console.error('[admin] getBcraVariables failed:', e.message); return [] as any[] }),
-    getAllKYCReviews(500).catch((e) => { console.error('[admin] getAllKYCReviews failed:', e.message); return [] as any[] }),
-    getAllDisbursements(100).catch((e) => { console.error('[admin] getAllDisbursements failed:', e.message); return [] as any[] }),
-    getAllBankAccounts().catch((e) => { console.error('[admin] getAllBankAccounts failed:', e.message); return [] as any[] }),
-    getAllUsers().catch((e) => { console.error('[admin] getAllUsers failed:', e.message); return [] as any[] }),
-    db.select().from(loanProduct).orderBy(loanProduct.name).catch((e) => { console.error('[admin] loanProduct failed:', e.message); return [] as any[] }),
-    getAdminAuditLog(200).catch((e) => { console.error('[admin] getAdminAuditLog failed:', e.message); return [] as any[] }),
+  // stats/loans/merchants/kyc/disbursements(base)/users/opsDesk se usan en TODAS las
+  // pestañas (contadores del sidebar, buscador Ctrl+K, Torre de control), así que se
+  // piden siempre. El resto solo lo necesita una pestaña puntual: pedirlo siempre
+  // hacía que cambiar de pestaña re-consultara las 24 secciones del panel en cada click.
+  const needsBcra = activeTab === 'bcra'
+  const needsBankAccounts = activeTab === 'cuentas-bancarias'
+  const needsProducts = activeTab === 'analytics' || activeTab === 'tarifas'
+  const needsAuditLog = activeTab === 'logs_auditoria'
+  const needsPayments = activeTab === 'pagos'
+  const needsOpsConfig = activeTab === 'parametros'
+  const needsDisbEnrichment = activeTab === 'desembolsos' || activeTab === 'aprobaciones'
+  const needsRoles = activeTab === 'staff'
+  const needsRiskRules = activeTab === 'scoring'
+
+  // Antes cada fetch fallido volvía silenciosamente a ceros: un admin podía
+  // ver "0 solicitudes" y pensar que la cartera está vacía cuando en
+  // realidad la consulta explotó. dataErrors junta qué falló para mostrarlo
+  // arriba en vez de tragárselo.
+  const dataErrors: string[] = []
+  function track<T>(label: string, fallback: T) {
+    return (e: Error) => {
+      console.error(`[admin] ${label} failed:`, e.message)
+      dataErrors.push(label)
+      return fallback
+    }
+  }
+
+  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig, adminRoles, riskRuleVersions] = await Promise.all([
+    getAdminStats().catch(track('Estadísticas del dashboard', { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any)),
+    getAllLoans().catch(track('Créditos', [] as any[])),
+    getPendingMerchants().catch(track('Comercios', [] as any[])),
+    needsBcra
+      ? getBcraVariables().catch(track('Variables BCRA', [] as any[]))
+      : Promise.resolve([] as any[]),
+    getAllKYCReviews(500).catch(track('Revisiones KYC', [] as any[])),
+    getAllDisbursements(100).catch(track('Desembolsos', [] as any[])),
+    needsBankAccounts
+      ? getAllBankAccounts().catch(track('Cuentas bancarias', [] as any[]))
+      : Promise.resolve([] as any[]),
+    getAllUsers().catch(track('Usuarios', [] as any[])),
+    needsProducts
+      ? db.select().from(loanProduct).orderBy(loanProduct.name).catch(track('Productos', [] as any[]))
+      : Promise.resolve([] as any[]),
+    needsAuditLog
+      ? getAdminAuditLog(200).catch(track('Auditoría', [] as any[]))
+      : Promise.resolve([] as any[]),
     fichaPromise,
-    getAdminOpsDesk().catch((e) => {
-      console.error('[admin] getAdminOpsDesk failed:', e.message)
-      return {
+    getAdminOpsDesk().catch(
+      track('Mesa de operaciones (cobranzas/pagos)', {
         generatedAt: new Date().toISOString(),
         market: { country: 'Argentina', currency: 'ARS' },
         kpis: {
@@ -101,78 +140,84 @@ export default async function AdminPage({
         movements: [],
         openTickets: [],
         contracts: [],
-      }
-    }),
-    listAdminPayments(200).catch((e) => {
-      console.error('[admin] listAdminPayments failed:', e.message)
-      return { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }
-    }),
-    getAdminOpsConfig().catch((e) => {
-      console.error('[admin] getAdminOpsConfig failed:', e.message)
-      return null
-    }),
+      }),
+    ),
+    needsPayments
+      ? listAdminPayments(200).catch(track('Pagos', { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }))
+      : Promise.resolve({ kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }),
+    needsOpsConfig
+      ? getAdminOpsConfig().catch(track('Configuración', null))
+      : Promise.resolve(null),
+    needsRoles
+      ? listAdminRoles().catch(track('Roles', [] as Awaited<ReturnType<typeof listAdminRoles>>))
+      : Promise.resolve([] as Awaited<ReturnType<typeof listAdminRoles>>),
+    needsRiskRules
+      ? listRiskRuleVersions().catch(track('Reglas de riesgo', [] as Awaited<ReturnType<typeof listRiskRuleVersions>>))
+      : Promise.resolve([] as Awaited<ReturnType<typeof listRiskRuleVersions>>),
   ])
 
-  const userIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.userId)))
-  const loanIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.loanId).filter(Boolean) as string[]))
-  const bankIdsForDisb = Array.from(new Set(disbRaw.map((d) => d.bankAccountId).filter(Boolean) as string[]))
+  const userIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.userId))) : []
+  const loanIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.loanId).filter(Boolean) as string[])) : []
+  const bankIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.bankAccountId).filter(Boolean) as string[])) : []
 
-  const [custRows, loanRows, bankRows, contractRows] = await Promise.all([
-    userIdsForDisb.length
-      ? db
-          .select({
-            userId: profile.userId,
-            fullName: userTable.name,
-            cuil: profile.cuil,
-            email: userTable.email,
-          })
-          .from(profile)
-          .leftJoin(userTable, eq(profile.userId, userTable.id))
-          .where(inArray(profile.userId, userIdsForDisb))
-      : Promise.resolve([]),
-    loanIdsForDisb.length
-      ? db
-          .select({
-            id: loansTable.id,
-            principal: loansTable.principal,
-            term: loansTable.term,
-            totalAmount: loansTable.totalAmount,
-            status: loansTable.status,
-          })
-          .from(loansTable)
-          .where(inArray(loansTable.id, loanIdsForDisb))
-      : Promise.resolve([]),
-    bankIdsForDisb.length
-      ? db
-          .select({
-            id: bankAccount.id,
-            bankName: bankAccount.bankName,
-            accountType: bankAccount.accountType,
-            cbu: bankAccount.cbu,
-            cvu: bankAccount.cvu,
-            alias: bankAccount.alias,
-            holderName: bankAccount.holderName,
-            holderCuil: bankAccount.holderCuil,
-          })
-          .from(bankAccount)
-          .where(inArray(bankAccount.id, bankIdsForDisb))
-      : Promise.resolve([]),
-    loanIdsForDisb.length
-      ? db
-          .select({
-            id: loanContract.id,
-            loanId: loanContract.loanId,
-            status: loanContract.status,
-          })
-          .from(loanContract)
-          .where(inArray(loanContract.loanId, loanIdsForDisb))
-      : Promise.resolve([]),
-  ])
+  const [custRows, loanRows, bankRows, contractRows] = needsDisbEnrichment
+    ? await Promise.all([
+        userIdsForDisb.length
+          ? db
+              .select({
+                userId: profile.userId,
+                fullName: userTable.name,
+                cuil: profile.cuil,
+                email: userTable.email,
+              })
+              .from(profile)
+              .leftJoin(userTable, eq(profile.userId, userTable.id))
+              .where(inArray(profile.userId, userIdsForDisb))
+          : Promise.resolve([]),
+        loanIdsForDisb.length
+          ? db
+              .select({
+                id: loansTable.id,
+                principal: loansTable.principal,
+                term: loansTable.term,
+                totalAmount: loansTable.totalAmount,
+                status: loansTable.status,
+              })
+              .from(loansTable)
+              .where(inArray(loansTable.id, loanIdsForDisb))
+          : Promise.resolve([]),
+        bankIdsForDisb.length
+          ? db
+              .select({
+                id: bankAccount.id,
+                bankName: bankAccount.bankName,
+                accountType: bankAccount.accountType,
+                cbu: bankAccount.cbu,
+                cvu: bankAccount.cvu,
+                alias: bankAccount.alias,
+                holderName: bankAccount.holderName,
+                holderCuil: bankAccount.holderCuil,
+              })
+              .from(bankAccount)
+              .where(inArray(bankAccount.id, bankIdsForDisb))
+          : Promise.resolve([]),
+        loanIdsForDisb.length
+          ? db
+              .select({
+                id: loanContract.id,
+                loanId: loanContract.loanId,
+                status: loanContract.status,
+              })
+              .from(loanContract)
+              .where(inArray(loanContract.loanId, loanIdsForDisb))
+          : Promise.resolve([]),
+      ])
+    : [[], [], [], []]
 
-  const custMap = new Map(custRows.map((r) => [r.userId, r]))
-  const loanMap = new Map(loanRows.map((r) => [r.id, r]))
-  const bankMap = new Map(bankRows.map((r) => [r.id, r]))
-  const contractMap = new Map(contractRows.map((r) => [r.loanId, r]))
+  const custMap = new Map(custRows.map((r: any) => [r.userId, r]))
+  const loanMap = new Map(loanRows.map((r: any) => [r.id, r]))
+  const bankMap = new Map(bankRows.map((r: any) => [r.id, r]))
+  const contractMap = new Map(contractRows.map((r: any) => [r.loanId, r]))
 
   const disbursementList = disbRaw.map((d) => ({
     ...d,
@@ -207,6 +252,10 @@ export default async function AdminPage({
       opsDesk={opsDesk}
       payments={payments}
       opsConfig={opsConfig}
+      myPermissions={myPermissions}
+      adminRoles={adminRoles}
+      riskRuleVersions={riskRuleVersions}
+      dataErrors={dataErrors}
     />
   )
 }

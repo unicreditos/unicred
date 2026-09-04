@@ -3,6 +3,7 @@
 import { db } from '@/lib/db'
 import { diditSession, kycVerification, profile, user } from '@/lib/db/schema'
 import { assertRole, requireAdmin } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { recordAudit, diffFields } from '@/lib/audit'
 import { applyDiditDecision, getDiditDecision, isDiditConfigured } from '@/lib/didit'
 import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
@@ -40,7 +41,7 @@ export async function setKYCStatus(
   status: KYCStatus,
   rejectionReason?: string,
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('kyc.review')
 
   const [acc] = await db
     .select()

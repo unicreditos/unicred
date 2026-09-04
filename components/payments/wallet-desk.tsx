@@ -26,6 +26,7 @@ export function WalletDesk({
   const [outAmount, setOutAmount] = useState('')
   const [concept, setConcept] = useState('Transferencia')
   const [payId, setPayId] = useState(pendingInstallments[0]?.id ?? '')
+  const [confirmingSend, setConfirmingSend] = useState(false)
 
   const refresh = useCallback(async () => {
     const next = await getMyWallet()
@@ -48,6 +49,7 @@ export function WalletDesk({
       setWallet(next)
       setDestination('')
       setOutAmount('')
+      setConfirmingSend(false)
       toast.success(
         next.movements[0]?.kind === 'p2p_out'
           ? 'Transferencia interna acreditada al instante.'
@@ -151,47 +153,77 @@ export function WalletDesk({
         ) : null}
 
         {panel === 'transferir' ? (
-          <form
-            className="mt-4 grid gap-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void send()
-            }}
-          >
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Destino UNICRÉDITOS: acreditación inmediata. Destino bancario externo: debitamos tu saldo y tesorería
-              RM ({wallet.treasuryOrigin}) ejecuta la transferencia.
-            </p>
-            <div className="space-y-1">
-              <Label htmlFor="wallet-dest">Destino</Label>
-              <Input
-                id="wallet-dest"
-                placeholder="CBU, CVU o alias"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                required
-              />
+          confirmingSend ? (
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">Confirmá el envío</p>
+                <p className="mt-2">
+                  <span className="font-bold">{formatARS(Number(outAmount.replace(',', '.')) || 0)}</span> a{' '}
+                  <span className="font-mono">{destination}</span>
+                </p>
+                <p className="mt-0.5 text-xs text-amber-800">Concepto: {concept || '—'}</p>
+                <p className="mt-2 text-xs text-amber-800">
+                  Una vez confirmado, se debita al instante y no se puede deshacer desde acá.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={busy}
+                  onClick={() => setConfirmingSend(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" className="flex-1 font-semibold" disabled={busy} onClick={() => void send()}>
+                  {busy ? 'Enviando…' : 'Confirmar envío'}
+                </Button>
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+          ) : (
+            <form
+              className="mt-4 grid gap-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                setConfirmingSend(true)
+              }}
+            >
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Destino UNICRÉDITOS: acreditación inmediata. Destino bancario externo: debitamos tu saldo y tesorería
+                RM ({wallet.treasuryOrigin}) ejecuta la transferencia.
+              </p>
               <div className="space-y-1">
-                <Label htmlFor="wallet-out-amount">Importe</Label>
+                <Label htmlFor="wallet-dest">Destino</Label>
                 <Input
-                  id="wallet-out-amount"
-                  inputMode="decimal"
-                  value={outAmount}
-                  onChange={(e) => setOutAmount(e.target.value)}
+                  id="wallet-dest"
+                  placeholder="CBU, CVU o alias"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
                   required
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="wallet-concept">Concepto</Label>
-                <Input id="wallet-concept" value={concept} onChange={(e) => setConcept(e.target.value)} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="wallet-out-amount">Importe</Label>
+                  <Input
+                    id="wallet-out-amount"
+                    inputMode="decimal"
+                    value={outAmount}
+                    onChange={(e) => setOutAmount(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="wallet-concept">Concepto</Label>
+                  <Input id="wallet-concept" value={concept} onChange={(e) => setConcept(e.target.value)} />
+                </div>
               </div>
-            </div>
-            <Button type="submit" className="font-semibold" disabled={busy}>
-              {busy ? 'Enviando…' : 'Transferir'}
-            </Button>
-          </form>
+              <Button type="submit" className="font-semibold">
+                Revisar y transferir
+              </Button>
+            </form>
+          )
         ) : null}
 
         {panel === 'cuotas' ? (

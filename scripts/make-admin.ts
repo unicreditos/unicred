@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadProjectEnv } from './load-env'
+import { confirmDangerousScript } from './confirm-danger'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 loadProjectEnv(rootDir)
@@ -8,9 +9,11 @@ loadProjectEnv(rootDir)
 const targetEmail = process.argv[2]
 
 if (!targetEmail) {
-  console.error('Uso: npx tsx scripts/make-admin.ts <email>')
+  console.error('Uso: npx tsx scripts/make-admin.ts <email> --yes')
   process.exit(1)
 }
+
+confirmDangerousScript(`Otorgar rol ADMIN a ${targetEmail}`)
 
 async function main() {
   const { db, pool } = await import('@/lib/db')

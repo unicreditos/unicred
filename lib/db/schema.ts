@@ -87,6 +87,7 @@ export const profile = pgTable('profile', {
   id: text('id').primaryKey(),
   userId: text('userId').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
   role: text('role').notNull().default('customer'),
+  adminRoleId: text('adminRoleId').references(() => adminRole.id, { onDelete: 'set null' }),
   cuil: text('cuil'),
   dni: text('dni'),
   phone: text('phone'),
@@ -105,6 +106,60 @@ export const profile = pgTable('profile', {
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
 })
+
+/* ----------------------------- RBAC (admin) ----------------------------- */
+
+/** Roles con nombre para la mesa admin. No confundir con profile.role (customer/merchant/admin): esto sub-clasifica a los admin. */
+export const adminRole = pgTable('admin_role', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  isSystem: boolean('isSystem').notNull().default(false),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
+
+/** Catálogo fijo de capacidades verificables server-side. No editable desde la UI. */
+export const adminPermission = pgTable('admin_permission', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  category: text('category').notNull(),
+  createdAt: ts().notNull().defaultNow(),
+})
+
+export const adminRolePermission = pgTable('admin_role_permission', {
+  id: text('id').primaryKey(),
+  roleId: text('roleId').notNull().references(() => adminRole.id, { onDelete: 'cascade' }),
+  permissionId: text('permissionId').notNull().references(() => adminPermission.id, { onDelete: 'cascade' }),
+}, (t) => [
+  uniqueIndex('admin_role_permission_unique').on(t.roleId, t.permissionId),
+  index('admin_role_permission_role_idx').on(t.roleId),
+])
+
+/**
+ * Parámetros de underwriting versionados. No es un motor de reglas genérico:
+ * son los mismos umbrales que ya usaba el código (lib/loan-underwriting.ts),
+ * movidos a la base para que Riesgo los pueda ajustar sin deploy, con
+ * historial y auditoría. Solo una fila activa a la vez.
+ */
+export const riskRuleVersion = pgTable('risk_rule_version', {
+  id: text('id').primaryKey(),
+  version: integer('version').notNull(),
+  isActive: boolean('isActive').notNull().default(false),
+  scoreRejectBelow: integer('scoreRejectBelow').notNull(),
+  scoreAutoQualifyAt: integer('scoreAutoQualifyAt').notNull(),
+  incomeDtiRatio: numeric('incomeDtiRatio', { precision: 5, scale: 4 }).notNull(),
+  firstCreditHardCap: numeric('firstCreditHardCap', { precision: 14, scale: 2 }).notNull(),
+  bcraWorstSituationRejectAt: integer('bcraWorstSituationRejectAt').notNull(),
+  bcraRejectedChecksSituationThreshold: integer('bcraRejectedChecksSituationThreshold').notNull(),
+  notes: text('notes'),
+  createdBy: text('createdBy').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('risk_rule_version_active_idx').on(t.isActive),
+])
 
 export const merchant = pgTable('merchant', {
   id: text('id').primaryKey(),

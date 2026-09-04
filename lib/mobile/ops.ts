@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
+  bankAccount,
   installment,
   kycVerification,
   loan,
@@ -11,8 +12,9 @@ import {
   profile,
   user as userTable,
 } from '@/lib/db/schema'
-import { ensureLoanContract } from '@/lib/legal/expediente'
-import { ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
+import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
+import { activateLoanAfterDisbursement, ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
+import { assertAdminTransition } from '@/lib/loan-state'
 import { getInbox } from '@/lib/notifications'
 import {
   payInstallmentsFromWallet,
@@ -33,6 +35,7 @@ import {
 } from '@/lib/loan-underwriting'
 import { estimateAvailableCreditLine } from '@/lib/mobile/data'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
+import { getActiveRiskRules } from '@/lib/risk-rules'
 import { createPaymentLinkMP } from '@/lib/mercadopago'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
@@ -378,6 +381,7 @@ export async function mobileApplyLoan(
 
   const score = consulted.score
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: score.score,
     monthlyIncome,
@@ -386,6 +390,7 @@ export async function mobileApplyLoan(
     productMinAmount: Number(product.minAmount),
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   if (!offer.eligible || amount < Number(product.minAmount) || amount > offer.maxAmount) {
@@ -417,6 +422,7 @@ export async function mobileApplyLoan(
     monthlyIncome,
     worstSituation: consulted.snapshot.deudas.worstSituation,
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
+    rules,
   })
   const status =
     decision.outcome === 'rejected' ? 'rejected' : decision.outcome === 'pending_review' ? 'pending' : 'approved'
@@ -753,6 +759,33 @@ async function upsertKycApproved(userId: string, reason: string) {
   await db.update(profile).set({ kycStatus: 'approved', updatedAt: now }).where(eq(profile.userId, userId))
 }
 
+/**
+ * El cliente puede subir documentos desde el celular, pero nunca queda
+ * "approved" por eso solo: approved lo pone Didit (webhook), un admin o
+ * la reconciliación. Acá solo se deja constancia de que hay algo para revisar.
+ */
+async function upsertKycSubmitted(userId: string, reason: string) {
+  const now = new Date()
+  const [existing] = await db.select().from(kycVerification).where(eq(kycVerification.userId, userId)).limit(1)
+  if (existing) {
+    await db
+      .update(kycVerification)
+      .set({ status: 'submitted', updatedAt: now, reviewedBy: reason })
+      .where(eq(kycVerification.id, existing.id))
+  } else {
+    await db.insert(kycVerification).values({
+      id: newId('kyc'),
+      userId,
+      status: 'submitted',
+      provider: 'mobile',
+      createdAt: now,
+      updatedAt: now,
+      reviewedBy: reason,
+    })
+  }
+  await db.update(profile).set({ kycStatus: 'submitted', updatedAt: now }).where(eq(profile.userId, userId))
+}
+
 export async function mobileVerifyIdentity(
   userId: string,
   input: { selfieFileId?: string; dniFrontFileId?: string; dniBackFileId?: string },
@@ -772,17 +805,17 @@ export async function mobileVerifyIdentity(
         uploadedAt: new Date().toISOString(),
       },
     })
+    // Subir documentos deja la verificación en revisión, nunca aprobada: el
+    // cliente no puede auto-aprobarse el KYC. Approved solo lo pone Didit
+    // (webhook), un admin o la reconciliación.
+    await upsertKycSubmitted(userId, 'mobile_docs')
   }
 
-  // Sin Didit: aprobar con docs (o flujo mobile sandbox) para no bloquear crédito.
+  // Sin Didit configurado no hay verificación biométrica disponible: queda
+  // en revisión para que un admin la resuelva a mano.
   if (!isDiditConfigured()) {
-    await upsertKycApproved(userId, hasDocs ? 'mobile_docs' : 'mobile_no_didit')
+    if (!hasDocs) await upsertKycSubmitted(userId, 'mobile_no_didit')
     return { success: true, verificationId: newId('kyc'), url: null as string | null }
-  }
-
-  // Con docs: dejar identidad aprobada para poder solicitar; Didit refuerza si abre sesión.
-  if (hasDocs) {
-    await upsertKycApproved(userId, 'mobile_docs')
   }
 
   try {
@@ -1168,6 +1201,7 @@ export async function mobileAdminLoans(status?: string, page = 1, limit = 50) {
 export async function mobileAdminApproveLoan(adminId: string, id: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
+  assertAdminTransition(existing.status, 'approved')
   const now = new Date()
   await db.transaction(async (tx) => {
     await tx
@@ -1184,10 +1218,16 @@ export async function mobileAdminApproveLoan(adminId: string, id: string) {
 }
 
 export async function mobileAdminRejectLoan(_adminId: string, id: string, reason: string) {
-  await db
-    .update(loan)
-    .set({ status: 'rejected', rejectionReason: reason || 'Rechazado', updatedAt: new Date() })
-    .where(eq(loan.id, id))
+  const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
+  if (!existing) throw new Error('Préstamo no encontrado')
+  assertAdminTransition(existing.status, 'rejected')
+  await db.transaction(async (tx) => {
+    await tx
+      .update(loan)
+      .set({ status: 'rejected', rejectionReason: reason || 'Rechazado', disbursedAt: null, updatedAt: new Date() })
+      .where(eq(loan.id, id))
+    await tx.delete(installment).where(eq(installment.loanId, id))
+  })
   return { success: true, message: 'Préstamo rechazado' }
 }
 
@@ -1196,6 +1236,19 @@ export async function mobileAdminDisburseLoan(adminId: string, id: string) {
   if (!existing) throw new Error('Préstamo no encontrado')
   if (existing.status !== 'approved' && existing.status !== 'active') {
     throw new Error('Solo se desembolsan créditos aprobados')
+  }
+  // El desembolso solo activa el crédito si el cliente ya firmó el contrato
+  // (mismo requisito que Tesorería en el panel web).
+  await requireAcceptedContract(id)
+  // Sin CBU/CVU de destino no hay adónde acreditar: mismo gate que
+  // markDisbursementAsCredited en el panel web (app/actions/banking.ts).
+  const [destination] = await db
+    .select({ id: bankAccount.id })
+    .from(bankAccount)
+    .where(and(eq(bankAccount.userId, existing.userId), eq(bankAccount.isActive, true)))
+    .limit(1)
+  if (!destination) {
+    throw new Error('El titular no tiene CBU/CVU de desembolso cargado.')
   }
   const now = new Date()
   await db.transaction(async (tx) => {
@@ -1210,7 +1263,14 @@ export async function mobileAdminDisburseLoan(adminId: string, id: string) {
       amount: Number(existing.principal),
       now,
     })
-    await tx.update(loan).set({ status: 'active', disbursedAt: now, updatedAt: now }).where(eq(loan.id, id))
+    await activateLoanAfterDisbursement(tx, {
+      loanId: id,
+      userId: existing.userId,
+      principal: Number(existing.principal),
+      term: existing.term,
+      monthlyRate: Number(existing.monthlyRate),
+      now,
+    })
   })
   return { success: true, message: 'Desembolso registrado' }
 }

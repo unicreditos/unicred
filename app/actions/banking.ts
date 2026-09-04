@@ -10,6 +10,7 @@ import {
   user,
 } from '@/lib/db/schema'
 import { assertRole, requireAdmin } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { receiptBranding } from '@/lib/brand'
 import { recordAudit } from '@/lib/audit'
 import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
@@ -667,7 +668,7 @@ export async function markDisbursementAsCredited(
   externalRef?: string,
   opts?: { requireSignedContract?: boolean },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
 
   const [d] = await db
     .select()

@@ -1,6 +1,7 @@
 'use server'
 
 import { requireAdmin } from '@/app/actions/admin'
+import { requirePermission } from '@/lib/rbac'
 import { getAuditLogForEntity, recordAudit, diffFields } from '@/lib/audit'
 import { db } from '@/lib/db'
 import {
@@ -602,7 +603,7 @@ export async function updateLoanProductAdmin(
     active?: boolean
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('config.write')
   const [existing] = await db.select().from(loanProduct).where(eq(loanProduct.id, id)).limit(1)
   if (!existing) throw new Error('Producto no encontrado')
 

@@ -61,6 +61,10 @@ export function AdminDashboard({
   opsDesk,
   payments,
   opsConfig = null,
+  myPermissions = [],
+  adminRoles = [],
+  riskRuleVersions = [],
+  dataErrors = [],
 }: {
   user: {
     id: string
@@ -85,6 +89,10 @@ export function AdminDashboard({
   opsDesk: AdminOpsDesk
   payments?: AdminPaymentsDesk
   opsConfig?: AdminOpsConfig | null
+  myPermissions?: string[]
+  adminRoles?: any[]
+  riskRuleVersions?: any[]
+  dataErrors?: string[]
 }) {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -136,6 +144,12 @@ export function AdminDashboard({
         merchants={merchants}
         onNavigate={go}
       />
+      {dataErrors.length > 0 ? (
+        <div className="mx-3 mt-3 shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-900 sm:mx-4">
+          <span className="font-semibold">No se pudo cargar: {dataErrors.join(', ')}.</span>{' '}
+          Los datos de esas secciones pueden estar en 0 o incompletos, no reflejan necesariamente la realidad — recargá la página.
+        </div>
+      ) : null}
       <AdminContent
         activeTab={tab}
         personaId={personaId}
@@ -156,6 +170,9 @@ export function AdminDashboard({
         onNavigate={go}
         payments={payments}
         opsConfig={opsConfig}
+        myPermissions={myPermissions}
+        adminRoles={adminRoles}
+        riskRuleVersions={riskRuleVersions}
       />
     </AdminAppShell>
   )
