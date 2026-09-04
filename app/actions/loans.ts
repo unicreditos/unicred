@@ -224,7 +224,7 @@ export async function updateProfile(input: {
   }
 
   const [existingProf] = await db
-    .select({ kycStatus: profile.kycStatus })
+    .select({ kycStatus: profile.kycStatus, cuil: profile.cuil, dni: profile.dni })
     .from(profile)
     .where(eq(profile.userId, userId))
     .limit(1)
@@ -239,26 +239,40 @@ export async function updateProfile(input: {
       ),
     )
     .limit(1)
-  const keepApproved = existingProf?.kycStatus === 'approved' || Boolean(diditOk)
+  // Un DNI/CUIL nuevo es una identidad distinta a la que Didit verificó:
+  // nunca conservar "approved" sobre datos de identidad que cambiaron.
+  const identityChanged =
+    Boolean(existingProf) && (existingProf!.cuil !== cuilClean || existingProf!.dni !== dniClean)
+  const keepApproved = !identityChanged && (existingProf?.kycStatus === 'approved' || Boolean(diditOk))
 
-  await db
-    .update(profile)
-    .set({
-      cuil: cuilClean,
-      dni: dniClean,
-      phone: String(input.phone ?? '').trim(),
-      birthDate: input.birthDate,
-      province: input.province.trim(),
-      department: input.department?.trim() || null,
-      city: input.city.trim(),
-      postalCode: input.postalCode?.trim() || null,
-      address: input.address.trim(),
-      monthlyIncome: String(incomeNum),
-      employmentStatus: input.employmentStatus.trim(),
-      kycStatus: keepApproved ? 'approved' : 'submitted',
-      updatedAt: new Date(),
-    })
-    .where(eq(profile.userId, userId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(profile)
+      .set({
+        cuil: cuilClean,
+        dni: dniClean,
+        phone: String(input.phone ?? '').trim(),
+        birthDate: input.birthDate,
+        province: input.province.trim(),
+        department: input.department?.trim() || null,
+        city: input.city.trim(),
+        postalCode: input.postalCode?.trim() || null,
+        address: input.address.trim(),
+        monthlyIncome: String(incomeNum),
+        employmentStatus: input.employmentStatus.trim(),
+        kycStatus: keepApproved ? 'approved' : 'submitted',
+        updatedAt: new Date(),
+      })
+      .where(eq(profile.userId, userId))
+
+    if (identityChanged) {
+      // Invalida la verificación previa: hace falta re-verificar la identidad nueva.
+      await tx
+        .update(kycVerification)
+        .set({ status: 'pending', updatedAt: new Date(), reviewedBy: 'identity_changed' })
+        .where(and(eq(kycVerification.userId, userId), eq(kycVerification.status, 'approved')))
+    }
+  })
   revalidateCustomer()
   return { ok: true }
 }

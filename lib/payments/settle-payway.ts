@@ -7,6 +7,7 @@ import { db } from '@/lib/db'
 import { installment, loan, payment as paymentTable, paymentReceipt } from '@/lib/db/schema'
 import { receiptBranding } from '@/lib/brand'
 import { mapPaywayStatus } from '@/lib/payway'
+import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
 import { and, desc, eq, inArray, or } from 'drizzle-orm'
 import type { SettleResult } from '@/lib/payments/settle-mp'
 
@@ -197,8 +198,12 @@ export async function settlePaywayPayment(input: {
     if (loanId) {
       allInsts = await tx.select().from(installment).where(eq(installment.loanId, loanId))
       const paidCount = allInsts.filter((i) => i.status === 'paid').length
-      const nextLoan = paidCount === allInsts.length && allInsts.length > 0 ? 'paid' : 'active'
-      if (loanRow && loanRow.status !== nextLoan && loanRow.status !== 'paid') {
+      const fullyPaid = paidCount === allInsts.length && allInsts.length > 0
+      const nextLoan = fullyPaid ? 'paid' : 'active'
+      // Un cobro Payway no reactiva ni cierra un crédito cancelled/rejected:
+      // solo transiciona si la máquina de estados lo permite (mismo gate que MP).
+      const allowed = fullyPaid ? canSettleOnCollection(loanRow?.status ?? '') : canActivateOnCollection(loanRow?.status ?? '')
+      if (loanRow && allowed && loanRow.status !== nextLoan && loanRow.status !== 'paid') {
         await tx.update(loan).set({ status: nextLoan, updatedAt: now }).where(eq(loan.id, loanId))
       }
     }
