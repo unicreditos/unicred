@@ -25,6 +25,8 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 
 const MAX_SANDBOX_LOAD = 5_000_000
 const MAX_TRANSFER = 10_000_000
+/** Techo de sanidad para un solo evento de acreditación entrante (webhook). No es un límite de negocio: es un freno ante un payload malformado o forjado. */
+export const MAX_INBOUND_WEBHOOK_CREDIT = 5_000_000
 
 function money(value: unknown) {
   const n = typeof value === 'string' ? parseFloat(value) : Number(value)

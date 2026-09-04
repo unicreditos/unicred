@@ -1122,17 +1122,19 @@ export async function getCheckoutPublicKey() {
 
 export async function reportBankTransfer(installmentIds: string[], formData: FormData) {
   if (!installmentIds.length) throw new Error('Elegí al menos una cuota.')
-  const sessionUser = await getSession().then((s) => s?.user?.id ?? null)
+  // Sin sesión no se informa transferencia de nadie: antes esto solo validaba
+  // el dueño de la cuota SI había sesión, dejando pasar la acción entera para
+  // un caller anónimo (subía comprobante y quedaba auditado a nombre ajeno).
+  const userId = await requireUserId()
   const [first] = await db
     .select()
     .from(installment)
     .where(eq(installment.id, installmentIds[0]))
     .limit(1)
   if (!first) throw new Error('Cuota no encontrada.')
-  if (sessionUser && sessionUser !== first.userId) {
+  if (userId !== first.userId) {
     throw new Error('Esta cuota no corresponde a tu cuenta.')
   }
-  const userId = first.userId
 
   const insts = await db
     .select()

@@ -9,7 +9,14 @@ type EnvCheck = {
   detail: string
 }
 
+/**
+ * Vercel siempre buildea con NODE_ENV=production, incluso los previews de PR
+ * — así que NODE_ENV solo no alcanza para saber si esto es tráfico real.
+ * VERCEL_ENV sí distingue 'production' de 'preview'; fuera de Vercel (Docker,
+ * otro host) no existe esa variable y NODE_ENV vuelve a ser la señal válida.
+ */
 function isProduction() {
+  if (process.env.VERCEL_ENV) return process.env.VERCEL_ENV === 'production'
   return process.env.NODE_ENV === 'production'
 }
 

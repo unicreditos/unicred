@@ -1,11 +1,13 @@
 /**
  * Elimina al 100% movimientos y saldos de prueba (sandbox_load) y recalcula balances.
- * Uso: npx tsx scripts/purge-sandbox-wallet-data.ts
+ * Uso: npx tsx scripts/purge-sandbox-wallet-data.ts --yes
  */
 import { asc, eq, inArray, sql } from 'drizzle-orm'
 import { loadProjectEnv } from './load-env'
+import { confirmDangerousScript } from './confirm-danger'
 
 loadProjectEnv()
+confirmDangerousScript('Borrar movimientos de billetera sandbox_load y recalcular saldos')
 
 async function main() {
   const { db } = await import('../lib/db')

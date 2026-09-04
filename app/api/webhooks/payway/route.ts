@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
 import { validatePaywayWebhook } from '@/lib/payway'
-import { creditWallet } from '@/lib/payments/wallet'
+import { creditWallet, MAX_INBOUND_WEBHOOK_CREDIT } from '@/lib/payments/wallet'
 import { settlePaywayPayment } from '@/lib/payments/settle-payway'
+import { recordAudit } from '@/lib/audit'
 import { revalidatePath } from 'next/cache'
 
 export const runtime = 'nodejs'
@@ -53,6 +54,16 @@ export async function POST(req: NextRequest) {
     Boolean(cvu && !localPaymentId && !paywayId)
 
   if (walletEvent && amount > 0 && (cvu || alias)) {
+    // El webhook no tiene forma de confirmar contra Payway que esta acreditación
+    // ocurrió de verdad (no hay endpoint de consulta de transacción integrado
+    // acá — ver comentario en lib/payway.ts). El secreto compartido autentica
+    // al caller, pero no al monto. Mientras eso no exista, un techo de sanidad
+    // + auditoría son la mitigación real: frenan un payload malformado/forjado
+    // y dejan rastro de cada crédito, en vez de mover plata en silencio.
+    if (amount > MAX_INBOUND_WEBHOOK_CREDIT) {
+      console.error('[payway-webhook] monto por encima del techo de sanidad, no se acredita:', { amount, cvu, alias, paywayId })
+      return NextResponse.json({ ok: false, error: 'amount_over_sanity_cap' }, { status: 400 })
+    }
     const credited = await creditWallet({
       cvu: cvu || undefined,
       alias: alias || undefined,
@@ -62,6 +73,17 @@ export async function POST(req: NextRequest) {
       reference: String(body?.reference ?? nested.reference ?? paywayId ?? ''),
       notes: 'Acreditación Payway / cuenta virtual',
     })
+    if (credited.matched && !credited.duplicate) {
+      await recordAudit({
+        actorUserId: '', // evento de sistema (webhook), sin admin actuando
+        action: 'WALLET_CREDITED_PAYWAY_WEBHOOK',
+        entityType: 'wallet',
+        entityId: credited.walletId ?? null,
+        severity: 'warning',
+        summary: `Billetera acreditada por webhook Payway: ${amount.toLocaleString('es-AR')} ARS`,
+        changes: { amount, cvu: cvu || null, alias: alias || null, paywayId: paywayId || null },
+      })
+    }
     if (credited.matched) {
       try {
         revalidatePath('/dashboard')

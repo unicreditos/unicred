@@ -410,6 +410,12 @@ export async function approveLoan(
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'approved')
+  // La solicitud puede llevar días en cola: si el KYC/Didit del titular cambió
+  // o se invalidó mientras tanto (p. ej. cambió DNI/CUIL), no se aprueba a
+  // ciegas sobre una identidad que ya no está verificada.
+  if (!(await diditApprovedForUser(existing.userId))) {
+    throw new Error('El titular no tiene Didit aprobado vigente. Pedile que reverifique su identidad antes de aprobar.')
+  }
 
   // Las condiciones finales las fija el admin; si cambian, el plan de cuotas se recalcula.
   const principal =

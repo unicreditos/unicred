@@ -1,13 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
   const { assertProductionEnv } = await import('@/lib/env')
-  // No tumbar el runtime entero: un deploy con dominio en otra cuenta Vercel
-  // puede tener env incompleto; preferimos sitio degradado a 500 global.
-  try {
-    assertProductionEnv()
-  } catch (err) {
-    console.error('[env] arranque con configuración incompleta:', (err as Error).message)
-  }
+  // assertProductionEnv() ya distingue producción real de un preview de PR
+  // (VERCEL_ENV, no NODE_ENV) y solo lanza en producción real — ahí sí
+  // queremos cortar el arranque: un sitio "degradado" con pagos/KYC rotos
+  // frente a clientes reales es peor que no levantar.
+  assertProductionEnv()
   try {
     const { applyEmitiaAfipEnv } = await import('@/lib/arca/emitia-certs')
     const bundle = applyEmitiaAfipEnv()

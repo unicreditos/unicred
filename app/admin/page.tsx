@@ -88,29 +88,41 @@ export default async function AdminPage({
   const needsRoles = activeTab === 'staff'
   const needsRiskRules = activeTab === 'scoring'
 
+  // Antes cada fetch fallido volvía silenciosamente a ceros: un admin podía
+  // ver "0 solicitudes" y pensar que la cartera está vacía cuando en
+  // realidad la consulta explotó. dataErrors junta qué falló para mostrarlo
+  // arriba en vez de tragárselo.
+  const dataErrors: string[] = []
+  function track<T>(label: string, fallback: T) {
+    return (e: Error) => {
+      console.error(`[admin] ${label} failed:`, e.message)
+      dataErrors.push(label)
+      return fallback
+    }
+  }
+
   const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig, adminRoles, riskRuleVersions] = await Promise.all([
-    getAdminStats().catch((e) => { console.error('[admin] getAdminStats failed:', e.message); return { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any }),
-    getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
-    getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
+    getAdminStats().catch(track('Estadísticas del dashboard', { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any)),
+    getAllLoans().catch(track('Créditos', [] as any[])),
+    getPendingMerchants().catch(track('Comercios', [] as any[])),
     needsBcra
-      ? getBcraVariables().catch((e) => { console.error('[admin] getBcraVariables failed:', e.message); return [] as any[] })
+      ? getBcraVariables().catch(track('Variables BCRA', [] as any[]))
       : Promise.resolve([] as any[]),
-    getAllKYCReviews(500).catch((e) => { console.error('[admin] getAllKYCReviews failed:', e.message); return [] as any[] }),
-    getAllDisbursements(100).catch((e) => { console.error('[admin] getAllDisbursements failed:', e.message); return [] as any[] }),
+    getAllKYCReviews(500).catch(track('Revisiones KYC', [] as any[])),
+    getAllDisbursements(100).catch(track('Desembolsos', [] as any[])),
     needsBankAccounts
-      ? getAllBankAccounts().catch((e) => { console.error('[admin] getAllBankAccounts failed:', e.message); return [] as any[] })
+      ? getAllBankAccounts().catch(track('Cuentas bancarias', [] as any[]))
       : Promise.resolve([] as any[]),
-    getAllUsers().catch((e) => { console.error('[admin] getAllUsers failed:', e.message); return [] as any[] }),
+    getAllUsers().catch(track('Usuarios', [] as any[])),
     needsProducts
-      ? db.select().from(loanProduct).orderBy(loanProduct.name).catch((e) => { console.error('[admin] loanProduct failed:', e.message); return [] as any[] })
+      ? db.select().from(loanProduct).orderBy(loanProduct.name).catch(track('Productos', [] as any[]))
       : Promise.resolve([] as any[]),
     needsAuditLog
-      ? getAdminAuditLog(200).catch((e) => { console.error('[admin] getAdminAuditLog failed:', e.message); return [] as any[] })
+      ? getAdminAuditLog(200).catch(track('Auditoría', [] as any[]))
       : Promise.resolve([] as any[]),
     fichaPromise,
-    getAdminOpsDesk().catch((e) => {
-      console.error('[admin] getAdminOpsDesk failed:', e.message)
-      return {
+    getAdminOpsDesk().catch(
+      track('Mesa de operaciones (cobranzas/pagos)', {
         generatedAt: new Date().toISOString(),
         market: { country: 'Argentina', currency: 'ARS' },
         kpis: {
@@ -128,31 +140,19 @@ export default async function AdminPage({
         movements: [],
         openTickets: [],
         contracts: [],
-      }
-    }),
+      }),
+    ),
     needsPayments
-      ? listAdminPayments(200).catch((e) => {
-          console.error('[admin] listAdminPayments failed:', e.message)
-          return { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }
-        })
+      ? listAdminPayments(200).catch(track('Pagos', { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }))
       : Promise.resolve({ kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }),
     needsOpsConfig
-      ? getAdminOpsConfig().catch((e) => {
-          console.error('[admin] getAdminOpsConfig failed:', e.message)
-          return null
-        })
+      ? getAdminOpsConfig().catch(track('Configuración', null))
       : Promise.resolve(null),
     needsRoles
-      ? listAdminRoles().catch((e) => {
-          console.error('[admin] listAdminRoles failed:', e.message)
-          return [] as Awaited<ReturnType<typeof listAdminRoles>>
-        })
+      ? listAdminRoles().catch(track('Roles', [] as Awaited<ReturnType<typeof listAdminRoles>>))
       : Promise.resolve([] as Awaited<ReturnType<typeof listAdminRoles>>),
     needsRiskRules
-      ? listRiskRuleVersions().catch((e) => {
-          console.error('[admin] listRiskRuleVersions failed:', e.message)
-          return [] as Awaited<ReturnType<typeof listRiskRuleVersions>>
-        })
+      ? listRiskRuleVersions().catch(track('Reglas de riesgo', [] as Awaited<ReturnType<typeof listRiskRuleVersions>>))
       : Promise.resolve([] as Awaited<ReturnType<typeof listRiskRuleVersions>>),
   ])
 
@@ -255,6 +255,7 @@ export default async function AdminPage({
       myPermissions={myPermissions}
       adminRoles={adminRoles}
       riskRuleVersions={riskRuleVersions}
+      dataErrors={dataErrors}
     />
   )
 }
