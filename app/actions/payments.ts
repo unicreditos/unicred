@@ -11,6 +11,7 @@ import {
   user as userTable,
 } from '@/lib/db/schema'
 import { assertRole, getSession, assertAdmin, getRoleForUser, requireUserId } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
 import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
@@ -1250,7 +1251,7 @@ export async function reviewBankTransfer(
   creditedAmount?: number,
   reason?: string,
 ) {
-  const adminId = await assertAdmin()
+  const adminId = await requirePermission('payments.reconcile')
   const [row] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
   if (!row) throw new Error('Pago no encontrado.')
   if (row.status !== 'pending_review') throw new Error('Este cobro ya fue resuelto.')

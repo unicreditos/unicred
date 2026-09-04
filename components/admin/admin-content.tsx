@@ -15,6 +15,7 @@ import { AdminPaymentsDesk } from '@/components/admin/admin-payments-desk'
 import { AdminApprovalsDesk } from '@/components/admin/admin-approvals-desk'
 import { AdminAnalyticsDesk } from '@/components/admin/admin-analytics-desk'
 import { AdminStaffDesk } from '@/components/admin/admin-staff-desk'
+import { RiskRulesDesk } from '@/components/admin/risk-rules-desk'
 import { AdminProductsDesk } from '@/components/admin/admin-products-desk'
 import { AdminConfigDesk } from '@/components/admin/admin-config-desk'
 import { type StatsData } from '@/components/admin/summary-cards'
@@ -210,6 +211,9 @@ export function AdminContent({
   auditLog = [],
   payments = { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] },
   opsConfig = null,
+  myPermissions = [],
+  adminRoles = [],
+  riskRuleVersions = [],
   onNavigate,
 }: {
   activeTab: AdminTabId
@@ -230,6 +234,9 @@ export function AdminContent({
   auditLog?: AuditRow[]
   payments?: AdminPaymentsDeskData
   opsConfig?: AdminOpsConfig | null
+  myPermissions?: string[]
+  adminRoles?: any[]
+  riskRuleVersions?: any[]
   onNavigate?: (tab: AdminTabId) => void
 }) {
   const router = useRouter()
@@ -736,7 +743,14 @@ export function AdminContent({
   }
 
   if (activeTab === 'staff') {
-    return <AdminStaffDesk users={users} currentAdminId={currentAdminId} />
+    return (
+      <AdminStaffDesk
+        users={users}
+        currentAdminId={currentAdminId}
+        canManageUsers={myPermissions.includes('users.manage')}
+        roles={adminRoles}
+      />
+    )
   }
 
   if (activeTab === 'cuentas-bancarias') {
@@ -953,6 +967,11 @@ export function AdminContent({
             </div>
           </section>
         </div>
+
+        {riskRuleVersions.length > 0 ? (
+          <RiskRulesDesk versions={riskRuleVersions} canWrite={myPermissions.includes('risk.rules.write')} />
+        ) : null}
+
         {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )

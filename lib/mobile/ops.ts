@@ -35,6 +35,7 @@ import {
 } from '@/lib/loan-underwriting'
 import { estimateAvailableCreditLine } from '@/lib/mobile/data'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
+import { getActiveRiskRules } from '@/lib/risk-rules'
 import { createPaymentLinkMP } from '@/lib/mercadopago'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
@@ -380,6 +381,7 @@ export async function mobileApplyLoan(
 
   const score = consulted.score
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: score.score,
     monthlyIncome,
@@ -388,6 +390,7 @@ export async function mobileApplyLoan(
     productMinAmount: Number(product.minAmount),
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   if (!offer.eligible || amount < Number(product.minAmount) || amount > offer.maxAmount) {
@@ -419,6 +422,7 @@ export async function mobileApplyLoan(
     monthlyIncome,
     worstSituation: consulted.snapshot.deudas.worstSituation,
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
+    rules,
   })
   const status =
     decision.outcome === 'rejected' ? 'rejected' : decision.outcome === 'pending_review' ? 'pending' : 'approved'

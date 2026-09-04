@@ -9,9 +9,8 @@ import { opnfcBand, opnfcLabel, OPNFC_THRESHOLD_ARS } from '@/lib/compliance/opn
 import { formatARS } from '@/lib/finance'
 import { kycStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
-import { DonutChart, LineChart } from '@/components/unicred/dashboard-kit'
-import { OpsFloor } from '@/components/unicred/workspace-shell'
-import { Building2, MapPin } from 'lucide-react'
+import { LineChart } from '@/components/unicred/dashboard-kit'
+import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -105,9 +104,6 @@ export function AdminControlTower({
   )
   const pendingDisb = disbursementList.filter((d) => d.status === 'pending' || d.status === 'processing')
   const approvedCount = loans.filter((l) => ['approved', 'active', 'paid', 'disbursed'].includes(l.status)).length
-  const cancelledCount = loans.filter((l) => l.status === 'cancelled').length
-  const rejectedCount = stats.loans.rejected ?? 0
-  const evaluatingCount = pendingLoans.length
   const totalProcessed = (stats.loans.active ?? 0) + (stats.loans.paid ?? 0)
   const approvalPct = stats.loans.total ? Math.round((totalProcessed / stats.loans.total) * 100) : 0
   const outstanding = Number(stats.loans.outstanding ?? 0)
@@ -149,44 +145,6 @@ export function AdminControlTower({
   const avgDay = daySeries.length ? Math.round((daySeries.reduce((a, p) => a + p.value, 0) / daySeries.length) * 10) / 10 : 0
   const byUser = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 
-  const provinces = useMemo(() => {
-    const map = new Map<string, { people: number; loans: number }>()
-    for (const u of users) {
-      const key = (u.province || 'Sin provincia').trim() || 'Sin provincia'
-      const cur = map.get(key) ?? { people: 0, loans: 0 }
-      cur.people += 1
-      map.set(key, cur)
-    }
-    for (const l of loans) {
-      const p = byUser.get(l.userId)?.province?.trim() || 'Sin provincia'
-      const cur = map.get(p) ?? { people: 0, loans: 0 }
-      cur.loans += 1
-      map.set(p, cur)
-    }
-    return [...map.entries()]
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.loans - a.loans || b.people - a.people)
-      .slice(0, 8)
-  }, [users, loans, byUser])
-
-  const topMerchants = useMemo(() => {
-    const ops = new Map<string, { count: number; volume: number }>()
-    for (const l of loans) {
-      if (!l.merchantId) continue
-      const cur = ops.get(l.merchantId) ?? { count: 0, volume: 0 }
-      cur.count += 1
-      cur.volume += Number(l.principal) || 0
-      ops.set(l.merchantId, cur)
-    }
-    return merchants
-      .map((m) => {
-        const o = ops.get(m.id) ?? { count: 0, volume: 0 }
-        return { ...m, operations: o.count, volume: o.volume, ticket: o.count ? o.volume / o.count : 0 }
-      })
-      .sort((a, b) => b.operations - a.operations || b.volume - a.volume)
-      .slice(0, 6)
-  }, [merchants, loans])
-
   const alerts = [
     overdue > 0
       ? { tone: 'RIESGO' as const, title: 'Cartera vencida', detail: `${formatARS(overdue)} · ${opsDesk.kpis.overdueCount} cuotas`, tab: 'cobranzas' as AdminTabId }
@@ -214,7 +172,7 @@ export function AdminControlTower({
     <OpsFloor>
       <div
         className={cn(
-          'flex shrink-0 items-center justify-between gap-3 rounded-lg border px-3 py-2',
+          'flex shrink-0 items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-xs',
           openDecisions > 0
             ? pendingLoans.length
               ? 'border-amber-200 bg-amber-50'
@@ -223,12 +181,12 @@ export function AdminControlTower({
         )}
       >
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-brand-navy-900">
+          <p className="text-sm font-semibold text-brand-navy-900">
             {openDecisions > 0
               ? `${openDecisions} ${openDecisions === 1 ? 'decisión' : 'decisiones'} en cola`
               : 'Sin cola operativa'}
           </p>
-          <p className="text-[11px] text-slate-600">
+          <p className="mt-0.5 text-[12px] text-slate-600">
             {pendingLoans.length} créditos · {pendingKyc.length} KYC · {pendingMerchants.length} comercios · {pendingDisb.length} desembolsos
             {overdue > 0 ? ` · mora ${formatARS(overdue)}` : ''}
           </p>
@@ -236,7 +194,7 @@ export function AdminControlTower({
         {openDecisions > 0 ? (
           <Button
             size="sm"
-            className="h-8 shrink-0"
+            className="h-9 shrink-0"
             onClick={() => onNavigate(pendingLoans.length ? 'creditos' : pendingKyc.length ? 'kyc' : pendingMerchants.length ? 'comercios' : 'desembolsos')}
           >
             Resolver
@@ -244,7 +202,7 @@ export function AdminControlTower({
         ) : null}
       </div>
 
-      <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-4">
         {[
           { label: 'Solicitudes', value: (stats.loans.total ?? 0).toLocaleString('es-AR'), hint: mom ?? `${thisMonth} este mes` },
           { label: 'Aprobadas', value: String(approvedCount), hint: `${approvalPct}% del total` },
@@ -255,26 +213,22 @@ export function AdminControlTower({
           { label: 'Vence 7d', value: formatARS(opsDesk.kpis.due7Amount), hint: `${opsDesk.kpis.due7Count} cuotas` },
           { label: 'Cobrado mes', value: formatARS(opsDesk.kpis.collectedMonth), hint: `${opsDesk.kpis.receiptsMonth} recibos` },
         ].map((cell) => (
-          <div
+          <MetricTile
             key={cell.label}
-            className={cn(
-              'rounded-lg border bg-card px-2.5 py-1.5',
-              cell.warn ? 'border-rose-200' : 'border-border',
-            )}
-          >
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{cell.label}</p>
-            <p className="truncate text-[15px] font-semibold tabular-nums leading-tight text-brand-navy-900">{cell.value}</p>
-            <p className="truncate text-[10px] text-muted-foreground">{cell.hint}</p>
-          </div>
+            label={cell.label}
+            value={cell.value}
+            hint={cell.hint}
+            tone={cell.warn ? 'critical' : 'default'}
+          />
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-5">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-12">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-4">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2.5">
             <div>
-              <h2 className="text-[12px] font-semibold text-brand-navy-900">Originación / día</h2>
-              <p className="text-[10px] text-muted-foreground">
+              <h2 className="text-[13px] font-semibold text-brand-navy-900">Originación / día</h2>
+              <p className="text-[11px] text-muted-foreground">
                 Prom. {avgDay}/día · {daySeries.reduce((a, p) => a + p.value, 0)} en el período
               </p>
             </div>
@@ -294,33 +248,19 @@ export function AdminControlTower({
               ))}
             </div>
           </div>
-          <div className="min-h-0 flex-1 px-2 pt-1">
-            <LineChart points={daySeries.map((d) => d.value)} labels={daySeries.map((d) => d.label)} color="#20BD5A" height={132} />
-          </div>
-          <div className="shrink-0 border-t border-border px-3 py-2">
-            <DonutChart
-              size={112}
-              stroke={14}
-              centerTitle="Total"
-              centerValue={String(stats.loans.total ?? 0)}
-              segments={[
-                { label: 'Aprob.', value: approvedCount, color: '#00C853', count: approvedCount },
-                { label: 'Eval.', value: evaluatingCount, color: '#20BD5A', count: evaluatingCount },
-                { label: 'Rech.', value: rejectedCount, color: '#DC2626', count: rejectedCount },
-                { label: 'Canc.', value: cancelledCount, color: '#94A3B8', count: cancelledCount },
-              ]}
-            />
+          <div className="min-h-0 flex-1 px-3 py-3">
+            <LineChart points={daySeries.map((d) => d.value)} labels={daySeries.map((d) => d.label)} color="#20BD5A" height={220} />
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-3">
-          <header className="shrink-0 border-b border-border px-3 py-1.5">
-            <h2 className="text-[12px] font-semibold">Cola y red</h2>
-            <p className="text-[10px] text-muted-foreground">Lo que bloquea originación hoy</p>
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
+          <header className="shrink-0 border-b border-border px-4 py-2.5">
+            <h2 className="text-[13px] font-semibold text-brand-navy-900">Cola y red</h2>
+            <p className="text-[11px] text-muted-foreground">Lo que bloquea originación hoy</p>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {alerts.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Sin alertas abiertas.</p>
+              <p className="px-4 py-6 text-center text-[12px] text-muted-foreground">Sin alertas abiertas.</p>
             ) : (
               alerts.map((a) =>
                 a ? (
@@ -328,14 +268,14 @@ export function AdminControlTower({
                     key={a.title}
                     type="button"
                     onClick={() => onNavigate(a.tab)}
-                    className="flex w-full items-start justify-between gap-2 border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
+                    className="flex w-full items-start justify-between gap-2 border-b border-slate-100 px-4 py-2.5 text-left hover:bg-muted/60"
                   >
                     <div className="min-w-0">
                       <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{a.tone}</p>
                       <p className="text-[12px] font-medium">{a.title}</p>
                       <p className="text-[11px] text-muted-foreground">{a.detail}</p>
                     </div>
-                    <span className="shrink-0 text-[11px] text-brand-primary">Abrir</span>
+                    <span className="shrink-0 text-[11px] font-medium text-brand-primary">Abrir</span>
                   </button>
                 ) : null,
               )
@@ -345,13 +285,13 @@ export function AdminControlTower({
                 key={k.id}
                 type="button"
                 onClick={() => onNavigate('kyc')}
-                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
+                className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-2.5 text-left hover:bg-muted/60"
               >
                 <div className="min-w-0">
                   <p className="truncate text-[12px] font-medium">{k.user?.fullName || k.user?.email || 'Cliente'}</p>
                   <p className="text-[10px] text-muted-foreground">KYC · {kycStatusLabel(k.status)}</p>
                 </div>
-                <span className="text-[11px] text-amber-700">Revisar</span>
+                <span className="shrink-0 text-[11px] font-medium text-amber-700">Revisar</span>
               </button>
             ))}
             {pendingMerchants.slice(0, 3).map((m) => (
@@ -359,42 +299,25 @@ export function AdminControlTower({
                 key={m.id}
                 type="button"
                 onClick={() => onNavigate('comercios')}
-                className="flex w-full items-center justify-between border-b border-slate-50 px-3 py-2 text-left hover:bg-muted/60"
+                className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-2.5 text-left hover:bg-muted/60"
               >
                 <div className="min-w-0">
                   <p className="truncate text-[12px] font-medium">{m.businessName}</p>
                   <p className="font-mono text-[10px] text-muted-foreground">{m.cuit}</p>
                 </div>
-                <span className="text-[11px] text-amber-700">Validar</span>
+                <span className="shrink-0 text-[11px] font-medium text-amber-700">Validar</span>
               </button>
             ))}
-            <div className="px-3 py-2">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <MapPin className="h-3 w-3" /> Provincias
-              </p>
-              {provinces.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground">Sin domicilio fiscal.</p>
-              ) : (
-                <ul className="space-y-0.5">
-                  {provinces.slice(0, 5).map((p) => (
-                    <li key={p.name} className="flex justify-between gap-2 text-[11px]">
-                      <span className="truncate">{p.name}</span>
-                      <span className="shrink-0 tabular-nums text-muted-foreground">{p.loans} cr.</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-4">
-          <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-5">
+          <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
             <div>
-              <h2 className="text-[12px] font-semibold">Blotter · solicitudes</h2>
-              <p className="text-[10px] text-muted-foreground">Últimas altas · click para el expediente</p>
+              <h2 className="text-[13px] font-semibold text-brand-navy-900">Blotter · solicitudes</h2>
+              <p className="text-[11px] text-muted-foreground">Últimas altas · click para el expediente</p>
             </div>
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => onNavigate('solicitudes')}>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => onNavigate('solicitudes')}>
               Todas
             </Button>
           </header>
@@ -402,17 +325,16 @@ export function AdminControlTower({
             <table className="w-full text-left text-[12px]">
               <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-1.5">Cliente</th>
-                  <th className="px-3 py-1.5 text-right">Monto</th>
-                  <th className="px-3 py-1.5">Estado</th>
-                  <th className="px-3 py-1.5 text-right">Score</th>
-                  <th className="px-3 py-1.5">Fecha</th>
+                  <th className="px-4 py-2">Cliente</th>
+                  <th className="px-4 py-2 text-right">Monto</th>
+                  <th className="px-4 py-2">Estado</th>
+                  <th className="px-4 py-2">Fecha</th>
                 </tr>
               </thead>
               <tbody>
                 {loans.slice(0, 12).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                       No hay solicitudes.
                     </td>
                   </tr>
@@ -422,14 +344,13 @@ export function AdminControlTower({
                     return (
                       <tr
                         key={l.id}
-                        className="cursor-pointer border-t border-slate-50 hover:bg-muted/60"
+                        className="cursor-pointer border-t border-slate-100 hover:bg-muted/60"
                         onClick={() => router.push(adminLoanHref(l.id, l.status))}
                       >
-                        <td className="max-w-[140px] truncate px-3 py-1.5 font-medium">{u?.name || u?.email || '—'}</td>
-                        <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{formatARS(l.principal)}</td>
-                        <td className="px-3 py-1.5">{loanBadge(l.status)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{l.scoreAtApproval ?? '—'}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{formatDate(l.createdAt)}</td>
+                        <td className="truncate px-4 py-2 font-medium">{u?.name || u?.email || '—'}</td>
+                        <td className="px-4 py-2 text-right font-semibold tabular-nums">{formatARS(l.principal)}</td>
+                        <td className="px-4 py-2">{loanBadge(l.status)}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{formatDate(l.createdAt)}</td>
                       </tr>
                     )
                   })
@@ -437,21 +358,6 @@ export function AdminControlTower({
               </tbody>
             </table>
           </div>
-          {topMerchants.length > 0 ? (
-            <div className="shrink-0 border-t border-border px-3 py-1.5">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <Building2 className="h-3 w-3" /> Top comercios
-              </p>
-              <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                {topMerchants.slice(0, 4).map((m) => (
-                  <li key={m.id} className="flex justify-between gap-2 text-[11px]">
-                    <span className="truncate">{m.businessName}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">{m.operations} ops</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </section>
       </div>
     </OpsFloor>

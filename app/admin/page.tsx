@@ -26,6 +26,8 @@ import {
 } from '@/lib/db/schema'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
+import { getAdminPermissions, listAdminRoles } from '@/lib/rbac'
+import { listRiskRuleVersions } from '@/lib/risk-rules'
 import { eq, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 
@@ -61,6 +63,8 @@ export default async function AdminPage({
     redirect(getDashboardUrlByRole(role))
   }
 
+  const myPermissions = Array.from(await getAdminPermissions(userId))
+
   const fichaPromise = personaId
     ? getAdminClientFicha(personaId)
         .then((ficha) => ({ ficha, error: null as string | null }))
@@ -81,8 +85,10 @@ export default async function AdminPage({
   const needsPayments = activeTab === 'pagos'
   const needsOpsConfig = activeTab === 'parametros'
   const needsDisbEnrichment = activeTab === 'desembolsos' || activeTab === 'aprobaciones'
+  const needsRoles = activeTab === 'staff'
+  const needsRiskRules = activeTab === 'scoring'
 
-  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig] = await Promise.all([
+  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig, adminRoles, riskRuleVersions] = await Promise.all([
     getAdminStats().catch((e) => { console.error('[admin] getAdminStats failed:', e.message); return { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any }),
     getAllLoans().catch((e) => { console.error('[admin] getAllLoans failed:', e.message); return [] as any[] }),
     getPendingMerchants().catch((e) => { console.error('[admin] getPendingMerchants failed:', e.message); return [] as any[] }),
@@ -136,6 +142,18 @@ export default async function AdminPage({
           return null
         })
       : Promise.resolve(null),
+    needsRoles
+      ? listAdminRoles().catch((e) => {
+          console.error('[admin] listAdminRoles failed:', e.message)
+          return [] as Awaited<ReturnType<typeof listAdminRoles>>
+        })
+      : Promise.resolve([] as Awaited<ReturnType<typeof listAdminRoles>>),
+    needsRiskRules
+      ? listRiskRuleVersions().catch((e) => {
+          console.error('[admin] listRiskRuleVersions failed:', e.message)
+          return [] as Awaited<ReturnType<typeof listRiskRuleVersions>>
+        })
+      : Promise.resolve([] as Awaited<ReturnType<typeof listRiskRuleVersions>>),
   ])
 
   const userIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.userId))) : []
@@ -234,6 +252,9 @@ export default async function AdminPage({
       opsDesk={opsDesk}
       payments={payments}
       opsConfig={opsConfig}
+      myPermissions={myPermissions}
+      adminRoles={adminRoles}
+      riskRuleVersions={riskRuleVersions}
     />
   )
 }

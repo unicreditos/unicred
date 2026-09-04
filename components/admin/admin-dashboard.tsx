@@ -61,6 +61,9 @@ export function AdminDashboard({
   opsDesk,
   payments,
   opsConfig = null,
+  myPermissions = [],
+  adminRoles = [],
+  riskRuleVersions = [],
 }: {
   user: {
     id: string
@@ -85,6 +88,9 @@ export function AdminDashboard({
   opsDesk: AdminOpsDesk
   payments?: AdminPaymentsDesk
   opsConfig?: AdminOpsConfig | null
+  myPermissions?: string[]
+  adminRoles?: any[]
+  riskRuleVersions?: any[]
 }) {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -156,6 +162,9 @@ export function AdminDashboard({
         onNavigate={go}
         payments={payments}
         opsConfig={opsConfig}
+        myPermissions={myPermissions}
+        adminRoles={adminRoles}
+        riskRuleVersions={riskRuleVersions}
       />
     </AdminAppShell>
   )

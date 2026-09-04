@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
 import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
+import { getActiveRiskRules } from '@/lib/risk-rules'
 import { loanPricingFields } from '@/lib/loan-rates'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
 import { diditApprovedForUser } from '@/lib/didit'
@@ -161,6 +162,7 @@ export async function evaluateLoanOffer(input: { productId: string; term: number
   }
 
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: consulted.score.score,
     monthlyIncome,
@@ -169,6 +171,7 @@ export async function evaluateLoanOffer(input: { productId: string; term: number
     productMinAmount: Number(product.minAmount),
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   return {
@@ -348,6 +351,7 @@ export async function requestLoan(input: {
   const deuda = consulted.snapshot.deudas
 
   const history = await loadAppRepaymentHistory(userId)
+  const rules = await getActiveRiskRules()
   const offer = computeCreditOffer({
     score: score.score,
     monthlyIncome,
@@ -356,6 +360,7 @@ export async function requestLoan(input: {
     productMinAmount: minAmount,
     productMaxAmount: Number(product.maxAmount),
     history,
+    rules,
   })
 
   if (!offer.eligible || offer.maxAmount < minAmount) {
@@ -412,6 +417,7 @@ export async function requestLoan(input: {
     monthlyIncome,
     worstSituation: deuda.worstSituation,
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
+    rules,
   })
 
   let status: 'pending' | 'approved' | 'rejected'
