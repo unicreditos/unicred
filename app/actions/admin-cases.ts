@@ -1,6 +1,5 @@
 'use server'
 
-import { requireAdmin } from '@/app/actions/admin'
 import { requirePermission } from '@/lib/rbac'
 import { getAuditLogForEntity, recordAudit, diffFields } from '@/lib/audit'
 import { db } from '@/lib/db'
@@ -122,7 +121,7 @@ export type AdminLoanCase = {
 }
 
 export async function getAdminLoanCase(loanId: string): Promise<AdminLoanCase | null> {
-  await requireAdmin()
+  await requirePermission('credits.read')
   const [row] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
   if (!row) return null
 
@@ -361,7 +360,7 @@ export type AdminMerchantCase = {
 }
 
 export async function getAdminMerchantCase(merchantId: string): Promise<AdminMerchantCase | null> {
-  await requireAdmin()
+  await requirePermission('merchants.read')
   const [row] = await db.select().from(merchant).where(eq(merchant.id, merchantId)).limit(1)
   if (!row) return null
 
@@ -454,7 +453,7 @@ export type AdminPaymentsDesk = {
 }
 
 export async function listAdminPayments(limit = 200): Promise<AdminPaymentsDesk> {
-  await requireAdmin()
+  await requirePermission('payments.read')
   const [totals] = await db
     .select({
       total: sql<number>`count(*)::int`,
@@ -525,7 +524,7 @@ export type AdminPaymentCase = {
 }
 
 export async function getAdminPaymentCase(paymentId: string): Promise<AdminPaymentCase | null> {
-  await requireAdmin()
+  await requirePermission('payments.read')
   const [row] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
   if (!row) return null
 

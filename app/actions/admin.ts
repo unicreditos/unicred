@@ -107,7 +107,7 @@ export async function getAdminStats() {
 }
 
 export async function getAllLoans() {
-  await requireAdmin()
+  await requirePermission('credits.read')
   const rows = await db.select().from(loan).orderBy(desc(loan.createdAt)).limit(100)
   const ids = rows.map((r) => r.id)
   const contracts = ids.length
@@ -142,7 +142,7 @@ export async function getAllLoans() {
 }
 
 export async function getPendingMerchants() {
-  await requireAdmin()
+  await requirePermission('merchants.read')
   return db.select().from(merchant).orderBy(desc(merchant.createdAt))
 }
 
@@ -251,7 +251,7 @@ export async function updateMerchantAdmin(
     commissionRate?: string | number
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
 
@@ -313,7 +313,7 @@ export async function updateMerchantAdmin(
 }
 
 export async function deleteMerchantAdmin(id: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
 
@@ -348,7 +348,7 @@ export async function deleteMerchantAdmin(id: string) {
 }
 
 export async function getMerchantDocumentsForAdmin(merchantId: string) {
-  await requireAdmin()
+  await requirePermission('merchants.read')
   return db
     .select({
       id: merchantDocument.id,
@@ -364,7 +364,7 @@ export async function getMerchantDocumentsForAdmin(merchantId: string) {
 }
 
 export async function getBcraVariables() {
-  await requireAdmin()
+  await requirePermission('risk.read')
   try {
     let stored = await db.select().from(bcraVariable).orderBy(desc(bcraVariable.effectiveDate)).limit(40)
     if (!stored.length) {
@@ -654,7 +654,7 @@ export async function updateLoanManual(
 
 export async function deleteLoanAdmin(id: string) {
   try {
-    const adminUserId = await requireAdmin()
+    const adminUserId = await requirePermission('credits.edit')
     const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
     if (!existing) throw new Error('Préstamo no encontrado')
     if (!canPurgeLoan(existing.status)) {
@@ -686,7 +686,7 @@ export async function markLoanAsActive(id: string) {
 
 export async function markLoanAsPaid(id: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertTransition(existing.status, 'paid')
@@ -722,7 +722,7 @@ export async function markLoanAsPaid(id: string) {
 
 export async function ensureLoanExpediente(loanId: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   if (existing.status !== 'approved' && existing.status !== 'active') {
@@ -794,7 +794,7 @@ export async function updateBcraVariable(
     overrideNote?: string
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('risk.rules.write')
   if (!idVariable) throw new Error('ID variable BCRA requerido')
 
   const now = new Date()
@@ -838,7 +838,7 @@ export async function updateBcraVariable(
 }
 
 export async function resetBcraVariableToLive(idVariable: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('risk.rules.write')
   const [existing] = await db
     .select()
     .from(bcraVariable)
@@ -861,7 +861,7 @@ export async function resetBcraVariableToLive(idVariable: string) {
 }
 
 export async function getAllBankAccounts() {
-  await requireAdmin()
+  await requirePermission('finance.read')
   const rows = await db
     .select({
       id: bankAccount.id,
@@ -902,7 +902,7 @@ export async function getAllBankAccounts() {
 }
 
 export async function verifyBankAccountArgenapi(bankAccountId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db
     .select()
     .from(bankAccount)
@@ -942,7 +942,7 @@ export async function setBankAccountVerificationManual(
   isVerified: boolean,
   note?: string,
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db
     .select()
     .from(bankAccount)
@@ -989,7 +989,7 @@ export async function updateBankAccountAdmin(
     isActive?: boolean
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db.select().from(bankAccount).where(eq(bankAccount.id, bankAccountId)).limit(1)
   if (!acc) throw new Error('Cuenta bancaria no encontrada')
 
@@ -1040,7 +1040,7 @@ export async function updateBankAccountAdmin(
 }
 
 export async function deactivateBankAccountAdmin(bankAccountId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db.select().from(bankAccount).where(eq(bankAccount.id, bankAccountId)).limit(1)
   if (!acc) throw new Error('Cuenta bancaria no encontrada')
 
@@ -1083,7 +1083,7 @@ export type AdminUserRow = {
 }
 
 export async function getAllUsers(): Promise<AdminUserRow[]> {
-  await requireAdmin()
+  await requirePermission('clients.read')
   const rows = await db
     .select({
       id: userTable.id,
@@ -1123,9 +1123,14 @@ export async function updateUserAdmin(
     province?: string
   },
 ) {
-  // Cambiar el rol (customer/merchant/admin) es más sensible que editar datos de contacto:
-  // exige users.manage además de ser admin. El resto de los campos alcanza con requireAdmin().
-  const adminUserId = input.role ? await requirePermission('users.manage') : await requireAdmin()
+  // Cambiar el rol exige users.manage; cambiar kycStatus acá es el mismo campo
+  // que setKYCStatus, así que exige el mismo permiso (kyc.review) o se puede
+  // aprobar identidad esquivando ese gate. El resto de los campos alcanza con requireAdmin().
+  const adminUserId = input.role
+    ? await requirePermission('users.manage')
+    : input.kycStatus !== undefined
+      ? await requirePermission('kyc.review')
+      : await requireAdmin()
   if (userId === adminUserId && input.role && input.role !== 'admin') {
     throw new Error('No podés quitarte el rol admin a vos mismo')
   }
@@ -1261,12 +1266,12 @@ export async function deleteUserAdmin(userId: string) {
 }
 
 export async function getAdminAuditLog(limit = 100) {
-  await requireAdmin()
+  await requirePermission('audit.read')
   return getAuditLog(limit)
 }
 
 export async function getDashboardPaymentsSummary(limit = 20) {
-  await requireAdmin()
+  await requirePermission('payments.read')
   const { payment } = await import('@/lib/db/schema')
   const total = await db
     .select({
