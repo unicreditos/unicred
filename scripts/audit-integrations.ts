@@ -2,12 +2,11 @@
  * Auditoría en vivo de integraciones (sin imprimir secretos).
  * Uso: npx tsx scripts/audit-integrations.ts
  */
-import { config } from 'dotenv'
 import { createHash } from 'node:crypto'
 import { Pool } from 'pg'
+import { loadProjectEnv } from './load-env'
 
-config({ path: '.env.production.local' })
-config({ path: '.env.local' })
+loadProjectEnv()
 
 type Row = {
   area: string

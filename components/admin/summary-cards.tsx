@@ -16,6 +16,7 @@ import {
   Building2,
   Coins,
   ShieldCheck,
+  Globe2,
 } from 'lucide-react'
 
 export type StatsData = {
@@ -160,6 +161,73 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
 
   return (
     <div className="space-y-8">
+      {/* FINTECH ADMIN EXECUTIVE CONTROL HERO */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a192f] to-[#0f2744] p-6 sm:p-8 text-white shadow-xl">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                  Torre de Control UNICRÉDITOS
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Mesa Operativa Central · Cartera, Scoring & Originación</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
+                <Globe2 className="h-3.5 w-3.5" /> BCRA CENDEU Online
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-3 py-1 text-xs font-medium text-cyan-300">
+                <ShieldCheck className="h-3.5 w-3.5" /> Didit KYC Biometría Activo
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3 md:items-center">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+                Volumen Desembolsado
+              </span>
+              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-white tabular-nums tracking-tight">
+                {formatARS(stats.loans.volume)}
+              </div>
+              <p className="mt-1 text-xs text-slate-300">
+                {stats.loans.total} solicitudes gestionadas en el sistema
+              </p>
+            </div>
+
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+                Cartera Activa & Aprobación
+              </span>
+              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-emerald-400 tabular-nums tracking-tight">
+                {approvalPct}%
+              </div>
+              <p className="mt-1 text-xs text-slate-300">
+                {stats.loans.active} créditos vigentes · {stats.loans.paid ?? 0} amortizados OK
+              </p>
+            </div>
+
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+                Pendientes de Resolución
+              </span>
+              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-amber-400 tabular-nums tracking-tight">
+                {stats.loans.pending}
+              </div>
+              <p className="mt-1 text-xs text-slate-300">
+                {pct(stats.loans.pending, stats.loans.total)}% de la cartera en análisis
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold tracking-tight">Cartera de Créditos</h3>

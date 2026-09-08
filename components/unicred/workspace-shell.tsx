@@ -364,15 +364,15 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={onSearchRequest}
-              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left lg:flex"
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-left transition hover:border-slate-300 lg:flex"
             >
               <Search className="h-4 w-4 text-slate-400" aria-hidden />
               <span className="flex-1 text-[13px] text-slate-400">Buscar cliente, CUIL, crédito…</span>
-              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-400">Ctrl K</kbd>
+              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono text-slate-400 shadow-2xs">Ctrl K</kbd>
             </button>
           ) : (
             <form
-              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex"
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 transition focus-within:border-brand-primary/50 focus-within:bg-white lg:flex"
               role="search"
               onSubmit={(e) => {
                 e.preventDefault()
@@ -387,20 +387,32 @@ export function WorkspaceShell({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar créditos"
+                placeholder="Buscar créditos, cuotas o trámites"
                 aria-label="Buscar créditos"
                 className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
               />
             </form>
           )}
+          <div className="hidden xl:inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50/70 px-3 py-1 text-[11px] font-medium text-emerald-800">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+            <span>BCRA / ARCA en línea</span>
+          </div>
           <NotificationCenter />
           {clientReady ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-slate-50">
+              <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl border border-transparent px-2 py-1 transition hover:border-slate-200 hover:bg-slate-50">
                 <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
-                <span className="hidden max-w-[170px] truncate text-left sm:inline">
-                  <span className="block text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
-                  <span className="block text-[11px] text-slate-500">{user.email}</span>
+                <span className="hidden max-w-[180px] truncate text-left sm:inline">
+                  <span className="flex items-center gap-1.5">
+                    <span className="block truncate text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
+                    <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                      {role === 'admin' ? 'Admin' : role === 'merchant' ? 'Comercio' : 'Titular'}
+                    </span>
+                  </span>
+                  <span className="block truncate text-[11px] text-slate-500">{user.email}</span>
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72 p-2">

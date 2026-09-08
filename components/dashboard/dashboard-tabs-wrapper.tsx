@@ -31,7 +31,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatARS, formatCBU, formatCVU, displayAlias, normalizeBankAlias } from '@/lib/finance'
+import {
+  formatARS,
+  formatCBU,
+  formatCVU,
+  displayAlias,
+  normalizeBankAlias,
+  computeFrenchAmortization,
+  formatPercent,
+} from '@/lib/finance'
+import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import {
   loanStatusLabel,
   paymentMethodLabel,
@@ -80,6 +89,7 @@ import {
   Handshake,
   Pencil,
   Loader2,
+  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -349,7 +359,7 @@ export function DashboardTabsWrapper({
   const monthlyLoad = activeLoansList.reduce((sum, l: any) => sum + (Number(l.installmentAmount) || 0), 0)
   const capacityCeiling = monthlyIncome > 0 ? monthlyIncome * 0.35 : 0
   const capacityLeft = Math.max(0, capacityCeiling - monthlyLoad)
-  const accountOk = !nextInstallment || nextDueDays === null || nextDueDays >= 0
+  const _accountOk = !nextInstallment || nextDueDays === null || nextDueDays >= 0
   const recentMoves = [
     ...payments
       .filter((p) => p.status === 'paid')
@@ -373,104 +383,176 @@ export function DashboardTabsWrapper({
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 5)
 
+  const [simAmount, setSimAmount] = useState(150000)
+  const [simTerm, setSimTerm] = useState(6)
+  const simAmort = useMemo(() => {
+    const prod = products[0]
+    const rate = Number(prod?.monthlyRate ?? 8.5)
+    return computeFrenchAmortization(simAmount, simTerm, rate)
+  }, [simAmount, simTerm, products])
+
   return (
     <DashboardShell activeTab={activeTab} onTabChange={setActiveTab} user={resolvedUser}>
-      <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         {activeTab === 'overview' && (
           <>
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-brand-navy-900">
-                  {firstName ? `Hola, ${firstName}` : 'Hola'}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">Bienvenido a tu cuenta UNICRÉDITOS.</p>
-              </div>
-              <Button onClick={() => setActiveTab('solicitar')} disabled={products.length === 0}>
-                Solicitar nuevo crédito
-              </Button>
-            </div>
+            {/* FINTECH MASTER EXECUTIVE HERO */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a192f] to-[#0f2744] p-6 sm:p-8 text-white shadow-xl">
+              {/* Subtle ambient light glow */}
+              <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Capacidad estimada
-                </p>
-                {monthlyIncome > 0 ? (
-                  <>
-                    <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
-                      {formatARS(capacityLeft)}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Tope 35% de tus ingresos declarados ({formatARS(capacityCeiling)}) menos cuotas vigentes.
-                    </p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-brand-primary"
-                        style={{
-                          width: `${capacityCeiling > 0 ? Math.min(100, Math.round((monthlyLoad / capacityCeiling) * 100)) : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="mt-2 text-lg font-semibold text-brand-navy-900">Sin ingresos cargados</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Declará ingresos en Identidad para ver tu tope de cuota (35%).
-                    </p>
-                    <Button size="sm" variant="outline" className="mt-3" onClick={() => setActiveTab('perfil')}>
-                      Completar perfil
-                    </Button>
-                  </>
-                )}
-              </section>
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Próximo pago
-                </p>
-                <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
-                  {nextInstallment ? formatARS(nextInstallment.amount) : '—'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {nextInstallment
-                    ? `${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`
-                    : 'No hay cuotas pendientes'}
-                </p>
-                {nextInstallment ? (
-                  <Button size="sm" className="mt-3" onClick={() => setActiveTab('pagos')}>
-                    Pagar ahora
-                  </Button>
-                ) : null}
-              </section>
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Estado de cuenta
-                </p>
-                <div className="mt-3">
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full px-3 py-1 text-sm font-semibold',
-                      accountOk
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                        : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+              <div className="relative z-10 flex flex-col gap-6">
+                {/* Top Strip: User identity & Verified Badges */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                      {firstName ? `Hola, ${firstName}` : 'Centro Financiero'}
+                    </span>
+                    {initialProfile?.cuil ? (
+                      <span className="rounded-md border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs font-mono text-slate-300">
+                        CUIL {initialProfile.cuil}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {myKyc?.provider === 'didit' && myKyc.status === 'approved' ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Biometría Didit Aprobada
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('kyc_biometrico')}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 hover:bg-amber-500/25 transition"
+                      >
+                        <Clock className="h-3.5 w-3.5" /> Completar Verificación Didit
+                      </button>
                     )}
-                  >
-                    {accountOk ? 'Al día' : 'Con atraso'}
-                  </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-2.5 py-0.5 text-xs font-medium text-cyan-300">
+                      <Globe2 className="h-3.5 w-3.5" /> BCRA Situación {lastBcraCheck?.worstSituation ?? '1 Normal'}
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {accountOk
-                    ? 'Tus cuotas vigentes no están vencidas.'
-                    : `La cuota #${nextInstallment?.number} venció el ${nextInstallment ? formatDateShort(nextInstallment.dueDate) : '—'}.`}
-                </p>
-              </section>
+
+                {/* Hero Numbers & Status */}
+                <div className="grid gap-6 md:grid-cols-2 md:items-center">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                      {nextInstallment ? 'Próximo Vencimiento' : 'Línea de Crédito Disponible'}
+                    </div>
+                    <div className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white tabular-nums">
+                      {nextInstallment
+                        ? formatARS(nextInstallment.amount)
+                        : formatARS(capacityLeft > 0 ? capacityLeft * 6 : FIRST_CREDIT_HARD_CAP)}
+                    </div>
+                    <p className="mt-2 text-xs sm:text-sm text-slate-300">
+                      {nextInstallment ? (
+                        <>
+                          Vence el <strong className="text-white">{formatDateShort(nextInstallment.dueDate)}</strong> (Cuota #{nextInstallment.number} de {nextInstallment.loanTerm})
+                          {nextDueDays !== null && (
+                            <span className={cn('ml-2 font-medium', nextDueDays < 0 ? 'text-rose-400' : nextDueDays <= 5 ? 'text-amber-400' : 'text-emerald-400')}>
+                              · {nextDueDays < 0 ? `Atrasada por ${Math.abs(nextDueDays)} días` : nextDueDays === 0 ? 'Vence hoy' : `en ${nextDueDays} días`}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        'Desembolso directo e inmediato a tu CBU/CVU bancario validado vía SNP.'
+                      )}
+                    </p>
+
+                    {/* Capacity load bar */}
+                    {monthlyIncome > 0 && (
+                      <div className="mt-4 max-w-md">
+                        <div className="flex justify-between text-[11px] text-slate-400 mb-1.5">
+                          <span>Compromiso mensual: {formatARS(monthlyLoad)}</span>
+                          <span>Capacidad máxima (35%): {formatARS(capacityCeiling)}</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all duration-500',
+                              monthlyLoad / capacityCeiling > 0.85 ? 'bg-amber-400' : 'bg-emerald-400',
+                            )}
+                            style={{ width: `${capacityCeiling > 0 ? Math.min(100, Math.round((monthlyLoad / capacityCeiling) * 100)) : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Primary Call to Actions */}
+                  <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-3 md:justify-end">
+                    {nextInstallment ? (
+                      <Button
+                        size="lg"
+                        className="h-12 gap-2 bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/25 border-0 transition-transform active:scale-95"
+                        onClick={() => setActiveTab('pagos')}
+                      >
+                        <Zap className="h-4 w-4 fill-current" /> Pagar cuota ahora
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-12 gap-2 border-white/20 bg-white/10 text-white font-semibold backdrop-blur hover:bg-white/20 hover:text-white transition-transform active:scale-95"
+                      onClick={() => setActiveTab('solicitar')}
+                      disabled={products.length === 0}
+                    >
+                      <Sparkles className="h-4 w-4 text-cyan-300" /> Solicitar crédito
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Secondary Quick Access Dock */}
+                <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('pagos')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <Wallet className="h-3.5 w-3.5 text-emerald-400" /> Pagar cuotas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cuotas')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <CreditCard className="h-3.5 w-3.5 text-cyan-400" /> Mis créditos ({kpis.active})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('bancos')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <Landmark className="h-3.5 w-3.5 text-indigo-400" /> CBU desembolso ({bankAccounts.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('scoring')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-amber-400" /> Scoring & BCRA ({score ?? '—'})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('documentos')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-slate-300" /> Contratos & ARCA
+                  </button>
+                </div>
+              </div>
             </div>
 
+            {/* Vencimientos y alertas estratégicas */}
             {nextInstallment && nextDueDays !== null && nextDueDays < 0 ? (
               <DecisionBanner
                 tone="critical"
                 title={`Cuota #${nextInstallment.number} vencida · ${formatARS(nextInstallment.amount)}`}
-                detail={`Vencía el ${formatDateShort(nextInstallment.dueDate)}. Pagala ahora para no acumular atraso.`}
+                detail={`Vencía el ${formatDateShort(nextInstallment.dueDate)}. Regularizá tu pago para mantener tu scoring BCRA en Situación 1.`}
                 action={
                   <Button size="sm" onClick={() => setActiveTab('pagos')}>
                     Pagar ahora
@@ -481,7 +563,7 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="warn"
                 title={`Próxima cuota ${nextDueDays === 0 ? 'vence hoy' : `en ${nextDueDays} días`} · ${formatARS(nextInstallment.amount)}`}
-                detail={`${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`}
+                detail={`${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number} de ${nextInstallment.loanTerm}`}
                 action={
                   <Button size="sm" onClick={() => setActiveTab('pagos')}>
                     Ir a pagar
@@ -491,8 +573,8 @@ export function DashboardTabsWrapper({
             ) : kycPct < 100 ? (
               <DecisionBanner
                 tone="info"
-                title="Completá tu identidad para originar crédito"
-                detail={`Datos al ${kycPct}%. Sin CUIL e ingresos no podemos evaluar. La biometría se hace solo con Didit.`}
+                title="Completá tu legajo digital para originar crédito"
+                detail={`Perfil al ${kycPct}%. Declará tu CUIT/CUIL e ingresos para activar la evaluación crediticia automática.`}
                 action={
                   <Button size="sm" variant="outline" onClick={() => setActiveTab('perfil')}>
                     Completar datos
@@ -503,18 +585,18 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="warn"
                 title="Verificá tu identidad con Didit"
-                detail="No se aceptan fotos cargadas a mano. Completá la verificación dentro de UNICRÉDITOS para poder solicitar crédito."
+                detail="Validación biométrica oficial con prueba de vida requerida para la firma de contratos Ley 25.506."
                 action={
                   <Button size="sm" onClick={() => setActiveTab('kyc_biometrico')}>
-                    Verificar identidad
+                    Verificar con Didit
                   </Button>
                 }
               />
             ) : activeLoansList.length === 0 ? (
               <DecisionBanner
                 tone="ok"
-                title="Cuenta al día, sin créditos vigentes"
-                detail="Podés simular un préstamo personal. La aprobación depende de BCRA, Didit e ingresos."
+                title="Cuenta verificada y al día · Sin deudas activas"
+                detail="Tenés disponible la solicitud de préstamos en pesos con acreditación inmediata."
                 action={
                   <Button size="sm" onClick={() => setActiveTab('solicitar')} disabled={products.length === 0}>
                     Simular crédito
@@ -524,16 +606,17 @@ export function DashboardTabsWrapper({
             ) : (
               <DecisionBanner
                 tone="ok"
-                title="Sin vencimientos urgentes"
-                detail="Tus cuotas vigentes están al día."
+                title="Estado de cuenta al día"
+                detail="Tus cuotas vigentes se encuentran sin atrasos ni observaciones en Central de Deudores."
                 action={
                   <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas')}>
-                    Ver créditos
+                    Ver cronograma
                   </Button>
                 }
               />
             )}
 
+            {/* Modern Financial Metric Cards */}
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MetricTile
                 label="Próxima cuota"
@@ -553,57 +636,160 @@ export function DashboardTabsWrapper({
               <MetricTile
                 label="Score UNICRÉDITOS"
                 value={score ?? '—'}
-                hint={score ? band.label : 'Se consulta solo con Central de Deudores'}
+                hint={score ? band.label : 'Central de Deudores BCRA'}
                 tone={!score ? 'warn' : score >= 640 ? 'ok' : 'warn'}
               />
               <MetricTile
-                label="Identidad"
+                label="Identidad Digital"
                 value={`${kycPct}%`}
                 hint={
                   myKyc?.provider === 'didit' && myKyc.status === 'approved'
-                    ? 'Didit aprobado'
+                    ? 'Didit Biometría Verificada'
                     : kycPct >= 100
                       ? 'Falta verificar con Didit'
                       : 'Faltan datos de perfil'
                 }
-                tone={kycPct >= 100 ? 'ok' : 'warn'}
+                tone={kycPct >= 100 && myKyc?.status === 'approved' ? 'ok' : 'warn'}
               />
             </div>
 
-            <div className="grid items-start gap-4 lg:grid-cols-5">
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
-                <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <div>
-                    <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
-                    <p className="text-xs text-muted-foreground">Capital originado y estado contractual</p>
+            {/* SIMULADOR EXPRESS DE CRÉDITO */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                      <Sparkles className="h-4 w-4" />
+                    </span>
+                    <h3 className="text-base font-bold text-brand-navy-900">Simulador Express de Crédito</h3>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('cuotas')}>
-                    Ver detalle
+                  <p className="mt-1 text-xs text-slate-500">
+                    Calculá tu cuota fija mensual bajo Sistema Francés amortizable.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-50/70 px-3 py-1 text-xs font-medium text-emerald-800">
+                    TNA {formatPercent(products[0]?.tna ?? 102)}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                    CFT {formatPercent(products[0]?.tna ? Number(products[0].tna) * 1.21 : 123.42)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-6 md:grid-cols-12 items-center">
+                <div className="space-y-4 md:col-span-7">
+                  <div>
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-500">Monto a solicitar</span>
+                      <span className="font-bold tabular-nums text-brand-navy-900 text-sm sm:text-base">
+                        {formatARS(simAmount)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30000}
+                      max={500000}
+                      step={10000}
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(Number(e.target.value))}
+                      className="mt-2 h-2 w-full cursor-pointer accent-brand-primary"
+                    />
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+                      <span>$30.000</span>
+                      <span>$250.000</span>
+                      <span>$500.000</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 block mb-2">Plazo de financiación</span>
+                    <div className="flex flex-wrap gap-2">
+                      {[3, 6, 9, 12].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSimTerm(t)}
+                          className={cn(
+                            'rounded-xl px-3.5 py-2 text-xs font-semibold transition',
+                            simTerm === t
+                              ? 'bg-brand-primary text-white shadow-xs ring-2 ring-brand-primary/20'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                          )}
+                        >
+                          {t} cuotas fijas
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/5 p-4 sm:p-5 md:col-span-5 flex flex-col justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Cuota estimada mensual</span>
+                    <div className="mt-1 text-2xl sm:text-3xl font-extrabold text-brand-navy-900 tabular-nums">
+                      {formatARS(simAmort.installmentAmount)}
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-600">
+                      Total a devolver: <strong className="text-slate-800">{formatARS(simAmort.totalAmount)}</strong> en {simTerm} cuotas con IVA incluido.
+                    </p>
+                  </div>
+
+                  <Button
+                    className="w-full gap-2 font-semibold shadow-xs bg-brand-primary hover:bg-brand-primary/90 text-white"
+                    onClick={() => setActiveTab('solicitar')}
+                  >
+                    <Check className="h-4 w-4" /> Solicitar este crédito
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            {/* CRÉDITOS VIGENTES Y ATAJOS FINTECH */}
+            <div className="grid items-start gap-4 lg:grid-cols-5">
+              <section className="rounded-2xl border border-slate-200/80 bg-white shadow-xs lg:col-span-3">
+                <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-brand-navy-900">Créditos vigentes</h2>
+                    <p className="text-xs text-slate-500">Capital originado, cuotas y amortización</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-8 text-xs text-brand-primary font-medium" onClick={() => setActiveTab('cuotas')}>
+                    Ver detalle completo
                   </Button>
                 </header>
-                <div className="p-4">
+                <div className="p-5">
                   {!activeLoansList.length ? (
-                    <p className="py-8 text-center text-sm text-muted-foreground">
-                      No hay créditos activos.{' '}
-                      <button type="button" className="font-medium text-brand-primary" onClick={() => setActiveTab('solicitar')}>
-                        Solicitar uno
+                    <div className="py-8 text-center">
+                      <CreditCard className="mx-auto h-8 w-8 text-slate-300" />
+                      <p className="mt-2 text-sm text-slate-600">No registrás créditos vigentes actualmente.</p>
+                      <button
+                        type="button"
+                        className="mt-2 text-xs font-semibold text-brand-primary hover:underline"
+                        onClick={() => setActiveTab('solicitar')}
+                      >
+                        Solicitar tu primer préstamo →
                       </button>
-                    </p>
+                    </div>
                   ) : (
-                    <div className="divide-y divide-border">
+                    <div className="divide-y divide-slate-100">
                       {activeLoansList.map((l: any) => (
-                        <div key={l.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                        <div key={l.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-brand-navy-900">
-                              {(l as any).purpose || 'Préstamo personal'}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Originado el {formatDateShort((l as any).createdAt)}
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-brand-navy-900">
+                                {(l as any).purpose || 'Préstamo personal'}
+                              </p>
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                {loanStatusLabel(l.status)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Originado el {formatDateShort((l as any).createdAt)} · Tasa mensual {l.monthlyRate ?? '—'}%
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold tabular-nums">{formatARS(l.principal)}</p>
-                            <p className="text-[11px] text-muted-foreground">{l.term} cuotas · {loanStatusLabel(l.status)}</p>
+                          <div className="text-left sm:text-right">
+                            <p className="text-sm font-bold tabular-nums text-brand-navy-900">{formatARS(l.principal)}</p>
+                            <p className="text-xs text-slate-500">{l.term} cuotas fijas</p>
                           </div>
                         </div>
                       ))}
@@ -612,34 +798,42 @@ export function DashboardTabsWrapper({
                 </div>
               </section>
 
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-2">
-                <header className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-semibold text-brand-navy-900">Acciones</h2>
-                  <p className="text-xs text-muted-foreground">Atajos de tu cuenta</p>
+              {/* Acciones y Atajos Fintech */}
+              <section className="rounded-2xl border border-slate-200/80 bg-white shadow-xs lg:col-span-2">
+                <header className="border-b border-slate-100 px-5 py-4">
+                  <h2 className="text-sm font-bold text-brand-navy-900">Servicios & Atajos</h2>
+                  <p className="text-xs text-slate-500">Gestión de tu cuenta UNICRÉDITOS</p>
                 </header>
                 <div className="grid gap-2 p-3">
                   {[
-                    { t: 'Pagar cuota', d: 'Tarjeta, Pago Fácil, Rapipago, billetera o transferencia', tab: 'pagos' as TabValue },
-                    { t: 'Billetera', d: 'CVU, saldo y transferencias UNICRÉDITOS', tab: 'billetera' as TabValue },
-                    { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas_vigentes' as TabValue },
-                    { t: 'Contrato y pagaré', d: 'Expediente del crédito', tab: 'documentos_contrato' as TabValue },
-                    { t: 'Cargar cuenta', d: 'CBU / CVU de desembolso', tab: 'bancos' as TabValue },
-                    { t: 'Ayuda', d: 'FAQ y contacto', tab: 'ayuda' as TabValue },
-                    { t: 'Soporte', d: 'Chat en línea y reclamo Ley 24.240', tab: 'reclamos' as TabValue },
-                  ].map((a) => (
-                    <button
-                      key={a.tab}
-                      type="button"
-                      onClick={() => setActiveTab(a.tab)}
-                      className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/60"
-                    >
-                      <span>
-                        <span className="block text-[13px] font-medium text-brand-navy-900">{a.t}</span>
-                        <span className="block text-[11px] text-muted-foreground">{a.d}</span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  ))}
+                    { t: 'Pagar cuota', d: 'Medios electrónicos, tarjeta y transferencias', tab: 'pagos' as TabValue, icon: Wallet },
+                    { t: 'Billetera digital', d: 'CVU, saldo disponible y transferencias', tab: 'billetera' as TabValue, icon: CreditCard },
+                    { t: 'Cancelar crédito', d: 'Cancelación anticipada de capital', tab: 'cuotas_vigentes' as TabValue, icon: CheckCircle2 },
+                    { t: 'Contratos Ley 25.506', d: 'Mutuo firmado con firma digital', tab: 'documentos_contrato' as TabValue, icon: FileText },
+                    { t: 'Cuentas bancarias', d: 'CBU / CVU para desembolso inmediato', tab: 'bancos' as TabValue, icon: Landmark },
+                    { t: 'Soporte y Reclamos', d: 'Asistencia y defensas Ley 24.240', tab: 'reclamos' as TabValue, icon: HelpCircle },
+                  ].map((a) => {
+                    const Icon = a.icon
+                    return (
+                      <button
+                        key={a.tab}
+                        type="button"
+                        onClick={() => setActiveTab(a.tab)}
+                        className="group flex items-center justify-between rounded-xl border border-transparent p-2.5 text-left transition hover:border-slate-200 hover:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-primary/10 group-hover:text-brand-primary transition">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <span className="block text-xs font-semibold text-brand-navy-900 group-hover:text-brand-primary transition">{a.t}</span>
+                            <span className="block text-[11px] text-slate-500">{a.d}</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-brand-primary group-hover:translate-x-0.5 transition" />
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
             </div>

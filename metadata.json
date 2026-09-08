@@ -1,0 +1,6 @@
+{
+  "name": "UNICRÉDITOS",
+  "description": "Créditos personales online y financiación comercial",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
