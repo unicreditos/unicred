@@ -516,8 +516,8 @@ function MerchantOverview({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Ventas por mes</h2>
+        <section className="rounded-lg border border-border bg-card p-4 lg:col-span-3">
+          <h2 className="text-sm font-semibold text-foreground">Ventas por mes</h2>
           <p className="mb-3 text-xs text-muted-foreground">Capital originado en los últimos 6 meses</p>
           {hasVolume ? (
             <LineChart
@@ -532,8 +532,8 @@ function MerchantOverview({
           )}
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Estado de ventas</h2>
+        <section className="rounded-lg border border-border bg-card p-4 lg:col-span-2">
+          <h2 className="text-sm font-semibold text-foreground">Estado de ventas</h2>
           <p className="mb-3 text-xs text-muted-foreground">Cartera de este comercio</p>
           <DonutChart
             centerTitle="Ops"
@@ -564,7 +564,7 @@ function MerchantOverview({
       <section className="rounded-lg border border-border bg-card">
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-brand-navy-900">Últimas operaciones</h2>
+            <h2 className="text-sm font-semibold text-foreground">Últimas operaciones</h2>
             <p className="text-xs text-muted-foreground">{lastSales.length ? 'Movimiento reciente' : 'Sin ventas registradas'}</p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => onTab('sales')}>
@@ -1689,7 +1689,7 @@ function VentaRapidaTab({
               <Label className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">
                 Monto sugerido
               </Label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {quickAmounts.map((q) => (
                   <button
                     type="button"
@@ -1847,7 +1847,7 @@ function VentaRapidaTab({
       </div>
 
       <div className="lg:col-span-5 space-y-5">
-        <Card className="border-brand-primary/20 shadow-md relative overflow-hidden">
+        <Card className="border-brand-primary/20 shadow-sm relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-navy via-brand-primary to-brand-cian" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -2360,8 +2360,7 @@ function AyudaTab({ initialCaseId }: { initialCaseId?: string }) {
       </div>
 
       <div className="lg:col-span-4 space-y-5">
-        <Card className="border-brand-primary/20 shadow-sm relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-cian to-brand-primary" />
+        <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               <Headphones className="h-4 w-4 text-brand-primary" /> Atención al comercio

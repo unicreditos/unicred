@@ -25,6 +25,7 @@ import type { AdminOpsConfig } from '@/app/actions/admin-config'
 import type { AdminPaymentsDesk as AdminPaymentsDeskData } from '@/app/actions/admin-cases'
 import type { AdminTabId } from '@/components/admin/admin-app-shell'
 import { adminLoanHref } from '@/lib/admin-nav'
+import { toast } from 'sonner'
 
 
 import { Badge } from '@/components/ui/badge'
@@ -47,7 +48,6 @@ import { DecisionBanner, MetricTile, OpsFloor } from '@/components/unicred/works
 import * as React from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import {
-  AlertTriangle,
   CheckCircle2,
   FileCheck2,
   FileSpreadsheet,
@@ -56,7 +56,6 @@ import {
   RefreshCw,
   Search,
   UserCheck,
-  X,
 } from 'lucide-react'
 import { KYCReviewCard, type KYCAdminRow } from '@/components/admin/kyc-review-card'
 import { markDisbursementAsCredited } from '@/app/actions/banking'
@@ -241,11 +240,6 @@ export function AdminContent({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
-  const showToast = (type: 'ok' | 'err', msg: string) => {
-    setToast({ type, msg })
-    setTimeout(() => setToast(null), 3500)
-  }
   // Instante de referencia estable para los cálculos "en los últimos N días".
   const [now] = useState(() => Date.now())
   const [loanFilter, setLoanFilter] = useState<string>('all')
@@ -304,15 +298,15 @@ export function AdminContent({
             <div className="text-[10px] text-muted-foreground">Total</div>
             <div className="text-[15px] font-semibold tabular-nums">{loans.length}</div>
           </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-2.5 py-1.5">
-            <div className="text-[10px] text-emerald-700">Activos</div>
-            <div className="text-[15px] font-semibold tabular-nums text-emerald-700">{counts.active ?? 0}</div>
+          <div className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-1.5">
+            <div className="text-[10px] text-success">Activos</div>
+            <div className="text-[15px] font-semibold tabular-nums text-success">{counts.active ?? 0}</div>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-2.5 py-1.5">
-            <div className="text-[10px] text-amber-700">Pendientes</div>
-            <div className="text-[15px] font-semibold tabular-nums text-amber-700">{counts.pending ?? 0}</div>
+          <div className="rounded-lg border border-warning/20 bg-warning/10 px-2.5 py-1.5">
+            <div className="text-[10px] text-warning">Pendientes</div>
+            <div className="text-[15px] font-semibold tabular-nums text-warning">{counts.pending ?? 0}</div>
           </div>
-          <div className="rounded-lg border border-rose-200 bg-rose-50/50 px-2.5 py-1.5">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 py-1.5">
             <div className="text-[10px] text-destructive">Rechazados</div>
             <div className="text-[15px] font-semibold tabular-nums text-destructive">{counts.rejected ?? 0}</div>
           </div>
@@ -499,7 +493,6 @@ export function AdminContent({
           )}
         </div>
 
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -658,13 +651,12 @@ export function AdminContent({
                             startTransition(async () => {
                               try {
                                 const r = await markDisbursementAsCredited(d.id)
-                                showToast(
-                                  'ok',
+                                toast.success(
                                   `Acreditado OK · Comprobante ${(r as any)?.receiptNumber ?? 'emitido'}`,
                                 )
                                 router.refresh()
                               } catch (e: any) {
-                                showToast('err', e?.message ?? 'Error al acreditar')
+                                toast.error(e?.message ?? 'Error al acreditar')
                               }
                             })
                           }
@@ -701,7 +693,6 @@ export function AdminContent({
           </Table>
         </div>
 
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -756,10 +747,9 @@ export function AdminContent({
   if (activeTab === 'cuentas-bancarias') {
     return (
       <OpsFloor>
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+        <div className="min-h-0 flex-1 overflow-auto">
           <BankAccountsTable accounts={bankAccounts} />
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -790,7 +780,6 @@ export function AdminContent({
             <BcraVariablesGrid variables={bcra} />
           </div>
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -860,7 +849,6 @@ export function AdminContent({
         <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <LoansTable loans={filteredLoans} />
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -972,7 +960,6 @@ export function AdminContent({
           <RiskRulesDesk versions={riskRuleVersions} canWrite={myPermissions.includes('risk.rules.write')} />
         ) : null}
 
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -1165,38 +1152,6 @@ function disbBadge(status: string) {
       )} />
       {cfg.label}
     </span>
-  )
-}
-
-function ToastFloating({
-  toast,
-  onClose,
-}: {
-  toast: { type: 'ok' | 'err'; msg: string }
-  onClose: () => void
-}) {
-  return (
-    <div
-      className={cn(
-        'fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200 max-w-sm',
-        toast.type === 'ok'
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300'
-          : 'border-rose-200 bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-300',
-      )}
-    >
-      {toast.type === 'ok' ? (
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-      ) : (
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-      )}
-      <span className="text-sm font-medium flex-1">{toast.msg}</span>
-      <button
-        onClick={onClose}
-        className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-card/10 shrink-0"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
   )
 }
 

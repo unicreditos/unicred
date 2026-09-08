@@ -207,12 +207,12 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
   }
 
   return (
-    <Card className="border-none shadow-lg">
+    <Card>
       <CardHeader className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <CreditCard className="w-5 h-5 text-indigo-600" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CreditCard className="w-4 h-4 text-primary" />
               Cuentas Bancarias · CVU/CBU/ALIAS
               <Badge variant="outline" className="ml-2">
                 {stats.total} totales
@@ -231,8 +231,8 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
 
         <div className="relative max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            className="w-full h-10 rounded-md border border-input bg-background pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          <Input
+            className="h-10 pl-10"
             placeholder="Buscar por cliente, email, CBU/CVU/alias, banco..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -263,7 +263,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
                 <TableRow key={a.id}>
                   <TableCell>
                     <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground flex items-center justify-center shrink-0">
                         <UserCircle className="w-5 h-5" />
                       </div>
                       <div className="space-y-0.5 min-w-0">
@@ -316,7 +316,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
                         </div>
                       )}
                       {a.alias && (
-                        <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 rounded px-2 py-1 break-all select-all">
+                        <div className="bg-primary/10 text-primary rounded px-2 py-1 break-all select-all">
                           {displayAlias(a.alias)}
                         </div>
                       )}
@@ -375,7 +375,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
                       <Button
                         size="sm"
                         variant="default"
-                        className="gap-1 bg-indigo-600 hover:bg-indigo-700"
+                        className="gap-1"
                         onClick={() => {
                           setManualOpen(a)
                           setManualApproved(true)
@@ -440,7 +440,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-indigo-600" />
+              <Eye className="w-5 h-5 text-primary" />
               Detalle completo de cuenta bancaria
             </DialogTitle>
             <DialogDescription>
@@ -479,7 +479,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
                     </div>
                   )}
                   {detailOpen.alias && (
-                    <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 rounded px-2 py-1 break-all select-all">
+                    <div className="bg-primary/10 text-primary rounded px-2 py-1 break-all select-all">
                       {displayAlias(detailOpen.alias)}
                     </div>
                   )}
@@ -526,7 +526,7 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+              <ShieldCheck className="w-5 h-5 text-primary" />
               Validación manual
             </DialogTitle>
             <DialogDescription>

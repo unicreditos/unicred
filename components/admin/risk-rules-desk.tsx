@@ -74,7 +74,7 @@ export function RiskRulesDesk({ versions, canWrite }: { versions: RiskRuleVersio
     <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
         <div>
-          <h2 className="text-[13px] font-semibold text-brand-navy-900">Reglas de underwriting</h2>
+          <h2 className="text-[13px] font-semibold text-foreground">Reglas de underwriting</h2>
           <p className="text-[11px] text-muted-foreground">Parámetros configurables, versionados. No son un criterio financiero fijo.</p>
         </div>
         {canWrite && !editing ? (
@@ -208,7 +208,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border px-2.5 py-1.5">
       <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-[14px] font-semibold tabular-nums text-brand-navy-900">{value}</p>
+      <p className="text-[14px] font-semibold tabular-nums text-foreground">{value}</p>
     </div>
   )
 }

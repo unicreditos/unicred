@@ -57,7 +57,7 @@ function loanBadge(status: string) {
     active: 'bg-emerald-500/10 text-emerald-800',
     rejected: 'bg-rose-500/10 text-rose-800',
     paid: 'bg-teal-500/10 text-teal-800',
-    cancelled: 'bg-muted text-slate-600',
+    cancelled: 'bg-muted text-muted-foreground',
   }
   const label: Record<string, string> = {
     pending: 'En evaluación',
@@ -69,7 +69,7 @@ function loanBadge(status: string) {
     disbursed: 'Desembolsado',
   }
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', map[status] ?? 'bg-muted text-slate-600')}>
+    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', map[status] ?? 'bg-muted text-muted-foreground')}>
       {label[status] ?? status}
     </span>
   )
@@ -181,12 +181,12 @@ export function AdminControlTower({
         )}
       >
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-brand-navy-900">
+          <p className="text-sm font-semibold text-foreground">
             {openDecisions > 0
               ? `${openDecisions} ${openDecisions === 1 ? 'decisión' : 'decisiones'} en cola`
               : 'Sin cola operativa'}
           </p>
-          <p className="mt-0.5 text-[12px] text-slate-600">
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             {pendingLoans.length} créditos · {pendingKyc.length} KYC · {pendingMerchants.length} comercios · {pendingDisb.length} desembolsos
             {overdue > 0 ? ` · mora ${formatARS(overdue)}` : ''}
           </p>
@@ -227,7 +227,7 @@ export function AdminControlTower({
         <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-4">
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2.5">
             <div>
-              <h2 className="text-[13px] font-semibold text-brand-navy-900">Originación / día</h2>
+              <h2 className="text-[13px] font-semibold text-foreground">Originación / día</h2>
               <p className="text-[11px] text-muted-foreground">
                 Prom. {avgDay}/día · {daySeries.reduce((a, p) => a + p.value, 0)} en el período
               </p>
@@ -255,7 +255,7 @@ export function AdminControlTower({
 
         <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
           <header className="shrink-0 border-b border-border px-4 py-2.5">
-            <h2 className="text-[13px] font-semibold text-brand-navy-900">Cola y red</h2>
+            <h2 className="text-[13px] font-semibold text-foreground">Cola y red</h2>
             <p className="text-[11px] text-muted-foreground">Lo que bloquea originación hoy</p>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -314,7 +314,7 @@ export function AdminControlTower({
         <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:col-span-5">
           <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
             <div>
-              <h2 className="text-[13px] font-semibold text-brand-navy-900">Blotter · solicitudes</h2>
+              <h2 className="text-[13px] font-semibold text-foreground">Blotter · solicitudes</h2>
               <p className="text-[11px] text-muted-foreground">Últimas altas · click para el expediente</p>
             </div>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => onNavigate('solicitudes')}>

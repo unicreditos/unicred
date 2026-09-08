@@ -379,7 +379,6 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
 
   return (
     <>
-      <div className="rounded-xl border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -494,7 +493,6 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
             ))}
           </TableBody>
         </Table>
-      </div>
 
       {/* DIALOG APROBAR */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>

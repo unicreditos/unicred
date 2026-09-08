@@ -152,7 +152,7 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
   }
 
   return (
-    <div className="rounded-xl border">
+    <>
       <Table>
         <TableHeader>
           <TableRow>
@@ -363,6 +363,6 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

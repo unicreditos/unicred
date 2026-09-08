@@ -17,7 +17,7 @@ export default function Loading() {
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+          <div key={i} className="space-y-3 rounded-xl border border-border bg-card p-4">
             <div className="h-3 w-24 rounded-full bg-muted" />
             <div className="h-7 w-32 rounded-lg bg-muted" />
             <div className="h-3 w-20 rounded-full bg-muted" />
@@ -31,7 +31,7 @@ export default function Loading() {
         ))}
       </div>
 
-      <div className="mt-5 space-y-3 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+      <div className="mt-5 space-y-3 rounded-xl border border-border bg-card p-5">
         <div className="h-4 w-40 rounded-full bg-muted" />
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4">
