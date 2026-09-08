@@ -19,6 +19,7 @@ import {
 import { formatARS } from '@/lib/finance'
 import { allowedAdminTransitions, LOAN_STATUS_LABELS, type LoanStatus } from '@/lib/loan-state'
 import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { Check, CheckCircle2, Clock, Edit3, Eye, FileText, Loader2, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -41,16 +42,16 @@ type LoanRow = {
 }
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-    pending: { label: 'Pendiente', variant: 'secondary' },
-    approved: { label: 'Aprobado', variant: 'default' },
-    active: { label: 'Activo', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
-    paid: { label: 'Pagado', variant: 'outline' },
-    cancelled: { label: 'Anulado', variant: 'outline' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    paid: { label: 'Pagado', tone: 'complete' },
+    cancelled: { label: 'Anulado', tone: 'neutral' },
   }
-  const cfg = map[status] ?? { label: LOAN_STATUS_LABELS[status as LoanStatus] ?? status, variant: 'outline' as const }
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+  const cfg = map[status] ?? { label: LOAN_STATUS_LABELS[status as LoanStatus] ?? status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function actionError(err: unknown, fallback: string) {

@@ -2,6 +2,7 @@
 
 import { refreshKycDidit, setKYCStatus } from '@/app/actions/kyc'
 import { adminUrl } from '@/lib/admin-nav'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -77,19 +78,15 @@ function formatDate(d: Date | string | null | undefined) {
 }
 
 function statusBadge(s: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: 'Pendiente', cls: 'bg-amber-500/15 text-amber-700 border-amber-200/60' },
-    reviewing: { label: 'En revisión', cls: 'bg-sky-500/15 text-sky-700 border-sky-200/60' },
-    submitted: { label: 'Enviado', cls: 'bg-sky-500/15 text-sky-700 border-sky-200/60' },
-    approved: { label: 'Aprobado', cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-200/60' },
-    rejected: { label: 'Rechazado', cls: 'bg-rose-500/15 text-rose-700 border-rose-200/60' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    reviewing: { label: 'En revisión', tone: 'info' },
+    submitted: { label: 'Enviado', tone: 'info' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
   }
-  const cfg = map[s] ?? { label: s, cls: 'bg-muted text-slate-700' }
-  return (
-    <Badge variant="outline" className={cn('border text-[11px]', cfg.cls)}>
-      {cfg.label}
-    </Badge>
-  )
+  const cfg = map[s] ?? { label: s, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function DocPreview({ label, url, icon }: { label: string; url: string | null; icon: React.ReactNode }) {

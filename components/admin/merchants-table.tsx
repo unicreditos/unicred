@@ -6,7 +6,7 @@ import {
   setMerchantStatus,
   updateMerchantAdmin,
 } from '@/app/actions/admin'
-import { Badge } from '@/components/ui/badge'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -56,14 +56,14 @@ type MerchantRow = {
 }
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-    pending: { label: 'Pendiente', variant: 'secondary' },
-    approved: { label: 'Activo', variant: 'default' },
-    active: { label: 'Activo', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Activo', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
   }
-  const cfg = map[status] ?? { label: status, variant: 'outline' as const }
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function formatCUIT(v: string) {

@@ -9,6 +9,7 @@ import { opnfcBand, opnfcLabel, OPNFC_THRESHOLD_ARS } from '@/lib/compliance/opn
 import { formatARS } from '@/lib/finance'
 import { kycStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { LineChart } from '@/components/unicred/dashboard-kit'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import { useMemo, useState } from 'react'
@@ -51,28 +52,17 @@ function formatDate(v: Date | string | undefined) {
 }
 
 function loanBadge(status: string) {
-  const map: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-800',
-    approved: 'bg-emerald-500/10 text-emerald-800',
-    active: 'bg-emerald-500/10 text-emerald-800',
-    rejected: 'bg-rose-500/10 text-rose-800',
-    paid: 'bg-teal-500/10 text-teal-800',
-    cancelled: 'bg-muted text-muted-foreground',
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'En evaluación', tone: 'warning' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    paid: { label: 'Pagado', tone: 'complete' },
+    cancelled: { label: 'Cancelado', tone: 'neutral' },
+    disbursed: { label: 'Desembolsado', tone: 'success' },
   }
-  const label: Record<string, string> = {
-    pending: 'En evaluación',
-    approved: 'Aprobado',
-    active: 'Activo',
-    rejected: 'Rechazado',
-    paid: 'Pagado',
-    cancelled: 'Cancelado',
-    disbursed: 'Desembolsado',
-  }
-  return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', map[status] ?? 'bg-muted text-muted-foreground')}>
-      {label[status] ?? status}
-    </span>
-  )
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone} dot={false}>{cfg.label}</StatusPill>
 }
 
 export function AdminControlTower({

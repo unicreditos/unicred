@@ -43,7 +43,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { csvDateSuffix, downloadCsv } from '@/lib/csv'
 import { formatARS, formatCBU, formatCVU } from '@/lib/finance'
-import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { DecisionBanner, MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import * as React from 'react'
 import { useMemo, useState, useTransition } from 'react'
@@ -170,20 +170,15 @@ function formatDate(v: Date | string | undefined) {
 }
 
 function loanBadge(status: string) {
-  const map: Record<string, { label: string; className: string; dot: string }> = {
-    pending: { label: 'Pendiente', className: 'bg-amber-500/10 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-    approved: { label: 'Aprobado', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-    active: { label: 'Activo', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-    rejected: { label: 'Rechazado', className: 'bg-destructive/10 text-destructive border-destructive/20', dot: 'bg-destructive' },
-    paid: { label: 'Pagado', className: 'bg-teal-500/10 text-teal-700 border-teal-200', dot: 'bg-teal-500' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    paid: { label: 'Pagado', tone: 'complete' },
   }
-  const cfg = map[status] ?? { label: status, className: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' }
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', cfg.className)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
-      {cfg.label}
-    </span>
-  )
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function pct(p: number, t: number) {
@@ -1133,25 +1128,15 @@ export function AdminContent({
 }
 
 function disbBadge(status: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: 'Pendiente', cls: 'bg-amber-500/10 text-amber-700 border-amber-200' },
-    processing: { label: 'Procesando', cls: 'bg-sky-500/10 text-sky-700 border-sky-200' },
-    credited: { label: 'Acreditado', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
-    completed: { label: 'Acreditado', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
-    failed: { label: 'Fallido', cls: 'bg-rose-500/10 text-rose-700 border-rose-200' },
-    reversed: { label: 'Revertido', cls: 'bg-rose-500/10 text-rose-700 border-rose-200' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    processing: { label: 'Procesando', tone: 'info' },
+    credited: { label: 'Acreditado', tone: 'success' },
+    completed: { label: 'Acreditado', tone: 'success' },
+    failed: { label: 'Fallido', tone: 'danger' },
+    reversed: { label: 'Revertido', tone: 'danger' },
   }
-  const cfg = map[status] ?? { label: status, cls: 'bg-muted text-muted-foreground' }
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', cfg.cls)}>
-      <span className={cn(
-        'h-1.5 w-1.5 rounded-full',
-        status === 'credited' || status === 'completed' ? 'bg-emerald-500' :
-        status === 'failed' || status === 'reversed' ? 'bg-rose-500' :
-        status === 'processing' ? 'bg-sky-500' : 'bg-amber-500'
-      )} />
-      {cfg.label}
-    </span>
-  )
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
