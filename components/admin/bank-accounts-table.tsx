@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import {
   Table,
@@ -630,16 +631,20 @@ export function BankAccountsTable({ accounts }: { accounts: BankAccountRow[] }) 
               </div>
               <div className="space-y-1.5">
                 <Label>Tipo</Label>
-                <select
-                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                <Select
                   value={editForm.accountType}
-                  onChange={(e) => setEditForm((f) => ({ ...f, accountType: e.target.value as any }))}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, accountType: (v ?? f.accountType) as any }))}
                 >
-                  <option value="cbu">CBU</option>
-                  <option value="cvu">CVU</option>
-                  <option value="alias">Alias</option>
-                  <option value="cci">CCI</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cbu">CBU</SelectItem>
+                    <SelectItem value="cvu">CVU</SelectItem>
+                    <SelectItem value="alias">Alias</SelectItem>
+                    <SelectItem value="cci">CCI</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Alias (sin @)</Label>

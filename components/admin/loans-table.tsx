@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
@@ -675,17 +676,21 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
               </div>
               <div className="space-y-1.5 col-span-2">
                 <Label>Estado</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <Select
                   value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as LoanRow['status'] })}
+                  onValueChange={(v) => setEditForm({ ...editForm, status: (v ?? editForm.status) as LoanRow['status'] })}
                 >
-                  {(activeLoan ? allowedAdminTransitions(activeLoan.status) : [editForm.status]).map((status) => (
-                    <option key={status} value={status}>
-                      {LOAN_STATUS_LABELS[status as LoanStatus] ?? status}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(activeLoan ? allowedAdminTransitions(activeLoan.status) : [editForm.status]).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {LOAN_STATUS_LABELS[status as LoanStatus] ?? status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-[11px] text-muted-foreground">
                   Un rechazo se puede volver a calificar. El paso a vigente no está acá: va por Tesorería, con contrato firmado.
                 </p>

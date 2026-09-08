@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -797,19 +798,19 @@ export function AdminContent({
             value={loanSearch}
             onChange={(e) => setLoanSearch(e.target.value)}
           />
-          <select
-            className="h-8 rounded-md border border-input bg-card px-2 text-xs"
-            value={loanFilter}
-            onChange={(e) => setLoanFilter(e.target.value)}
-            aria-label="Filtrar por estado"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="pending">Pendientes</option>
-            <option value="approved">Aprobados</option>
-            <option value="active">Activos</option>
-            <option value="rejected">Rechazados</option>
-            <option value="paid">Pagados</option>
-          </select>
+          <Select value={loanFilter} onValueChange={(v) => setLoanFilter(v ?? 'all')}>
+            <SelectTrigger size="sm" className="text-xs" aria-label="Filtrar por estado">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="pending">Pendientes</SelectItem>
+              <SelectItem value="approved">Aprobados</SelectItem>
+              <SelectItem value="active">Activos</SelectItem>
+              <SelectItem value="rejected">Rechazados</SelectItem>
+              <SelectItem value="paid">Pagados</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-[11px] text-muted-foreground">
             {filteredLoans.length} de {loans.length}
           </span>

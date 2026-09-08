@@ -8,6 +8,7 @@ import type { AdminUserRow } from '@/app/actions/admin'
 import { assignAdminRole } from '@/app/actions/staff-roles'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type RoleRow = {
   id: string
@@ -94,22 +95,22 @@ export function AdminStaffDesk({
                     </td>
                     <td className="px-4 py-2.5">
                       {canManageUsers ? (
-                        <select
-                          className="h-8 rounded-md border border-input bg-card px-2 text-xs"
-                          value={u.adminRoleId ?? ''}
+                        <Select
+                          value={u.adminRoleId ?? undefined}
                           disabled={isPending && pendingUserId === u.id}
-                          onChange={(e) => changeRole(u.id, e.target.value)}
-                          aria-label={`Rol de ${u.email}`}
+                          onValueChange={(v) => v && changeRole(u.id, v)}
                         >
-                          <option value="" disabled>
-                            Sin rol asignado
-                          </option>
-                          {roles.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger size="sm" className="text-xs" aria-label={`Rol de ${u.email}`}>
+                            <SelectValue placeholder="Sin rol asignado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : currentRole ? (
                         <Badge variant="outline">{currentRole.label}</Badge>
                       ) : (
