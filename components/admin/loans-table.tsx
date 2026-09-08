@@ -20,6 +20,7 @@ import { formatARS } from '@/lib/finance'
 import { allowedAdminTransitions, LOAN_STATUS_LABELS, type LoanStatus } from '@/lib/loan-state'
 import { cn } from '@/lib/utils'
 import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
+import { useConfirmDialog } from '@/components/admin/confirm-dialog'
 import { Check, CheckCircle2, Clock, Edit3, Eye, FileText, Loader2, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -81,6 +82,7 @@ function scoreColor(s: number | null) {
 
 export function LoansTable({ loans }: { loans: LoanRow[] }) {
   const router = useRouter()
+  const { confirm, confirmDialog } = useConfirmDialog()
   const [isPending, startTransition] = useTransition()
   const [rejectOpen, setRejectOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
@@ -203,12 +205,19 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
 
   const handleMarkActive = (l: LoanRow) => {
     const signed = l.contractStatus === 'accepted'
-    const ok = window.confirm(
-      signed
-        ? `¿Acreditar el desembolso de ${shortId(l.id)} y dejar el crédito vigente?`
-        : `El contrato todavía no está firmado. ¿Acreditar el desembolso de ${shortId(l.id)} igual y dejar el crédito vigente? Queda en la auditoría.`,
+    confirm(
+      {
+        title: `¿Acreditar el desembolso de ${shortId(l.id)}?`,
+        description: signed
+          ? 'El crédito queda vigente.'
+          : 'El contrato todavía no está firmado. Se acredita igual y queda registrado en la auditoría.',
+        confirmLabel: 'Acreditar',
+      },
+      () => runMarkActive(l),
     )
-    if (!ok) return
+  }
+
+  const runMarkActive = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await markLoanAsActive(l.id)
@@ -258,7 +267,13 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
   }
 
   const handleMarkPaid = (l: LoanRow) => {
-    if (!window.confirm(`¿Marcar el préstamo ${shortId(l.id)} como PAGADO (cancelación total)?`)) return
+    confirm(
+      { title: `¿Marcar el préstamo ${shortId(l.id)} como pagado?`, description: 'Registra la cancelación total del crédito.', confirmLabel: 'Marcar pagado' },
+      () => runMarkPaid(l),
+    )
+  }
+
+  const runMarkPaid = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await markLoanAsPaid(l.id)
@@ -275,7 +290,18 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
   }
 
   const handleDelete = (l: LoanRow) => {
-    if (!window.confirm(`¿Borrar el crédito ${shortId(l.id)}? Solo se elimina si está pendiente, rechazado o anulado.`)) return
+    confirm(
+      {
+        title: `¿Borrar el crédito ${shortId(l.id)}?`,
+        description: 'Solo se elimina si está pendiente, rechazado o anulado. Esta acción no se puede deshacer.',
+        confirmLabel: 'Borrar',
+        destructive: true,
+      },
+      () => runDelete(l),
+    )
+  }
+
+  const runDelete = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await deleteLoanAdmin(l.id)
@@ -681,6 +707,8 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {confirmDialog}
     </>
   )
 }
