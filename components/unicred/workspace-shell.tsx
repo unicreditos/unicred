@@ -158,8 +158,21 @@ export function WorkspaceShell({
     writeStorage()
   }
 
-  const toggleGroup = (group: string) => {
-    const next = { ...closedGroups, [group]: !closedGroups[group] }
+  // Por defecto un grupo arranca plegado — salvo el que contiene la página
+  // activa — para que el menú no muestre 20+ ítems de una. Una vez que el
+  // usuario lo toca a mano, se respeta esa elección en vez del default.
+  const groupContainsActive = (items: WorkspaceNavItem[]) =>
+    items.some((item) => item.id === activeId || item.children?.some((c) => c.id === activeId))
+
+  const isGroupClosed = (group: string | null, items: WorkspaceNavItem[]) => {
+    if (!group) return false
+    const explicit = closedGroups[group]
+    if (explicit !== undefined) return explicit
+    return !groupContainsActive(items)
+  }
+
+  const toggleGroup = (group: string, currentlyClosed: boolean) => {
+    const next = { ...closedGroups, [group]: !currentlyClosed }
     window.localStorage.setItem(GROUPS_KEY, JSON.stringify(next))
     writeStorage()
   }
@@ -172,13 +185,13 @@ export function WorkspaceShell({
   const renderNav = (compact: boolean) => (
     <nav className={cn('flex-1 space-y-4 overflow-y-auto py-3 uc-scroll-thin', compact ? 'px-2' : 'space-y-5 px-3')}>
       {grouped.map((block, i) => {
-        const groupClosed = Boolean(block.group && closedGroups[block.group] && !compact)
+        const groupClosed = !compact && isGroupClosed(block.group, block.items)
         return (
           <div key={`${block.group ?? 'g'}-${i}`}>
             {block.group && !compact ? (
               <button
                 type="button"
-                onClick={() => toggleGroup(block.group!)}
+                onClick={() => toggleGroup(block.group!, groupClosed)}
                 className="mb-1.5 flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[11px] font-semibold text-white/45 hover:bg-white/6 hover:text-white/70"
               >
                 <span>{block.group}</span>
