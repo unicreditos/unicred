@@ -77,7 +77,14 @@ const isNeonAuth = cleanedDatabaseUrl?.includes('neon.tech') ||
 const authDbPool = new Pool({
   connectionString: cleanedDatabaseUrl,
   max: 20,
-  min: 0,
+  // min:0 hacía que este pool (separado del de lib/db/index.ts, better-auth
+  // no reusa el mismo) se quedara sin conexiones abiertas apenas pasaba un
+  // rato sin auth-checks. Como getSession() corre en CADA request
+  // autenticado (páginas, server actions, API routes), esa reconexión fría
+  // se pagaba una y otra vez — medido en vivo, ~2s parejos en cualquier
+  // acción sin importar qué tan simple fuera. min:1 mantiene una conexión
+  // lista.
+  min: 1,
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 60000,
   allowExitOnIdle: false,

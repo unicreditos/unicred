@@ -21,8 +21,15 @@ import {
 export async function pulseSupportPresence(viewingCaseId?: string | null) {
   const userId = await assertRole('customer', 'merchant', 'admin')
   const role = await getRoleForUser(userId)
-  await heartbeatPresence(userId, role, viewingCaseId)
-  return { ok: true as const, agentsOnline: await countAgentsOnline() }
+  // El conteo no depende de que este heartbeat ya haya escrito — correrlos
+  // en paralelo ahorra un round-trip contra una base remota, a costa de un
+  // caso límite sin impacto real (no verte a vos mismo en el conteo si tu
+  // propio heartbeat todavía no se posteó).
+  const [, agentsOnline] = await Promise.all([
+    heartbeatPresence(userId, role, viewingCaseId),
+    countAgentsOnline(),
+  ])
+  return { ok: true as const, agentsOnline }
 }
 
 export async function getMySupportState(caseId?: string) {

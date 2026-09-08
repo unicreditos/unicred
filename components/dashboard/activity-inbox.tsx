@@ -30,21 +30,9 @@ export function ActivityInbox({ onOpenHref }: { onOpenHref: (href: string) => vo
         })
     void pull()
     const timer = setInterval(() => void pull(), 15_000)
-    let source: EventSource | null = null
-    if (typeof EventSource !== 'undefined') {
-      source = new EventSource('/api/notifications/stream')
-      source.onmessage = (event) => {
-        try {
-          if (!cancelled) setInbox(JSON.parse(event.data) as InboxPayload)
-        } catch {
-          /* payload incompleto */
-        }
-      }
-    }
     return () => {
       cancelled = true
       clearInterval(timer)
-      source?.close()
     }
   }, [])
 
