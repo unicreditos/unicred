@@ -4,6 +4,7 @@ import { profile, user as userTable } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 export type Role = 'customer' | 'merchant' | 'admin'
 
@@ -23,7 +24,13 @@ export async function syncUserRole(userId: string, role: Role) {
   await db.update(profile).set({ role, updatedAt: new Date() }).where(eq(profile.userId, userId))
 }
 
-export async function getRoleForUser(userId: string): Promise<Role> {
+/**
+ * Memoizado con React cache(): dentro de una misma navegación se llama muchas
+ * veces para el mismo userId (una vez por cada requirePermission() de las
+ * ~7 queries que se piden siempre en /admin), y sin esto cada una repetía
+ * las 2 consultas desde cero.
+ */
+export const getRoleForUser = cache(async (userId: string): Promise<Role> => {
   const rows = await db
     .select({ role: profile.role })
     .from(profile)
@@ -44,7 +51,7 @@ export async function getRoleForUser(userId: string): Promise<Role> {
   }
 
   return role
-}
+})
 
 export async function getDashboardUrlForUser(userId: string): Promise<string> {
   const role = await getRoleForUser(userId)
@@ -88,18 +95,22 @@ async function clearStaleAuthCookies() {
   }
 }
 
+const isBanned = cache(async (userId: string) => {
+  const [u] = await db
+    .select({ banned: userTable.banned })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1)
+  return !!u?.banned
+})
+
 export async function requireUserId() {
   const session = await getSession()
   if (!session?.user) {
     await clearStaleAuthCookies()
     redirect('/sign-in')
   }
-  const [u] = await db
-    .select({ banned: userTable.banned })
-    .from(userTable)
-    .where(eq(userTable.id, session.user.id))
-    .limit(1)
-  if (u?.banned) {
+  if (await isBanned(session.user.id)) {
     redirect('/sign-in?error=banned')
   }
   return session.user.id

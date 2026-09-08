@@ -25,6 +25,7 @@ import {
   loanContract,
 } from '@/lib/db/schema'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
+import { ensurePerfIndexes } from '@/lib/db/ensure-perf-indexes'
 import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
 import { getAdminPermissions, listAdminRoles } from '@/lib/rbac'
 import { listRiskRuleVersions } from '@/lib/risk-rules'
@@ -51,7 +52,7 @@ export default async function AdminPage({
     redirect('/sign-in')
   }
 
-  await ensureOriginacionSchema()
+  await Promise.all([ensureOriginacionSchema(), ensurePerfIndexes()])
   const [p] = await db
     .select({ role: profile.role })
     .from(profile)
@@ -87,6 +88,10 @@ export default async function AdminPage({
   const needsDisbEnrichment = activeTab === 'desembolsos' || activeTab === 'aprobaciones'
   const needsRoles = activeTab === 'staff'
   const needsRiskRules = activeTab === 'scoring'
+  // El detalle completo de KYC (OCR, fotos, sesión Didit) solo lo necesitan
+  // la pestaña Identidad y la Torre de control (que muestra las primeras 3
+  // pendientes); en el resto solo se usa el conteo de getAdminStats().
+  const needsKyc = activeTab === 'kyc' || activeTab === 'overview'
 
   // Antes cada fetch fallido volvía silenciosamente a ceros: un admin podía
   // ver "0 solicitudes" y pensar que la cartera está vacía cuando en
@@ -102,13 +107,22 @@ export default async function AdminPage({
   }
 
   const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig, adminRoles, riskRuleVersions] = await Promise.all([
-    getAdminStats().catch(track('Estadísticas del dashboard', { totalCustomers: 0, totalLoans: 0, activeLoans: 0, totalDisbursed: '0', pendingKYCs: 0, pendingDisbursements: 0, rejectedLoans: 0, approvedLoans: 0, disbursedLoans: 0, totalMerchants: 0, pendingMerchants: 0 } as any)),
+    getAdminStats().catch(
+      track('Estadísticas del dashboard', {
+        loans: { total: 0, active: 0, pending: 0, rejected: 0, paid: 0, volume: 0, outstanding: 0 },
+        users: { total: 0, customers: 0, merchants: 0, admins: 0 },
+        merchants: { total: 0, pending: 0, active: 0, rejected: 0 },
+        kyc: { pending: 0 },
+      }),
+    ),
     getAllLoans().catch(track('Créditos', [] as any[])),
     getPendingMerchants().catch(track('Comercios', [] as any[])),
     needsBcra
       ? getBcraVariables().catch(track('Variables BCRA', [] as any[]))
       : Promise.resolve([] as any[]),
-    getAllKYCReviews(500).catch(track('Revisiones KYC', [] as any[])),
+    needsKyc
+      ? getAllKYCReviews(500).catch(track('Revisiones KYC', [] as any[]))
+      : Promise.resolve([] as any[]),
     getAllDisbursements(100).catch(track('Desembolsos', [] as any[])),
     needsBankAccounts
       ? getAllBankAccounts().catch(track('Cuentas bancarias', [] as any[]))

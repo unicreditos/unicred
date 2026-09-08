@@ -3,12 +3,18 @@ import { adminPermission, adminRole, adminRolePermission, profile } from '@/lib/
 import { eq, inArray } from 'drizzle-orm'
 import { assertAdmin } from '@/lib/session'
 import { ensureRbacSchema, type PermissionKey } from '@/lib/db/ensure-rbac'
+import { cache } from 'react'
 
 export type { PermissionKey } from '@/lib/db/ensure-rbac'
 export { PERMISSIONS, DEFAULT_ROLES } from '@/lib/db/ensure-rbac'
 
-/** Permisos del admin autenticado, según el rol asignado en profile.adminRoleId. */
-export async function getAdminPermissions(userId: string): Promise<Set<PermissionKey>> {
+/**
+ * Permisos del admin autenticado, según el rol asignado en profile.adminRoleId.
+ * Memoizado con cache(): requirePermission() se llama una vez por cada acción
+ * pedida en la misma navegación (hasta 7-8 veces en /admin), y sin esto cada
+ * llamada repetía las mismas 2 consultas desde cero.
+ */
+export const getAdminPermissions = cache(async (userId: string): Promise<Set<PermissionKey>> => {
   await ensureRbacSchema()
   const [p] = await db.select({ adminRoleId: profile.adminRoleId }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (!p?.adminRoleId) return new Set()
@@ -18,7 +24,7 @@ export async function getAdminPermissions(userId: string): Promise<Set<Permissio
     .innerJoin(adminPermission, eq(adminPermission.id, adminRolePermission.permissionId))
     .where(eq(adminRolePermission.roleId, p.adminRoleId))
   return new Set(rows.map((r) => r.key as PermissionKey))
-}
+})
 
 /**
  * Server actions y API routes: exige que el admin autenticado tenga el

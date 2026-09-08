@@ -30,6 +30,7 @@ export type StatsData = {
   }
   users: { total: number; customers: number; merchants: number; admins: number }
   merchants: { total: number; pending: number; active: number; rejected: number }
+  kyc?: { pending: number }
 }
 
 function pct(part: number, total: number) {

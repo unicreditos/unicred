@@ -31,7 +31,9 @@ export const user = pgTable('user', {
   role: text('role').notNull().default('customer'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('user_created_idx').on(t.createdAt),
+])
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),
@@ -188,7 +190,9 @@ export const merchant = pgTable('merchant', {
     .default('8.00'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('merchant_created_idx').on(t.createdAt),
+])
 
 export const merchantDocument = pgTable('merchant_document', {
   id: text('id').primaryKey(),
@@ -310,7 +314,9 @@ export const kycVerification = pgTable('kyc_verification', {
   expiresAt: tsCol('expiresAt'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('kyc_verification_updated_idx').on(t.updatedAt),
+])
 
 /** Sesiones Didit: alta pendiente (sin userId) y resultado del webhook. */
 export const diditSession = pgTable('didit_session', {
@@ -415,6 +421,7 @@ export const disbursement = pgTable('disbursement', {
 }, (t) => [
   index('disbursement_user_idx').on(t.userId),
   index('disbursement_status_idx').on(t.status),
+  index('disbursement_created_idx').on(t.createdAt),
 ])
 
 /* --------------------------- Contratos de Préstamo ------------------------ */

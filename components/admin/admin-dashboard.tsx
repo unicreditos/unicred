@@ -106,9 +106,10 @@ export function AdminDashboard({
   const counts = useMemo(
     () => ({
       pendingLoans: loans.filter((l) => l.status === 'pending').length,
-      pendingKyc: kycList.filter((k: { status: string }) =>
-        ['pending_review', 'pending', 'reviewing', 'submitted', 'in_review'].includes(k.status),
-      ).length,
+      // El detalle completo de KYC solo viaja en la pestaña Identidad/Dashboard
+      // (ver needsKyc en admin/page.tsx); el badge del sidebar usa el conteo
+      // liviano que ya viene siempre en stats.kyc.
+      pendingKyc: stats.kyc?.pending ?? 0,
       overdue: opsDesk.kpis.overdueCount,
       pendingDisb: disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
         .length,
@@ -118,7 +119,7 @@ export function AdminDashboard({
         disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
           .length + (opsDesk.kpis.pendingReview ?? 0),
     }),
-    [loans, kycList, opsDesk.kpis.overdueCount, opsDesk.kpis.pendingReview, disbursementList, merchants],
+    [loans, stats.kyc?.pending, opsDesk.kpis.overdueCount, opsDesk.kpis.pendingReview, disbursementList, merchants],
   )
 
   return (

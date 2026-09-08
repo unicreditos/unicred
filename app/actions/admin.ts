@@ -14,6 +14,7 @@ import {
   payment,
   paymentReceipt,
   user as userTable,
+  kycVerification,
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
 import { requirePermission } from '@/lib/rbac'
@@ -103,7 +104,16 @@ export async function getAdminStats() {
     })
     .from(merchant)
 
-  return { loans, users, merchants }
+  // Solo el conteo, para el badge del sidebar y la Torre de control — el
+  // detalle completo (con OCR, fotos y sesión Didit) se pide aparte y solo
+  // en la pestaña Identidad/Dashboard, ver getAllKYCReviews().
+  const [kyc] = await db
+    .select({
+      pending: sql<number>`count(*) filter (where ${kycVerification.status} in ('pending_review','pending','reviewing','submitted','in_review'))::int`,
+    })
+    .from(kycVerification)
+
+  return { loans, users, merchants, kyc }
 }
 
 export async function getAllLoans() {
