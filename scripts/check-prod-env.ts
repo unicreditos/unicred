@@ -43,7 +43,6 @@ for (const name of checklist) {
   console.log(`${name}: ${mask(name)}`)
 }
 console.log(`CRON_SECRET (recomendado): ${mask('CRON_SECRET')}`)
-console.log(`PAYWAY_* (referencia): ${process.env.PAYWAY_WEBHOOK_SECRET ? 'presente' : 'ausente — ok'}`)
 
 const previous = process.env.NODE_ENV
 process.env.NODE_ENV = 'production'

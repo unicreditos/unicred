@@ -14,8 +14,6 @@ export function OPTIONS(req: Request) {
 export async function GET(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('GET') ? await req.json().catch(() => ({})) : {}
     const u = new URL(req.url); return mobileJson(req, await mobilePaymentHistory(userId, Number(u.searchParams.get('page')||1), Number(u.searchParams.get('limit')||20)))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

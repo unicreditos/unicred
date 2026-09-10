@@ -1,8 +1,7 @@
 /**
- * Billetera virtual UNICRÉDITOS (cuenta propia + riel Payway / tesorería RM).
- * Ledger de billetera UNICRÉDITOS.
- * El saldo real solo se acredita por inbound Payway / tesorería. Las cargas simuladas están deshabilitadas.
- * El cobro de cuotas descuenta el saldo y emite el recibo Payway.
+ * Billetera virtual UNICRÉDITOS (ledger propio + riel tesorería RM / Pomelo).
+ * El saldo se acredita por inbound de tesorería. Las cargas simuladas están deshabilitadas.
+ * El cobro de cuotas descuenta el saldo y emite recibo interno.
  */
 
 import { db } from '@/lib/db'
@@ -10,23 +9,25 @@ import {
   installment,
   loan,
   payment,
+  paymentReceipt,
   profile,
   user,
   walletAccount,
   walletMovement,
   walletPayout,
 } from '@/lib/db/schema'
-import { createPaywayWalletAccountLive, isPaywayConfigured, paywayAllowsSimulate } from '@/lib/payway'
+import { receiptBranding } from '@/lib/brand'
+import { canSettleOnCollection } from '@/lib/loan-state'
 import { buildSandboxAlias, buildSandboxCvu, parseWalletDestination } from '@/lib/payments/cvu'
-import { settlePaywayPayment } from '@/lib/payments/settle-payway'
 import { executeExternalRail, treasuryOriginLabel } from '@/lib/payments/wallet-rail'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
-const MAX_SANDBOX_LOAD = 5_000_000
 const MAX_TRANSFER = 10_000_000
 /** Techo de sanidad para un solo evento de acreditación entrante (webhook). No es un límite de negocio: es un freno ante un payload malformado o forjado. */
 export const MAX_INBOUND_WEBHOOK_CREDIT = 5_000_000
+
+const RECEIPT_BRANDING = receiptBranding()
 
 function money(value: unknown) {
   const n = typeof value === 'string' ? parseFloat(value) : Number(value)
@@ -146,7 +147,6 @@ export async function ensureWalletAccount(userId: string): Promise<WalletSnapsho
   const holderName = usr?.name ?? 'Cliente UNICRÉDITOS'
   const taxId = (prof?.cuil || prof?.dni || '').replace(/\D/g, '') || null
   const id = crypto.randomUUID()
-  const reference = `UCW-${id.replace(/-/g, '').slice(0, 12)}`
   const now = new Date()
 
   await db.insert(walletAccount).values({
@@ -162,42 +162,10 @@ export async function ensureWalletAccount(userId: string): Promise<WalletSnapsho
     provider: 'unicred',
     paywayAccountId: null,
     pomeloAccountId: null,
-    liveAttempt: { pending: isPaywayConfigured() },
+    liveAttempt: { provider: 'unicred', native: true },
     createdAt: now,
     updatedAt: now,
   })
-
-  if (isPaywayConfigured()) {
-    void createPaywayWalletAccountLive({
-      reference,
-      holderName,
-      taxId: taxId || '20000000000',
-      cvu,
-      alias,
-      email: usr?.email,
-    })
-      .then((live) => {
-        const body = live.ok && live.body && typeof live.body === 'object' ? (live.body as Record<string, unknown>) : null
-        const paywayAccountId = body ? String(body.id ?? body.account_id ?? body.accountId ?? '') || reference : null
-        return db
-          .update(walletAccount)
-          .set({
-            paywayAccountId,
-            liveAttempt: live,
-            updatedAt: new Date(),
-          })
-          .where(eq(walletAccount.id, id))
-      })
-      .catch((err) => {
-        return db
-          .update(walletAccount)
-          .set({
-            liveAttempt: { error: err instanceof Error ? err.message : 'payway_wallet_omitido' },
-            updatedAt: new Date(),
-          })
-          .where(eq(walletAccount.id, id))
-      })
-  }
 
   return loadSnapshot(userId, id)
 }
@@ -261,35 +229,14 @@ export async function creditWallet(input: {
 
 export async function loadWalletSandbox(_userId: string, _amount: number): Promise<never> {
   throw new Error(
-    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita cuando Payway confirma el ingreso.',
+    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita cuando tesorería confirma el ingreso.',
   )
 }
 
-export async function reportWalletInbound(userId: string, amount: number, originRaw: string) {
-  if (!paywayAllowsSimulate()) {
-    throw new Error(
-      'En producción el ingreso llega solo cuando Payway acredita la transferencia al CVU. No se puede informar manualmente.',
-    )
-  }
-  const origin = parseWalletDestination(originRaw)
-  const value = round2(amount)
-  if (!(value >= 100) || value > MAX_SANDBOX_LOAD) {
-    throw new Error(`Ingresá un importe entre $100 y ${MAX_SANDBOX_LOAD.toLocaleString('es-AR')}.`)
-  }
-  const wallet = await ensureWalletAccount(userId)
-  if (origin.kind !== 'alias' && origin.value === wallet.cvu) {
-    throw new Error('El origen no puede ser tu propio CVU.')
-  }
-  const result = await creditWallet({
-    userId,
-    amount: value,
-    kind: 'inbound_transfer',
-    externalId: `inbound-${crypto.randomUUID()}`,
-    reference: `PW-IN-${Date.now().toString().slice(-8)}`,
-    notes: `Ingreso informado desde ${origin.kind.toUpperCase()} ${origin.value}`,
-  })
-  if (!result.matched) throw new Error('No se pudo acreditar el ingreso.')
-  return loadSnapshot(userId, result.walletId!)
+export async function reportWalletInbound(_userId: string, _amount: number, _originRaw: string): Promise<never> {
+  throw new Error(
+    'En producción el ingreso llega solo cuando tesorería acredita la transferencia al CVU. No se puede informar manualmente.',
+  )
 }
 
 export async function findWalletByDestination(destinationRaw: string) {
@@ -605,7 +552,7 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
     }
 
     const paymentId = crypto.randomUUID()
-    const reference = `PW-W-${Date.now().toString().slice(-8)}`
+    const reference = `UC-W-${Date.now().toString().slice(-8)}`
     const now = new Date()
     await tx.insert(payment).values({
       id: paymentId,
@@ -617,7 +564,7 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
       status: 'pending',
       method: 'payway_wallet',
       source: 'web',
-      gateway: 'payway',
+      gateway: 'unicred',
       gatewayResponse: {
         installment_ids: installmentIds,
         loanId,
@@ -652,26 +599,63 @@ export async function payInstallmentsFromWallet(userId: string, installmentIds: 
       createdAt: now,
     })
 
-    const settled = await settlePaywayPayment({
-      status: 'approved',
-      amount: total,
-      localPaymentId: paymentId,
-      paywayId: `wallet-${paymentId.replace(/-/g, '').slice(0, 12)}`,
-      method: 'payway_wallet',
-      gatewayPayload: { wallet: true, cvu: wallet.cvu, alias: wallet.alias },
-      tx,
-    })
-    if (!settled.credited) {
-      throw new Error(settled.reason === 'gateway_distinto' ? 'No se pudo acreditar el cobro.' : 'El cobro no se acreditó.')
+    await tx
+      .update(payment)
+      .set({
+        status: 'paid',
+        paidAt: now,
+        notes: 'Cobrado con billetera UNICRÉDITOS',
+        updatedAt: now,
+      } as any)
+      .where(eq(payment.id, paymentId))
+
+    for (const inst of insts) {
+      await tx
+        .update(installment)
+        .set({ status: 'paid', paidAt: now, paymentId, updatedAt: now } as any)
+        .where(eq(installment.id, inst.id))
     }
+
+    const remaining = await tx
+      .select({ id: installment.id, status: installment.status })
+      .from(installment)
+      .where(eq(installment.loanId, loanId))
+    const openLeft = remaining.filter((r) => r.status !== 'paid' && r.status !== 'cancelled')
+    if (openLeft.length === 0 && canSettleOnCollection('active')) {
+      await tx
+        .update(loan)
+        .set({ status: 'paid', updatedAt: now } as any)
+        .where(and(eq(loan.id, loanId), eq(loan.status, 'active')))
+    }
+
+    const receiptId = crypto.randomUUID()
+    const receiptNumber = `RC-${Date.now().toString().slice(-10)}`
+    await tx.insert(paymentReceipt).values({
+      id: receiptId,
+      receiptNumber,
+      receiptType: 'payment',
+      userId,
+      paymentId,
+      loanId,
+      installmentId: insts[0].id,
+      amount: String(total.toFixed(2)),
+      currency: 'ARS',
+      method: 'payway_wallet',
+      referenceNumber: reference,
+      issuedAt: now,
+      paidAt: now,
+      branding: RECEIPT_BRANDING,
+      createdAt: now,
+    } as any)
+
     return {
       ok: true as const,
       paymentId,
-      credited: settled.credited,
-      receiptId: settled.receiptId ?? null,
+      credited: total,
+      receiptId,
       amount: total,
       balance: next,
-      localPaymentId: settled.localPaymentId ?? paymentId,
+      localPaymentId: paymentId,
     }
   })
 

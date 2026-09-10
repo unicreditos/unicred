@@ -204,6 +204,28 @@ export async function updateProfile(input: {
   const userId = await assertRole('customer')
   await getOrCreateProfile()
 
+  const [lockProf] = await db
+    .select({ kycStatus: profile.kycStatus })
+    .from(profile)
+    .where(eq(profile.userId, userId))
+    .limit(1)
+  const [diditApprovedRow] = await db
+    .select({ id: kycVerification.id })
+    .from(kycVerification)
+    .where(
+      and(
+        eq(kycVerification.userId, userId),
+        eq(kycVerification.provider, 'didit'),
+        eq(kycVerification.status, 'approved'),
+      ),
+    )
+    .limit(1)
+  if (lockProf?.kycStatus === 'approved' || diditApprovedRow) {
+    throw new Error(
+      'Tu identidad ya fue verificada. Los datos de ficha no se pueden editar desde el panel. Pedí el cambio a soporte UNICRÉDITOS.',
+    )
+  }
+
   const cuilClean = String(input.cuil ?? '').replace(/\D/g, '')
   if (!_validateCuilMod11(cuilClean)) {
     throw new Error('CUIL inválido: 11 dígitos con dígito verificador correcto (sin guiones ni puntos).')

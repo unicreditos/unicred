@@ -88,7 +88,7 @@ async function main() {
       "taxId" text,
       balance numeric(14, 2) NOT NULL DEFAULT '0',
       currency text NOT NULL DEFAULT 'ARS',
-      provider text NOT NULL DEFAULT 'payway',
+      provider text NOT NULL DEFAULT 'unicred',
       "paywayAccountId" text,
       "liveAttempt" jsonb,
       "createdAt" timestamptz NOT NULL DEFAULT now(),

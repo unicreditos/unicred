@@ -14,8 +14,6 @@ export function OPTIONS(req: Request) {
 export async function GET(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('GET') ? await req.json().catch(() => ({})) : {}
     return mobileJson(req, await mobileServicesMine(userId))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

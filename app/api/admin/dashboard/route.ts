@@ -16,7 +16,6 @@ export async function GET(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
     await requireMobileAdmin(userId)
-    const body = ['POST','PUT','PATCH'].includes('GET') ? await req.json().catch(() => ({})) : {}
     return mobileJson(req, await mobileAdminDashboard())
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

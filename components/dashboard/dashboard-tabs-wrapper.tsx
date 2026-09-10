@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardShell, isDashboardTab, type TabValue } from '@/components/dashboard/app-shell'
+import { DashboardShell, isDashboardTab, normalizeDashboardTab, type TabValue } from '@/components/dashboard/app-shell'
 import { CustomerDocumentsDesk } from '@/components/dashboard/customer-documents'
 import { InAppDocumentPanel } from '@/components/dashboard/in-app-document-panel'
 import { KYCProfileForm } from '@/components/dashboard/kyc-profile-form'
@@ -16,7 +16,7 @@ import {
   SectionCard,
   StatusChip,
 } from '@/components/unicred/dashboard-kit'
-import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { DecisionBanner } from '@/components/unicred/workspace-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -149,6 +149,8 @@ interface DashboardTabsWrapperProps {
   upcomingInstallments?: UpcomingInstallment[]
   kpiTotals?: KpiTotals
   kycPct?: number
+  /** Estimación de línea preaprobada (UI). La oferta firme sale al solicitar. */
+  preapprovedAmount?: number | null
   bankAccounts?: BankAccount[]
   myKyc?: KYCVerification | null
   contracts?: (LoanContract & { loan?: Loan | null })[]
@@ -158,29 +160,6 @@ interface DashboardTabsWrapperProps {
   savedPaymentMethods?: SavedMethodType[]
   disbursements?: (DisbursementType & { loan?: Loan | null })[]
   installmentsAll?: UpcomingInstallment[]
-}
-
-const SCORE_BAND_COLORS: Record<string, string> = {
-  excelente: 'text-emerald-600 dark:text-emerald-400',
-  bueno: 'text-sky-600 dark:text-sky-400',
-  regular: 'text-amber-600 dark:text-amber-400',
-  bajo: 'text-rose-600 dark:text-rose-400',
-}
-
-function getScoreBand(score: number | null | undefined): { label: string; color: string; tone: string } {
-  if (score === null || score === undefined) {
-    return { label: 'Sin datos', color: 'text-muted-foreground', tone: 'bg-muted/70' }
-  }
-  if (score >= 720) {
-    return { label: 'Excelente', color: SCORE_BAND_COLORS.excelente, tone: 'bg-emerald-500/10' }
-  }
-  if (score >= 640) {
-    return { label: 'Bueno', color: SCORE_BAND_COLORS.bueno, tone: 'bg-sky-500/10' }
-  }
-  if (score >= 560) {
-    return { label: 'Regular', color: SCORE_BAND_COLORS.regular, tone: 'bg-amber-500/10' }
-  }
-  return { label: 'Bajo', color: SCORE_BAND_COLORS.bajo, tone: 'bg-rose-500/10' }
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -207,6 +186,7 @@ export function DashboardTabsWrapper({
   upcomingInstallments = [],
   kpiTotals,
   kycPct = 0,
+  preapprovedAmount = null,
   bankAccounts = [],
   myKyc = null,
   contracts = [],
@@ -226,7 +206,8 @@ export function DashboardTabsWrapper({
   }
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const urlTab = isDashboardTab(rawTab) ? rawTab : null
+  const urlTabRaw = isDashboardTab(rawTab) ? rawTab : null
+  const urlTab = urlTabRaw ? normalizeDashboardTab(urlTabRaw) : null
   const [activeTab, setActiveTabState] = useState<TabValue>(urlTab ?? 'overview')
   const directoIntent = parseDirectoIntent(searchParams)
 
@@ -236,6 +217,13 @@ export function DashboardTabsWrapper({
     setSyncedUrl(currentUrl)
     if (urlTab && urlTab !== activeTab) setActiveTabState(urlTab)
   }
+
+  useEffect(() => {
+    if (!urlTabRaw || !urlTab || urlTabRaw === urlTab) return
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.set('tab', urlTab)
+    router.replace(`/dashboard?${sp.toString()}`, { scroll: false })
+  }, [urlTabRaw, urlTab, searchParams, router])
 
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
@@ -289,30 +277,30 @@ export function DashboardTabsWrapper({
   }
 
   const setActiveTab = (t: TabValue) => {
-    setActiveTabState(t)
+    const next = normalizeDashboardTab(t)
+    setActiveTabState(next)
     setDocView(null)
-    router.replace(`/dashboard?tab=${t}`, { scroll: false })
+    router.replace(`/dashboard?tab=${next}`, { scroll: false })
   }
 
   const activeDocKind = docView?.kind ?? null
   const activeDocId = docView?.id ?? null
   const openCustomerDoc = (kind: CustomerDocKind, id: string, tab: TabValue = activeTab) => {
+    const next = normalizeDashboardTab(tab)
     setDocView({ kind, id })
-    setActiveTabState(tab)
+    setActiveTabState(next)
     const sp = new URLSearchParams()
-    sp.set('tab', tab)
+    sp.set('tab', next)
     sp.set('doc', kind)
     sp.set('docId', id)
     window.history.replaceState(null, '', `/dashboard?${sp.toString()}`)
   }
   const closeCustomerDoc = (tab: TabValue = activeTab) => {
+    const next = normalizeDashboardTab(tab)
     setDocView(null)
-    setActiveTabState(tab)
-    router.replace(`/dashboard?tab=${tab}`, { scroll: false })
+    setActiveTabState(next)
+    router.replace(`/dashboard?tab=${next}`, { scroll: false })
   }
-
-  const score = initialProfile?.creditScore ?? null
-  const band = getScoreBand(score as any as number)
 
   const nextInstallment = useMemo(() => {
     const source = (installmentsAll.length ? installmentsAll : upcomingInstallments).filter(
@@ -345,11 +333,6 @@ export function DashboardTabsWrapper({
     (resolvedUser.name ?? '').trim().split(/\s+/).filter(Boolean)[0] ||
     (resolvedUser.email ?? '').split('@')[0] ||
     null
-  const monthlyIncome = Number(initialProfile?.monthlyIncome) || 0
-  const monthlyLoad = activeLoansList.reduce((sum, l: any) => sum + (Number(l.installmentAmount) || 0), 0)
-  const capacityCeiling = monthlyIncome > 0 ? monthlyIncome * 0.35 : 0
-  const capacityLeft = Math.max(0, capacityCeiling - monthlyLoad)
-  const accountOk = !nextInstallment || nextDueDays === null || nextDueDays >= 0
   const recentMoves = [
     ...payments
       .filter((p) => p.status === 'paid')
@@ -378,99 +361,27 @@ export function DashboardTabsWrapper({
       <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         {activeTab === 'overview' && (
           <>
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-brand-navy-900">
-                  {firstName ? `Hola, ${firstName}` : 'Hola'}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">Bienvenido a tu cuenta UNICRÉDITOS.</p>
-              </div>
-              <Button onClick={() => setActiveTab('solicitar')} disabled={products.length === 0}>
-                Solicitar nuevo crédito
-              </Button>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Capacidad estimada
-                </p>
-                {monthlyIncome > 0 ? (
-                  <>
-                    <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
-                      {formatARS(capacityLeft)}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Tope 35% de tus ingresos declarados ({formatARS(capacityCeiling)}) menos cuotas vigentes.
-                    </p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-brand-primary"
-                        style={{
-                          width: `${capacityCeiling > 0 ? Math.min(100, Math.round((monthlyLoad / capacityCeiling) * 100)) : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="mt-2 text-lg font-semibold text-brand-navy-900">Sin ingresos cargados</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Declará ingresos en Identidad para ver tu tope de cuota (35%).
-                    </p>
-                    <Button size="sm" variant="outline" className="mt-3" onClick={() => setActiveTab('perfil')}>
-                      Completar perfil
-                    </Button>
-                  </>
-                )}
-              </section>
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Próximo pago
-                </p>
-                <p className="mt-2 text-[26px] font-bold tabular-nums tracking-tight text-brand-navy-900">
-                  {nextInstallment ? formatARS(nextInstallment.amount) : '—'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {nextInstallment
-                    ? `${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`
-                    : 'No hay cuotas pendientes'}
-                </p>
-                {nextInstallment ? (
-                  <Button size="sm" className="mt-3" onClick={() => setActiveTab('pagos')}>
-                    Pagar ahora
-                  </Button>
-                ) : null}
-              </section>
-              <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Estado de cuenta
-                </p>
-                <div className="mt-3">
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full px-3 py-1 text-sm font-semibold',
-                      accountOk
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                        : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
-                    )}
-                  >
-                    {accountOk ? 'Al día' : 'Con atraso'}
-                  </span>
-                </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {accountOk
-                    ? 'Tus cuotas vigentes no están vencidas.'
-                    : `La cuota #${nextInstallment?.number} venció el ${nextInstallment ? formatDateShort(nextInstallment.dueDate) : '—'}.`}
-                </p>
-              </section>
+            {/* Una sola jerarquía: saludo corto → próxima acción → 2 métricas → crédito → 4 atajos */}
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-brand-navy-900 sm:text-2xl">
+                {firstName ? `Hola, ${firstName}` : 'Hola'}
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {nextInstallment && nextDueDays !== null && nextDueDays < 0
+                  ? 'Tenés una cuota vencida. Priorizá el pago.'
+                  : nextInstallment && nextDueDays !== null && nextDueDays <= 7
+                    ? 'Se acerca un vencimiento.'
+                    : activeLoansList.length
+                      ? 'Tu cuenta está al día.'
+                      : 'Cuando quieras, podés solicitar un crédito.'}
+              </p>
             </div>
 
             {nextInstallment && nextDueDays !== null && nextDueDays < 0 ? (
               <DecisionBanner
                 tone="critical"
-                title={`Cuota #${nextInstallment.number} vencida · ${formatARS(nextInstallment.amount)}`}
-                detail={`Vencía el ${formatDateShort(nextInstallment.dueDate)}. Pagala ahora para no acumular atraso.`}
+                title={`Pagar cuota #${nextInstallment.number} · ${formatARS(nextInstallment.amount)}`}
+                detail={`Venció el ${formatDateShort(nextInstallment.dueDate)}. Un solo paso desde tu cuenta.`}
                 action={
                   <Button size="sm" onClick={() => setActiveTab('pagos')}>
                     Pagar ahora
@@ -488,36 +399,44 @@ export function DashboardTabsWrapper({
                   </Button>
                 }
               />
-            ) : kycPct < 100 ? (
-              <DecisionBanner
-                tone="info"
-                title="Completá tu identidad para originar crédito"
-                detail={`Datos al ${kycPct}%. Sin CUIL e ingresos no podemos evaluar. La biometría se hace solo con Didit.`}
-                action={
-                  <Button size="sm" variant="outline" onClick={() => setActiveTab('perfil')}>
-                    Completar datos
-                  </Button>
-                }
-              />
-            ) : myKyc?.provider !== 'didit' || myKyc.status !== 'approved' ? (
+            ) : myKyc?.provider !== 'didit' || myKyc?.status !== 'approved' ? (
               <DecisionBanner
                 tone="warn"
                 title="Verificá tu identidad con Didit"
-                detail="No se aceptan fotos cargadas a mano. Completá la verificación dentro de UNICRÉDITOS para poder solicitar crédito."
+                detail="Es el paso para solicitar crédito. La verificación se hace dentro de UNICRÉDITOS."
                 action={
                   <Button size="sm" onClick={() => setActiveTab('kyc_biometrico')}>
-                    Verificar identidad
+                    Verificar ahora
+                  </Button>
+                }
+              />
+            ) : kycPct < 100 ? (
+              <DecisionBanner
+                tone="info"
+                title="Completá tus datos"
+                detail={`Perfil al ${kycPct}%. Con CUIL e ingresos podemos evaluar tu solicitud.`}
+                action={
+                  <Button size="sm" variant="outline" onClick={() => setActiveTab('perfil')}>
+                    Completar identidad
                   </Button>
                 }
               />
             ) : activeLoansList.length === 0 ? (
               <DecisionBanner
                 tone="ok"
-                title="Cuenta al día, sin créditos vigentes"
-                detail="Podés simular un préstamo personal. La aprobación depende de BCRA, Didit e ingresos."
+                title={
+                  preapprovedAmount != null && preapprovedAmount > 0
+                    ? `Línea estimada ${formatARS(preapprovedAmount)}`
+                    : 'Listo para solicitar'
+                }
+                detail={
+                  preapprovedAmount != null && preapprovedAmount > 0
+                    ? 'Estimación sujeta a BCRA, Didit e ingresos al confirmar.'
+                    : 'Simulá el préstamo y enviá la solicitud cuando te convenga.'
+                }
                 action={
                   <Button size="sm" onClick={() => setActiveTab('solicitar')} disabled={products.length === 0}>
-                    Simular crédito
+                    {preapprovedAmount != null && preapprovedAmount > 0 ? 'Solicitar' : 'Simular crédito'}
                   </Button>
                 }
               />
@@ -525,74 +444,121 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="ok"
                 title="Sin vencimientos urgentes"
-                detail="Tus cuotas vigentes están al día."
+                detail="Cuando quieras, revisá el cronograma o descargá un comprobante."
                 action={
-                  <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas')}>
-                    Ver créditos
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas_vigentes')}>
+                      Ver créditos
+                    </Button>
+                    {nextInstallment ? (
+                      <Button size="sm" onClick={() => setActiveTab('pagos')}>
+                        Pagar
+                      </Button>
+                    ) : null}
+                  </div>
                 }
               />
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricTile
-                label="Próxima cuota"
-                value={nextInstallment ? formatARS(nextInstallment.amount) : '—'}
-                hint={
-                  nextInstallment
-                    ? `${formatDateShort(nextInstallment.dueDate)} · #${nextInstallment.number}`
-                    : 'Sin cuotas pendientes'
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab(nextInstallment ? 'pagos' : 'cuotas_vigentes')}
+                className="rounded-xl border border-border bg-card p-4 text-left shadow-xs transition hover:border-brand-primary/40"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Próximo pago
+                </p>
+                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
+                  {nextInstallment ? formatARS(nextInstallment.amount) : '—'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {nextInstallment
+                    ? `${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`
+                    : 'Sin cuotas pendientes'}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('cuotas_vigentes')}
+                className="rounded-xl border border-border bg-card p-4 text-left shadow-xs transition hover:border-brand-primary/40"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Saldo a devolver
+                </p>
+                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
+                  {formatARS(kpis.pendingAmount)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {kpis.active} crédito{kpis.active === 1 ? '' : 's'} activo{kpis.active === 1 ? '' : 's'}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveTab(
+                    preapprovedAmount != null && preapprovedAmount > 0 && myKyc?.status === 'approved'
+                      ? 'solicitar'
+                      : myKyc?.status === 'approved'
+                        ? 'solicitar'
+                        : 'kyc_biometrico',
+                  )
                 }
-                tone={nextInstallment && nextDueDays !== null && nextDueDays < 0 ? 'critical' : nextInstallment && nextDueDays !== null && nextDueDays <= 7 ? 'warn' : 'ok'}
-              />
-              <MetricTile
-                label="Saldo a devolver"
-                value={formatARS(kpis.pendingAmount)}
-                hint={`${kpis.active} crédito${kpis.active === 1 ? '' : 's'} activo${kpis.active === 1 ? '' : 's'}`}
-              />
-              <MetricTile
-                label="Score UNICRÉDITOS"
-                value={score ?? '—'}
-                hint={score ? band.label : 'Se consulta solo con Central de Deudores'}
-                tone={!score ? 'warn' : score >= 640 ? 'ok' : 'warn'}
-              />
-              <MetricTile
-                label="Identidad"
-                value={`${kycPct}%`}
-                hint={
-                  myKyc?.provider === 'didit' && myKyc.status === 'approved'
-                    ? 'Didit aprobado'
-                    : kycPct >= 100
-                      ? 'Falta verificar con Didit'
-                      : 'Faltan datos de perfil'
-                }
-                tone={kycPct >= 100 ? 'ok' : 'warn'}
-              />
+                className="rounded-xl border border-brand-primary/20 bg-gradient-to-br from-brand-primary-50/80 to-card p-4 text-left shadow-xs transition hover:border-brand-primary/50 sm:col-span-2 lg:col-span-1"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary-700">
+                  Línea estimada
+                </p>
+                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
+                  {preapprovedAmount != null && preapprovedAmount > 0 && myKyc?.status === 'approved'
+                    ? formatARS(preapprovedAmount)
+                    : '—'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {myKyc?.status === 'approved'
+                    ? 'Sujeta a evaluación al solicitar'
+                    : 'Requiere Didit aprobado'}
+                </p>
+              </button>
             </div>
 
             <div className="grid items-start gap-4 lg:grid-cols-5">
               <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
                 <header className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
-                    <p className="text-xs text-muted-foreground">Capital originado y estado contractual</p>
+                    <h2 className="text-sm font-semibold text-brand-navy-900">Mis créditos</h2>
+                    <p className="text-xs text-muted-foreground">Lo que tenés activo ahora</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('cuotas')}>
-                    Ver detalle
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setActiveTab('cuotas_vigentes')}
+                  >
+                    Ver todo
                   </Button>
                 </header>
                 <div className="p-4">
                   {!activeLoansList.length ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       No hay créditos activos.{' '}
-                      <button type="button" className="font-medium text-brand-primary" onClick={() => setActiveTab('solicitar')}>
+                      <button
+                        type="button"
+                        className="font-medium text-brand-primary"
+                        onClick={() => setActiveTab('solicitar')}
+                      >
                         Solicitar uno
                       </button>
                     </p>
                   ) : (
                     <div className="divide-y divide-border">
                       {activeLoansList.map((l: any) => (
-                        <div key={l.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                        <button
+                          key={l.id}
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 py-3 text-left first:pt-0 last:pb-0 hover:opacity-90"
+                          onClick={() => setActiveTab('cuotas_vigentes')}
+                        >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-brand-navy-900">
                               {(l as any).purpose || 'Préstamo personal'}
@@ -603,9 +569,11 @@ export function DashboardTabsWrapper({
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-semibold tabular-nums">{formatARS(l.principal)}</p>
-                            <p className="text-[11px] text-muted-foreground">{l.term} cuotas · {loanStatusLabel(l.status)}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {l.term} cuotas · {loanStatusLabel(l.status)}
+                            </p>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -614,19 +582,18 @@ export function DashboardTabsWrapper({
 
               <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-2">
                 <header className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-semibold text-brand-navy-900">Acciones</h2>
-                  <p className="text-xs text-muted-foreground">Atajos de tu cuenta</p>
+                  <h2 className="text-sm font-semibold text-brand-navy-900">Accesos rápidos</h2>
+                  <p className="text-xs text-muted-foreground">Lo que más usás</p>
                 </header>
                 <div className="grid gap-2 p-3">
-                  {[
-                    { t: 'Pagar cuota', d: 'Tarjeta, Pago Fácil, Rapipago, billetera o transferencia', tab: 'pagos' as TabValue },
-                    { t: 'Billetera', d: 'CVU, saldo y transferencias UNICRÉDITOS', tab: 'billetera' as TabValue },
-                    { t: 'Cancelar crédito', d: 'Prepago de capital remanente', tab: 'cuotas_vigentes' as TabValue },
-                    { t: 'Contrato y pagaré', d: 'Expediente del crédito', tab: 'documentos_contrato' as TabValue },
-                    { t: 'Cargar cuenta', d: 'CBU / CVU de desembolso', tab: 'bancos' as TabValue },
-                    { t: 'Ayuda', d: 'FAQ y contacto', tab: 'ayuda' as TabValue },
-                    { t: 'Soporte', d: 'Chat en línea y reclamo Ley 24.240', tab: 'reclamos' as TabValue },
-                  ].map((a) => (
+                  {(
+                    [
+                      { t: 'Pagar', d: 'Cuotas pendientes', tab: 'pagos' as TabValue },
+                      { t: 'Comprobantes', d: 'Recibos y desembolsos', tab: 'comprobantes' as TabValue },
+                      { t: 'Documentos', d: 'Contrato, pagaré, certificados', tab: 'documentos' as TabValue },
+                      { t: 'Soporte', d: 'Chat y reclamo', tab: 'reclamos' as TabValue },
+                    ] as const
+                  ).map((a) => (
                     <button
                       key={a.tab}
                       type="button"
@@ -646,54 +613,53 @@ export function DashboardTabsWrapper({
 
             <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
 
-            <section className="rounded-xl border border-border bg-card shadow-sm">
-              <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-brand-navy-900">Movimientos recientes</h2>
-                  <p className="text-xs text-muted-foreground">Pagos acreditados y desembolsos de tu cuenta</p>
-                </div>
-                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('pagos')}>
-                  Ver pagos
-                </Button>
-              </header>
-              <div className="p-4">
-                {!recentMoves.length ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    Todavía no hay movimientos. Cuando pagues una cuota o se acredite un crédito, aparecen acá.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {recentMoves.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span
-                            className={cn(
-                              'flex h-9 w-9 items-center justify-center rounded-full',
-                              m.kind === 'in' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700',
-                            )}
-                          >
-                            {m.kind === 'in' ? <Banknote className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-brand-navy-900">{m.title}</p>
-                            <p className="text-[11px] text-muted-foreground">{formatDateShort(m.date)}</p>
-                          </div>
-                        </div>
-                        <p
+            {recentMoves.length > 0 ? (
+              <section className="rounded-xl border border-border bg-card shadow-sm">
+                <header className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-brand-navy-900">Últimos movimientos</h2>
+                    <p className="text-xs text-muted-foreground">Pagos y desembolsos recientes</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setActiveTab('historial_pagos')}
+                  >
+                    Ver historial
+                  </Button>
+                </header>
+                <div className="divide-y divide-border p-4">
+                  {recentMoves.slice(0, 4).map((m) => (
+                    <div key={m.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
                           className={cn(
-                            'text-sm font-semibold tabular-nums',
-                            m.kind === 'in' ? 'text-sky-700' : 'text-emerald-700',
+                            'flex h-9 w-9 items-center justify-center rounded-full',
+                            m.kind === 'in' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700',
                           )}
                         >
-                          {m.kind === 'in' ? '+' : ''}
-                          {formatARS(m.amount)}
-                        </p>
+                          {m.kind === 'in' ? <Banknote className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-brand-navy-900">{m.title}</p>
+                          <p className="text-[11px] text-muted-foreground">{formatDateShort(m.date)}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
+                      <p
+                        className={cn(
+                          'text-sm font-semibold tabular-nums',
+                          m.kind === 'in' ? 'text-sky-700' : 'text-emerald-700',
+                        )}
+                      >
+                        {m.kind === 'in' ? '+' : ''}
+                        {formatARS(m.amount)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </>
         )}
 
@@ -706,13 +672,17 @@ export function DashboardTabsWrapper({
                   const url = new URL(href, window.location.origin)
                   const tab = url.searchParams.get('tab')
                   if (isDashboardTab(tab)) {
-                    setActiveTab(tab)
+                    setActiveTab(normalizeDashboardTab(tab))
                     return
                   }
                 } catch {
                   /* href interno */
                 }
-                router.push(href)
+                if (href.startsWith('/dashboard')) {
+                  router.push(href)
+                  return
+                }
+                setActiveTab('ayuda')
               }}
             />
           )}
@@ -849,58 +819,68 @@ export function DashboardTabsWrapper({
                       {
                         icon: BellRing,
                         title: 'Atención',
-                        value: BRAND.phone || 'Formulario y email',
-                        href: '/contacto',
+                        value: BRAND.phone || 'Chat y reclamos',
+                        tab: 'reclamos' as TabValue,
                         tone: 'emerald',
                       },
                       {
                         icon: Landmark,
-                        title: 'Soporte',
+                        title: 'Soporte por email',
                         value: BRAND.supportEmail,
                         href: `mailto:${BRAND.supportEmail}`,
-                        tone: 'primary',
-                      },
-                      {
-                        icon: Globe2,
-                        title: 'Sitio web oficial',
-                        value: BRAND.domain,
-                        href: `https://${BRAND.domain}`,
                         tone: 'primary',
                       },
                       {
                         icon: ShieldCheck,
                         title: 'Consultas BCRA',
                         value: 'Central de Deudores',
-                        href: '/scoring',
+                        tab: 'scoring' as TabValue,
                         tone: 'navy',
                       },
-                    ].map((c, i) => (
-                      <a
-                        key={i}
-                        href={c.href}
-                        className={
-                          'flex items-center justify-between gap-3 rounded-xl border p-3 transition hover:opacity-95 ' +
-                          (c.tone === 'emerald'
-                            ? 'border-emerald-200 bg-emerald-50/40'
-                            : c.tone === 'navy'
-                              ? 'border-brand-navy-800/10 bg-brand-navy-900/5'
-                              : 'border-brand-primary-200/60 bg-brand-primary-50/40')
-                        }
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-brand-primary ring-1 ring-border/80">
-                            <c.icon className="h-4 w-4" />
-                          </span>
-                          <div className="min-w-0">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              {c.title}
+                      {
+                        icon: FileText,
+                        title: 'Documentos',
+                        value: 'Contrato, pagaré y certificados',
+                        tab: 'documentos_contrato' as TabValue,
+                        tone: 'primary',
+                      },
+                    ].map((c, i) => {
+                      const className =
+                        'flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:opacity-95 ' +
+                        (c.tone === 'emerald'
+                          ? 'border-emerald-200 bg-emerald-50/40'
+                          : c.tone === 'navy'
+                            ? 'border-brand-navy-800/10 bg-brand-navy-900/5'
+                            : 'border-brand-primary-200/60 bg-brand-primary-50/40')
+                      const inner = (
+                        <>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-brand-primary ring-1 ring-border/80">
+                              <c.icon className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                {c.title}
+                              </div>
+                              <div className="truncate text-sm font-bold text-foreground">{c.value}</div>
                             </div>
-                            <div className="truncate text-sm font-bold text-foreground">{c.value}</div>
                           </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                      </a>
-                    ))}
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                        </>
+                      )
+                      if ('href' in c && c.href) {
+                        return (
+                          <a key={i} href={c.href} className={className}>
+                            {inner}
+                          </a>
+                        )
+                      }
+                      return (
+                        <button key={i} type="button" className={className} onClick={() => setActiveTab(c.tab!)}>
+                          {inner}
+                        </button>
+                      )
+                    })}
                   </div>
                 </SectionCard>
 
@@ -942,9 +922,9 @@ export function DashboardTabsWrapper({
                   title={`Tenés ${activeLoansList.length} crédito${activeLoansList.length === 1 ? '' : 's'} vigente${activeLoansList.length === 1 ? '' : 's'}`}
                   detail="No se puede originar otro préstamo hasta cancelar o terminar el ciclo actual. Pagá la cuota desde tu cuenta o revisá el cronograma."
                   action={
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas')}>
-                      Ver créditos
-                    </Button>
+                  <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas_vigentes')}>
+                    Ver créditos
+                  </Button>
                   }
                 />
               ) : null}
@@ -1112,27 +1092,15 @@ export function DashboardTabsWrapper({
           )}
 
           {activeTab === 'pagos' && !(activeDocKind === 'recibo' || activeDocKind === 'liquidacion') && (
-            <>
-              <PagosPanel
-                profile={initialProfile}
-                loans={loans}
-                installments={installmentsAll}
-                payments={payments}
-                savedMethods={savedPaymentMethods}
-                isPending={isPending}
-                payerEmail={session?.user?.email ?? null}
-              />
-              <ComprobantesPanel
-                receipts={paymentReceipts}
-                disbursements={disbursements}
-                payments={payments}
-                activeKind={activeDocKind}
-                activeId={activeDocId}
-                onOpen={(kind, id) => openCustomerDoc(kind, id, 'comprobantes')}
-                onBack={() => closeCustomerDoc('comprobantes')}
-              />
-            </>
+            <PagosPanel
+              installments={installmentsAll}
+              savedMethods={savedPaymentMethods}
+              isPending={isPending}
+              payerEmail={session?.user?.email ?? null}
+            />
           )}
+
+          {activeTab === 'historial_pagos' && <HistorialPagosPanel payments={payments} />}
 
           {activeTab === 'billetera' && (
             <WalletDesk
@@ -1141,30 +1109,28 @@ export function DashboardTabsWrapper({
             />
           )}
 
-          {activeTab === 'servicios' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Pagos de servicios</CardTitle>
-                <CardDescription>
-                  Esta sección no está habilitada. Para cuotas de crédito usá Créditos → Pagar cuotas.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-
           {(activeTab === 'documentos' ||
+            activeTab === 'documentos_arca' ||
+            activeTab === 'documentos_bcra' ||
             activeTab === 'documentos_contrato' ||
             activeTab === 'documentos_pagare' ||
-            activeTab === 'documentos_talonario') && (
+            activeTab === 'documentos_talonario' ||
+            activeTab === 'documentos_certificados') && (
             <CustomerDocumentsDesk
               mode={
-                activeTab === 'documentos_contrato'
-                  ? 'contrato'
-                  : activeTab === 'documentos_pagare'
-                    ? 'pagare'
-                    : activeTab === 'documentos_talonario'
-                      ? 'talonario'
-                      : 'documentaciones'
+                activeTab === 'documentos'
+                  ? 'documentaciones'
+                  : activeTab === 'documentos_arca'
+                    ? 'arca'
+                    : activeTab === 'documentos_bcra'
+                      ? 'bcra'
+                      : activeTab === 'documentos_contrato'
+                        ? 'contrato'
+                        : activeTab === 'documentos_pagare'
+                          ? 'pagare'
+                          : activeTab === 'documentos_talonario'
+                            ? 'talonario'
+                            : 'certificados'
               }
               ownerUserId={initialProfile?.userId ?? ''}
               loans={loans}
@@ -1837,18 +1803,12 @@ function BancosPanel({
 
 
 function PagosPanel({
-  profile: _profile,
-  loans: _loans,
   installments,
-  payments,
   savedMethods,
   isPending,
   payerEmail,
 }: {
-  profile: Profile | null
-  loans: Loan[]
   installments: UpcomingInstallment[]
-  payments: PaymentType[]
   savedMethods: SavedMethodType[]
   isPending: boolean
   payerEmail?: string | null
@@ -1858,6 +1818,7 @@ function PagosPanel({
     .sort((a, b) => new Date(a.dueDate as any).getTime() - new Date(b.dueDate as any).getTime())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [method, setMethod] = useState<any>('tarjeta_credito')
+  const [step, setStep] = useState<'list' | 'checkout'>('list')
   const [payOpen, setPayOpen] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -1866,11 +1827,11 @@ function PagosPanel({
   const pendingIds = pending.map((row) => row.id).join(',')
 
   useEffect(() => {
-    // Preselecciona la cuota que llega por ?pay=/?method= en el deep link.
     if (!payFromUrl) return
     if (!pendingIds.split(',').includes(payFromUrl)) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds((ids) => (ids.includes(payFromUrl) ? ids : [...ids, payFromUrl]))
+    setStep('checkout')
     if (
       methodFromUrl &&
       ['tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'transferencia_bancaria', 'payway_wallet'].includes(
@@ -1889,156 +1850,58 @@ function PagosPanel({
     .filter((i) => selectedIds.includes(i.id))
     .reduce((acc, i) => acc + (typeof i.amount === 'string' ? parseFloat(i.amount) : Number(i.amount) || 0), 0)
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-12">
-      <Card className="lg:col-span-7">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Wallet className="h-5 w-5 text-primary" /> Mis cuotas · pagar desde la web
-              </CardTitle>
-              <CardDescription>
-                Pagá desde tu cuenta UNICRÉDITOS. Si elegís tarjeta se abre el punto de venta acá. El cupón de Pago
-                Fácil o Rapipago se emite recién cuando confirmás ese medio, porque vence.
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              {pending.length} pendiente{pending.length === 1 ? '' : 's'} ·{' '}
-              {installments.length - pending.length} pagada
-              {installments.length - pending.length === 1 ? '' : 's'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {pending.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
-              <CheckCircle2 className="h-10 w-10 text-emerald-600" />
-              <p className="text-sm font-medium">¡Sin cuotas pendientes!</p>
-              <p className="max-w-xs text-xs text-muted-foreground">
-                Estás al día con tus pagos. Cuando haya cuotas nuevas aparecerán acá.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl border">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead>Préstamo</TableHead>
-                    <TableHead>Cuota</TableHead>
-                    <TableHead>Vence</TableHead>
-                    <TableHead className="text-right">Importe</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pending.map((i) => {
-                    const today = new Date()
-                    today.setHours(0, 0, 0, 0)
-                    const due = new Date(i.dueDate as any)
-                    due.setHours(0, 0, 0, 0)
-                    const daysLate = Math.round((today.getTime() - due.getTime()) / 86400000)
-                    const overdue = i.status !== 'paid' && daysLate > 0
-                    const sel = selectedIds.includes(i.id)
-                    return (
-                      <TableRow
-                        key={i.id}
-                        role="button"
-                        tabIndex={0}
-                        className={cn('cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', sel && 'bg-primary/5')}
-                        onClick={() => toggle(i.id)}
-                        onKeyDown={(e: KeyboardEvent<HTMLTableRowElement>) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            toggle(i.id)
-                          }
-                        }}
-                      >
-                        <TableCell>
-                          <div
-                            className={cn(
-                              'flex h-5 w-5 items-center justify-center rounded border',
-                              sel
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'border-input',
-                            )}
-                          >
-                            {sel && <Check className="h-3 w-3" />}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-xs">
-                            {i.loanPurpose || 'Préstamo personal'}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {formatARS(i.loanPrincipal)} · {i.loanTerm} cuotas
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono font-semibold">
-                          {i.number} / {i.loanTerm}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-mono text-xs">
-                            {new Date(i.dueDate as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
-                          </div>
-                          {overdue && (
-                            <Badge variant="destructive" className="mt-1 text-[10px] py-0 h-4">
-                              {daysLate} días atrasada
-                            </Badge>
-                          )}
-                          {!overdue && daysLate >= -7 && daysLate <= 0 && (
-                            <Badge className="mt-1 text-[10px] py-0 h-4 bg-amber-500 hover:bg-amber-500">
-                              Próxima · {Math.abs(daysLate)}d
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-bold">
-                          {formatARS(i.amount)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={i.status === 'paid' ? 'default' : 'secondary'}
-                            className={cn(
-                              i.status === 'paid' && 'bg-emerald-500 hover:bg-emerald-500',
-                              i.status === 'pending' && !overdue && 'bg-sky-500/80 hover:bg-sky-500',
-                              overdue && 'bg-rose-500 hover:bg-rose-500',
-                            )}
-                          >
-                            {i.status === 'paid'
-                              ? 'Pagada'
-                              : overdue
-                                ? 'Vencida'
-                                : 'Pendiente'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+  const openCheckout = (ids?: string[]) => {
+    if (ids?.length) setSelectedIds(ids)
+    const next = ids ?? selectedIds
+    if (!next.length) return
+    setStep('checkout')
+  }
 
-      <div className="space-y-6 lg:col-span-5">
+  const clearPayQuery = () => {
+    const sp = new URLSearchParams(window.location.search)
+    if (sp.has('pay') || sp.has('cuota') || sp.has('method')) {
+      sp.delete('pay')
+      sp.delete('cuota')
+      sp.delete('method')
+      const next = sp.toString()
+      router.replace(next ? `/dashboard?${next}` : '/dashboard?tab=pagos')
+    }
+  }
+
+  const backToList = () => {
+    setStep('list')
+    setPayOpen(false)
+    clearPayQuery()
+  }
+
+  if (step === 'checkout' && selectedIds.length > 0) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={backToList}>
+          <ArrowLeft className="h-4 w-4" /> Volver a cuotas pendientes
+        </Button>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Checkout</CardTitle>
+            <CardTitle className="text-base">Formulario de pago</CardTitle>
             <CardDescription>
-              Cuotas seleccionadas: <span className="font-semibold">{selectedIds.length}</span>
+              {selectedIds.length} cuota{selectedIds.length === 1 ? '' : 's'} · total{' '}
+              <span className="font-semibold text-foreground">{formatARS(totalSel)}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Total a pagar
-                </span>
-                <span className="font-mono text-2xl font-bold">{formatARS(totalSel)}</span>
-              </div>
-            </div>
+            <ul className="space-y-2 rounded-xl border bg-muted/20 p-3 text-sm">
+              {pending
+                .filter((i) => selectedIds.includes(i.id))
+                .map((i) => (
+                  <li key={i.id} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      Cuota {i.number}/{i.loanTerm}
+                      <span className="text-muted-foreground"> · {i.loanPurpose || 'Préstamo'}</span>
+                    </span>
+                    <span className="shrink-0 font-mono font-semibold">{formatARS(i.amount)}</span>
+                  </li>
+                ))}
+            </ul>
 
             <div className="space-y-1.5">
               <Label>Método de pago</Label>
@@ -2076,9 +1939,7 @@ function PagosPanel({
                       key={m.id}
                       className="flex w-full items-center justify-between rounded-lg border bg-card p-2.5 text-left text-xs hover:border-brand-primary/40"
                       onClick={() => {
-                        if (!pending.length) return
                         setMethod(m.type === 'card' ? 'tarjeta_credito' : method)
-                        setSelectedIds((ids) => (ids.length ? ids : [pending[0].id]))
                         setPayOpen(true)
                       }}
                     >
@@ -2124,14 +1985,7 @@ function PagosPanel({
               open={payOpen}
               onClose={() => {
                 setPayOpen(false)
-                const sp = new URLSearchParams(window.location.search)
-                if (sp.has('pay') || sp.has('cuota') || sp.has('method')) {
-                  sp.delete('pay')
-                  sp.delete('cuota')
-                  sp.delete('method')
-                  const next = sp.toString()
-                  router.replace(next ? `/dashboard?${next}` : '/dashboard?tab=pagos')
-                }
+                clearPayQuery()
               }}
               email={payerEmail}
               method={method}
@@ -2148,58 +2002,243 @@ function PagosPanel({
             />
           </CardFooter>
         </Card>
-
-        {payments.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Últimos pagos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-72 overflow-auto pr-1">
-              {payments.slice(0, 8).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg border bg-card p-2.5 text-xs"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={cn(
-                        'flex h-8 w-8 items-center justify-center rounded-md',
-                        p.status === 'paid'
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                          : p.status === 'pending'
-                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                            : 'bg-muted text-muted-foreground',
-                      )}
-                    >
-                      {p.status === 'paid' ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : p.status === 'pending' ? (
-                        <Clock className="h-4 w-4" />
-                      ) : (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">
-                        {paymentMethodLabel(p.method)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate font-mono">
-                        {p.referenceNumber ?? p.id.slice(0, 10)} ·{' '}
-                        {new Date(p.createdAt as any).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono font-semibold">{formatARS(p.amount)}</p>
-                    <p className="text-[10px] text-muted-foreground">{paymentStatusLabel(p.status)}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
       </div>
-    </div>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Wallet className="h-5 w-5 text-primary" /> Cuotas pendientes
+            </CardTitle>
+            <CardDescription>
+              Seleccioná una o más cuotas y tocá Pagar para abrir el formulario. El historial está en Pagos → Historial.
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="text-xs">
+            {pending.length} pendiente{pending.length === 1 ? '' : 's'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {pending.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+            <p className="text-sm font-medium">¡Sin cuotas pendientes!</p>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Estás al día. Cuando haya cuotas nuevas aparecerán acá.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Préstamo</TableHead>
+                    <TableHead>Cuota</TableHead>
+                    <TableHead>Vence</TableHead>
+                    <TableHead className="text-right">Importe</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pending.map((i) => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const due = new Date(i.dueDate as any)
+                    due.setHours(0, 0, 0, 0)
+                    const daysLate = Math.round((today.getTime() - due.getTime()) / 86400000)
+                    const overdue = i.status !== 'paid' && daysLate > 0
+                    const sel = selectedIds.includes(i.id)
+                    return (
+                      <TableRow
+                        key={i.id}
+                        role="button"
+                        tabIndex={0}
+                        className={cn(
+                          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          sel && 'bg-primary/5',
+                        )}
+                        onClick={() => toggle(i.id)}
+                        onKeyDown={(e: KeyboardEvent<HTMLTableRowElement>) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            toggle(i.id)
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div
+                            className={cn(
+                              'flex h-5 w-5 items-center justify-center rounded border',
+                              sel ? 'border-primary bg-primary text-primary-foreground' : 'border-input',
+                            )}
+                          >
+                            {sel && <Check className="h-3 w-3" />}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs font-medium">{i.loanPurpose || 'Préstamo personal'}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {formatARS(i.loanPrincipal)} · {i.loanTerm} cuotas
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono font-semibold">
+                          {i.number} / {i.loanTerm}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-mono text-xs">
+                            {new Date(i.dueDate as any).toLocaleDateString('es-AR', {
+                              timeZone: 'America/Argentina/Buenos_Aires',
+                            })}
+                          </div>
+                          {overdue && (
+                            <Badge variant="destructive" className="mt-1 h-4 py-0 text-[10px]">
+                              {daysLate} días atrasada
+                            </Badge>
+                          )}
+                          {!overdue && daysLate >= -7 && daysLate <= 0 && (
+                            <Badge className="mt-1 h-4 bg-amber-500 py-0 text-[10px] hover:bg-amber-500">
+                              Próxima · {Math.abs(daysLate)}d
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold">{formatARS(i.amount)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              !overdue && 'bg-sky-500/80 hover:bg-sky-500',
+                              overdue && 'bg-rose-500 hover:bg-rose-500',
+                            )}
+                          >
+                            {overdue ? 'Vencida' : 'Pendiente'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openCheckout([i.id])
+                            }}
+                          >
+                            Pagar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 px-4 py-3">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Seleccionadas: </span>
+                <span className="font-semibold">{selectedIds.length}</span>
+                {selectedIds.length > 0 && (
+                  <>
+                    <span className="text-muted-foreground"> · Total </span>
+                    <span className="font-mono font-bold">{formatARS(totalSel)}</span>
+                  </>
+                )}
+              </div>
+              <Button
+                type="button"
+                className="gap-1.5"
+                disabled={selectedIds.length === 0}
+                onClick={() => openCheckout()}
+              >
+                <Wallet className="h-4 w-4" /> Pagar seleccionadas
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function HistorialPagosPanel({ payments }: { payments: PaymentType[] }) {
+  if (payments.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Receipt className="h-5 w-5 text-primary" /> Historial de pagos
+          </CardTitle>
+          <CardDescription>Acá aparecen los pagos registrados en tu cuenta.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
+            <Clock className="h-10 w-10 text-muted-foreground" />
+            <p className="text-sm font-medium">Todavía no hay pagos</p>
+            <p className="max-w-xs text-xs text-muted-foreground">Cuando pagues una cuota, el movimiento queda listado acá.</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Receipt className="h-5 w-5 text-primary" /> Historial de pagos
+        </CardTitle>
+        <CardDescription>
+          {payments.length} movimiento{payments.length === 1 ? '' : 's'} · los comprobantes PDF están en Comprobantes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {payments.map((p) => (
+          <div key={p.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-md',
+                  p.status === 'paid'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                    : p.status === 'pending'
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                      : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {p.status === 'paid' ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : p.status === 'pending' ? (
+                  <Clock className="h-4 w-4" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{paymentMethodLabel(p.method)}</p>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {p.referenceNumber ?? p.id.slice(0, 10)} ·{' '}
+                  {new Date(p.createdAt as any).toLocaleDateString('es-AR', {
+                    timeZone: 'America/Argentina/Buenos_Aires',
+                  })}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-mono font-semibold">{formatARS(p.amount)}</p>
+              <p className="text-[11px] text-muted-foreground">{paymentStatusLabel(p.status)}</p>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }
 

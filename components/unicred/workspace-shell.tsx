@@ -236,7 +236,7 @@ export function WorkspaceShell({
                             ? 'h-12 justify-center rounded-xl'
                             : 'gap-3 rounded-xl px-2.5 py-3 text-[14px]',
                           isActive
-                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
+                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
                             : childActive
                               ? 'font-semibold text-white'
                               : 'font-medium text-white/75 hover:bg-white/8 hover:text-white',
@@ -246,7 +246,7 @@ export function WorkspaceShell({
                           className={cn(
                             'shrink-0',
                             'h-6 w-6',
-                            isActive || childActive ? 'text-brand-cian-300' : 'text-white/70',
+                            isActive || childActive ? 'text-[#FF8A65]' : 'text-white/70',
                           )}
                         />
                         {compact ? null : (
@@ -277,7 +277,7 @@ export function WorkspaceShell({
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
-                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
+                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
                                     : 'font-medium text-white/55 hover:bg-white/6 hover:text-white',
                                 )}
                               >
@@ -393,7 +393,7 @@ export function WorkspaceShell({
                 if (!q) return
                 const enc = encodeURIComponent(q)
                 if (role === 'merchant') router.push(`/merchant?tab=sales&q=${enc}`)
-                else router.push(`/dashboard?tab=cuotas&q=${enc}`)
+                else router.push(`/dashboard?tab=cuotas_vigentes&q=${enc}`)
               }}
             >
               <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
@@ -486,7 +486,10 @@ export function WorkspaceShell({
           <div className="mx-auto grid max-w-lg grid-cols-5">
             {(mobileTabs.length ? mobileTabs : nav).slice(0, 4).map((item) => {
               const Icon = item.icon
-              const on = item.id === activeId
+              const navMatch = nav.find((n) => n.id === item.id)
+              const on =
+                item.id === activeId ||
+                !!navMatch?.children?.some((c) => c.id === activeId)
               return (
                 <button
                   key={item.id}

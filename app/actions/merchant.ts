@@ -71,7 +71,7 @@ export async function getMyMerchant() {
 }
 
 export async function getMyMerchantDocuments() {
-  const userId = await assertRole('customer', 'merchant')
+  await assertRole('customer', 'merchant')
   const m = await getMyMerchant()
   if (!m) return []
   return db

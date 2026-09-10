@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
@@ -18,7 +18,7 @@ function safeCallbackUrl(value: string | null): string | null {
 }
 
 const fieldClass =
-  'h-12 rounded-lg border-slate-200 bg-white px-3.5 text-sm placeholder:text-slate-400'
+  'h-12 rounded-xl border-brand-navy-200 bg-white px-3.5 text-sm text-brand-navy-900 placeholder:text-brand-navy-400'
 
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
@@ -73,15 +73,28 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   }
 
   return (
-    <AuthFloatLayout>
-      <h1 className="mb-7 text-center text-2xl font-semibold tracking-tight text-brand-navy-800">
-        {isSignUp ? 'Creá tu cuenta' : 'Bienvenido de nuevo'}
-      </h1>
+    <AuthFloatLayout
+      headline={isSignUp ? 'Creá tu cuenta' : 'Bienvenido de nuevo'}
+      lede={
+        isSignUp
+          ? 'El alta completo está en el registro guiado.'
+          : 'Accedé a tu panel, cuotas y documentación.'
+      }
+    >
+      {!isSignUp ? null : (
+        <p className="mb-6 rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-sm text-brand-navy-700">
+          Para personas y comercios usá el{' '}
+          <Link href="/sign-up" className="font-semibold text-brand-primary underline">
+            registro guiado
+          </Link>{' '}
+          (DNI/CUIL → contacto → clave → Didit).
+        </p>
+      )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {isSignUp && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="name" className="sr-only">
+            <Label htmlFor="name" className="text-brand-navy-800">
               Nombre y apellido
             </Label>
             <Input
@@ -96,25 +109,29 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </div>
         )}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email" className="sr-only">
+          <Label htmlFor="email" className="text-brand-navy-800">
             Correo electrónico
           </Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            placeholder="Ingresá el mail con el que te registraste"
-            className={fieldClass}
-          />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="tu@email.com"
+              className={cn(fieldClass, 'pl-10')}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password" className="sr-only">
+          <Label htmlFor="password" className="text-brand-navy-800">
             Contraseña
           </Label>
           <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
@@ -124,12 +141,12 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               minLength={8}
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               placeholder="Tu contraseña"
-              className={cn(fieldClass, 'pr-11')}
+              className={cn(fieldClass, 'pl-10 pr-11')}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-brand-navy-400 hover:text-brand-navy-700"
               aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -138,14 +155,14 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         </div>
 
         {!isSignUp ? (
-          <label className="flex items-center gap-2 text-sm text-slate-500">
+          <label className="flex items-center gap-2 text-sm text-brand-navy-600">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-primary"
+              className="h-4 w-4 rounded border-brand-navy-300 text-primary"
             />
-            Recordarme
+            Recordarme en este dispositivo
           </label>
         ) : null}
 
@@ -155,30 +172,26 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </p>
         )}
 
-        <p className="pt-1 text-center text-sm text-slate-500">
+        <p className="pt-1 text-center text-sm text-brand-navy-600">
           {isSignUp ? (
-            <Link href="/sign-in" className="hover:text-brand-navy-800 hover:underline">
+            <Link href="/sign-in" className="font-medium hover:text-brand-navy-900 hover:underline">
               ¿Ya tenés cuenta?
             </Link>
           ) : (
             <>
-              <Link href="/recuperar-clave" className="hover:text-brand-navy-800 hover:underline">
+              <Link href="/recuperar-clave" className="font-medium hover:text-brand-navy-900 hover:underline">
                 ¿Olvidaste tu contraseña?
               </Link>
-              <span className="mx-2 text-slate-300">|</span>
-              <Link href="/sign-up" className="hover:text-brand-navy-800 hover:underline">
-                No estoy registrado
+              <span className="mx-2 text-brand-navy-300">|</span>
+              <Link href="/sign-up" className="font-medium hover:text-brand-navy-900 hover:underline">
+                Crear cuenta
               </Link>
             </>
           )}
         </p>
 
         <div className="grid grid-cols-2 gap-3 pt-1">
-          <Button
-            type="button"
-            asChild
-            className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
-          >
+          <Button type="button" asChild variant="outline" className="h-12 text-base font-semibold">
             <Link href={isSignUp ? '/sign-in' : '/'}>Volver</Link>
           </Button>
           <Button type="submit" disabled={loading} className="h-12 text-base font-semibold">

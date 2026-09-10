@@ -3,10 +3,12 @@
 import { randomBytes } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createClaim } from '@/app/actions/claims'
 import { db } from '@/lib/db'
-import { user } from '@/lib/db/schema'
-import { requireUserId } from '@/lib/session'
-import { eq } from 'drizzle-orm'
+import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
+import { kycVerification, profile, supportCase, user } from '@/lib/db/schema'
+import { assertRole, requireUserId } from '@/lib/session'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 const MAX_BYTES = 1_000_000
@@ -71,4 +73,88 @@ export async function updateMyAvatar(formData: FormData) {
   await db.update(user).set({ image, updatedAt: new Date() }).where(eq(user.id, userId))
   revalidatePath('/', 'layout')
   return { ok: true as const, image }
+}
+
+/**
+ * Pedido formal de cambio de ficha verificada.
+ * Abre un caso de soporte (categoría identidad) visible en admin + mail a ops.
+ */
+export async function requestProfileChange(input: { reason: string; fields?: string }) {
+  const userId = await assertRole('customer')
+  await ensureSupportCaseTable()
+
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const [diditOk] = await db
+    .select({ id: kycVerification.id })
+    .from(kycVerification)
+    .where(
+      and(
+        eq(kycVerification.userId, userId),
+        eq(kycVerification.provider, 'didit'),
+        eq(kycVerification.status, 'approved'),
+      ),
+    )
+    .limit(1)
+
+  if (prof?.kycStatus !== 'approved' && !diditOk) {
+    return {
+      ok: false as const,
+      error: 'Tu ficha todavía no está verificada. Podés editarla desde el panel.',
+    }
+  }
+
+  const [openCase] = await db
+    .select({ id: supportCase.id })
+    .from(supportCase)
+    .where(
+      and(
+        eq(supportCase.userId, userId),
+        eq(supportCase.category, 'identidad'),
+        eq(supportCase.status, 'open'),
+      ),
+    )
+    .limit(1)
+  if (openCase) {
+    return {
+      ok: false as const,
+      error: 'Ya tenés un pedido de cambio de identidad abierto. Seguilo en Reclamos.',
+      caseId: openCase.id,
+    }
+  }
+
+  const reason = String(input.reason ?? '').trim()
+  if (reason.length < 20) {
+    return { ok: false as const, error: 'Describí el cambio con al menos 20 caracteres.' }
+  }
+
+  const fields = String(input.fields ?? '').trim()
+  const snapshot = [
+    `CUIL: ${prof?.cuil || '—'}`,
+    `DNI: ${prof?.dni || '—'}`,
+    `Tel: ${prof?.phone || '—'}`,
+    `Nac: ${prof?.birthDate || '—'}`,
+    `Domicilio: ${[prof?.address, prof?.city, prof?.province].filter(Boolean).join(', ') || '—'}`,
+  ].join('\n')
+
+  const body = [
+    'Solicitud de modificación de ficha verificada (no editable por el cliente).',
+    fields ? `Campos a modificar: ${fields}` : null,
+    '',
+    'Motivo del cliente:',
+    reason,
+    '',
+    'Snapshot actual:',
+    snapshot,
+  ]
+    .filter((line) => line !== null)
+    .join('\n')
+
+  const created = await createClaim({
+    category: 'identidad',
+    subject: 'Solicitud de cambio de ficha verificada',
+    body,
+  })
+
+  revalidatePath('/dashboard')
+  return { ok: true as const, caseId: created.id }
 }

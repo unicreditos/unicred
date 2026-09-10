@@ -654,6 +654,24 @@ export async function mobileUpdateProfile(
   userId: string,
   input: Record<string, unknown>,
 ) {
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const [diditOk] = await db
+    .select({ id: kycVerification.id })
+    .from(kycVerification)
+    .where(
+      and(
+        eq(kycVerification.userId, userId),
+        eq(kycVerification.provider, 'didit'),
+        eq(kycVerification.status, 'approved'),
+      ),
+    )
+    .limit(1)
+  if (prof?.kycStatus === 'approved' || diditOk) {
+    throw new Error(
+      'Tu identidad ya fue verificada. Pedí cualquier cambio de ficha a soporte UNICRÉDITOS.',
+    )
+  }
+
   const nameParts = [input.firstName, input.lastName].filter(Boolean).map(String)
   if (nameParts.length) {
     await db
@@ -661,6 +679,13 @@ export async function mobileUpdateProfile(
       .set({ name: nameParts.join(' '), updatedAt: new Date() })
       .where(eq(userTable.id, userId))
   }
+  const nextDni = input.dni != null ? String(input.dni).replace(/\D/g, '') : null
+  const nextCuil = input.cuil != null ? String(input.cuil).replace(/\D/g, '') : null
+  const identityChanged =
+    Boolean(prof) &&
+    ((nextDni != null && nextDni !== String(prof?.dni ?? '').replace(/\D/g, '')) ||
+      (nextCuil != null && nextCuil !== String(prof?.cuil ?? '').replace(/\D/g, '')))
+
   const patch: Record<string, unknown> = { updatedAt: new Date() }
   if (input.dni != null) patch.dni = String(input.dni)
   if (input.cuil != null) patch.cuil = String(input.cuil)
@@ -672,7 +697,14 @@ export async function mobileUpdateProfile(
   if (input.postalCode != null) patch.postalCode = String(input.postalCode)
   if (input.employmentType != null) patch.employmentStatus = String(input.employmentType)
   if (input.monthlyIncome != null) patch.monthlyIncome = String(Number(input.monthlyIncome))
+  if (identityChanged) patch.kycStatus = 'submitted'
   await db.update(profile).set(patch as any).where(eq(profile.userId, userId))
+  if (identityChanged) {
+    await db
+      .update(kycVerification)
+      .set({ status: 'pending', updatedAt: new Date(), reviewedBy: 'identity_changed' })
+      .where(and(eq(kycVerification.userId, userId), eq(kycVerification.status, 'approved')))
+  }
   if (input.phone != null) {
     await db
       .update(userTable)
@@ -844,7 +876,7 @@ export async function mobileVerifyIdentity(
 export async function mobileWalletTopup(userId: string, _amount: number) {
   const wallet = await ensureWalletAccount(userId)
   throw new Error(
-    `Las cargas simuladas están deshabilitadas. Transferí a tu CVU (${wallet.cvu}) o alias (${wallet.alias}). El saldo se acredita cuando Payway confirma el ingreso.`,
+    `Las cargas simuladas están deshabilitadas. Transferí a tu CVU (${wallet.cvu}) o alias (${wallet.alias}). El saldo se acredita cuando tesorería confirma el ingreso.`,
   )
 }
 

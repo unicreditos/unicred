@@ -16,7 +16,7 @@ export async function POST(req: Request,{ params }: { params: Promise<Record<str
   try {
     const userId = await requireMobileUserId(req)
     await requireMobileAdmin(userId)
-    const body = ['POST','PUT','PATCH'].includes('POST') ? await req.json().catch(() => ({})) : {}
+    const body = await req.json().catch(() => ({}))
     const id = String((await params).id); return mobileJson(req, await mobileAdminRejectLoan(userId, id, String((body as any).reason||'')))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

@@ -74,7 +74,7 @@ export function CustomerDocumentsDesk({
   onWithdraw,
   onRefinance,
 }: {
-  mode: 'documentaciones' | 'contrato' | 'pagare' | 'talonario'
+  mode: 'documentaciones' | 'arca' | 'bcra' | 'contrato' | 'pagare' | 'talonario' | 'certificados'
   ownerUserId: string
   loans: LoanLite[]
   contracts: ContractLite[]
@@ -169,6 +169,116 @@ export function CustomerDocumentsDesk({
         items={items}
         activeKind="talonario"
         activeId={currentId}
+        isPending={isPending}
+        onOpen={onOpen}
+      />
+    )
+  }
+
+  if (mode === 'arca') {
+    const items: DocItem[] = ownerUserId
+      ? [
+          {
+            kind: 'arca',
+            id: ownerUserId,
+            title: 'Constancia ARCA',
+            detail: 'Razón social, domicilio fiscal e impuestos del padrón WSAA',
+          },
+        ]
+      : []
+    return (
+      <DocumentStage
+        title="Constancia ARCA"
+        empty="Todavía no hay constancia fiscal vinculada a tu cuenta."
+        items={items}
+        activeKind="arca"
+        activeId={activeId || ownerUserId || null}
+        isPending={isPending}
+        onOpen={onOpen}
+      />
+    )
+  }
+
+  if (mode === 'bcra') {
+    const items: DocItem[] = bcraReports.map((r) => ({
+      kind: 'bcra' as const,
+      id: r.id,
+      title: `Informe BCRA ${r.reportNumber}`,
+      detail: `Emisión ${new Date(r.createdAt as Date).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })} · Score ${r.scoreAtGeneration ?? lastBcraScore ?? '—'}`,
+    }))
+    return (
+      <DocumentStage
+        title="Informes BCRA"
+        empty="Todavía no hay informes de Central de Deudores. Podés generar uno desde Score BCRA."
+        items={items}
+        activeKind="bcra"
+        activeId={activeId || items[0]?.id || null}
+        isPending={isPending}
+        onOpen={onOpen}
+        actions={
+          <Button type="button" size="sm" disabled={isPending} onClick={() => onGenBCRA(ownerUserId)}>
+            Generar informe
+          </Button>
+        }
+      />
+    )
+  }
+
+  if (mode === 'certificados') {
+    const items: DocItem[] = contracts.flatMap((c) => {
+      const loan = c.loan ?? loans.find((l) => l.id === c.loanId)
+      const rows: DocItem[] = [
+        {
+          kind: 'estado-deuda',
+          id: c.id,
+          title: 'Estado de deuda',
+          detail: loan ? `${formatARS(loan.principal)} · ${loan.term} cuotas` : 'Cronograma del crédito',
+        },
+      ]
+      if (loan?.status === 'active' || loan?.status === 'approved') {
+        rows.push({
+          kind: 'solvencia',
+          id: c.loanId,
+          title: 'Certificado de solvencia',
+          detail: 'Se emite si el crédito está al día',
+        })
+        rows.push({
+          kind: 'cancelacion',
+          id: c.loanId,
+          title: 'Liquidación de cancelación',
+          detail: 'Capital remanente para cancelar anticipado',
+        })
+      }
+      if (loan?.status === 'paid') {
+        rows.push({
+          kind: 'libre-deuda',
+          id: c.loanId,
+          title: 'Constancia de libre deuda',
+          detail: 'Crédito cancelado',
+        })
+      }
+      if (
+        evaluateIntimation(
+          asMoraRows(installments.filter((row) => row.loanId === c.loanId)),
+          lastRefinanceFromSignature(c.signatureData),
+        ).ok
+      ) {
+        rows.push({
+          kind: 'intimacion',
+          id: c.id,
+          title: 'Intimación de mora',
+          detail: 'Cuotas con más de 30 días de atraso',
+        })
+      }
+      return rows
+    })
+    return (
+      <DocumentStage
+        title="Certificados del crédito"
+        empty="Cuando tengas un contrato, acá aparecen solvencia, libre deuda y liquidaciones."
+        items={items}
+        activeKind={(activeKind as CustomerDocKind) || items[0]?.kind || 'estado-deuda'}
+        activeId={activeId || items[0]?.id || null}
         isPending={isPending}
         onOpen={onOpen}
       />
@@ -286,21 +396,21 @@ export function CustomerDocumentsDesk({
   }
 
   const groups = [
-    { label: 'Identidad fiscal', items: catalog.filter((i) => i.kind === 'arca') },
-    { label: 'Central de Deudores BCRA', items: catalog.filter((i) => i.kind === 'bcra') },
     {
       label: 'Expediente del crédito',
       items: catalog.filter((i) => i.kind !== 'arca' && i.kind !== 'bcra'),
     },
+    { label: 'Identidad fiscal', items: catalog.filter((i) => i.kind === 'arca') },
+    { label: 'Central de Deudores BCRA', items: catalog.filter((i) => i.kind === 'bcra') },
   ].filter((g) => g.items.length)
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Documentaciones</CardTitle>
+          <CardTitle className="text-lg">Mis documentos</CardTitle>
           <CardDescription>
-            Abrí un documento por vez. Se muestra en esta pantalla, sin salir de tu cuenta.
+            Primero el expediente del crédito. Abrí un documento por vez, sin salir de tu cuenta.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -387,7 +497,10 @@ function DocumentStage({
   onGenContract?: (loanId: string) => void
   actions?: React.ReactNode
 }) {
-  const current = activeId ? items.find((i) => i.id === activeId) : items[0]
+  const current = activeId
+    ? items.find((i) => i.id === activeId && (!activeKind || i.kind === activeKind)) ||
+      items.find((i) => i.id === activeId)
+    : items[0]
   return (
     <div className="space-y-4">
       {pendingLoan && onGenContract ? (
@@ -409,10 +522,10 @@ function DocumentStage({
         <div className="flex flex-wrap gap-2">
           {items.map((item) => (
             <Button
-              key={item.id}
+              key={`${item.kind}-${item.id}`}
               type="button"
               size="sm"
-              variant={item.id === current?.id ? 'default' : 'outline'}
+              variant={item.kind === current?.kind && item.id === current?.id ? 'default' : 'outline'}
               onClick={() => onOpen(item.kind, item.id)}
             >
               {item.title}
@@ -423,7 +536,7 @@ function DocumentStage({
       {current ? (
         <>
           {actions}
-          <InAppDocumentPanel kind={activeKind} id={current.id} />
+          <InAppDocumentPanel kind={current.kind} id={current.id} />
         </>
       ) : (
         <Card>

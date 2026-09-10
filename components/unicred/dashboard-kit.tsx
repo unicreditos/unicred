@@ -510,23 +510,34 @@ function InfoField({
   )
 }
 
-export function BrandMark({ className }: { className?: string }) {
+export function BrandMark({
+  className,
+  tone = 'orange',
+}: {
+  className?: string
+  /** orange = marca principal; white = fondos oscuros; cream = variante Global-Cash */
+  tone?: 'orange' | 'white' | 'cream'
+}) {
+  const fg = tone === 'orange' ? '#FF5722' : tone === 'cream' ? '#ECF0E5' : '#FFFFFF'
+  const cut = '#000000'
   return (
-    <svg viewBox="0 0 32 32" className={cn('h-5 w-5', className)} aria-hidden>
-      <circle cx="16" cy="16" r="15.2" fill="#0C1612" />
-      <rect x="11" y="6.4" width="11.2" height="7.2" rx="1.1" fill="#20BD5A" />
+    <svg viewBox="0 0 100 100" className={cn('h-5 w-5', className)} aria-hidden>
+      <g fill={fg}>
+        <path d="M24.2 36.8 A 31 31 0 0 1 71.5 27.2 L 78.8 24.1 80.2 36.4 69.6 33.8 A 21.5 21.5 0 0 0 30.6 41.2 Z" />
+        <path d="M75.8 63.2 A 31 31 0 0 1 28.5 72.8 L 21.2 75.9 19.8 63.6 30.4 66.2 A 21.5 21.5 0 0 0 69.4 58.8 Z" />
+        <circle cx="50" cy="50" r="17.5" />
+      </g>
       <text
-        x="16.6"
-        y="12.1"
+        x="50"
+        y="57.5"
         textAnchor="middle"
-        fontSize="5.4"
+        fontSize="22"
         fontWeight="700"
-        fill="#0C1612"
+        fontFamily="Impact, Haettenschweiler, Arial Black, sans-serif"
+        fill={cut}
       >
         $
       </text>
-      <path d="M8.4 20.2c1.2-2.3 3.5-3.6 7.6-3.6s6.4 1.3 7.6 3.6" fill="none" stroke="#F5F7FA" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M7.6 21.4c0-.7.6-1.3 1.3-1.3h13.4c.8 0 1.4.7 1.3 1.5l-.6 5.2A1.6 1.6 0 0 1 21.5 28H10.6A1.7 1.7 0 0 1 9 26.4Z" fill="#F5F7FA" />
     </svg>
   )
 }
@@ -544,12 +555,23 @@ export function BrandLogo({
 }) {
   return (
     <Link href={href} className={cn('inline-flex items-center gap-2.5 select-none', className)}>
-      <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full shadow-sm ring-1 ring-white/10">
-        <BrandMark className="h-9 w-9" />
+      <span
+        className={cn(
+          'relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full',
+          light ? 'bg-black ring-1 ring-white/15' : 'bg-black shadow-sm ring-1 ring-black/20',
+        )}
+      >
+        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'orange'} />
       </span>
       {showText ? (
         <span className="flex flex-col leading-none">
-          <span className={cn('text-[17px] font-black tracking-[0.04em]', light ? 'text-white' : 'text-brand-navy-800 dark:text-white')}>
+          <span
+            className={cn(
+              'text-[17px] font-black uppercase tracking-[-0.04em]',
+              light ? 'text-[#ECF0E5]' : 'text-brand-navy-800 dark:text-white',
+            )}
+            style={{ fontFamily: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif" }}
+          >
             {BRAND.company}
           </span>
           <span className={cn('mt-0.5 max-w-[200px] text-[10px] font-medium leading-snug', light ? 'text-white/70' : 'text-muted-foreground')}>
@@ -571,15 +593,15 @@ export function DigitalCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0C1612] via-[#1A2820] to-[#20BD5A] p-5 text-white shadow-xl',
+        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A0A0A] via-[#1A120E] to-[#FF5722] p-5 text-white shadow-xl',
         className,
       )}
     >
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5" />
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/15">
-            <BrandMark className="h-9 w-9" />
+          <span className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-black ring-1 ring-white/15">
+            <BrandMark className="h-[1.65rem] w-[1.65rem]" tone="cream" />
           </span>
           <span>
             <span className="block text-sm font-black tracking-[0.06em]">{BRAND.company}</span>

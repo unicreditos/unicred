@@ -401,7 +401,7 @@ export function WalletPayBox({
             Faltan {formatARS(Math.max(0, amount - wallet.balance))} para cubrir esta cuota.
           </p>
           <p className="text-xs text-muted-foreground">
-            Transferí al CVU o alias de tu billetera. Cuando Payway confirme el ingreso, el saldo aparece acá.
+            Transferí al CVU o alias de tu billetera. Cuando tesorería confirme el ingreso, el saldo aparece acá.
           </p>
         </div>
       )}

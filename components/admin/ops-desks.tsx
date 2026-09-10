@@ -10,6 +10,7 @@ import {
   type OpsOpenTicket,
 } from '@/app/actions/admin-ops'
 import { TransferReviews } from '@/components/admin/transfer-reviews'
+import { WalletCreditDesk } from '@/components/admin/wallet-credit-desk'
 import { ArcaInvoicesDesk } from '@/components/admin/arca-invoices-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,7 +59,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
               void adminRegisterCollection({
                 installmentId: row.id,
                 amount: Number(data.get('amount')),
-                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'payway_qr',
+                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'wallet',
                 reference: String(data.get('reference') || ''),
                 notes: String(data.get('notes') || ''),
               })
@@ -87,7 +88,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
                 <option value="transferencia_rm">Transferencia a tesorería RM</option>
                 <option value="efectivo">Efectivo</option>
                 <option value="mercado_pago">Mercado Pago</option>
-                <option value="payway_qr">Payway (sandbox)</option>
+                <option value="wallet">Billetera UNICRÉDITOS</option>
               </select>
             </label>
             <label className="block text-xs font-medium text-muted-foreground">
@@ -407,6 +408,12 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
               <h2 className="text-[12px] font-semibold">Transferencias informadas</h2>
             </div>
             <TransferReviews />
+          </div>
+          <div className="shrink-0 overflow-auto rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-3 py-1.5">
+              <h2 className="text-[12px] font-semibold">Cargar billetera</h2>
+            </div>
+            <WalletCreditDesk />
           </div>
         </div>
       </div>

@@ -675,6 +675,15 @@ function MerchantProfileForm({
     void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash !== '#kyb') return
+    const t = window.setTimeout(() => {
+      document.getElementById('kyb')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [])
+
   function upd<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm((f) => ({ ...f, [k]: v }))
   }
@@ -796,7 +805,7 @@ function MerchantProfileForm({
   const lockedFromAfip = Boolean(evaluation?.legalName || existing?.legalName)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 lg:grid-cols-3" id="kyb">
       <div className="lg:col-span-2">
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">

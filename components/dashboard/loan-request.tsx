@@ -506,7 +506,7 @@ export function LoanRequestSimulator({
                 <Button
                   onClick={() => {
                     setResultModal(null)
-                    router.push('/dashboard?tab=cuotas')
+                    router.push('/dashboard?tab=cuotas_vigentes')
                   }}
                 >
                   Ver mi crédito

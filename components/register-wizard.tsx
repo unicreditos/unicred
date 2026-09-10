@@ -27,44 +27,43 @@ import {
 import { formatARS } from '@/lib/finance'
 import type { AccountKind, IdentityMatch } from '@/lib/identity'
 import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
-import type { RepresentativeRole } from '@/lib/merchant-kyb'
+import {
+  MERCHANT_DOC_LABELS,
+  requiredMerchantDocuments,
+  type RepresentativeRole,
+} from '@/lib/merchant-kyb'
+import { cn } from '@/lib/utils'
 import {
   Building2,
   CheckCircle2,
-  CreditCard,
   FileText,
   Loader2,
-  Printer,
+  Lock,
+  Mail,
+  Phone,
   ShieldCheck,
   UserRound,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-type Step = 'tipo' | 'id' | 'confirm' | 'datos' | 'docs' | 'cuenta' | 'resultado'
+/** Persona: id → confirm → contacto → clave → Didit → resultado. Comercio suma datos KYB. */
+type Step = 'tipo' | 'id' | 'confirm' | 'contacto' | 'datos' | 'clave' | 'docs' | 'resultado'
 
-const STEPS: Step[] = ['tipo', 'id', 'confirm', 'datos', 'docs', 'cuenta', 'resultado']
+const PERSONA_STEPS: Step[] = ['tipo', 'id', 'confirm', 'contacto', 'clave', 'docs', 'resultado']
+const COMERCIO_STEPS: Step[] = ['tipo', 'id', 'confirm', 'contacto', 'datos', 'clave', 'docs', 'resultado']
 
 const STEP_LABEL: Record<Step, string> = {
   tipo: 'Tipo',
-  id: 'Identificación',
-  confirm: 'Confirmación',
-  datos: 'Datos',
+  id: 'Documento',
+  confirm: 'Identidad',
+  contacto: 'Contacto',
+  datos: 'Comercio',
+  clave: 'Acceso',
   docs: 'Didit',
-  cuenta: 'Cuenta',
-  resultado: 'Scoring',
+  resultado: 'Listo',
 }
-
-const SITUACIONES = [
-  'Relación de dependencia',
-  'Monotributista',
-  'Autónomo',
-  'Profesional independiente',
-  'Jubilado / Pensionado',
-  'Comercio',
-  'Otro',
-]
 
 const CATEGORIAS = ['Almacén / kiosco', 'Indumentaria', 'Servicios', 'Gastronomía', 'Tecnología', 'Otro']
 
@@ -85,8 +84,6 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
   const [birthDate, setBirthDate] = useState('')
   const [geo, setGeo] = useState<GeoValue>({ province: '', department: '', city: '', postalCode: '' })
   const [address, setAddress] = useState('')
-  const [employmentStatus, setEmploymentStatus] = useState('')
-  const [monthlyIncome, setMonthlyIncome] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [category, setCategory] = useState('')
   const [merchantCuit, setMerchantCuit] = useState('')
@@ -110,12 +107,19 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
     diditConfigured?: boolean
   } | null>(null)
 
-  const idx = STEPS.indexOf(step)
+  const steps = accountType === 'comercio' ? COMERCIO_STEPS : PERSONA_STEPS
+  const idx = steps.indexOf(step)
+  const progressSteps = steps.filter((s) => s !== 'resultado')
   const lastLookup = useRef('')
   const handleLookupRef = useRef<(raw?: string) => Promise<void>>(async () => {})
   const signInHref = intent?.fromDirecto
     ? `/sign-in?next=${encodeURIComponent(directoSolicitarHref(intent))}`
     : '/sign-in'
+
+  const kybDocs = useMemo(() => {
+    if (accountType !== 'comercio' || identity?.personType !== 'JURIDICA') return []
+    return requiredMerchantDocuments('JURIDICA', representativeRole)
+  }, [accountType, identity?.personType, representativeRole])
 
   function go(next: Step) {
     setError(null)
@@ -234,13 +238,13 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
       dni,
       phone,
       birthDate,
-      province: geo.province,
-      department: geo.department,
-      city: geo.city,
-      postalCode: geo.postalCode,
-      address,
-      monthlyIncome: Number(monthlyIncome) || 0,
-      employmentStatus,
+      province: geo.province || identity.province || '',
+      department: geo.department || identity.department || '',
+      city: geo.city || identity.city || '',
+      postalCode: geo.postalCode || identity.postalCode || '',
+      address: address || identity.address || '',
+      monthlyIncome: 0,
+      employmentStatus: '',
       businessName,
       category,
       merchantCuit: accountType === 'comercio' ? merchantCuit || identity.cuil : undefined,
@@ -267,529 +271,614 @@ export function RegisterWizard({ intent }: { intent?: DirectoIntent }) {
     go('resultado')
   }
 
+  const contactoReady =
+    Boolean(email.trim()) &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    phone.replace(/\D/g, '').length >= 8 &&
+    isPlausibleAdultBirthDate(birthDate)
+
   return (
     <AuthFloatLayout
       size="wide"
-      className="max-w-2xl"
-      headline="Comenzá con UNICRÉDITOS"
-      lede="Abrí tu cuenta como persona o comercio. Validamos identidad, consultamos el BCRA y te mostramos TNA y CFT antes de firmar. Tener cuenta no garantiza un préstamo."
+      className="max-w-xl"
+      headline="Abrí tu cuenta"
+      lede="Identidad oficial, contacto y verificación biométrica. Sin letra chica: la cuenta no garantiza un crédito."
     >
-      <ol className="mb-6 grid grid-cols-6 gap-1">
-            {STEPS.filter((s) => s !== 'resultado').map((s, i) => (
-              <li
-                key={s}
-                className={`h-1.5 rounded-full ${i <= idx ? 'bg-primary' : 'bg-muted'}`}
-                title={STEP_LABEL[s]}
-              />
-            ))}
-          </ol>
+      <ol className="mb-8 flex gap-1.5" aria-label="Progreso de registro">
+        {progressSteps.map((s, i) => (
+          <li
+            key={s}
+            className={cn(
+              'h-1.5 flex-1 rounded-full transition-colors',
+              i <= Math.max(0, idx) ? 'bg-brand-primary' : 'bg-brand-navy-100',
+            )}
+            title={STEP_LABEL[s]}
+          />
+        ))}
+      </ol>
 
-          {step === 'tipo' && (
-            <section className="space-y-5">
-              <Header title="¿Cómo querés registrarte?" text="Elegí si la cuenta es para vos o para tu comercio." />
-              {intent?.fromDirecto ? (
-                <p className="rounded-lg border bg-muted/20 p-3 text-sm">
-                  {intent.amount && intent.term
-                    ? `Simulaste ${formatARS(intent.amount)} en ${intent.term} cuotas. Primero abrís la cuenta; el tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}.`
-                    : `Venís de la campaña en línea. El tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}; el catálogo más alto se habilita con historial.`}
-                </p>
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TypeCard
-                  active={accountType === 'persona'}
-                  icon={<UserRound className="h-6 w-6" />}
-                  title="Persona"
-                  text="Billetera personal, scoring y eventual solicitud de crédito."
-                  onClick={() => setAccountType('persona')}
-                />
-                <TypeCard
-                  active={accountType === 'comercio'}
-                  icon={<Building2 className="h-6 w-6" />}
-                  title="Comercio"
-                  text="Cuenta para tu negocio. La adhesión comercial la habilita UNICRÉDITOS."
-                  onClick={() => setAccountType('comercio')}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  asChild
-                  className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
-                >
-                  <Link href="/">Volver</Link>
-                </Button>
-                <Button className="h-12 text-base font-semibold" disabled={!accountType} onClick={() => go('id')}>
-                  Continuar
-                </Button>
-              </div>
-            </section>
-          )}
+      {step === 'tipo' && (
+        <section className="space-y-6">
+          <Header title="¿Para quién es la cuenta?" text="Persona física o comercio adherido a UNICRÉDITOS." />
+          {intent?.fromDirecto ? (
+            <p className="rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-sm text-brand-navy-700">
+              {intent.amount && intent.term
+                ? `Simulaste ${formatARS(intent.amount)} en ${intent.term} cuotas. Primero abrís la cuenta; el tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}.`
+                : `Venís de la campaña en línea. El tope del primer crédito es ${formatARS(FIRST_CREDIT_HARD_CAP)}.`}
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TypeCard
+              active={accountType === 'persona'}
+              icon={<UserRound className="h-6 w-6" />}
+              title="Persona"
+              text="DNI o CUIL, verificación biométrica y panel de cliente."
+              onClick={() => setAccountType('persona')}
+            />
+            <TypeCard
+              active={accountType === 'comercio'}
+              icon={<Building2 className="h-6 w-6" />}
+              title="Empresa / comercio"
+              text="CUIT, representante legal, Didit y expediente societario si es PJ."
+              onClick={() => setAccountType('comercio')}
+            />
+          </div>
+          <NavRow
+            backHref="/"
+            backLabel="Volver"
+            nextLabel="Continuar"
+            nextDisabled={!accountType}
+            onNext={() => go('id')}
+          />
+        </section>
+      )}
 
-          {step === 'id' && (
-            <section className="space-y-5">
-              <Header
-                title="CUIT, CUIL o DNI"
-                text="Al completar el número consultamos ARCA y el BCRA solos. Después confirmás los datos."
-              />
+      {step === 'id' && (
+        <section className="space-y-6">
+          <Header
+            title={accountType === 'comercio' ? 'CUIT del comercio' : 'Tu DNI o CUIL'}
+            text={
+              accountType === 'comercio'
+                ? 'Consultamos el padrón ARCA. La constancia no se carga a mano.'
+                : 'Con el número devolvemos el nombre oficial del padrón para que lo confirmes.'
+            }
+          />
+          <div className="space-y-2">
+            <Label htmlFor="identifier" className="text-brand-navy-800">
+              Número
+            </Label>
+            <Input
+              id="identifier"
+              inputMode="numeric"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={accountType === 'comercio' ? '30-12345678-9' : '20-12345678-9 o DNI'}
+              className="h-12 font-mono text-base"
+              autoFocus
+            />
+            {lookupLoading && (
+              <p className="flex items-center gap-2 text-xs text-brand-navy-600">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Consultando padrón ARCA…
+              </p>
+            )}
+          </div>
+          {error && <Alert text={error} />}
+          <NavRow
+            onBack={() => go('tipo')}
+            nextLabel={lookupLoading ? 'Consultando…' : 'Validar'}
+            nextDisabled={lookupLoading || identifier.replace(/\D/g, '').length < 7}
+            onNext={() => void handleLookup()}
+            nextIcon={lookupLoading ? <Loader2 className="animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+          />
+        </section>
+      )}
+
+      {step === 'confirm' && identity && (
+        <section className="space-y-6">
+          <Header
+            title="Confirmá la identidad"
+            text="Si el nombre no es el tuyo (o del representante), no continúes."
+          />
+          <div className="space-y-4 rounded-xl border border-brand-navy-200 bg-brand-navy-50 p-5">
+            {alternatives.length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="identifier">Número</Label>
-                <Input
-                  id="identifier"
-                  inputMode="numeric"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder={accountType === 'comercio' ? '30-12345678-9' : '20-12345678-9 o DNI'}
-                  autoFocus
-                />
-                {lookupLoading && (
-                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Consultando padrón ARCA y BCRA…
-                  </p>
-                )}
+                <p className="text-xs font-medium text-brand-navy-600">Otras claves posibles para ese DNI</p>
+                <div className="flex flex-wrap gap-2">
+                  {[identity, ...alternatives].map((alt) => (
+                    <Button
+                      key={alt.cuil}
+                      type="button"
+                      size="sm"
+                      variant={alt.cuil === (merchantCuit || cuil) ? 'default' : 'outline'}
+                      onClick={() => applyMatch(alt)}
+                    >
+                      {alt.cuil}
+                      {alt.name ? ` · ${alt.name}` : ''}
+                    </Button>
+                  ))}
+                </div>
               </div>
-              {error && <Alert text={error} />}
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => go('tipo')}>
-                  Volver
-                </Button>
-                <Button className="flex-1" disabled={lookupLoading || identifier.replace(/\D/g, '').length < 7} onClick={() => void handleLookup()}>
-                  {lookupLoading ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-                  Validar automáticamente
-                </Button>
-              </div>
-            </section>
-          )}
+            )}
 
-          {step === 'confirm' && identity && (
-            <section className="space-y-5">
-              <Header
-                title="Confirmá tus datos"
-                text="El formulario se completa con lo consultado. Si algo no es tuyo, no sigas."
-              />
-              <div className="space-y-2 rounded-lg border bg-muted/30 p-4 text-sm">
-                {alternatives.length > 0 && (
-                  <div className="mb-3 space-y-2">
-                    <p className="text-xs text-muted-foreground">Otras claves posibles para ese DNI:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {[identity, ...alternatives].map((alt) => (
-                        <Button key={alt.cuil} type="button" size="sm" variant={alt.cuil === (merchantCuit || cuil) ? 'default' : 'outline'} onClick={() => applyMatch(alt)}>
-                          {alt.cuil}
-                          {alt.name ? ` · ${alt.name}` : ''}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {accountType === 'comercio' ? (
-                  <div className="mb-3 grid gap-1 rounded-md border bg-background/70 p-3 text-xs">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Padrón ARCA</p>
-                    <p>
-                      <span className="text-muted-foreground">Razón social: </span>
-                      <span className="font-medium">{identity.name || businessName || 'ARCA no informó la denominación'}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">CUIT: </span>
-                      <span className="font-mono">{formatCuil(merchantCuit || identity.cuil)}</span>
-                    </p>
-                    <p><span className="text-muted-foreground">Tipo: </span>{identity.personType === 'JURIDICA' ? 'Persona jurídica' : identity.personType === 'FISICA' ? 'Persona física' : 'Sin clasificar'}</p>
-                    <p><span className="text-muted-foreground">Condición ARCA: </span>{identity.taxConditionLabel || identity.taxStatus || 'Sin dato'}</p>
-                    {identity.monotributoCategory ? <p><span className="text-muted-foreground">Categoría monotributo: </span>{identity.monotributoCategory}</p> : null}
-                    <p>
-                      <span className="text-muted-foreground">Domicilio fiscal: </span>
-                      {[identity.address, identity.city, identity.department, identity.province, identity.postalCode].filter(Boolean).join(' · ') || 'Sin domicilio en el padrón'}
-                    </p>
-                    {(identity.arcaErrors ?? []).length > 0 ||
-                    identity.taxCondition === 'no_inscripto' ||
-                    /inactiv|limitad/i.test(identity.taxStatus) ? (
-                      <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-relaxed text-amber-950 dark:text-amber-100">
-                        <p className="font-medium">Esta clave no habilita el alta de comercio.</p>
-                        {(identity.arcaErrors ?? []).slice(0, 2).map((msg) => (
-                          <p key={msg} className="mt-1">
-                            {msg}
-                          </p>
-                        ))}
-                        {identity.taxStatus ? (
-                          <p className="mt-1">Estado en ARCA: {identity.taxStatus}.</p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+            {accountType === 'comercio' ? (
+              <div className="grid gap-1 rounded-lg border border-brand-navy-200 bg-white p-4 text-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-navy-500">
+                  Padrón ARCA
+                </p>
+                <p className="mt-1 text-lg font-semibold text-brand-navy-900">
+                  {identity.name || businessName || 'Sin denominación en padrón'}
+                </p>
+                <p className="font-mono text-sm text-brand-navy-700">{formatCuil(merchantCuit || identity.cuil)}</p>
+                <p className="text-xs text-brand-navy-600">
+                  {identity.personType === 'JURIDICA'
+                    ? 'Persona jurídica · se pedirá estatuto y representación'
+                    : identity.personType === 'FISICA'
+                      ? 'Persona física · constancia automática + Didit del titular'
+                      : 'Tipo no clasificado'}
+                  {identity.taxConditionLabel ? ` · ${identity.taxConditionLabel}` : ''}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-brand-navy-200 bg-white p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-navy-500">
+                  Nombre según padrón
+                </p>
+                <p className="mt-2 font-display text-2xl font-medium tracking-tight text-brand-navy-900">
+                  {name || identity.name || '—'}
+                </p>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <p>
+                    <span className="text-brand-navy-500">CUIL </span>
+                    <span className="font-mono font-semibold text-brand-navy-900">{formatCuil(cuil)}</span>
+                  </p>
+                  <p>
+                    <span className="text-brand-navy-500">DNI </span>
+                    <span className="font-mono font-semibold text-brand-navy-900">{dni || '—'}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {accountType === 'comercio' && identity.personType === 'JURIDICA' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field
-                  label={identity.personType === 'JURIDICA' ? 'Nombre y apellido del representante *' : 'Nombre / denominación'}
+                  label="Nombre y apellido del representante *"
                   value={name}
                   onChange={setName}
-                  placeholder={identity.personType === 'JURIDICA' ? 'Como figura en el DNI' : undefined}
+                  placeholder="Como figura en el DNI"
                 />
-                {identity.personType === 'JURIDICA' && isSocietyLabelForDidit(name, businessName || identity.name) ? (
-                  <p className="text-xs text-amber-800 dark:text-amber-200">
-                    Didit verifica el DNI de una persona. Completá nombre y apellido del representante, no la razón social.
-                  </p>
-                ) : null}
-                {identity.personType === 'JURIDICA' && accountType === 'comercio' ? (
-                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label>CUIT de la sociedad (ARCA)</Label>
-                      <Input value={formatCuil(merchantCuit)} readOnly className="font-mono" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Rol del firmante *</Label>
-                      <Select value={representativeRole} onValueChange={(v) => setRepresentativeRole((v as RepresentativeRole) || 'presidente')}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="presidente">Presidente / representante legal</SelectItem>
-                          <SelectItem value="socio_gerente">Socio gerente</SelectItem>
-                          <SelectItem value="administrador">Administrador</SelectItem>
-                          <SelectItem value="apoderado">Apoderado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>CUIL del representante *</Label>
-                      <Input
-                        inputMode="numeric"
-                        value={cuil}
-                        onChange={(e) => {
-                          setCuil(e.target.value.replace(/\D/g, '').slice(0, 11))
-                          setTitularCuil(e.target.value.replace(/\D/g, '').slice(0, 11))
-                        }}
-                        placeholder="20-12345678-6"
-                        className="font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>DNI del representante *</Label>
-                      <Input inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label>CUIT / CUIL</Label>
-                      <Input value={cuil} readOnly className="font-mono" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>DNI del titular *</Label>
-                      <Input inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))} />
-                    </div>
-                  </div>
-                )}
-                <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                  {identity.sources.map((s) => (
-                    <li key={s.id}>
-                      {s.ok ? '●' : '○'} {s.label}: {s.detail}
-                    </li>
+                <div className="space-y-1.5">
+                  <Label>Rol del firmante *</Label>
+                  <Select
+                    value={representativeRole}
+                    onValueChange={(v) => setRepresentativeRole((v as RepresentativeRole) || 'presidente')}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="presidente">Presidente / representante legal</SelectItem>
+                      <SelectItem value="socio_gerente">Socio gerente</SelectItem>
+                      <SelectItem value="administrador">Administrador</SelectItem>
+                      <SelectItem value="apoderado">Apoderado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>CUIL del representante *</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={cuil}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 11)
+                      setCuil(v)
+                      setTitularCuil(v)
+                    }}
+                    placeholder="20-12345678-6"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>DNI del representante *</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  />
+                </div>
+              </div>
+            ) : accountType === 'comercio' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Nombre / denominación" value={name} onChange={setName} />
+                <div className="space-y-1.5">
+                  <Label>DNI del titular *</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Nombre (editable solo si el padrón vino incompleto)</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={cn(identity.name ? 'bg-white' : '')}
+                />
+              </div>
+            )}
+
+            {accountType === 'comercio' && identity.personType === 'JURIDICA' && kybDocs.length > 0 ? (
+              <div className="rounded-lg border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <p className="font-semibold">Documentación societaria (después de Didit)</p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed">
+                  {kybDocs.map((d) => (
+                    <li key={d}>{MERCHANT_DOC_LABELS[d]}</li>
                   ))}
                 </ul>
+                <p className="mt-2 text-xs">
+                  La constancia AFIP no se adjunta: la leemos del padrón. El poder o acta acredita que quien abre la
+                  cuenta está autorizado a obligar a la sociedad.
+                </p>
               </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={confirmedIdentity}
-                  onChange={(e) => setConfirmedIdentity(e.target.checked)}
+            ) : null}
+          </div>
+
+          <label className="flex items-start gap-3 text-sm text-brand-navy-800">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-brand-navy-300"
+              checked={confirmedIdentity}
+              onChange={(e) => setConfirmedIdentity(e.target.checked)}
+            />
+            Confirmo que estos datos me corresponden y autorizo a UNICRÉDITOS a usarlos para el alta.
+          </label>
+          {error && <Alert text={error} />}
+          <NavRow
+            onBack={() => go('id')}
+            nextLabel="Confirmar y continuar"
+            nextDisabled={
+              !confirmedIdentity ||
+              !name.trim() ||
+              dni.length < 7 ||
+              (identity.personType === 'JURIDICA' && isSocietyLabelForDidit(name, businessName || identity.name)) ||
+              (identity.personType === 'JURIDICA' &&
+                accountType === 'comercio' &&
+                cuil.replace(/\D/g, '').length !== 11)
+            }
+            onNext={() => go('contacto')}
+          />
+        </section>
+      )}
+
+      {step === 'contacto' && (
+        <section className="space-y-6">
+          <Header
+            title="Email y celular"
+            text="Los usamos para avisos de cuota, seguridad y recuperación de acceso."
+          />
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-brand-navy-800">
+                Email *
+              </Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 pl-10"
+                  placeholder="tu@email.com"
                 />
-                Confirmo que estos datos me pertenecen y autorizo a UNICRÉDITOS a consultar el BCRA.
-              </label>
-              {error && <Alert text={error} />}
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => go('id')}>
-                  Volver
-                </Button>
-                <Button
-                  className="flex-1"
-                  disabled={
-                    !confirmedIdentity ||
-                    !name.trim() ||
-                    dni.length < 7 ||
-                    (identity.personType === 'JURIDICA' && isSocietyLabelForDidit(name, businessName || identity.name)) ||
-                    (identity.personType === 'JURIDICA' && accountType === 'comercio' && cuil.replace(/\D/g, '').length !== 11)
-                  }
-                  onClick={() => go('datos')}
-                >
-                  Confirmar y continuar
-                </Button>
               </div>
-            </section>
-          )}
-
-          {step === 'datos' && (
-            <section className="space-y-5">
-              <Header title="Datos de contacto y domicilio" text="Provincias, departamentos y localidades salen del catálogo oficial." />
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate">Fecha de nacimiento *</Label>
-                  <Input
-                    id="birthDate"
-                    type="date"
-                    value={birthDate}
-                    min={adultBirthDateBounds().min}
-                    max={adultBirthDateBounds().max}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                  />
-                  {accountType === 'comercio' && identity?.personType === 'JURIDICA' ? (
-                    <p className="text-xs text-muted-foreground">Del representante. No uses la fecha de constitución de la sociedad.</p>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono *</Label>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="11 1234-5678" />
-                </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-brand-navy-800">
+                Celular *
+              </Label>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-12 pl-10"
+                  placeholder="11 1234-5678"
+                />
               </div>
-              <GeoArFields value={geo} onChange={setGeo} />
-              <div className="space-y-2">
-                <Label htmlFor="address">Calle y número *</Label>
-                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Av. Ejemplo 123, piso 2" />
-              </div>
-              {accountType === 'comercio' ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Razón social (padrón ARCA)</Label>
-                    <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} readOnly={Boolean(identity?.name)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Rubro</Label>
-                    <Select value={category || undefined} onValueChange={(v) => setCategory(v ?? '')}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Rubro" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIAS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Situación laboral *</Label>
-                    <Select value={employmentStatus || undefined} onValueChange={(v) => setEmploymentStatus(v ?? '')}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccioná" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SITUACIONES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="income">Ingresos mensuales (ARS)</Label>
-                    <Input id="income" inputMode="numeric" value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} />
-                  </div>
-                </div>
-              )}
-              {error && <Alert text={error} />}
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => go('confirm')}>
-                  Volver
-                </Button>
-                <Button
-                  className="flex-1"
-                  disabled={
-                    !isPlausibleAdultBirthDate(birthDate) ||
-                    !phone ||
-                    !geo.province ||
-                    !geo.department ||
-                    !geo.city ||
-                    !geo.postalCode ||
-                    !address ||
-                    (accountType === 'persona' && !employmentStatus) ||
-                    (accountType === 'comercio' && !businessName.trim())
-                  }
-                  onClick={() => go('docs')}
-                >
-                  Continuar
-                </Button>
-              </div>
-            </section>
-          )}
-
-          {step === 'docs' && (
-            <section className="space-y-5">
-              <Header
-                title="Verificación de identidad"
-                text={
-                  accountType === 'comercio' && identity?.personType === 'JURIDICA'
-                    ? 'Didit verifica el DNI, la prueba de vida y el rostro del representante. No se verifica la razón social ni el CUIT de la sociedad.'
-                    : 'Didit valida tu DNI, prueba de vida y coincidencia facial dentro de UNICRÉDITOS. No se aceptan fotos ni videos cargados a mano.'
-                }
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="birthDate" className="text-brand-navy-800">
+                Fecha de nacimiento *
+              </Label>
+              <Input
+                id="birthDate"
+                type="date"
+                value={birthDate}
+                min={adultBirthDateBounds().min}
+                max={adultBirthDateBounds().max}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="h-12"
               />
-              {diditConfigured === null ? (
-                <p className="text-sm text-muted-foreground">Comprobando Didit…</p>
-              ) : !diditConfigured ? (
-                <Alert text="Didit no está disponible. Falta DIDIT_API_KEY en el proceso de Next. Reiniciá el servidor local." />
-              ) : (
-                <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Completá la verificación acá mismo, sin salir de UNICRÉDITOS. Cuando Didit termine, seguí con la cuenta.
-                  </p>
-                  <DiditVerifyButton
-                    mode="signup"
-                    fullName={isSocietyLabelForDidit(name, businessName) ? undefined : name}
-                    dni={plausiblePersonDni(dni)}
-                    birthDate={isPlausibleAdultBirthDate(birthDate) ? birthDate : undefined}
-                    phone={phone}
-                    email={email}
-                    className="w-full"
-                    onStarted={() => setDiditStarted(true)}
-                    onCompleted={() => setDiditStarted(true)}
-                    onError={setError}
+              {accountType === 'comercio' && identity?.personType === 'JURIDICA' ? (
+                <p className="text-xs text-brand-navy-600">Del representante. No uses la fecha de constitución.</p>
+              ) : null}
+            </div>
+            {accountType === 'persona' &&
+            !(address.trim() && (geo.province || identity?.province) && (geo.city || identity?.city)) ? (
+              <div className="space-y-3 rounded-xl border border-brand-navy-200 bg-brand-navy-50 p-4">
+                <p className="text-sm font-medium text-brand-navy-800">
+                  El padrón no trajo domicilio completo. Completalo para seguir.
+                </p>
+                <GeoArFields value={geo} onChange={setGeo} />
+                <div className="space-y-2">
+                  <Label htmlFor="address-persona">Calle y número *</Label>
+                  <Input
+                    id="address-persona"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Av. Ejemplo 123"
                   />
-                  {diditStarted && (
-                    <p className="text-sm text-emerald-700 dark:text-emerald-400">
-                      Verificación iniciada en UNICRÉDITOS. Cuando termines el panel, continuá.
-                    </p>
-                  )}
                 </div>
-              )}
-              {error && <Alert text={error} />}
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => go('datos')}>
-                  Volver
-                </Button>
-                <Button
-                  className="flex-1"
-                  disabled={!diditConfigured || !diditStarted}
-                  onClick={() => go('cuenta')}
-                >
-                  Continuar
-                </Button>
               </div>
-            </section>
-          )}
+            ) : null}
+          </div>
+          {error && <Alert text={error} />}
+          <NavRow
+            onBack={() => go('confirm')}
+            nextLabel="Continuar"
+            nextDisabled={
+              !contactoReady ||
+              (accountType === 'persona' &&
+                !(
+                  (address.trim() || identity?.address) &&
+                  (geo.province || identity?.province) &&
+                  (geo.city || identity?.city)
+                ))
+            }
+            onNext={() => go(accountType === 'comercio' ? 'datos' : 'clave')}
+          />
+        </section>
+      )}
 
-          {step === 'cuenta' && (
-            <section className="space-y-5">
-              <Header title="Creá tu acceso" text="Con esto entras al panel de créditos UNICRÉDITOS. Cada préstamo se evalúa aparte." />
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} placeholder="Mínimo 8 caracteres" />
-              </div>
-              <div className="space-y-3 rounded-lg border bg-muted/20 p-4 text-sm">
-                <p className="flex gap-2">
-                  <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  Vas a poder solicitar créditos, ver el scoring BCRA y pagar cuotas desde el panel.
-                </p>
-                <p className="flex gap-2">
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  Tener cuenta no implica que se te otorgue un crédito o préstamo.
-                </p>
-              </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-1" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} />
-                Entiendo que la cuenta no garantiza crédito y que cada desembolso requiere
-                autorización de UNICRÉDITOS. Acepto los{' '}
-                <Link href="/legal/terminos" className="text-primary underline" target="_blank">
+      {step === 'datos' && accountType === 'comercio' && (
+        <section className="space-y-6">
+          <Header
+            title="Datos del comercio"
+            text="Domicilio fiscal desde ARCA cuando está disponible. Completá solo lo que falte."
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Razón social</Label>
+              <Input
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                readOnly={Boolean(identity?.name)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Rubro</Label>
+              <Select value={category || undefined} onValueChange={(v) => setCategory(v ?? '')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccioná" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <GeoArFields value={geo} onChange={setGeo} />
+          <div className="space-y-2">
+            <Label htmlFor="address">Calle y número *</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Av. Ejemplo 123"
+            />
+          </div>
+          {kybDocs.length > 0 ? (
+            <div className="rounded-xl border border-brand-navy-200 bg-white p-4 text-sm text-brand-navy-700">
+              <p className="flex items-center gap-2 font-semibold text-brand-navy-900">
+                <FileText className="h-4 w-4 text-brand-primary" />
+                Expediente KYB (persona jurídica)
+              </p>
+              <p className="mt-2 text-xs leading-relaxed">
+                Después de verificar al representante con Didit, en el panel de comercio vas a subir:{' '}
+                {kybDocs.map((d) => MERCHANT_DOC_LABELS[d]).join(' y ')}. Sin eso la adhesión queda incompleta.
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-xs text-brand-navy-700">
+              Persona física: no pedimos estatutos. Bastan padrón ARCA + Didit del titular.
+            </p>
+          )}
+          {error && <Alert text={error} />}
+          <NavRow
+            onBack={() => go('contacto')}
+            nextLabel="Continuar"
+            nextDisabled={!businessName.trim() || !geo.province || !geo.city || !address.trim()}
+            onNext={() => go('clave')}
+          />
+        </section>
+      )}
+
+      {step === 'clave' && (
+        <section className="space-y-6">
+          <Header title="Creá tu clave" text="Mínimo 8 caracteres. Después verificás identidad con Didit." />
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-brand-navy-800">
+              Contraseña *
+            </Label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={8}
+                placeholder="Mínimo 8 caracteres"
+                className="h-12 pl-10"
+              />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-xl border border-brand-navy-200 bg-brand-navy-50 p-4 text-sm text-brand-navy-800">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+              />
+              <span>
+                Entiendo que la cuenta no garantiza crédito. Acepto los{' '}
+                <Link href="/legal/terminos" className="font-medium text-brand-primary underline" target="_blank">
                   términos
                 </Link>
                 .
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={acceptedBcraConsent}
-                  onChange={(e) => setAcceptedBcraConsent(e.target.checked)}
-                />
-                Autorizo a UNICRÉDITOS a consultar la Central de Deudores del BCRA (CENDEU) con mi
-                CUIL, para evaluar el crédito. Esta autorización es distinta de los términos de la
-                cuenta.
-              </label>
-              {error && <Alert text={error} />}
-              {alreadyRegistered && (
-                <p className="text-sm">
-                  <Link href={signInHref} className="text-primary underline">
-                    Ir a ingresar
-                  </Link>
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => go('docs')}>
-                  Volver
-                </Button>
-                <Button className="flex-1" disabled={saving || !email || password.length < 8 || !acceptedTerms || !acceptedBcraConsent} onClick={handleCreate}>
-                  {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-                  Crear cuenta y consultar BCRA
-                </Button>
-              </div>
-            </section>
-          )}
-
-          {step === 'resultado' && result && (
-            <section className="space-y-5">
-              <Header title="Tu cuenta ya está creada" text="Consultamos el BCRA con los datos que confirmaste." />
-              {result.score != null ? (
-                <div className="rounded-xl border bg-muted/20 p-5 text-center">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Scoring UNICRÉDITOS</p>
-                  <p className="mt-2 font-mono text-5xl font-semibold">{result.score}</p>
-                  <p className="mt-1 text-sm capitalize text-muted-foreground">{result.band}</p>
-                  <ul className="mt-4 space-y-1 text-left text-sm text-muted-foreground">
-                    {result.reasons?.map((r) => (
-                      <li key={r}>· {r}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <Alert text={result.warning || 'La cuenta se creó. El BCRA no respondió ahora; podés consultar el scoring desde tu panel.'} />
-              )}
-              <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
-                <p className="text-sm text-muted-foreground">
-                  Si Didit todavía no aprobó tu identidad, completalo ahora dentro de UNICRÉDITOS. Sin esa aprobación no se puede pedir crédito.
-                </p>
-                <DiditVerifyButton
-                  mode="session"
-                  fullName={isSocietyLabelForDidit(name, businessName) ? undefined : name}
-                  dni={plausiblePersonDni(dni)}
-                  birthDate={isPlausibleAdultBirthDate(birthDate) ? birthDate : undefined}
-                  phone={phone}
-                  email={email}
-                  className="w-full"
-                  onError={setError}
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline">
-                  <Link href="/dashboard?tab=documentos&doc=arca">
-                    <Printer /> Constancia ARCA
-                  </Link>
-                </Button>
-                {result.reportId && (
-                  <Button asChild variant="outline">
-                    <Link href={`/dashboard?tab=documentos&doc=bcra&docId=${encodeURIComponent(result.reportId)}`}>
-                      <Printer /> Informe BCRA
-                    </Link>
-                  </Button>
-                )}
-                <Button className="flex-1" onClick={() => { router.push(result.dashboardUrl); router.refresh() }}>
-                  Ir a mi cuenta
-                </Button>
-              </div>
-            </section>
-          )}
-
-          {step !== 'resultado' && (
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              ¿Ya tenés cuenta?{' '}
-              <Link href={signInHref} className="font-medium text-primary underline-offset-4 hover:underline">
-                Ingresá
+              </span>
+            </label>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={acceptedBcraConsent}
+                onChange={(e) => setAcceptedBcraConsent(e.target.checked)}
+              />
+              <span>
+                Autorizo la consulta a la Central de Deudores del BCRA (CENDEU) con mi CUIL.
+              </span>
+            </label>
+          </div>
+          {error && <Alert text={error} />}
+          {alreadyRegistered && (
+            <p className="text-sm">
+              <Link href={signInHref} className="text-brand-primary underline">
+                Ir a ingresar
               </Link>
             </p>
           )}
+          <NavRow
+            onBack={() => go(accountType === 'comercio' ? 'datos' : 'contacto')}
+            nextLabel="Continuar a verificación"
+            nextDisabled={password.length < 8 || !acceptedTerms || !acceptedBcraConsent}
+            onNext={() => go('docs')}
+          />
+        </section>
+      )}
+
+      {step === 'docs' && (
+        <section className="space-y-6">
+          <Header
+            title="Verificación de identidad"
+            text={
+              accountType === 'comercio' && identity?.personType === 'JURIDICA'
+                ? 'Escaneá el DNI (frente y dorso) y completá la prueba facial del representante.'
+                : 'Escaneá el frente y el dorso de tu DNI y completá la identificación facial.'
+            }
+          />
+          {diditConfigured === null ? (
+            <p className="text-sm text-brand-navy-600">Comprobando Didit…</p>
+          ) : !diditConfigured ? (
+            <Alert text="Didit no está disponible en este entorno. Falta configurar DIDIT_API_KEY." />
+          ) : (
+            <div className="space-y-3 rounded-xl border border-brand-navy-200 bg-white p-5">
+              <DiditVerifyButton
+                mode="signup"
+                fullName={isSocietyLabelForDidit(name, businessName) ? undefined : name}
+                dni={plausiblePersonDni(dni)}
+                birthDate={isPlausibleAdultBirthDate(birthDate) ? birthDate : undefined}
+                phone={phone}
+                email={email}
+                className="w-full"
+                onStarted={() => setDiditStarted(true)}
+                onCompleted={() => setDiditStarted(true)}
+                onError={setError}
+              />
+              {diditStarted && (
+                <p className="text-sm font-medium text-brand-primary-700">
+                  Verificación iniciada. Cuando termines el panel de Didit, creá la cuenta.
+                </p>
+              )}
+            </div>
+          )}
+          {error && <Alert text={error} />}
+          <NavRow
+            onBack={() => go('clave')}
+            nextLabel={saving ? 'Creando cuenta…' : 'Crear cuenta e ingresar'}
+            nextDisabled={!diditConfigured || !diditStarted || saving}
+            onNext={() => void handleCreate()}
+            nextIcon={saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          />
+        </section>
+      )}
+
+      {step === 'resultado' && result && (
+        <section className="space-y-6">
+          <Header
+            title="Tu cuenta está lista"
+            text={
+              accountType === 'comercio'
+                ? 'Pasá al panel de comercio. Si sos persona jurídica, completá el expediente societario.'
+                : 'Entrá a tu área de cliente. La ficha verificada no se puede editar sola: pedí cambios a soporte.'
+            }
+          />
+          {result.score != null ? (
+            <div className="rounded-xl border border-brand-navy-200 bg-brand-navy-50 p-6 text-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy-500">
+                Scoring de referencia
+              </p>
+              <p className="mt-2 font-mono text-5xl font-semibold text-brand-navy-900">{result.score}</p>
+              <p className="mt-1 text-sm capitalize text-brand-navy-600">{result.band}</p>
+            </div>
+          ) : result.warning ? (
+            <Alert text={result.warning} />
+          ) : null}
+
+          {accountType === 'comercio' && kybDocs.length > 0 ? (
+            <div className="rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">Pendiente de adhesión comercial</p>
+              <ul className="mt-2 list-inside list-disc text-xs">
+                {kybDocs.map((d) => (
+                  <li key={d}>{MERCHANT_DOC_LABELS[d]}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <Button
+            className="h-12 w-full text-base font-semibold"
+            onClick={() => {
+              router.push(result.dashboardUrl)
+              router.refresh()
+            }}
+          >
+            {accountType === 'comercio' ? 'Ir al panel de comercio' : 'Ir a mi área de cliente'}
+          </Button>
+        </section>
+      )}
+
+      {step !== 'resultado' && (
+        <p className="mt-8 text-center text-sm text-brand-navy-600">
+          ¿Ya tenés cuenta?{' '}
+          <Link href={signInHref} className="font-semibold text-brand-primary underline-offset-4 hover:underline">
+            Ingresá
+          </Link>
+        </p>
+      )}
     </AuthFloatLayout>
   )
 }
@@ -803,17 +892,61 @@ function formatCuil(value: string) {
 function Header({ title, text }: { title: string; text: string }) {
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+      <h2 className="font-display text-2xl font-medium tracking-tight text-brand-navy-900">{title}</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-brand-navy-600">{text}</p>
     </div>
   )
 }
 
 function Alert({ text }: { text: string }) {
   return (
-    <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+    <p
+      className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+      role="alert"
+    >
       {text}
     </p>
+  )
+}
+
+function NavRow({
+  onBack,
+  backHref,
+  backLabel = 'Volver',
+  nextLabel,
+  nextDisabled,
+  onNext,
+  nextIcon,
+}: {
+  onBack?: () => void
+  backHref?: string
+  backLabel?: string
+  nextLabel: string
+  nextDisabled?: boolean
+  onNext: () => void
+  nextIcon?: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3 pt-1">
+      {backHref ? (
+        <Button type="button" asChild variant="outline" className="h-12 text-base font-semibold">
+          <Link href={backHref}>{backLabel}</Link>
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" className="h-12 text-base font-semibold" onClick={onBack}>
+          {backLabel}
+        </Button>
+      )}
+      <Button
+        type="button"
+        className="h-12 gap-2 text-base font-semibold"
+        disabled={nextDisabled}
+        onClick={onNext}
+      >
+        {nextIcon}
+        {nextLabel}
+      </Button>
+    </div>
   )
 }
 
@@ -834,13 +967,16 @@ function TypeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition ${
-        active ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-border hover:bg-muted/40'
-      }`}
+      className={cn(
+        'rounded-2xl border p-5 text-left transition',
+        active
+          ? 'border-brand-primary bg-brand-primary-50 ring-2 ring-brand-primary/25'
+          : 'border-brand-navy-200 bg-white hover:border-brand-navy-300 hover:bg-brand-navy-50/60',
+      )}
     >
-      <div className="mb-3 text-primary">{icon}</div>
-      <p className="font-medium">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+      <div className="mb-3 text-brand-primary">{icon}</div>
+      <p className="font-semibold text-brand-navy-900">{title}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-brand-navy-600">{text}</p>
     </button>
   )
 }
@@ -857,10 +993,9 @@ function Field({
   placeholder?: string
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 sm:col-span-2">
       <Label>{label}</Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }
-

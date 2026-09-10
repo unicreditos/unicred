@@ -714,7 +714,7 @@ export const inboxReceipt = pgTable('inbox_receipt', {
   index('inbox_receipt_user_idx').on(t.userId),
 ])
 
-/* -------------------- Billetera virtual Payway / Prisma ------------------- */
+/* -------------------- Billetera virtual UNICRÉDITOS ------------------- */
 
 export const walletAccount = pgTable('wallet_account', {
   id: text('id').primaryKey(),
@@ -726,7 +726,7 @@ export const walletAccount = pgTable('wallet_account', {
   taxId: text('taxId'),
   balance: numeric('balance', { precision: 14, scale: 2 }).notNull().default('0'),
   currency: text('currency').notNull().default('ARS'),
-  /** Ledger propio; el riel externo (payway / pomelo / treasury) es solo ejecución. */
+  /** Ledger propio; el riel externo (pomelo / treasury) es solo ejecución. */
   provider: text('provider').notNull().default('unicred'),
   paywayAccountId: text('paywayAccountId'),
   pomeloAccountId: text('pomeloAccountId'),

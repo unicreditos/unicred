@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
     
-    const body = ['POST','PUT','PATCH'].includes('POST') ? await req.json().catch(() => ({})) : {}
+    const body = await req.json().catch(() => ({}))
     const b = body as any; return mobileJson(req, await mobileWalletTransfer(userId, Number(b.amount), String(b.destination), b.concept ? String(b.concept) : undefined))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

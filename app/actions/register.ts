@@ -137,8 +137,19 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   if (!isAdult(input.birthDate)) {
     return { ok: false as const, error: 'Tenés que ser mayor de 18 años.' }
   }
-  if (!input.name.trim() || !input.phone.trim() || !input.province.trim() || !input.city.trim() || !input.address.trim()) {
-    return { ok: false as const, error: 'Completá nombre, teléfono y domicilio.' }
+  const province = input.province.trim() || input.identity?.province?.trim() || ''
+  const department = input.department.trim() || input.identity?.department?.trim() || ''
+  const city = input.city.trim() || input.identity?.city?.trim() || ''
+  const postalCode = input.postalCode.trim() || input.identity?.postalCode?.trim() || ''
+  const address = input.address.trim() || input.identity?.address?.trim() || ''
+  if (!input.name.trim() || !input.phone.trim()) {
+    return { ok: false as const, error: 'Completá nombre y teléfono.' }
+  }
+  if (!province || !city || !address) {
+    return {
+      ok: false as const,
+      error: 'No pudimos obtener un domicilio fiscal. Completá provincia, ciudad y dirección.',
+    }
   }
   if (input.accountType === 'comercio' && !String(input.businessName ?? '').trim()) {
     return { ok: false as const, error: 'Indicá la razón social del comercio.' }
@@ -193,13 +204,13 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       dni,
       phone: input.phone.trim(),
       birthDate: input.birthDate,
-      province: input.province.trim(),
-      department: input.department.trim() || null,
-      city: input.city.trim(),
-      postalCode: input.postalCode.trim() || null,
-      address: input.address.trim(),
+      province,
+      department: department || null,
+      city,
+      postalCode: postalCode || null,
+      address,
       monthlyIncome: String(income),
-      employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : ''),
+      employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : 'A completar'),
       kycStatus: 'pending',
       bcraConsentAt: now,
       bcraConsentIp: consentIp,
@@ -271,9 +282,9 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       businessName: legalName,
       cuit: merchantCuit,
       category: String(input.category ?? '').trim() || 'general',
-      province: evaluation.province || input.province.trim(),
-      city: evaluation.city || input.city.trim(),
-      address: evaluation.address || input.address.trim(),
+      province: evaluation.province || province,
+      city: evaluation.city || city,
+      address: evaluation.address || address,
       phone: input.phone.trim(),
       representativeRole: input.representativeRole || 'titular',
       personType: evaluation.personType,
@@ -330,7 +341,7 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       ok: true as const,
       score: null,
       reportId: null,
-      dashboardUrl: input.accountType === 'comercio' ? '/merchant' : '/dashboard?tab=scoring',
+      dashboardUrl: input.accountType === 'comercio' ? '/merchant#kyb' : '/dashboard',
       warning: bcra.ok ? null : bcra.error,
       diditConfigured: true,
     }
@@ -354,7 +365,7 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     ok: true as const,
     score: bcra.ok ? bcra.score : merchantBcra && merchantBcra.ok ? merchantBcra.score : null,
     reportId,
-    dashboardUrl: input.accountType === 'comercio' ? '/merchant' : '/dashboard?tab=scoring',
+    dashboardUrl: input.accountType === 'comercio' ? '/merchant#kyb' : '/dashboard',
     warning: bcra.ok ? null : bcra.error,
     diditConfigured: true,
   }
