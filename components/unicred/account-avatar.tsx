@@ -2,6 +2,7 @@
 
 import { updateMyAvatar } from '@/app/actions/account'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 import { Camera, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -73,6 +74,12 @@ export function AccountAvatar({
         }
         setPreview(res.image)
         toast.success('Foto de perfil actualizada')
+        // better-auth cachea user.image en la cookie de sesión del cliente y le
+        // gana al valor fresco del server component (ver app-shell.tsx
+        // `session?.user?.image ?? user?.image`); disableCookieCache fuerza una
+        // lectura real contra la base y renueva esa cookie, si no el header
+        // queda con el avatar viejo hasta el próximo login.
+        await authClient.getSession({ query: { disableCookieCache: true } })
         router.refresh()
       } catch (err) {
         setPreview(image ?? '')

@@ -1,8 +1,5 @@
 'use server'
 
-import { randomBytes } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import { createClaim } from '@/app/actions/claims'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
@@ -14,18 +11,14 @@ import { revalidatePath } from 'next/cache'
 const MAX_BYTES = 1_000_000
 const ALLOWED = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
 
-function extFor(mime: string) {
-  if (mime === 'image/png') return 'png'
-  if (mime === 'image/webp') return 'webp'
-  return 'jpg'
-}
-
-async function persistAvatarFile(userId: string, buffer: Buffer, mime: string) {
-  const dir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
-  await mkdir(dir, { recursive: true })
-  const name = `${userId.slice(0, 12)}-${randomBytes(8).toString('hex')}.${extFor(mime)}`
-  await writeFile(path.join(dir, name), buffer)
-  return `/uploads/avatars/${name}`
+/**
+ * Guarda el avatar como data URL en `user.image` (columna text sin límite,
+ * mismo patrón que merchant_document.content). Vercel corre las server
+ * actions en funciones serverless con filesystem de solo lectura: escribir
+ * en public/uploads/ funcionaba en dev pero fallaba siempre en producción.
+ */
+function persistAvatarFile(buffer: Buffer, mime: string) {
+  return `data:${mime};base64,${buffer.toString('base64')}`
 }
 
 function parseDataUrl(dataUrl: string): { mime: string; buffer: Buffer } | null {
@@ -69,7 +62,7 @@ export async function updateMyAvatar(formData: FormData) {
     return { ok: false as const, error: 'Elegí una imagen.' }
   }
 
-  const image = await persistAvatarFile(userId, buffer, mime)
+  const image = persistAvatarFile(buffer, mime)
   await db.update(user).set({ image, updatedAt: new Date() }).where(eq(user.id, userId))
   revalidatePath('/', 'layout')
   return { ok: true as const, image }
