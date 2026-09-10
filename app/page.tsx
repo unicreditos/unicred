@@ -1,7 +1,8 @@
 import { LoanSimulator } from '@/components/loan-simulator'
 import { Button } from '@/components/ui/button'
 import { getAccountHref } from '@/lib/session'
-import { SectionCard, TrustBar } from '@/components/unicred/dashboard-kit'
+import { cn } from '@/lib/utils'
+import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
 import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
@@ -140,7 +141,25 @@ export default async function HomePage() {
                 Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
                 Firmás recién cuando ves TNA, CFT y plan de pagos completos.
               </p>
-              <dl className="mt-8 grid max-w-md grid-cols-3 gap-3">
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { icon: ShieldCheck, t: 'Identidad Didit' },
+                  { icon: Landmark, t: 'BCRA antes de firmar' },
+                  { icon: Scale, t: 'CFT sin sorpresas' },
+                ].map((p) => {
+                  const Icon = p.icon
+                  return (
+                    <span
+                      key={p.t}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[12px] font-semibold text-white/85"
+                    >
+                      <Icon className="h-3.5 w-3.5 text-brand-primary-300" />
+                      {p.t}
+                    </span>
+                  )
+                })}
+              </div>
+              <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-cian-200">Hasta</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-white">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
@@ -155,7 +174,11 @@ export default async function HomePage() {
                 </div>
               </dl>
               <div className="mt-8 hidden flex-wrap items-center gap-3 sm:flex">
-                <Button asChild size="lg" className="rounded-full bg-brand-primary px-7 font-bold text-white hover:bg-brand-primary-600">
+                <Button
+                  asChild
+                  size="lg"
+                  className="rounded-full bg-gradient-to-r from-brand-primary to-brand-amber px-7 font-bold text-white shadow-lg shadow-brand-primary/25 transition hover:brightness-[1.06]"
+                >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="rounded-full border-white/25 bg-white/5 font-semibold text-white hover:bg-white/10">
@@ -167,7 +190,11 @@ export default async function HomePage() {
             <div className="lg:col-span-6">
               <LoanSimulator className="shadow-2xl shadow-black/30" />
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:hidden">
-                <Button asChild size="lg" className="rounded-full bg-brand-primary px-7 font-bold text-white hover:bg-brand-primary-600">
+                <Button
+                  asChild
+                  size="lg"
+                  className="rounded-full bg-gradient-to-r from-brand-primary to-brand-amber px-7 font-bold text-white shadow-lg shadow-brand-primary/25 transition hover:brightness-[1.06]"
+                >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
               </div>
@@ -192,22 +219,28 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {steps.map((s, idx) => {
                 const Icon = s.icon
                 return (
-                  <SectionCard
-                    key={s.t}
-                    title={s.t}
-                    description={s.d}
-                    icon={<Icon className="h-4.5 w-4.5" />}
-                    className="h-full transition-transform hover:-translate-y-0.5"
-                  >
-                    <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-[11px] font-semibold">
-                      <span className="text-muted-foreground">Paso</span>
-                      <span className="text-brand-primary">0{idx + 1} / 04</span>
+                  <div key={s.t} className="relative">
+                    {idx < steps.length - 1 ? (
+                      <div
+                        aria-hidden
+                        className="absolute left-full top-7 hidden h-px w-6 bg-gradient-to-r from-brand-primary/40 to-transparent lg:block"
+                      />
+                    ) : null}
+                    <div className="flex flex-col items-center rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-700 text-white shadow-md shadow-brand-primary/25">
+                        <Icon className="h-6 w-6" />
+                      </span>
+                      <span className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-amber">
+                        Paso 0{idx + 1}/04
+                      </span>
+                      <h3 className="mt-2 text-sm font-bold text-brand-navy">{s.t}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
                     </div>
-                  </SectionCard>
+                  </div>
                 )
               })}
             </div>
@@ -224,11 +257,22 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {benefits.map((b) => {
+              {benefits.map((b, idx) => {
                 const Icon = b.icon
+                const amber = idx % 2 === 1
                 return (
-                  <div key={b.t} className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs">
-                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
+                  <div
+                    key={b.t}
+                    className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <span
+                      className={cn(
+                        'mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ring-1',
+                        amber
+                          ? 'bg-brand-amber/10 text-brand-amber ring-brand-amber/15'
+                          : 'bg-brand-primary-50 text-brand-primary ring-brand-primary/10',
+                      )}
+                    >
                       <Icon className="h-6 w-6" />
                     </span>
                     <h3 className="mt-4 text-sm font-bold text-brand-navy">{b.t}</h3>
@@ -252,17 +296,31 @@ export default async function HomePage() {
                 No hace falta que ya seas cliente de ningún banco. Con tu DNI y una cuenta a tu nombre alcanza para
                 empezar la solicitud.
               </p>
-              <Button asChild className="mt-6 rounded-full font-bold">
+              <Button
+                asChild
+                className="mt-6 rounded-full bg-gradient-to-r from-brand-primary to-brand-amber font-bold text-white shadow-md shadow-brand-primary/20 transition hover:brightness-[1.06]"
+              >
                 <Link href="/sign-up">Empezar solicitud</Link>
               </Button>
             </div>
             <div className="lg:col-span-7">
               <div className="grid gap-4 sm:grid-cols-2">
-                {requirements.map((r) => {
+                {requirements.map((r, idx) => {
                   const Icon = r.icon
+                  const amber = idx % 2 === 1
                   return (
-                    <div key={r.t} className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
+                    <div
+                      key={r.t}
+                      className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <span
+                        className={cn(
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1',
+                          amber
+                            ? 'bg-brand-amber/10 text-brand-amber ring-brand-amber/15'
+                            : 'bg-brand-primary-50 text-brand-primary ring-brand-primary/10',
+                        )}
+                      >
                         <Icon className="h-5 w-5" />
                       </span>
                       <div>

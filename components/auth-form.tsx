@@ -194,7 +194,11 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           <Button type="button" asChild variant="outline" className="h-12 text-base font-semibold">
             <Link href={isSignUp ? '/sign-in' : '/'}>Volver</Link>
           </Button>
-          <Button type="submit" disabled={loading} className="h-12 text-base font-semibold">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-12 bg-gradient-to-r from-brand-primary to-brand-amber text-base font-semibold text-white shadow-md shadow-brand-primary/20 transition hover:brightness-[1.06]"
+          >
             {loading ? 'Procesando...' : isSignUp ? 'Crear cuenta' : 'Ingresar'}
           </Button>
         </div>

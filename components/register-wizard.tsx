@@ -939,7 +939,7 @@ function NavRow({
       )}
       <Button
         type="button"
-        className="h-12 gap-2 text-base font-semibold"
+        className="h-12 gap-2 bg-gradient-to-r from-brand-primary to-brand-amber text-base font-semibold text-white shadow-md shadow-brand-primary/20 transition hover:brightness-[1.06]"
         disabled={nextDisabled}
         onClick={onNext}
       >
