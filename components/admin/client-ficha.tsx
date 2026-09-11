@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
-import { CaseBackLink } from '@/components/unicred/dashboard-kit'
+import { CaseBackLink, SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminUrl, adminLoanHref } from '@/lib/admin-nav'
 import { groupDni, initials } from '@/lib/didit-capture'
 import { formatARS } from '@/lib/finance'
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 const CHIP: Record<ClientFichaStatus, { label: string; className: string; dot: string }> = {
@@ -105,26 +105,6 @@ function MediaGrid({ items }: { items: Array<{ label: string; url: string; kind:
         </figure>
       ))}
     </div>
-  )
-}
-
-function Panel({
-  title,
-  hint,
-  children,
-}: {
-  title: string
-  hint?: string
-  children: ReactNode
-}) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card">
-      <header className="border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-brand-navy-900">{title}</h2>
-        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
-      </header>
-      {children}
-    </section>
   )
 }
 
@@ -331,7 +311,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
             onClick={() => setTab(id)}
             className={cn(
               'h-8 rounded-md px-3 text-xs font-medium transition',
-              tab === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-muted/60',
+              tab === id ? 'bg-brand-navy-900 text-white' : 'text-muted-foreground hover:bg-muted/60',
             )}
           >
             {label}
@@ -360,7 +340,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
             <DecisionBanner tone="info" title="Sin cobros acreditados" detail="Cuando entre un pago, el recibo y el movimiento aparecen acá." />
           )}
 
-          <Panel title="Historial de pagos" hint="Cada acreditación con su recibo, si ya se emitió">
+          <SectionCard title="Historial de pagos" description="Cada acreditación con su recibo, si ya se emitió" bodyClassName="">
             {ficha.payments.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">Este cliente todavía no tiene pagos.</p>
             ) : (
@@ -399,9 +379,9 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                 </Table>
               </div>
             )}
-          </Panel>
+          </SectionCard>
 
-          <Panel title="Movimientos de cuenta" hint="Cuotas, desembolsos y cobros de este titular">
+          <SectionCard title="Movimientos de cuenta" description="Cuotas, desembolsos y cobros de este titular" bodyClassName="">
             <div className="divide-y divide-border">
               {[
                 ...ficha.payments.map((row) => ({
@@ -456,13 +436,13 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                   </div>
                 ))}
             </div>
-          </Panel>
+          </SectionCard>
         </div>
       ) : null}
 
       {tab === 'identidad' ? (
         <div className="space-y-4">
-          <Panel title="Estado de validación" hint="El DNI, la prueba de vida y el face match los define Didit.">
+          <SectionCard title="Estado de validación" description="El DNI, la prueba de vida y el face match los define Didit." bodyClassName="">
             <div className="divide-y divide-border">
               {ficha.documents.map((doc) => (
                 <div key={doc.key} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -491,10 +471,10 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                 </div>
               ))}
             </div>
-          </Panel>
+          </SectionCard>
 
           {id ? (
-            <Panel title="Datos extraídos del DNI" hint="OCR de la sesión Didit">
+            <SectionCard title="Datos extraídos del DNI" description="OCR de la sesión Didit" bodyClassName="">
               <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Nombre" value={id.fullName} />
                 <Field label="Documento" value={id.documentNumber} mono />
@@ -507,57 +487,59 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                 <Field label="Estado Didit" value={id.status} />
                 <Field label="Tipo" value={id.documentType} />
               </div>
-            </Panel>
+            </SectionCard>
           ) : (
-            <Panel title="Datos extraídos del DNI">
+            <SectionCard title="Datos extraídos del DNI" bodyClassName="">
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                 Esta persona todavía no tiene una decisión Didit. Pedile que complete la verificación en UNICRÉDITOS.
               </p>
-            </Panel>
+            </SectionCard>
           )}
 
           {ficha.didit.ids.map((item, index) => (
-            <Panel key={`id-${index}`} title="Imágenes del documento" hint="Frente, dorso y retrato capturados por Didit">
+            <SectionCard key={`id-${index}`} title="Imágenes del documento" description="Frente, dorso y retrato capturados por Didit" bodyClassName="">
               <MediaGrid items={item.media} />
-            </Panel>
+            </SectionCard>
           ))}
 
           {ficha.didit.liveness.map((item, index) => (
-            <Panel
+            <SectionCard
               key={`live-${index}`}
               title={`Prueba de vida · ${item.method || 'Didit'}`}
-              hint={item.score != null ? `Score ${item.score}` : 'Sin score'}
+              description={item.score != null ? `Score ${item.score}` : 'Sin score'}
+              bodyClassName=""
             >
               <MediaGrid items={item.media} />
-            </Panel>
+            </SectionCard>
           ))}
 
           {ficha.didit.faces.map((item, index) => (
-            <Panel
+            <SectionCard
               key={`face-${index}`}
               title={`Face match · ${item.status}`}
-              hint={item.score != null ? `${item.score.toFixed(2)}%` : 'Sin score'}
+              description={item.score != null ? `${item.score.toFixed(2)}%` : 'Sin score'}
+              bodyClassName=""
             >
               <MediaGrid items={item.media} />
-            </Panel>
+            </SectionCard>
           ))}
 
           {ficha.didit.ip[0] ? (
-            <Panel title="Análisis de IP" hint="Señal de riesgo de la sesión Didit">
+            <SectionCard title="Análisis de IP" description="Señal de riesgo de la sesión Didit" bodyClassName="">
               <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Field label="País" value={ficha.didit.ip[0].country} />
                 <Field label="ISP" value={ficha.didit.ip[0].isp} />
                 <Field label="VPN/Tor" value={ficha.didit.ip[0].isVpn ? 'Sí' : 'No'} />
                 <Field label="Alertas" value={ficha.didit.ip[0].warnings.join(' · ') || 'Ninguna'} />
               </div>
-            </Panel>
+            </SectionCard>
           ) : null}
         </div>
       ) : null}
 
       {tab === 'datos' ? (
         <div>
-          <Panel title="Perfil UNICRÉDITOS" hint="Datos declarados y cuenta de desembolso">
+          <SectionCard title="Perfil UNICRÉDITOS" description="Datos declarados y cuenta de desembolso" bodyClassName="">
             <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Email" value={ficha.user.email} />
               <Field label="Teléfono" value={ficha.profile.phone} />
@@ -589,24 +571,25 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                 />
               ))}
             </div>
-          </Panel>
+          </SectionCard>
         </div>
       ) : null}
 
       {tab === 'creditos' ? (
         <div className="space-y-4">
           {ficha.credits.length === 0 ? (
-            <Panel title="Cartera">
+            <SectionCard title="Cartera" bodyClassName="">
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">Este cliente todavía no tiene créditos.</p>
-            </Panel>
+            </SectionCard>
           ) : (
             ficha.credits.map((credit) => {
               const progress = credit.term ? Math.min(100, (credit.paidCount / credit.term) * 100) : 0
               return (
-                <Panel
+                <SectionCard
                   key={credit.id}
                   title={`Crédito ${shortId(credit.id)}`}
-                  hint={`Otorgado ${fmtDate(credit.createdAt)}`}
+                  description={`Otorgado ${fmtDate(credit.createdAt)}`}
+                  bodyClassName=""
                 >
                   <div className="space-y-4 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -718,7 +701,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                       </Table>
                     </div>
                   </div>
-                </Panel>
+                </SectionCard>
               )
             })
           )}

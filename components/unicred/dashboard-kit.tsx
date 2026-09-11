@@ -812,6 +812,7 @@ export function SectionCard({
   action,
   description,
   className,
+  bodyClassName = 'p-4 sm:p-5',
 }: {
   title: string
   icon?: React.ReactNode
@@ -819,6 +820,8 @@ export function SectionCard({
   action?: React.ReactNode
   description?: string
   className?: string
+  /** Override si los hijos ya traen su propio padding (ej. tablas o listas con filas px-4 py-3 a todo el ancho). */
+  bodyClassName?: string
 }) {
   return (
     <section
@@ -841,7 +844,7 @@ export function SectionCard({
         </div>
         {action}
       </header>
-      <div className="p-4 sm:p-5">{children}</div>
+      <div className={bodyClassName}>{children}</div>
     </section>
   )
 }
