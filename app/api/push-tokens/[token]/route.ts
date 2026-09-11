@@ -14,8 +14,6 @@ export function OPTIONS(req: Request) {
 export async function DELETE(req: Request,{ params }: { params: Promise<Record<string, string>> }) {
   try {
     const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('DELETE') ? await req.json().catch(() => ({})) : {}
     const token = decodeURIComponent(String((await params).token)); return mobileJson(req, await mobilePushDelete(userId, token))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

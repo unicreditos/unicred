@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -67,17 +68,17 @@ function kycLabel(status?: string | null) {
   }
 }
 
-function kycTone(status?: string | null) {
-  if (status === 'approved') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
-  if (status === 'rejected') return 'border-rose-200 bg-rose-50 text-rose-800'
-  if (status === 'reviewing' || status === 'submitted') return 'border-amber-200 bg-amber-50 text-amber-800'
-  return 'border-slate-200 bg-slate-50 text-slate-600'
+function kycTone(status?: string | null): StatusTone {
+  if (status === 'approved') return 'success'
+  if (status === 'rejected') return 'danger'
+  if (status === 'reviewing' || status === 'submitted') return 'info'
+  return 'warning'
 }
 
 function roleTone(role?: string | null) {
   if (role === 'admin') return 'border-violet-200 bg-violet-50 text-violet-800'
   if (role === 'merchant') return 'border-sky-200 bg-sky-50 text-sky-800'
-  return 'border-slate-200 bg-slate-50 text-slate-700'
+  return 'border-border bg-muted text-muted-foreground'
 }
 
 export function UsersTable({
@@ -233,9 +234,7 @@ export function UsersTable({
                     </TableCell>
                     {/* KYC con semáforo */}
                     <TableCell>
-                      <Badge variant="outline" className={cn('text-[11px]', kycTone(u.kycStatus))}>
-                        {kycLabel(u.kycStatus)}
-                      </Badge>
+                      <StatusPill tone={kycTone(u.kycStatus)}>{kycLabel(u.kycStatus)}</StatusPill>
                     </TableCell>
                     {/* Créditos: total y vigentes */}
                     <TableCell className="text-center">
@@ -255,9 +254,9 @@ export function UsersTable({
                     {/* Estado de acceso */}
                     <TableCell>
                       {u.banned ? (
-                        <Badge variant="destructive" className="text-[11px]">Bloqueado</Badge>
+                        <StatusPill tone="danger">Bloqueado</StatusPill>
                       ) : (
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[11px] text-emerald-800">Habilitado</Badge>
+                        <StatusPill tone="success">Habilitado</StatusPill>
                       )}
                     </TableCell>
                     {/* Acciones: Ficha destacada, resto en menú compacto */}

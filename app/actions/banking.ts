@@ -9,7 +9,8 @@ import {
   loan as loansTable,
   user,
 } from '@/lib/db/schema'
-import { assertRole, requireAdmin } from '@/lib/session'
+import { assertRole } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { receiptBranding } from '@/lib/brand'
 import { recordAudit } from '@/lib/audit'
 import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
@@ -667,7 +668,7 @@ export async function markDisbursementAsCredited(
   externalRef?: string,
   opts?: { requireSignedContract?: boolean },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
 
   const [d] = await db
     .select()
@@ -826,7 +827,7 @@ export async function markDisbursementAsCredited(
 
 export async function disburseAndActivateLoan(loanId: string) {
   try {
-    const adminUserId = await requireAdmin()
+    const adminUserId = await requirePermission('disbursements.credit')
     const [existing] = await db.select().from(loansTable).where(eq(loansTable.id, loanId)).limit(1)
     if (!existing) throw new Error('Préstamo no encontrado')
     if (existing.status === 'rejected' || existing.status === 'cancelled' || existing.status === 'paid') {
@@ -884,7 +885,7 @@ export async function disburseAndActivateLoan(loanId: string) {
 }
 
 export async function getAllDisbursements(limit = 100) {
-  await requireAdmin()
+  await requirePermission('finance.read')
   return db
     .select()
     .from(disbursement)
@@ -893,7 +894,7 @@ export async function getAllDisbursements(limit = 100) {
 }
 
 export async function attachDisbursementProof(disbursementId: string, formData: FormData) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [row] = await db.select().from(disbursement).where(eq(disbursement.id, disbursementId)).limit(1)
   if (!row) throw new Error('Desembolso no encontrado.')
   if (row.status !== 'credited') {

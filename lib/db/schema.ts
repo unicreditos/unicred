@@ -31,7 +31,9 @@ export const user = pgTable('user', {
   role: text('role').notNull().default('customer'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('user_created_idx').on(t.createdAt),
+])
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),
@@ -87,6 +89,7 @@ export const profile = pgTable('profile', {
   id: text('id').primaryKey(),
   userId: text('userId').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
   role: text('role').notNull().default('customer'),
+  adminRoleId: text('adminRoleId').references(() => adminRole.id, { onDelete: 'set null' }),
   cuil: text('cuil'),
   dni: text('dni'),
   phone: text('phone'),
@@ -105,6 +108,60 @@ export const profile = pgTable('profile', {
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
 })
+
+/* ----------------------------- RBAC (admin) ----------------------------- */
+
+/** Roles con nombre para la mesa admin. No confundir con profile.role (customer/merchant/admin): esto sub-clasifica a los admin. */
+export const adminRole = pgTable('admin_role', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  isSystem: boolean('isSystem').notNull().default(false),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
+
+/** Catálogo fijo de capacidades verificables server-side. No editable desde la UI. */
+export const adminPermission = pgTable('admin_permission', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  category: text('category').notNull(),
+  createdAt: ts().notNull().defaultNow(),
+})
+
+export const adminRolePermission = pgTable('admin_role_permission', {
+  id: text('id').primaryKey(),
+  roleId: text('roleId').notNull().references(() => adminRole.id, { onDelete: 'cascade' }),
+  permissionId: text('permissionId').notNull().references(() => adminPermission.id, { onDelete: 'cascade' }),
+}, (t) => [
+  uniqueIndex('admin_role_permission_unique').on(t.roleId, t.permissionId),
+  index('admin_role_permission_role_idx').on(t.roleId),
+])
+
+/**
+ * Parámetros de underwriting versionados. No es un motor de reglas genérico:
+ * son los mismos umbrales que ya usaba el código (lib/loan-underwriting.ts),
+ * movidos a la base para que Riesgo los pueda ajustar sin deploy, con
+ * historial y auditoría. Solo una fila activa a la vez.
+ */
+export const riskRuleVersion = pgTable('risk_rule_version', {
+  id: text('id').primaryKey(),
+  version: integer('version').notNull(),
+  isActive: boolean('isActive').notNull().default(false),
+  scoreRejectBelow: integer('scoreRejectBelow').notNull(),
+  scoreAutoQualifyAt: integer('scoreAutoQualifyAt').notNull(),
+  incomeDtiRatio: numeric('incomeDtiRatio', { precision: 5, scale: 4 }).notNull(),
+  firstCreditHardCap: numeric('firstCreditHardCap', { precision: 14, scale: 2 }).notNull(),
+  bcraWorstSituationRejectAt: integer('bcraWorstSituationRejectAt').notNull(),
+  bcraRejectedChecksSituationThreshold: integer('bcraRejectedChecksSituationThreshold').notNull(),
+  notes: text('notes'),
+  createdBy: text('createdBy').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('risk_rule_version_active_idx').on(t.isActive),
+])
 
 export const merchant = pgTable('merchant', {
   id: text('id').primaryKey(),
@@ -133,7 +190,9 @@ export const merchant = pgTable('merchant', {
     .default('8.00'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('merchant_created_idx').on(t.createdAt),
+])
 
 export const merchantDocument = pgTable('merchant_document', {
   id: text('id').primaryKey(),
@@ -255,7 +314,9 @@ export const kycVerification = pgTable('kyc_verification', {
   expiresAt: tsCol('expiresAt'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
-})
+}, (t) => [
+  index('kyc_verification_updated_idx').on(t.updatedAt),
+])
 
 /** Sesiones Didit: alta pendiente (sin userId) y resultado del webhook. */
 export const diditSession = pgTable('didit_session', {
@@ -360,6 +421,7 @@ export const disbursement = pgTable('disbursement', {
 }, (t) => [
   index('disbursement_user_idx').on(t.userId),
   index('disbursement_status_idx').on(t.status),
+  index('disbursement_created_idx').on(t.createdAt),
 ])
 
 /* --------------------------- Contratos de Préstamo ------------------------ */
@@ -517,6 +579,19 @@ export const arcaInvoice = pgTable('arca_invoice', {
   uniqueIndex('arca_invoice_installment_unique').on(t.installmentId),
 ])
 
+/** Punto de venta WsFE, versionado — igual patrón que risk_rule_version: nunca se edita una fila, cada cambio es una versión nueva. */
+export const arcaSalesPointVersion = pgTable('arca_sales_point_version', {
+  id: text('id').primaryKey(),
+  version: integer('version').notNull(),
+  isActive: boolean('isActive').notNull().default(false),
+  ptoVta: integer('ptoVta').notNull(),
+  notes: text('notes'),
+  createdBy: text('createdBy').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('arca_sales_point_version_active_idx').on(t.isActive),
+])
+
 /* -------------------------- Métodos de Pago Guardados --------------------- */
 
 export const savedPaymentMethod = pgTable('saved_payment_method', {
@@ -652,7 +727,7 @@ export const inboxReceipt = pgTable('inbox_receipt', {
   index('inbox_receipt_user_idx').on(t.userId),
 ])
 
-/* -------------------- Billetera virtual Payway / Prisma ------------------- */
+/* -------------------- Billetera virtual UNICRÉDITOS ------------------- */
 
 export const walletAccount = pgTable('wallet_account', {
   id: text('id').primaryKey(),
@@ -664,7 +739,7 @@ export const walletAccount = pgTable('wallet_account', {
   taxId: text('taxId'),
   balance: numeric('balance', { precision: 14, scale: 2 }).notNull().default('0'),
   currency: text('currency').notNull().default('ARS'),
-  /** Ledger propio; el riel externo (payway / pomelo / treasury) es solo ejecución. */
+  /** Ledger propio; el riel externo (pomelo / treasury) es solo ejecución. */
   provider: text('provider').notNull().default('unicred'),
   paywayAccountId: text('paywayAccountId'),
   pomeloAccountId: text('pomeloAccountId'),

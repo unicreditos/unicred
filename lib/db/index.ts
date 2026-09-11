@@ -34,9 +34,16 @@ const isNeon =
 export const pool = new Pool({
   connectionString: isPlaceholderDbUrl(cleanedDatabaseUrl) ? undefined : cleanedDatabaseUrl,
   max: 10,
-  min: 0,
-  connectionTimeoutMillis: 5000,
-  idleTimeoutMillis: 30000,
+  // min:0 + idleTimeoutMillis corto significaba que, apenas pasaban ~30s sin
+  // queries, el pool se quedaba sin conexiones abiertas — la siguiente query
+  // pagaba el costo completo de un connect+TLS nuevo contra Neon (~2s,
+  // medido en vivo: cada acción aislada tardaba igual sin importar qué tan
+  // simple fuera la query). min:1 mantiene una conexión viva para absorber
+  // ese caso; idleTimeoutMillis más alto reduce cuántas veces se repite
+  // dentro de una misma sesión de uso normal.
+  min: 1,
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 120000,
   allowExitOnIdle: false,
   ...(isNeon
     ? {

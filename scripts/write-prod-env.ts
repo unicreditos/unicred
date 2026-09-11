@@ -64,7 +64,6 @@ const mpPublic =
 
 const authSecret = pick('BETTER_AUTH_SECRET') || crypto.randomBytes(48).toString('base64')
 const cronSecret = pick('CRON_SECRET') || secretBytes(32)
-const paywayWebhookSecret = pick('PAYWAY_WEBHOOK_SECRET') || secretBytes(24)
 
 const lines = [
   '# UNICRÉDITOS — SOLO host de produccion. No usar con npm run dev.',
@@ -108,16 +107,6 @@ const lines = [
   '# secret_shared_key del destino HTTPS en Didit.',
   `DIDIT_WEBHOOK_SECRET=${q(pick('DIDIT_WEBHOOK_SECRET'))}`,
   '',
-  '# --- Payway (sandbox hasta homologación) -------------------',
-  `PAYWAY_ENV=${q(pick('PAYWAY_ENV') || 'sandbox')}`,
-  `PAYWAY_BASE_URL=${q(pick('PAYWAY_BASE_URL') || 'https://api-sandbox.payway.com.ar')}`,
-  `PAYWAY_SANDBOX_PUBLIC_KEY=${q(pick('PAYWAY_SANDBOX_PUBLIC_KEY'))}`,
-  `PAYWAY_SANDBOX_SECRET_KEY=${q(pick('PAYWAY_SANDBOX_SECRET_KEY'))}`,
-  `PAYWAY_SANDBOX_AUTH_B64=${q(pick('PAYWAY_SANDBOX_AUTH_B64'))}`,
-  '# Secreto del webhook Payway (header o query). Generado si faltaba.',
-  `PAYWAY_WEBHOOK_SECRET=${q(paywayWebhookSecret)}`,
-  `PAYWAY_PROJECT_ID=${q(pick('PAYWAY_PROJECT_ID'))}`,
-  '',
   '# --- Cron (Vercel inyecta Authorization: Bearer $CRON_SECRET) --',
   `CRON_SECRET=${q(cronSecret)}`,
   '',
@@ -153,10 +142,9 @@ if (!pick('AFIP_CERT', 'AFIP_KEY', 'AFIP_CUIT') && !(emitia.AFIP_CERT && emitia.
 }
 
 console.log(`Escrito ${dest}`)
-console.log(`Generado/preservado: CRON_SECRET, PAYWAY_WEBHOOK_SECRET, BETTER_AUTH_SECRET`)
+console.log(`Generado/preservado: CRON_SECRET, BETTER_AUTH_SECRET`)
 console.log(`Falta completar: ${missing.length ? missing.join(', ') : 'nada de lo automatico'}`)
 console.log('Subí las mismas variables a Vercel (Settings → Environment Variables).')
 console.log('Webhooks en paneles externos:')
 console.log('  - Didit  → https://unicreditos.com/api/webhooks/didit')
 console.log('  - MP     → https://unicreditos.com/api/webhooks/mercadopago')
-console.log('  - Payway → https://unicreditos.com/api/webhooks/payway (sandbox/homologación)')

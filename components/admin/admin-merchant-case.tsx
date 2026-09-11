@@ -22,12 +22,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink, SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminLoanHref, adminPaymentHref, adminUrl } from '@/lib/admin-nav'
 import { TAX_CONDITION_LABELS } from '@/lib/arca/tax-condition'
 import { formatARS } from '@/lib/finance'
 import { kycStatusLabel, loanStatusLabel, merchantStatusLabel, paymentStatusLabel } from '@/lib/labels'
 import { MERCHANT_DOC_LABELS } from '@/lib/merchant-kyb'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -106,11 +107,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-          <Link href={adminUrl('comercios')}>
-            <ArrowLeft /> Comercios
-          </Link>
-        </Button>
+        <CaseBackLink href={adminUrl('comercios')} label="Comercios" />
         <div className="flex flex-wrap gap-2">
           {merchant.status === 'pending' ? (
             <>
@@ -141,7 +138,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         <DecisionBanner tone="warn" title="Pendiente de adhesión" detail="Falta la aprobación de mesa." />
       )}
 
-      <section className="rounded-lg border border-border bg-card">
+      <SectionCard title="Datos del comercio" bodyClassName="">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Nombre de fantasía" value={merchant.businessName} />
           <Field label="Razón social" value={merchant.legalName} />
@@ -156,12 +153,9 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
           <Field label="Teléfono" value={merchant.phone} />
           <Field label="Alta" value={fmtDate(merchant.createdAt)} />
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="rounded-lg border border-border bg-card">
-        <header className="border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold">Titular</h3>
-        </header>
+      <SectionCard title="Titular" bodyClassName="">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Nombre" value={owner.name} />
           <Field label="Correo" value={owner.email} />
@@ -173,7 +167,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
             Abrir ficha del titular
           </Link>
         </div>
-      </section>
+      </SectionCard>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricTile label="Créditos originados" value={String(data.loans.length)} />
@@ -181,10 +175,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
         <MetricTile label="Documentos" value={String(data.documents.length)} />
       </div>
 
-      <section className="rounded-lg border border-border bg-card">
-        <header className="border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold">Documentos KYB</h3>
-        </header>
+      <SectionCard title="Documentos KYB" bodyClassName="">
         {data.documents.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">Sin archivos cargados.</p>
         ) : (
@@ -199,12 +190,9 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
             ))}
           </ul>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="rounded-lg border border-border bg-card">
-        <header className="border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold">Créditos de este comercio</h3>
-        </header>
+      <SectionCard title="Créditos de este comercio" bodyClassName="">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -241,13 +229,10 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
             </TableBody>
           </Table>
         </div>
-      </section>
+      </SectionCard>
 
       {data.payments.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Pagos asociados</h3>
-          </header>
+        <SectionCard title="Pagos asociados" bodyClassName="">
           <ul className="divide-y">
             {data.payments.slice(0, 20).map((p) => (
               <li key={p.id} className="flex justify-between px-4 py-2 text-sm">
@@ -258,7 +243,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

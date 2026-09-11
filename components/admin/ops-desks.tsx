@@ -10,10 +10,13 @@ import {
   type OpsOpenTicket,
 } from '@/app/actions/admin-ops'
 import { TransferReviews } from '@/components/admin/transfer-reviews'
+import { WalletCreditDesk } from '@/components/admin/wallet-credit-desk'
 import { ArcaInvoicesDesk } from '@/components/admin/arca-invoices-desk'
+import { ArcaConfigDesk } from '@/components/admin/arca-config-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminUrl } from '@/lib/admin-nav'
 import { formatOperationNumber } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
@@ -58,7 +61,7 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
               void adminRegisterCollection({
                 installmentId: row.id,
                 amount: Number(data.get('amount')),
-                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'payway_qr',
+                method: String(data.get('method')) as 'transferencia_rm' | 'efectivo' | 'mercado_pago' | 'wallet',
                 reference: String(data.get('reference') || ''),
                 notes: String(data.get('notes') || ''),
               })
@@ -72,29 +75,29 @@ function CollectDialog({ row, onDone }: { row: OpsInstallment; onDone: () => voi
             }}
           >
             <div>
-              <p className="text-sm font-semibold text-brand-navy-900">Registrar cobro</p>
+              <p className="text-sm font-semibold text-foreground">Registrar cobro</p>
               <p className="text-xs text-muted-foreground">
                 {row.customerName} · cuota #{row.number} · {formatARS(row.amount)}
               </p>
             </div>
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-xs font-medium text-muted-foreground">
               Monto acreditado
               <Input name="amount" type="number" step="0.01" min="0" defaultValue={row.amount} className="mt-1" required />
             </label>
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-xs font-medium text-muted-foreground">
               Medio
               <select name="method" className="mt-1 h-9 w-full rounded-md border border-border px-2 text-sm" defaultValue="transferencia_rm">
                 <option value="transferencia_rm">Transferencia a tesorería RM</option>
                 <option value="efectivo">Efectivo</option>
                 <option value="mercado_pago">Mercado Pago</option>
-                <option value="payway_qr">Payway (sandbox)</option>
+                <option value="wallet">Billetera UNICRÉDITOS</option>
               </select>
             </label>
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-xs font-medium text-muted-foreground">
               Referencia / CBU / ID
               <Input name="reference" className="mt-1" placeholder="Nº de operación" />
             </label>
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-xs font-medium text-muted-foreground">
               Nota interna
               <Input name="notes" className="mt-1" placeholder="Opcional" />
             </label>
@@ -134,10 +137,10 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <section className="overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-brand-navy-900">Cupones de Pago Fácil / Rapipago</h2>
+          <h2 className="text-sm font-semibold text-foreground">Cupones de Pago Fácil / Rapipago</h2>
           <p className="text-xs text-muted-foreground">
             Códigos de barras y Nº de operación ya emitidos, todavía no cobrados. Mercado Pago avisa solo cuando el cliente paga; también podés conciliar ahora. Anular invalida el talón impreso.
           </p>
@@ -224,7 +227,7 @@ function OpenNetworkTickets({ desk }: { desk: AdminOpsDesk }) {
               tickets.slice(0, 200).map((row: OpsOpenTicket) => (
                 <tr key={row.id}>
                   <td className="px-4 py-3">
-                    <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
+                    <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-foreground hover:underline">
                       {row.customerName}
                     </Link>
                     <p className="font-mono text-[11px] text-muted-foreground">{shortLoan(row.loanId)}</p>
@@ -292,7 +295,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
           <p className="text-[13px] font-semibold">
             {desk.kpis.overdueCount ? `${desk.kpis.overdueCount} cuotas en mora` : 'Cartera al día'}
           </p>
-          <p className="text-[11px] text-slate-600">
+          <p className="text-[11px] text-muted-foreground">
             {desk.kpis.pendingReview} transferencias a verificar · {desk.kpis.openTickets} cupones de red · {desk.kpis.due7Count} vencen en 7 días
           </p>
         </div>
@@ -306,9 +309,11 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-8">
-          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-            <h2 className="text-[12px] font-semibold">Mesa de cobranzas</h2>
+        <SectionCard
+          title="Mesa de cobranzas"
+          className="flex min-h-0 flex-col lg:col-span-8"
+          bodyClassName="min-h-0 flex-1 overflow-auto"
+          action={
             <div className="flex flex-wrap gap-1 rounded-md bg-muted p-0.5">
               {(
                 [
@@ -324,15 +329,15 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                   onClick={() => setFilter(id)}
                   className={cn(
                     'h-7 rounded px-2 text-[11px] font-medium',
-                    filter === id ? 'bg-brand-navy-900 text-white' : 'text-slate-600 hover:bg-card',
+                    filter === id ? 'bg-brand-navy-900 text-white' : 'text-muted-foreground hover:bg-card',
                   )}
                 >
                   {label}
                 </button>
               ))}
             </div>
-          </header>
-          <div className="min-h-0 flex-1 overflow-auto">
+          }
+        >
             <table className="w-full min-w-[820px] text-left text-[12px]">
               <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -357,7 +362,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                   rows.slice(0, 200).map((row) => (
                     <tr key={row.id} className="align-top">
                       <td className="px-3 py-2">
-                        <p className="font-medium text-brand-navy-900">{row.customerName}</p>
+                        <p className="font-medium text-foreground">{row.customerName}</p>
                         <p className="text-[10px] text-muted-foreground">{row.customerEmail}</p>
                       </td>
                       <td className="px-3 py-2 font-mono text-[11px]">{shortLoan(row.loanId)}</td>
@@ -368,12 +373,12 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                       </td>
                       <td className="px-3 py-2 text-right font-mono tabular-nums">{formatARS(row.amount)}</td>
                     <td className="px-4 py-3">
-                      <p className={cn('text-xs font-medium', row.status === 'overdue' ? 'text-rose-700' : row.status === 'paid' ? 'text-emerald-700' : 'text-slate-600')}>
+                      <p className={cn('text-xs font-medium', row.status === 'overdue' ? 'text-rose-700' : row.status === 'paid' ? 'text-emerald-700' : 'text-muted-foreground')}>
                         {installmentStatusLabel(row.status)}
                       </p>
                       <p className="text-[11px] text-muted-foreground">{loanStatusLabel(row.loanStatus)}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {row.lastReceiptNumber ? (
                         <a className="font-medium text-brand-primary hover:underline" href={`/dashboard/documentos/recibo/${row.lastReceiptId}`} target="_blank" rel="noreferrer">
                           {row.lastReceiptNumber}
@@ -396,8 +401,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
               )}
             </tbody>
           </table>
-        </div>
-        </section>
+        </SectionCard>
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:col-span-4">
           <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card">
             <OpenNetworkTickets desk={desk} />
@@ -407,6 +411,12 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
               <h2 className="text-[12px] font-semibold">Transferencias informadas</h2>
             </div>
             <TransferReviews />
+          </div>
+          <div className="shrink-0 overflow-auto rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-3 py-1.5">
+              <h2 className="text-[12px] font-semibold">Cargar billetera</h2>
+            </div>
+            <WalletCreditDesk />
           </div>
         </div>
       </div>
@@ -436,20 +446,20 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
         <MetricTile label="Archivo" value={String(desk.receipts.length)} hint="Últimos comprobantes" />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-7">
-          <header className="shrink-0 space-y-1.5 border-b border-border px-3 py-2">
-            <div>
-              <h2 className="text-[12px] font-semibold text-brand-navy-900">Comprobantes</h2>
-              <p className="text-[10px] text-muted-foreground">Mismo talón que ve el cliente · pagos y desembolsos</p>
-            </div>
+        <SectionCard
+          title="Comprobantes"
+          description="Mismo talón que ve el cliente · pagos y desembolsos"
+          className="flex min-h-0 flex-col lg:col-span-7"
+          bodyClassName="min-h-0 flex-1 overflow-auto"
+          action={
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar por número, cliente, tipo o medio"
-              className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-brand-primary"
+              className="h-8 w-56 rounded-md border border-border bg-background px-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-brand-primary"
             />
-          </header>
-          <div className="min-h-0 flex-1 overflow-auto">
+          }
+        >
             <table className="w-full min-w-[720px] text-left text-[12px]">
               <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -474,7 +484,7 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
                     <tr key={row.id}>
                       <td className="px-3 py-2 font-mono text-[11px]">{row.receiptNumber}</td>
                       <td className="px-3 py-2">
-                        <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-brand-navy-900 hover:underline">
+                        <Link href={adminUrl('usuarios', row.userId)} className="font-medium text-foreground hover:underline">
                           {row.customerName}
                         </Link>
                       </td>
@@ -494,9 +504,9 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
                 )}
               </tbody>
             </table>
-          </div>
-        </section>
-        <div className="min-h-0 overflow-auto lg:col-span-5">
+        </SectionCard>
+        <div className="flex min-h-0 flex-col gap-2 overflow-auto lg:col-span-5">
+          <ArcaConfigDesk />
           <ArcaInvoicesDesk />
         </div>
       </div>
@@ -513,24 +523,24 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
           Cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de red viven en Cobranzas hasta que se pagan o se anulan.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-        <header className="shrink-0 border-b border-border px-3 py-1.5">
-          <h2 className="text-[12px] font-semibold text-brand-navy-900">Historial de movimientos</h2>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto divide-y divide-border">
+      <SectionCard
+        title="Historial de movimientos"
+        className="flex min-h-0 flex-1 flex-col"
+        bodyClassName="min-h-0 flex-1 overflow-auto divide-y divide-border"
+      >
           {desk.movements.length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">Sin movimientos cargados.</p>
           ) : (
             desk.movements.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-brand-navy-900">{row.title}</p>
+                  <p className="text-[13px] font-medium text-foreground">{row.title}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {row.customerName} · {shortLoan(row.loanId)} · {fmtDate(row.at)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className={cn('font-mono text-[13px] tabular-nums', row.kind === 'desembolso' ? 'text-emerald-700' : row.status === 'overdue' ? 'text-rose-700' : 'text-brand-navy-900')}>
+                  <p className={cn('font-mono text-[13px] tabular-nums', row.kind === 'desembolso' ? 'text-emerald-700' : row.status === 'overdue' ? 'text-rose-700' : 'text-foreground')}>
                     {row.kind === 'desembolso' ? '+' : row.kind === 'pago' ? '−' : ''}
                     {formatARS(row.amount)}
                   </p>
@@ -544,8 +554,7 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
               </div>
             ))
           )}
-        </div>
-      </section>
+      </SectionCard>
     </OpsFloor>
   )
 }
@@ -559,11 +568,11 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
           Contratos de mutuo, pagarés y expediente. La intimación de mora se emite desde la ficha del cliente.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-        <header className="shrink-0 border-b border-border px-3 py-1.5">
-          <h2 className="text-[12px] font-semibold text-brand-navy-900">Contratos</h2>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto">
+      <SectionCard
+        title="Contratos"
+        className="flex min-h-0 flex-1 flex-col"
+        bodyClassName="min-h-0 flex-1 overflow-auto"
+      >
           <table className="w-full min-w-[720px] text-left text-[12px]">
             <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -613,8 +622,7 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
               )}
             </tbody>
           </table>
-        </div>
-      </section>
+      </SectionCard>
     </OpsFloor>
   )
 }

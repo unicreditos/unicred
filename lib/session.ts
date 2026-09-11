@@ -4,6 +4,7 @@ import { profile, user as userTable } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 export type Role = 'customer' | 'merchant' | 'admin'
 
@@ -24,23 +25,25 @@ export async function syncUserRole(userId: string, role: Role) {
   await db.update(profile).set({ role, updatedAt: new Date() }).where(eq(profile.userId, userId)).catch(() => {})
 }
 
-export async function getRoleForUser(userId: string): Promise<Role> {
+/**
+ * Memoizado con React cache(): dentro de una misma navegación se llama muchas
+ * veces para el mismo userId (una vez por cada requirePermission() de las
+ * ~7 queries que se piden siempre en /admin), y sin esto cada una repetía
+ * las 2 consultas desde cero.
+ */
+export const getRoleForUser = cache(async (userId: string): Promise<Role> => {
   if (isPlaceholderDbUrl(process.env.DATABASE_URL)) {
     return 'customer'
   }
   try {
-    const rows = await db
-      .select({ role: profile.role })
-      .from(profile)
-      .where(eq(profile.userId, userId))
-      .limit(1)
+    // Antes eran 2 round-trips secuenciales — no dependen una de la otra, así
+    // que corren en paralelo. En una base remota cada round-trip pesa, y esta
+    // función se llama en casi cualquier acción autenticada.
+    const [rows, [u]] = await Promise.all([
+      db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1),
+      db.select({ role: userTable.role }).from(userTable).where(eq(userTable.id, userId)).limit(1),
+    ])
     const fromProfile = rows[0]?.role as Role | undefined
-
-    const [u] = await db
-      .select({ role: userTable.role })
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .limit(1)
     const fromUser = (u?.role as Role | undefined) || undefined
     const role = fromProfile || fromUser || 'customer'
 
@@ -60,7 +63,7 @@ export async function getRoleForUser(userId: string): Promise<Role> {
     }
     return 'customer'
   }
-}
+})
 
 export async function getDashboardUrlForUser(userId: string): Promise<string> {
   const role = await getRoleForUser(userId)
@@ -120,18 +123,22 @@ async function clearStaleAuthCookies() {
   }
 }
 
+const isBanned = cache(async (userId: string) => {
+  const [u] = await db
+    .select({ banned: userTable.banned })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1)
+  return !!u?.banned
+})
+
 export async function requireUserId() {
   const session = await getSession()
   if (!session?.user) {
     await clearStaleAuthCookies()
     redirect('/sign-in')
   }
-  const [u] = await db
-    .select({ banned: userTable.banned })
-    .from(userTable)
-    .where(eq(userTable.id, session.user.id))
-    .limit(1)
-  if (u?.banned) {
+  if (await isBanned(session.user.id)) {
     redirect('/sign-in?error=banned')
   }
   return session.user.id

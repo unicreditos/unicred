@@ -1,8 +1,8 @@
 'use client'
 
 import type { AdminPaymentCase } from '@/app/actions/admin-cases'
-import { Button } from '@/components/ui/button'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink, SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminLoanHref, adminUrl } from '@/lib/admin-nav'
 import { formatARS } from '@/lib/finance'
 import {
@@ -11,7 +11,6 @@ import {
   paymentMethodLabel,
   paymentStatusLabel,
 } from '@/lib/labels'
-import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 function fmtDate(value: string | null | undefined) {
@@ -39,11 +38,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
-      <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-        <Link href={adminUrl('pagos')}>
-          <ArrowLeft /> Pagos
-        </Link>
-      </Button>
+      <CaseBackLink href={adminUrl('pagos')} label="Pagos" />
 
       <DecisionBanner
         tone={tone}
@@ -58,7 +53,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
         <MetricTile label="Recibos" value={String(receipts.length)} />
       </div>
 
-      <section className="rounded-lg border border-border bg-card">
+      <SectionCard title="Datos del pago" bodyClassName="">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Cliente" value={customer.name} />
           <Field label="Correo" value={customer.email} />
@@ -89,13 +84,10 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
             </Link>
           ) : null}
         </div>
-      </section>
+      </SectionCard>
 
       {receipts.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Comprobantes</h3>
-          </header>
+        <SectionCard title="Comprobantes" bodyClassName="">
           <ul className="divide-y">
             {receipts.map((r) => (
               <li key={r.id} className="flex justify-between px-4 py-2 text-sm">
@@ -106,7 +98,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       ) : null}
     </div>
   )

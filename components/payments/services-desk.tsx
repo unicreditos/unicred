@@ -36,6 +36,7 @@ export function ServicesDesk() {
   const [amount, setAmount] = useState('')
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [success, setSuccess] = useState<SuccessState | null>(null)
+  const [confirmingPay, setConfirmingPay] = useState(false)
   const [pending, start] = useTransition()
 
   const providers = useMemo(
@@ -83,6 +84,7 @@ export function ServicesDesk() {
       })
       setAccountRef('')
       setAmount('')
+      setConfirmingPay(false)
       setHistory(await listMyServicePaymentsAction())
     })
   }
@@ -234,18 +236,39 @@ export function ServicesDesk() {
           </div>
         </div>
 
-        <Button className="mt-5 font-bold" disabled={pending || !provider} onClick={submit}>
-          {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {provider?.kind === 'recharge' ? (
-            <>
-              <Smartphone className="mr-2 h-4 w-4" /> Confirmar recarga
-            </>
-          ) : (
-            <>
-              <Receipt className="mr-2 h-4 w-4" /> Pagar servicio
-            </>
-          )}
-        </Button>
+        {confirmingPay && provider ? (
+          <div className="mt-5 space-y-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">Confirmá el pago</p>
+              <p className="mt-2">
+                <span className="font-bold">{formatARS(Number(String(amount).replace(',', '.')) || 0)}</span> a{' '}
+                {provider.name} · <span className="font-mono">{accountRef || '—'}</span>
+              </p>
+              <p className="mt-2 text-xs text-amber-800">Se debita al instante de tu billetera y no se puede deshacer desde acá.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" disabled={pending} onClick={() => setConfirmingPay(false)}>
+                Cancelar
+              </Button>
+              <Button className="flex-1 font-bold" disabled={pending} onClick={submit}>
+                {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Confirmar pago
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button className="mt-5 font-bold" disabled={pending || !provider} onClick={() => setConfirmingPay(true)}>
+            {provider?.kind === 'recharge' ? (
+              <>
+                <Smartphone className="mr-2 h-4 w-4" /> Confirmar recarga
+              </>
+            ) : (
+              <>
+                <Receipt className="mr-2 h-4 w-4" /> Pagar servicio
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-3xl border border-border/70 bg-card p-5">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
@@ -19,6 +20,8 @@ import {
 import { formatARS } from '@/lib/finance'
 import { allowedAdminTransitions, LOAN_STATUS_LABELS, type LoanStatus } from '@/lib/loan-state'
 import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
+import { useConfirmDialog } from '@/components/admin/confirm-dialog'
 import { Check, CheckCircle2, Clock, Edit3, Eye, FileText, Loader2, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -41,16 +44,16 @@ type LoanRow = {
 }
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-    pending: { label: 'Pendiente', variant: 'secondary' },
-    approved: { label: 'Aprobado', variant: 'default' },
-    active: { label: 'Activo', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
-    paid: { label: 'Pagado', variant: 'outline' },
-    cancelled: { label: 'Anulado', variant: 'outline' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    paid: { label: 'Pagado', tone: 'complete' },
+    cancelled: { label: 'Anulado', tone: 'neutral' },
   }
-  const cfg = map[status] ?? { label: LOAN_STATUS_LABELS[status as LoanStatus] ?? status, variant: 'outline' as const }
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+  const cfg = map[status] ?? { label: LOAN_STATUS_LABELS[status as LoanStatus] ?? status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function actionError(err: unknown, fallback: string) {
@@ -80,6 +83,7 @@ function scoreColor(s: number | null) {
 
 export function LoansTable({ loans }: { loans: LoanRow[] }) {
   const router = useRouter()
+  const { confirm, confirmDialog } = useConfirmDialog()
   const [isPending, startTransition] = useTransition()
   const [rejectOpen, setRejectOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
@@ -202,12 +206,19 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
 
   const handleMarkActive = (l: LoanRow) => {
     const signed = l.contractStatus === 'accepted'
-    const ok = window.confirm(
-      signed
-        ? `¿Acreditar el desembolso de ${shortId(l.id)} y dejar el crédito vigente?`
-        : `El contrato todavía no está firmado. ¿Acreditar el desembolso de ${shortId(l.id)} igual y dejar el crédito vigente? Queda en la auditoría.`,
+    confirm(
+      {
+        title: `¿Acreditar el desembolso de ${shortId(l.id)}?`,
+        description: signed
+          ? 'El crédito queda vigente.'
+          : 'El contrato todavía no está firmado. Se acredita igual y queda registrado en la auditoría.',
+        confirmLabel: 'Acreditar',
+      },
+      () => runMarkActive(l),
     )
-    if (!ok) return
+  }
+
+  const runMarkActive = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await markLoanAsActive(l.id)
@@ -257,7 +268,13 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
   }
 
   const handleMarkPaid = (l: LoanRow) => {
-    if (!window.confirm(`¿Marcar el préstamo ${shortId(l.id)} como PAGADO (cancelación total)?`)) return
+    confirm(
+      { title: `¿Marcar el préstamo ${shortId(l.id)} como pagado?`, description: 'Registra la cancelación total del crédito.', confirmLabel: 'Marcar pagado' },
+      () => runMarkPaid(l),
+    )
+  }
+
+  const runMarkPaid = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await markLoanAsPaid(l.id)
@@ -274,7 +291,18 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
   }
 
   const handleDelete = (l: LoanRow) => {
-    if (!window.confirm(`¿Borrar el crédito ${shortId(l.id)}? Solo se elimina si está pendiente, rechazado o anulado.`)) return
+    confirm(
+      {
+        title: `¿Borrar el crédito ${shortId(l.id)}?`,
+        description: 'Solo se elimina si está pendiente, rechazado o anulado. Esta acción no se puede deshacer.',
+        confirmLabel: 'Borrar',
+        destructive: true,
+      },
+      () => runDelete(l),
+    )
+  }
+
+  const runDelete = (l: LoanRow) => {
     startTransition(async () => {
       try {
         const r = await deleteLoanAdmin(l.id)
@@ -379,7 +407,6 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
 
   return (
     <>
-      <div className="rounded-xl border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -421,7 +448,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     {statusBadge(l.status)}
-                    {l.rejectionReason && (
+                    {l.status === 'rejected' && l.rejectionReason && (
                       <span className="text-[10px] text-rose-600 line-clamp-2 max-w-[200px]">
                         Motivo: {l.rejectionReason}
                       </span>
@@ -494,7 +521,6 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
             ))}
           </TableBody>
         </Table>
-      </div>
 
       {/* DIALOG APROBAR */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
@@ -650,17 +676,21 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
               </div>
               <div className="space-y-1.5 col-span-2">
                 <Label>Estado</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <Select
                   value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as LoanRow['status'] })}
+                  onValueChange={(v) => setEditForm({ ...editForm, status: (v ?? editForm.status) as LoanRow['status'] })}
                 >
-                  {(activeLoan ? allowedAdminTransitions(activeLoan.status) : [editForm.status]).map((status) => (
-                    <option key={status} value={status}>
-                      {LOAN_STATUS_LABELS[status as LoanStatus] ?? status}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(activeLoan ? allowedAdminTransitions(activeLoan.status) : [editForm.status]).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {LOAN_STATUS_LABELS[status as LoanStatus] ?? status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-[11px] text-muted-foreground">
                   Un rechazo se puede volver a calificar. El paso a vigente no está acá: va por Tesorería, con contrato firmado.
                 </p>
@@ -682,6 +712,8 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {confirmDialog}
     </>
   )
 }

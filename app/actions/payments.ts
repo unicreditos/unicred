@@ -11,6 +11,7 @@ import {
   user as userTable,
 } from '@/lib/db/schema'
 import { assertRole, getSession, assertAdmin, getRoleForUser, requireUserId } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
 import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
@@ -24,9 +25,7 @@ import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, ensureMercadoPagoCustomer, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
 import { attachMercadoPagoQr, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
-import { isPaywayConfigured, isPaywayMethod, lookupPaywayBin, paywayAllowsSimulate } from '@/lib/payway'
-import { openPaywayCheckout } from '@/lib/payments/payway-checkout'
-import { settlePaywayPayment } from '@/lib/payments/settle-payway'
+import { creditWallet, findWalletByDestination } from '@/lib/payments/wallet'
 
 export type PaymentMethod =
   | 'mercado_pago'
@@ -42,8 +41,9 @@ export type PaymentMethod =
   | 'rapipago'
   | 'ticket'
   | 'transferencia_rm'
-  | 'payway_qr'
+  /** Histórico / alias UI de billetera propia (no es gateway Payway). */
   | 'payway_wallet'
+  | 'payway_qr'
   | 'payway_card'
 
 const MP_CHANNELS: Record<string, MPPaymentChannel> = {
@@ -63,8 +63,8 @@ function usesMercadoPagoCheckout(method: PaymentMethod) {
   return method in MP_CHANNELS
 }
 
-function usesPaywayCheckout(method: PaymentMethod) {
-  return isPaywayMethod(method)
+function isWalletMethod(method: PaymentMethod) {
+  return method === 'payway_wallet'
 }
 
 export async function getMyPayments(limit = 50) {
@@ -213,7 +213,7 @@ export async function createPaymentLink(
 
   if (method === 'debito_automatico') {
     throw new Error(
-      'El débito automático aún no está habilitado. Pagá con Mercado Pago, Payway, tarjeta, Pago Fácil, Rapipago o transferencia a RM.',
+      'El débito automático aún no está habilitado. Pagá con Mercado Pago, billetera UNICRÉDITOS, tarjeta, Pago Fácil, Rapipago o transferencia a RM.',
     )
   }
 
@@ -221,27 +221,14 @@ export async function createPaymentLink(
     throw new Error('Para transferir a RM usá el formulario de transferencia con comprobante.')
   }
 
-  if (usesPaywayCheckout(method)) {
-    const payway = await openPaywayCheckout({
-      userId,
-      loanId,
-      installmentIds,
-      method,
-      amount: total,
-      source: 'web',
-      firstInstallmentId: insts[0].id,
-      firstDueDate: insts[0].dueDate,
-      coupon:
-        insts.length === 1
-          ? { loanId, number: insts[0].number, dueDate: insts[0].dueDate, amount: insts[0].amount }
-          : undefined,
-    })
-    revalidateCustomer()
-    return payway
+  if (isWalletMethod(method) || method === 'payway_qr' || method === 'payway_card') {
+    throw new Error(
+      'Para pagar con billetera UNICRÉDITOS usá la opción de billetera en tu panel. Los QR de terceros ya no están disponibles.',
+    )
   }
 
   if (!usesMercadoPagoCheckout(method)) {
-    throw new Error('Método de pago no disponible. Elegí Mercado Pago, Payway, tarjeta, Pago Fácil o Rapipago.')
+    throw new Error('Método de pago no disponible. Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago.')
   }
 
   if (!MP_CONFIG.accessTokenSet) {
@@ -438,8 +425,8 @@ export async function createCouponCheckout(
   if (method === 'transferencia_bancaria' || method === 'transferencia_rm') {
     throw new Error('Para transferir usá el CBU de RM que figura en esta página.')
   }
-  if (!usesMercadoPagoCheckout(method) && !usesPaywayCheckout(method)) {
-    throw new Error('Elegí Mercado Pago, Payway, tarjeta, Pago Fácil o Rapipago.')
+  if (!usesMercadoPagoCheckout(method) || isWalletMethod(method) || method === 'payway_qr' || method === 'payway_card') {
+    throw new Error('Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago. La billetera se paga desde el panel.')
   }
 
   const [inst] = await db.select().from(installment).where(eq(installment.id, installmentId)).limit(1)
@@ -460,20 +447,6 @@ export async function createCouponCheckout(
 
   const total = Number(inst.amount) || 0
   if (!Number.isFinite(total) || total <= 0) throw new Error('Importe inválido.')
-
-  if (usesPaywayCheckout(method)) {
-    return openPaywayCheckout({
-      userId,
-      loanId,
-      installmentIds: [inst.id],
-      method,
-      amount: total,
-      source: 'coupon',
-      firstInstallmentId: inst.id,
-      firstDueDate: inst.dueDate,
-      coupon: { loanId, number: inst.number, dueDate: inst.dueDate, amount: inst.amount },
-    })
-  }
 
   if (!MP_CONFIG.accessTokenSet) {
     throw new Error('Mercado Pago no está configurado en este entorno.')
@@ -775,9 +748,9 @@ export async function createEarlySettlementCheckout(loanId: string) {
     payerIdentificationNumber: prof?.cuil ?? undefined,
     channel: 'all',
     kind: 'early_settlement',
-    successUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=success`,
-    failureUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=failure`,
-    pendingUrl: `${siteBase}/dashboard?tab=cuotas&mp_status=pending`,
+    successUrl: `${siteBase}/dashboard?tab=cuotas_vigentes&mp_status=success`,
+    failureUrl: `${siteBase}/dashboard?tab=cuotas_vigentes&mp_status=failure`,
+    pendingUrl: `${siteBase}/dashboard?tab=cuotas_vigentes&mp_status=pending`,
   })
 
   if (!res.initPoint || !/^https?:\/\//i.test(res.initPoint)) {
@@ -1121,17 +1094,19 @@ export async function getCheckoutPublicKey() {
 
 export async function reportBankTransfer(installmentIds: string[], formData: FormData) {
   if (!installmentIds.length) throw new Error('Elegí al menos una cuota.')
-  const sessionUser = await getSession().then((s) => s?.user?.id ?? null)
+  // Sin sesión no se informa transferencia de nadie: antes esto solo validaba
+  // el dueño de la cuota SI había sesión, dejando pasar la acción entera para
+  // un caller anónimo (subía comprobante y quedaba auditado a nombre ajeno).
+  const userId = await requireUserId()
   const [first] = await db
     .select()
     .from(installment)
     .where(eq(installment.id, installmentIds[0]))
     .limit(1)
   if (!first) throw new Error('Cuota no encontrada.')
-  if (sessionUser && sessionUser !== first.userId) {
+  if (userId !== first.userId) {
     throw new Error('Esta cuota no corresponde a tu cuenta.')
   }
-  const userId = first.userId
 
   const insts = await db
     .select()
@@ -1250,7 +1225,7 @@ export async function reviewBankTransfer(
   creditedAmount?: number,
   reason?: string,
 ) {
-  const adminId = await assertAdmin()
+  const adminId = await requirePermission('payments.reconcile')
   const [row] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
   if (!row) throw new Error('Pago no encontrado.')
   if (row.status !== 'pending_review') throw new Error('Este cobro ya fue resuelto.')
@@ -1336,6 +1311,64 @@ export async function reviewBankTransfer(
   return { ok: true, status: 'paid' }
 }
 
+/** Busca la billetera destino (por CVU o alias) para que tesorería confirme el titular antes de acreditar. */
+export async function lookupWalletForCredit(destination: string) {
+  await requirePermission('payments.reconcile')
+  const wallet = await findWalletByDestination(destination)
+  if (!wallet) return null
+  const [owner] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, wallet.userId)).limit(1)
+  return {
+    userId: wallet.userId,
+    name: owner?.name ?? null,
+    email: owner?.email ?? null,
+    cvu: wallet.cvu,
+    alias: wallet.alias,
+    balance: Number(wallet.balance),
+  }
+}
+
+/**
+ * Acredita a mano una billetera UNICRÉDITOS contra una transferencia entrante ya confirmada
+ * en el extracto real de tesorería. Reemplaza al webhook de Payway (removido): hoy no hay
+ * conciliación automática de ingresos a CVU/alias, así que este es el único camino para
+ * acreditar saldo de billetera.
+ */
+export async function adminCreditWallet(destination: string, amount: number, reference: string, notes?: string) {
+  const adminId = await requirePermission('payments.reconcile')
+  const ref = reference.trim()
+  if (!ref) throw new Error('Informá la referencia del extracto de tesorería.')
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Importe inválido.')
+
+  const wallet = await findWalletByDestination(destination)
+  if (!wallet) throw new Error('No se encontró una billetera con ese CVU/alias.')
+
+  const result = await creditWallet({
+    userId: wallet.userId,
+    amount,
+    kind: 'treasury_manual_credit',
+    externalId: `treasury-${ref}`,
+    reference: ref,
+    notes: notes?.trim() || null,
+  })
+  if (!result.matched) throw new Error('No se encontró una billetera con ese CVU/alias.')
+  if ('duplicate' in result && result.duplicate) {
+    throw new Error('Ya se acreditó una transferencia con esa referencia.')
+  }
+
+  await recordAudit({
+    actorUserId: adminId,
+    action: 'WALLET_CREDITED',
+    entityType: 'walletAccount',
+    entityId: wallet.id,
+    targetUserId: wallet.userId,
+    summary: `Billetera acreditada a mano · ${amount.toFixed(2)} ARS · ref ${ref}`,
+  })
+
+  revalidateOps()
+  revalidateCustomer()
+  return { ok: true, balance: result.balance }
+}
+
 export async function getInstallmentCoupons(loanId: string) {
   const userId = await assertRole('customer', 'admin')
   const role = await getRoleForUser(userId)
@@ -1386,61 +1419,8 @@ export async function getCheckoutStatus(paymentId: string) {
   }
 }
 
-export async function simulatePaywayCheckout(paymentId: string, outcome: 'approved' | 'rejected' = 'approved') {
-  const userId = await assertRole('customer')
-  if (!paywayAllowsSimulate()) {
-    throw new Error('La simulación de Payway solo está habilitada en sandbox.')
-  }
-  const id = String(paymentId ?? '').trim()
-  if (!id) throw new Error('Pago no encontrado.')
-  const [row] = await db
-    .select()
-    .from(payment)
-    .where(and(eq(payment.id, id), eq(payment.userId, userId), eq(payment.gateway, 'payway')))
-    .limit(1)
-  if (!row) throw new Error('Pago Payway no encontrado.')
-  const result = await settlePaywayPayment({
-    status: outcome,
-    amount: Number(row.amount) || 0,
-    localPaymentId: row.id,
-    paywayId: `sim-${row.id.replace(/-/g, '').slice(0, 12)}`,
-    method: row.method,
-    gatewayPayload: { simulated: true, outcome, at: new Date().toISOString() },
-  })
-  if (result.matched && result.credited > 0 && result.userId) {
-    await notifyPaymentReceived({
-      userId: result.userId,
-      amount: result.amount ?? 0,
-      installmentNumber: result.installmentNumber,
-      receiptId: result.receiptId,
-    })
-  } else if (result.matched && result.rejected && result.userId) {
-    await notifyPaymentRejected({
-      userId: result.userId,
-      amount: result.amount ?? 0,
-      reason: result.reason,
-    })
-  }
-  revalidateCustomer()
-  return {
-    settled: result.localStatus === 'paid',
-    status: result.localStatus ?? row.status,
-    credited: result.credited,
-    receiptId: result.receiptId ?? null,
-    reason: result.reason ?? null,
-  }
-}
-
-export async function consultPaywayBin(bin: string) {
-  await assertRole('customer')
-  if (!isPaywayConfigured()) throw new Error('Payway no está configurado.')
-  const info = await lookupPaywayBin(bin)
-  if (!info) throw new Error('BIN no reconocido en sandbox. Probá 450799 o 529991.')
-  return info
-}
-
 /*
  * Se eliminó la acreditación automática de cuotas desde el cliente: permitía dar
  * por pagado un crédito sin cobro real. La acreditación llega por el webhook de
- * Mercado Pago, la conciliación del Brick o por aprobación admin de una transferencia a RM.
+ * Mercado Pago, la conciliación del Brick, billetera UNICRÉDITOS o por aprobación admin de una transferencia a RM.
  */

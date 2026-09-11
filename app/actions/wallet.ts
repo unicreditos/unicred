@@ -21,7 +21,7 @@ export async function getMyWallet() {
 
 export async function topUpWalletSandbox(_amount: number) {
   throw new Error(
-    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita con Payway.',
+    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita cuando tesorería confirma el ingreso.',
   )
 }
 

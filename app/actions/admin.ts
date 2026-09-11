@@ -14,15 +14,17 @@ import {
   payment,
   paymentReceipt,
   user as userTable,
+  kycVerification,
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { desc, eq, sql, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
-import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
@@ -102,12 +104,20 @@ export async function getAdminStats() {
     })
     .from(merchant)
 
-  return { loans, users, merchants }
+  // Solo el conteo, para el badge del sidebar y la Torre de control — el
+  // detalle completo (con OCR, fotos y sesión Didit) se pide aparte y solo
+  // en la pestaña Identidad/Dashboard, ver getAllKYCReviews().
+  const [kyc] = await db
+    .select({
+      pending: sql<number>`count(*) filter (where ${kycVerification.status} in ('pending_review','pending','reviewing','submitted','in_review'))::int`,
+    })
+    .from(kycVerification)
+
+  return { loans, users, merchants, kyc }
 }
 
 export async function getAllLoans() {
-  await requireAdmin()
-  await syncOverdueInstallments()
+  await requirePermission('credits.read')
   const rows = await db.select().from(loan).orderBy(desc(loan.createdAt)).limit(100)
   const ids = rows.map((r) => r.id)
   const contracts = ids.length
@@ -142,12 +152,12 @@ export async function getAllLoans() {
 }
 
 export async function getPendingMerchants() {
-  await requireAdmin()
+  await requirePermission('merchants.read')
   return db.select().from(merchant).orderBy(desc(merchant.createdAt))
 }
 
 export async function setMerchantStatus(id: string, status: 'active' | 'rejected') {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
   if (status === 'active') {
@@ -251,7 +261,7 @@ export async function updateMerchantAdmin(
     commissionRate?: string | number
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
 
@@ -313,7 +323,7 @@ export async function updateMerchantAdmin(
 }
 
 export async function deleteMerchantAdmin(id: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('merchants.write')
   const [existing] = await db.select().from(merchant).where(eq(merchant.id, id)).limit(1)
   if (!existing) throw new Error('Comercio no encontrado')
 
@@ -348,7 +358,7 @@ export async function deleteMerchantAdmin(id: string) {
 }
 
 export async function getMerchantDocumentsForAdmin(merchantId: string) {
-  await requireAdmin()
+  await requirePermission('merchants.read')
   return db
     .select({
       id: merchantDocument.id,
@@ -364,7 +374,7 @@ export async function getMerchantDocumentsForAdmin(merchantId: string) {
 }
 
 export async function getBcraVariables() {
-  await requireAdmin()
+  await requirePermission('risk.read')
   try {
     let stored = await db.select().from(bcraVariable).orderBy(desc(bcraVariable.effectiveDate)).limit(40)
     if (!stored.length) {
@@ -406,10 +416,16 @@ export async function approveLoan(
   },
 ) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.approve')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'approved')
+  // La solicitud puede llevar días en cola: si el KYC/Didit del titular cambió
+  // o se invalidó mientras tanto (p. ej. cambió DNI/CUIL), no se aprueba a
+  // ciegas sobre una identidad que ya no está verificada.
+  if (!(await diditApprovedForUser(existing.userId))) {
+    throw new Error('El titular no tiene Didit aprobado vigente. Pedile que reverifique su identidad antes de aprobar.')
+  }
 
   // Las condiciones finales las fija el admin; si cambian, el plan de cuotas se recalcula.
   const principal =
@@ -497,7 +513,7 @@ export async function approveLoan(
 
 export async function rejectLoan(id: string, reason: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.reject')
   if (!reason || !reason.trim()) throw new Error('Motivo de rechazo obligatorio')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
@@ -551,7 +567,7 @@ export async function updateLoanManual(
   },
 ) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
 
@@ -568,7 +584,6 @@ export async function updateLoanManual(
     }
     assertAdminTransition(existing.status, opts.status)
     updates.status = opts.status
-    if (opts.status === 'approved') updates.rejectionReason = null
   }
   if (opts.monthlyRate !== undefined && opts.monthlyRate !== null && opts.monthlyRate !== '') {
     updates.monthlyRate = String(opts.monthlyRate)
@@ -576,12 +591,15 @@ export async function updateLoanManual(
   if (opts.scoreAtApproval !== undefined && opts.scoreAtApproval !== null) {
     updates.scoreAtApproval = opts.scoreAtApproval
   }
-  if (opts.rejectionReason !== undefined) {
-    updates.rejectionReason = opts.rejectionReason
-  }
   if (opts.disbursedAt !== undefined && opts.disbursedAt !== null && opts.disbursedAt !== '') {
     updates.disbursedAt = new Date(opts.disbursedAt)
   }
+
+  const nextStatus = (updates.status ?? existing.status) as string
+  // El motivo de rechazo solo vale si el crédito queda "rejected": al salir de
+  // ese estado se limpia siempre, sin importar qué haya quedado escrito en el
+  // formulario, para que un crédito aprobado/activo no arrastre un motivo viejo.
+  updates.rejectionReason = nextStatus === 'rejected' ? (opts.rejectionReason ?? existing.rejectionReason) : null
 
   const nextPrincipal = Number(updates.principal ?? existing.principal)
   const nextTerm = Number(updates.term ?? existing.term)
@@ -596,7 +614,6 @@ export async function updateLoanManual(
     updates.totalAmount = amort.totalAmount.toFixed(2)
   }
 
-  const nextStatus = (updates.status ?? existing.status) as string
   let contractId: string | null = null
 
   await db.transaction(async (tx) => {
@@ -647,7 +664,7 @@ export async function updateLoanManual(
 
 export async function deleteLoanAdmin(id: string) {
   try {
-    const adminUserId = await requireAdmin()
+    const adminUserId = await requirePermission('credits.edit')
     const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
     if (!existing) throw new Error('Préstamo no encontrado')
     if (!canPurgeLoan(existing.status)) {
@@ -679,7 +696,7 @@ export async function markLoanAsActive(id: string) {
 
 export async function markLoanAsPaid(id: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertTransition(existing.status, 'paid')
@@ -715,7 +732,7 @@ export async function markLoanAsPaid(id: string) {
 
 export async function ensureLoanExpediente(loanId: string) {
   try {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('credits.edit')
   const [existing] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   if (existing.status !== 'approved' && existing.status !== 'active') {
@@ -787,7 +804,7 @@ export async function updateBcraVariable(
     overrideNote?: string
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('risk.rules.write')
   if (!idVariable) throw new Error('ID variable BCRA requerido')
 
   const now = new Date()
@@ -831,7 +848,7 @@ export async function updateBcraVariable(
 }
 
 export async function resetBcraVariableToLive(idVariable: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('risk.rules.write')
   const [existing] = await db
     .select()
     .from(bcraVariable)
@@ -854,7 +871,7 @@ export async function resetBcraVariableToLive(idVariable: string) {
 }
 
 export async function getAllBankAccounts() {
-  await requireAdmin()
+  await requirePermission('finance.read')
   const rows = await db
     .select({
       id: bankAccount.id,
@@ -895,7 +912,7 @@ export async function getAllBankAccounts() {
 }
 
 export async function verifyBankAccountArgenapi(bankAccountId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db
     .select()
     .from(bankAccount)
@@ -935,7 +952,7 @@ export async function setBankAccountVerificationManual(
   isVerified: boolean,
   note?: string,
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db
     .select()
     .from(bankAccount)
@@ -982,7 +999,7 @@ export async function updateBankAccountAdmin(
     isActive?: boolean
   },
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db.select().from(bankAccount).where(eq(bankAccount.id, bankAccountId)).limit(1)
   if (!acc) throw new Error('Cuenta bancaria no encontrada')
 
@@ -1033,7 +1050,7 @@ export async function updateBankAccountAdmin(
 }
 
 export async function deactivateBankAccountAdmin(bankAccountId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('disbursements.credit')
   const [acc] = await db.select().from(bankAccount).where(eq(bankAccount.id, bankAccountId)).limit(1)
   if (!acc) throw new Error('Cuenta bancaria no encontrada')
 
@@ -1064,6 +1081,7 @@ export type AdminUserRow = {
   banned: boolean | null
   createdAt: Date
   role: string | null
+  adminRoleId: string | null
   cuil: string | null
   dni: string | null
   phone: string | null
@@ -1075,7 +1093,7 @@ export type AdminUserRow = {
 }
 
 export async function getAllUsers(): Promise<AdminUserRow[]> {
-  await requireAdmin()
+  await requirePermission('clients.read')
   const rows = await db
     .select({
       id: userTable.id,
@@ -1084,6 +1102,7 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
       banned: userTable.banned,
       createdAt: userTable.createdAt,
       role: profile.role,
+      adminRoleId: profile.adminRoleId,
       cuil: profile.cuil,
       dni: profile.dni,
       phone: profile.phone,
@@ -1114,7 +1133,14 @@ export async function updateUserAdmin(
     province?: string
   },
 ) {
-  const adminUserId = await requireAdmin()
+  // Cambiar el rol exige users.manage; cambiar kycStatus acá es el mismo campo
+  // que setKYCStatus, así que exige el mismo permiso (kyc.review) o se puede
+  // aprobar identidad esquivando ese gate. El resto de los campos alcanza con requireAdmin().
+  const adminUserId = input.role
+    ? await requirePermission('users.manage')
+    : input.kycStatus !== undefined
+      ? await requirePermission('kyc.review')
+      : await requireAdmin()
   if (userId === adminUserId && input.role && input.role !== 'admin') {
     throw new Error('No podés quitarte el rol admin a vos mismo')
   }
@@ -1181,7 +1207,7 @@ export async function updateUserAdmin(
 }
 
 export async function setUserBanned(userId: string, banned: boolean) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('users.manage')
   if (userId === adminUserId) throw new Error('No podés bloquear tu propia sesión')
   const [p] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (p?.role === 'admin' && banned) throw new Error('No se bloquea un administrador. Primero cambiale el rol.')
@@ -1203,7 +1229,7 @@ export async function setUserBanned(userId: string, banned: boolean) {
 }
 
 export async function deleteUserAdmin(userId: string) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('users.manage')
   if (userId === adminUserId) throw new Error('No podés eliminar tu propia cuenta')
   const [p] = await db.select({ role: profile.role, kycStatus: profile.kycStatus }).from(profile).where(eq(profile.userId, userId)).limit(1)
   if (p?.role === 'admin') throw new Error('No se elimina un administrador')
@@ -1250,12 +1276,12 @@ export async function deleteUserAdmin(userId: string) {
 }
 
 export async function getAdminAuditLog(limit = 100) {
-  await requireAdmin()
+  await requirePermission('audit.read')
   return getAuditLog(limit)
 }
 
 export async function getDashboardPaymentsSummary(limit = 20) {
-  await requireAdmin()
+  await requirePermission('payments.read')
   const { payment } = await import('@/lib/db/schema')
   const total = await db
     .select({

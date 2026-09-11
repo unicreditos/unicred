@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth'
 import { mobileJson, mobileOptions } from '@/lib/mobile/cors'
+import { mobileClientKey } from '@/lib/mobile/auth'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,6 +12,12 @@ export function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    // Mismo límite tanto si el email existe como si no, para no filtrar cuáles
+    // están registrados a través del comportamiento del rate limit.
+    const limit = await consumeRateLimit(`mobile-reset:${mobileClientKey(req)}`, 5, 60 * 60 * 1000)
+    if (!limit.ok) {
+      return mobileJson(req, { message: 'Demasiadas solicitudes. Probá más tarde.' }, { status: 429 })
+    }
     const body = (await req.json().catch(() => null)) as { email?: string } | null
     const email = String(body?.email ?? '').trim()
     if (email) {

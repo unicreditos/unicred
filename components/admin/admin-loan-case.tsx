@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink, SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminMerchantHref, adminPaymentHref, adminUrl } from '@/lib/admin-nav'
 import { formatARS } from '@/lib/finance'
 import {
@@ -23,7 +24,7 @@ import {
   paymentStatusLabel,
 } from '@/lib/labels'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, CheckCircle2, Loader2, Trash2, XCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -133,11 +134,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-          <Link href={backHref}>
-            <ArrowLeft /> {mode === 'solicitud' ? 'Solicitudes' : 'Créditos'}
-          </Link>
-        </Button>
+        <CaseBackLink href={backHref} label={mode === 'solicitud' ? 'Solicitudes' : 'Créditos'} />
         <div className="flex flex-wrap gap-2">
           {loan.status === 'pending' || loan.status === 'rejected' ? (
             <>
@@ -172,7 +169,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
         <DecisionBanner tone="ok" title="Crédito vigente" detail="El calendario de cuotas está activo." />
       ) : null}
 
-      <section className="rounded-lg border border-border bg-card">
+      <SectionCard title="Resumen del crédito" bodyClassName="">
         <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Estado" value={loanStatusLabel(loan.status)} />
           <Field label="Titular" value={customer.name} />
@@ -193,7 +190,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
             </Link>
           ) : null}
         </div>
-      </section>
+      </SectionCard>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile label="Capital" value={formatARS(loan.principal)} hint={`${loan.term} cuotas`} />
@@ -207,11 +204,12 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <section className="rounded-lg border border-border bg-card lg:col-span-7">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Calendario de cuotas</h3>
-            <p className="text-xs text-muted-foreground">Punitorios 0% · mora solo cambia el estado de la cuota</p>
-          </header>
+        <SectionCard
+          title="Calendario de cuotas"
+          description="Punitorios 0% · mora solo cambia el estado de la cuota"
+          bodyClassName=""
+          className="lg:col-span-7"
+        >
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -244,12 +242,9 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
               </TableBody>
             </Table>
           </div>
-        </section>
+        </SectionCard>
 
-        <section className="rounded-lg border border-border bg-card lg:col-span-5">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Línea de tiempo</h3>
-          </header>
+        <SectionCard title="Línea de tiempo" bodyClassName="" className="lg:col-span-5">
           <ol className="space-y-3 px-4 py-4">
             {data.timeline.map((event, i) => (
               <li key={`${event.at}-${i}`} className="flex gap-3">
@@ -270,14 +265,11 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
               </li>
             ))}
           </ol>
-        </section>
+        </SectionCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Contrato y desembolso</h3>
-          </header>
+        <SectionCard title="Contrato y desembolso" bodyClassName="">
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
             <Field label="Contrato" value={data.contract ? (data.contract.status === 'accepted' ? 'Firmado' : 'Pendiente de firma') : 'Sin emitir'} />
             <Field label="Firmante" value={data.contract?.signerName} />
@@ -297,12 +289,9 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
               </Link>
             </div>
           ) : null}
-        </section>
+        </SectionCard>
 
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Pagos de este crédito</h3>
-          </header>
+        <SectionCard title="Pagos de este crédito" bodyClassName="">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -337,14 +326,11 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
               </TableBody>
             </Table>
           </div>
-        </section>
+        </SectionCard>
       </div>
 
       {data.audit.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Intervenciones</h3>
-          </header>
+        <SectionCard title="Intervenciones" bodyClassName="">
           <ul className="divide-y">
             {data.audit.map((item) => (
               <li key={item.id} className="flex flex-wrap justify-between gap-2 px-4 py-2 text-sm">
@@ -355,7 +341,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       ) : null}
     </div>
   )

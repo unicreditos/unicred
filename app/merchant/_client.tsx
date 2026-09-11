@@ -47,7 +47,6 @@ import {
   type RepresentativeRole,
 } from "@/lib/merchant-kyb"
 import { TAX_CONDITION_LABELS } from "@/lib/arca/tax-condition"
-import { cn } from "@/lib/utils"
 import { getDiditPublicConfig } from "@/app/actions/didit"
 import { registerMerchant, lookupMerchantAfip, createMerchantSale } from "@/app/actions/merchant"
 import { DiditVerifyButton } from "@/components/didit-verify-button"
@@ -470,110 +469,7 @@ function MerchantOverview({
             }
 
   return (
-    <div className="space-y-6">
-      {/* FINTECH MERCHANT EXECUTIVE HERO */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a192f] to-[#0f2744] p-6 sm:p-8 text-white shadow-xl">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                {merchant?.businessName ?? 'Centro de Comercios'}
-              </span>
-              {merchant?.cuit ? (
-                <span className="rounded-md border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs font-mono text-slate-300">
-                  CUIT {merchant.cuit}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-2.5 py-0.5 text-xs font-medium text-cyan-300">
-                {merchant?.taxCondition ? (TAX_CONDITION_LABELS as Record<string, string>)[merchant.taxCondition] ?? merchant.taxCondition : 'ARCA / AFIP Registrado'}
-              </span>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                  merchant?.status === 'active'
-                    ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
-                    : 'border-amber-500/30 bg-amber-500/15 text-amber-300',
-                )}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {merchant?.status === 'active' ? 'Comercio Habilitado' : 'Adhesión en Revisión'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 md:items-center">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> Volumen de Ventas en Cuotas
-              </div>
-              <div className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white tabular-nums">
-                {formatARS(totals.totalPrincipal)}
-              </div>
-              <p className="mt-2 text-xs sm:text-sm text-slate-300">
-                {totals.totalOps} operaciones originadas · Neto acreditado a liquidar:{' '}
-                <strong className="text-emerald-400 font-semibold">{formatARS(totals.totalNet)}</strong>
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-3 md:justify-end">
-              <Button
-                size="lg"
-                className="h-12 gap-2 bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/25 border-0 transition-transform active:scale-95"
-                onClick={() => onTab('venta_rapida')}
-                disabled={merchant?.status !== 'active'}
-              >
-                <Zap className="h-4 w-4 fill-current" /> Nueva venta en cuotas
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12 gap-2 border-white/20 bg-white/10 text-white font-semibold backdrop-blur hover:bg-white/20 hover:text-white transition-transform active:scale-95"
-                onClick={() => onTab('liquidations')}
-              >
-                <Banknote className="h-4 w-4 text-cyan-300" /> Liquidaciones
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={() => onTab('sales')}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
-            >
-              <CreditCard className="h-3.5 w-3.5 text-cyan-400" /> Operaciones ({totals.totalOps})
-            </button>
-            <button
-              type="button"
-              onClick={() => onTab('customers')}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
-            >
-              <Users className="h-3.5 w-3.5 text-emerald-400" /> Cartera Clientes ({totals.totalCustomers})
-            </button>
-            <button
-              type="button"
-              onClick={() => onTab('reportes')}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
-            >
-              <Receipt className="h-3.5 w-3.5 text-indigo-400" /> Reportes & Conciliación
-            </button>
-            <button
-              type="button"
-              onClick={() => onTab('profile')}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 hover:text-white transition"
-            >
-              <Store className="h-3.5 w-3.5 text-amber-400" /> Ficha del Comercio
-            </button>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-5">
       <DecisionBanner
         tone={banner.tone}
         title={banner.title}
@@ -620,14 +516,14 @@ function MerchantOverview({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Ventas por mes</h2>
+        <section className="rounded-lg border border-border bg-card p-4 lg:col-span-3">
+          <h2 className="text-sm font-semibold text-foreground">Ventas por mes</h2>
           <p className="mb-3 text-xs text-muted-foreground">Capital originado en los últimos 6 meses</p>
           {hasVolume ? (
             <LineChart
               points={months.map((m) => m.value)}
               labels={months.map((m) => m.label)}
-              color="#00C853"
+              color="#20BD5A"
               height={220}
               yFormatter={(v) => formatARS(v)}
             />
@@ -636,15 +532,15 @@ function MerchantOverview({
           )}
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
-          <h2 className="text-sm font-semibold text-brand-navy-900">Estado de ventas</h2>
+        <section className="rounded-lg border border-border bg-card p-4 lg:col-span-2">
+          <h2 className="text-sm font-semibold text-foreground">Estado de ventas</h2>
           <p className="mb-3 text-xs text-muted-foreground">Cartera de este comercio</p>
           <DonutChart
             centerTitle="Ops"
             centerValue={String(totals.totalOps)}
             segments={[
-              { label: 'Vigentes', value: totals.activeCount, color: '#00C853', count: totals.activeCount },
-              { label: 'Cobradas', value: totals.receivedCount, color: '#20BD5A', count: totals.receivedCount },
+              { label: 'Vigentes', value: totals.activeCount, color: '#20BD5A', count: totals.activeCount },
+              { label: 'Cobradas', value: totals.receivedCount, color: '#10B981', count: totals.receivedCount },
               { label: 'Rechazadas', value: totals.rejectedCount, color: '#DC2626', count: totals.rejectedCount },
               { label: 'Otras', value: Math.max(0, totals.totalOps - totals.activeCount - totals.receivedCount - totals.rejectedCount), color: '#94A3B8' },
             ]}
@@ -668,7 +564,7 @@ function MerchantOverview({
       <section className="rounded-lg border border-border bg-card">
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-brand-navy-900">Últimas operaciones</h2>
+            <h2 className="text-sm font-semibold text-foreground">Últimas operaciones</h2>
             <p className="text-xs text-muted-foreground">{lastSales.length ? 'Movimiento reciente' : 'Sin ventas registradas'}</p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => onTab('sales')}>
@@ -777,6 +673,15 @@ function MerchantProfileForm({
 
   useEffect(() => {
     void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash !== '#kyb') return
+    const t = window.setTimeout(() => {
+      document.getElementById('kyb')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+    return () => window.clearTimeout(t)
   }, [])
 
   function upd<K extends keyof typeof form>(k: K, v: typeof form[K]) {
@@ -900,7 +805,7 @@ function MerchantProfileForm({
   const lockedFromAfip = Boolean(evaluation?.legalName || existing?.legalName)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 lg:grid-cols-3" id="kyb">
       <div className="lg:col-span-2">
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -1793,7 +1698,7 @@ function VentaRapidaTab({
               <Label className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">
                 Monto sugerido
               </Label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {quickAmounts.map((q) => (
                   <button
                     type="button"
@@ -1951,7 +1856,7 @@ function VentaRapidaTab({
       </div>
 
       <div className="lg:col-span-5 space-y-5">
-        <Card className="border-brand-primary/20 shadow-md relative overflow-hidden">
+        <Card className="border-brand-primary/20 shadow-sm relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-navy via-brand-primary to-brand-cian" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -2464,8 +2369,7 @@ function AyudaTab({ initialCaseId }: { initialCaseId?: string }) {
       </div>
 
       <div className="lg:col-span-4 space-y-5">
-        <Card className="border-brand-primary/20 shadow-sm relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-cian to-brand-primary" />
+        <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               <Headphones className="h-4 w-4 text-brand-primary" /> Atención al comercio

@@ -2,7 +2,8 @@
 
 import { db } from '@/lib/db'
 import { diditSession, kycVerification, profile, user } from '@/lib/db/schema'
-import { assertRole, requireAdmin } from '@/lib/session'
+import { assertRole } from '@/lib/session'
+import { requirePermission } from '@/lib/rbac'
 import { recordAudit, diffFields } from '@/lib/audit'
 import { applyDiditDecision, getDiditDecision, isDiditConfigured } from '@/lib/didit'
 import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
@@ -40,7 +41,7 @@ export async function setKYCStatus(
   status: KYCStatus,
   rejectionReason?: string,
 ) {
-  const adminUserId = await requireAdmin()
+  const adminUserId = await requirePermission('kyc.review')
 
   const [acc] = await db
     .select()
@@ -99,7 +100,7 @@ export async function setKYCStatus(
 }
 
 export async function refreshKycDidit(userId: string) {
-  await requireAdmin()
+  await requirePermission('kyc.review')
   if (!isDiditConfigured()) throw new Error('Didit no está configurado en este entorno.')
 
   const [session] = await db
@@ -144,7 +145,7 @@ export async function confirmPhone() {
 }
 
 export async function getPendingKYCReviews(limit = 20) {
-  await requireAdmin()
+  await requirePermission('kyc.review')
   return db
     .select()
     .from(kycVerification)
@@ -153,7 +154,7 @@ export async function getPendingKYCReviews(limit = 20) {
 }
 
 export async function getAllKYCReviews(limit = 500) {
-  await requireAdmin()
+  await requirePermission('kyc.review')
   const rows = await db
     .select({
       id: kycVerification.id,

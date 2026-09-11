@@ -288,11 +288,15 @@ export function BcraExtract({
                   <tr key={`${c.nroCheque}-${i}`}>
                     <td className="font-mono text-xs">{c.nroCheque ?? '—'}</td>
                     <td>
-                      {c.entidad ?? '—'}
+                      {c.denomJuridica || c.entidad || '—'}
                       <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
                         {c.fechaRechazo ? `Rechazo ${formatDateArg(c.fechaRechazo)}` : 'Rechazo s/d'}
                         {c.fechaPago ? ` · Pago ${formatDateArg(c.fechaPago)}` : ''}
                         {c.procesoJud ? ' · En juicio' : c.enRevision ? ' · En revisión' : ''}
+                        {c.sucursal != null ? ` · Suc. ${c.sucursal}` : ''}
+                        {c.numeroCuenta != null ? ` · Cta. ${c.numeroCuenta}` : ''}
+                        {c.estadoMulta ? ` · Multa ${c.estadoMulta.toLowerCase()}` : ''}
+                        {c.ctaPersonal === false ? ' · Cta. comercial' : ''}
                       </span>
                     </td>
                     <td>{c.causal ?? '—'}</td>
@@ -307,10 +311,13 @@ export function BcraExtract({
                 <TableRow>
                   <TableHead>Cheque</TableHead>
                   <TableHead>Entidad</TableHead>
+                  <TableHead>Sucursal</TableHead>
+                  <TableHead>Cuenta</TableHead>
                   <TableHead>Causal</TableHead>
                   <TableHead>Rechazo</TableHead>
                   <TableHead>Pago</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Multa</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -318,11 +325,19 @@ export function BcraExtract({
                 {cheques.map((c, i) => (
                   <TableRow key={`${c.nroCheque}-${i}`}>
                     <TableCell className="font-mono text-xs">{c.nroCheque ?? '—'}</TableCell>
-                    <TableCell className="max-w-[200px] text-sm">{c.entidad ?? '—'}</TableCell>
+                    <TableCell className="max-w-[200px] text-sm">
+                      {c.denomJuridica || c.entidad || '—'}
+                      {c.ctaPersonal === false ? (
+                        <span className="mt-0.5 block text-[10px] font-normal text-slate-500">Cta. comercial</span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{c.sucursal ?? '—'}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.numeroCuenta ?? '—'}</TableCell>
                     <TableCell className="text-xs">{c.causal ?? '—'}</TableCell>
                     <TableCell className="text-xs">{c.fechaRechazo ? formatDateArg(c.fechaRechazo) : '—'}</TableCell>
                     <TableCell className="text-xs">{c.fechaPago ? formatDateArg(c.fechaPago) : '—'}</TableCell>
                     <TableCell className="text-right font-mono text-xs">{c.monto != null ? formatARS(c.monto) : '—'}</TableCell>
+                    <TableCell className="text-xs">{c.estadoMulta ?? '—'}</TableCell>
                     <TableCell className="text-xs">
                       {c.procesoJud ? 'En juicio' : c.enRevision ? 'En revisión' : 'Informado'}
                     </TableCell>

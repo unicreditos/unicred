@@ -14,8 +14,6 @@ export function OPTIONS(req: Request) {
 export async function POST(req: Request,{ params }: { params: Promise<Record<string, string>> }) {
   try {
     const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('POST') ? await req.json().catch(() => ({})) : {}
     const id = String((await params).id); return mobileJson(req, await mobileSignLoan(userId, id, { ip: req.headers.get('x-forwarded-for') || undefined, ua: req.headers.get('user-agent') || undefined }))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

@@ -15,6 +15,7 @@ import { AdminPaymentsDesk } from '@/components/admin/admin-payments-desk'
 import { AdminApprovalsDesk } from '@/components/admin/admin-approvals-desk'
 import { AdminAnalyticsDesk } from '@/components/admin/admin-analytics-desk'
 import { AdminStaffDesk } from '@/components/admin/admin-staff-desk'
+import { RiskRulesDesk } from '@/components/admin/risk-rules-desk'
 import { AdminProductsDesk } from '@/components/admin/admin-products-desk'
 import { AdminConfigDesk } from '@/components/admin/admin-config-desk'
 import { type StatsData } from '@/components/admin/summary-cards'
@@ -24,12 +25,14 @@ import type { AdminOpsConfig } from '@/app/actions/admin-config'
 import type { AdminPaymentsDesk as AdminPaymentsDeskData } from '@/app/actions/admin-cases'
 import type { AdminTabId } from '@/components/admin/admin-app-shell'
 import { adminLoanHref } from '@/lib/admin-nav'
+import { toast } from 'sonner'
 
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -41,12 +44,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { csvDateSuffix, downloadCsv } from '@/lib/csv'
 import { formatARS, formatCBU, formatCVU } from '@/lib/finance'
-import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { DecisionBanner, MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import * as React from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import {
-  AlertTriangle,
   CheckCircle2,
   FileCheck2,
   FileSpreadsheet,
@@ -55,7 +57,6 @@ import {
   RefreshCw,
   Search,
   UserCheck,
-  X,
 } from 'lucide-react'
 import { KYCReviewCard, type KYCAdminRow } from '@/components/admin/kyc-review-card'
 import { markDisbursementAsCredited } from '@/app/actions/banking'
@@ -170,20 +171,15 @@ function formatDate(v: Date | string | undefined) {
 }
 
 function loanBadge(status: string) {
-  const map: Record<string, { label: string; className: string; dot: string }> = {
-    pending: { label: 'Pendiente', className: 'bg-amber-500/10 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-    approved: { label: 'Aprobado', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-    active: { label: 'Activo', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-    rejected: { label: 'Rechazado', className: 'bg-destructive/10 text-destructive border-destructive/20', dot: 'bg-destructive' },
-    paid: { label: 'Pagado', className: 'bg-teal-500/10 text-teal-700 border-teal-200', dot: 'bg-teal-500' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    paid: { label: 'Pagado', tone: 'complete' },
   }
-  const cfg = map[status] ?? { label: status, className: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' }
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', cfg.className)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
-      {cfg.label}
-    </span>
-  )
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function pct(p: number, t: number) {
@@ -210,6 +206,9 @@ export function AdminContent({
   auditLog = [],
   payments = { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] },
   opsConfig = null,
+  myPermissions = [],
+  adminRoles = [],
+  riskRuleVersions = [],
   onNavigate,
 }: {
   activeTab: AdminTabId
@@ -230,15 +229,13 @@ export function AdminContent({
   auditLog?: AuditRow[]
   payments?: AdminPaymentsDeskData
   opsConfig?: AdminOpsConfig | null
+  myPermissions?: string[]
+  adminRoles?: any[]
+  riskRuleVersions?: any[]
   onNavigate?: (tab: AdminTabId) => void
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
-  const showToast = (type: 'ok' | 'err', msg: string) => {
-    setToast({ type, msg })
-    setTimeout(() => setToast(null), 3500)
-  }
   // Instante de referencia estable para los cálculos "en los últimos N días".
   const [now] = useState(() => Date.now())
   const [loanFilter, setLoanFilter] = useState<string>('all')
@@ -297,15 +294,15 @@ export function AdminContent({
             <div className="text-[10px] text-muted-foreground">Total</div>
             <div className="text-[15px] font-semibold tabular-nums">{loans.length}</div>
           </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-2.5 py-1.5">
-            <div className="text-[10px] text-emerald-700">Activos</div>
-            <div className="text-[15px] font-semibold tabular-nums text-emerald-700">{counts.active ?? 0}</div>
+          <div className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-1.5">
+            <div className="text-[10px] text-success">Activos</div>
+            <div className="text-[15px] font-semibold tabular-nums text-success">{counts.active ?? 0}</div>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-2.5 py-1.5">
-            <div className="text-[10px] text-amber-700">Pendientes</div>
-            <div className="text-[15px] font-semibold tabular-nums text-amber-700">{counts.pending ?? 0}</div>
+          <div className="rounded-lg border border-warning/20 bg-warning/10 px-2.5 py-1.5">
+            <div className="text-[10px] text-warning">Pendientes</div>
+            <div className="text-[15px] font-semibold tabular-nums text-warning">{counts.pending ?? 0}</div>
           </div>
-          <div className="rounded-lg border border-rose-200 bg-rose-50/50 px-2.5 py-1.5">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 py-1.5">
             <div className="text-[10px] text-destructive">Rechazados</div>
             <div className="text-[15px] font-semibold tabular-nums text-destructive">{counts.rejected ?? 0}</div>
           </div>
@@ -492,7 +489,6 @@ export function AdminContent({
           )}
         </div>
 
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -651,13 +647,12 @@ export function AdminContent({
                             startTransition(async () => {
                               try {
                                 const r = await markDisbursementAsCredited(d.id)
-                                showToast(
-                                  'ok',
+                                toast.success(
                                   `Acreditado OK · Comprobante ${(r as any)?.receiptNumber ?? 'emitido'}`,
                                 )
                                 router.refresh()
                               } catch (e: any) {
-                                showToast('err', e?.message ?? 'Error al acreditar')
+                                toast.error(e?.message ?? 'Error al acreditar')
                               }
                             })
                           }
@@ -694,7 +689,6 @@ export function AdminContent({
           </Table>
         </div>
 
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -736,16 +730,22 @@ export function AdminContent({
   }
 
   if (activeTab === 'staff') {
-    return <AdminStaffDesk users={users} currentAdminId={currentAdminId} />
+    return (
+      <AdminStaffDesk
+        users={users}
+        currentAdminId={currentAdminId}
+        canManageUsers={myPermissions.includes('users.manage')}
+        roles={adminRoles}
+      />
+    )
   }
 
   if (activeTab === 'cuentas-bancarias') {
     return (
       <OpsFloor>
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+        <div className="min-h-0 flex-1 overflow-auto">
           <BankAccountsTable accounts={bankAccounts} />
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -776,7 +776,6 @@ export function AdminContent({
             <BcraVariablesGrid variables={bcra} />
           </div>
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -799,19 +798,19 @@ export function AdminContent({
             value={loanSearch}
             onChange={(e) => setLoanSearch(e.target.value)}
           />
-          <select
-            className="h-8 rounded-md border border-input bg-card px-2 text-xs"
-            value={loanFilter}
-            onChange={(e) => setLoanFilter(e.target.value)}
-            aria-label="Filtrar por estado"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="pending">Pendientes</option>
-            <option value="approved">Aprobados</option>
-            <option value="active">Activos</option>
-            <option value="rejected">Rechazados</option>
-            <option value="paid">Pagados</option>
-          </select>
+          <Select value={loanFilter} onValueChange={(v) => setLoanFilter(v ?? 'all')}>
+            <SelectTrigger size="sm" className="text-xs" aria-label="Filtrar por estado">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="pending">Pendientes</SelectItem>
+              <SelectItem value="approved">Aprobados</SelectItem>
+              <SelectItem value="active">Activos</SelectItem>
+              <SelectItem value="rejected">Rechazados</SelectItem>
+              <SelectItem value="paid">Pagados</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-[11px] text-muted-foreground">
             {filteredLoans.length} de {loans.length}
           </span>
@@ -846,7 +845,6 @@ export function AdminContent({
         <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
           <LoansTable loans={filteredLoans} />
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
       </OpsFloor>
     )
   }
@@ -953,7 +951,11 @@ export function AdminContent({
             </div>
           </section>
         </div>
-        {toast && <ToastFloating toast={toast} onClose={() => setToast(null)} />}
+
+        {riskRuleVersions.length > 0 ? (
+          <RiskRulesDesk versions={riskRuleVersions} canWrite={myPermissions.includes('risk.rules.write')} />
+        ) : null}
+
       </OpsFloor>
     )
   }
@@ -1127,57 +1129,15 @@ export function AdminContent({
 }
 
 function disbBadge(status: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: 'Pendiente', cls: 'bg-amber-500/10 text-amber-700 border-amber-200' },
-    processing: { label: 'Procesando', cls: 'bg-sky-500/10 text-sky-700 border-sky-200' },
-    credited: { label: 'Acreditado', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
-    completed: { label: 'Acreditado', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
-    failed: { label: 'Fallido', cls: 'bg-rose-500/10 text-rose-700 border-rose-200' },
-    reversed: { label: 'Revertido', cls: 'bg-rose-500/10 text-rose-700 border-rose-200' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    processing: { label: 'Procesando', tone: 'info' },
+    credited: { label: 'Acreditado', tone: 'success' },
+    completed: { label: 'Acreditado', tone: 'success' },
+    failed: { label: 'Fallido', tone: 'danger' },
+    reversed: { label: 'Revertido', tone: 'danger' },
   }
-  const cfg = map[status] ?? { label: status, cls: 'bg-muted text-muted-foreground' }
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', cfg.cls)}>
-      <span className={cn(
-        'h-1.5 w-1.5 rounded-full',
-        status === 'credited' || status === 'completed' ? 'bg-emerald-500' :
-        status === 'failed' || status === 'reversed' ? 'bg-rose-500' :
-        status === 'processing' ? 'bg-sky-500' : 'bg-amber-500'
-      )} />
-      {cfg.label}
-    </span>
-  )
-}
-
-function ToastFloating({
-  toast,
-  onClose,
-}: {
-  toast: { type: 'ok' | 'err'; msg: string }
-  onClose: () => void
-}) {
-  return (
-    <div
-      className={cn(
-        'fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200 max-w-sm',
-        toast.type === 'ok'
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300'
-          : 'border-rose-200 bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-300',
-      )}
-    >
-      {toast.type === 'ok' ? (
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-      ) : (
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-      )}
-      <span className="text-sm font-medium flex-1">{toast.msg}</span>
-      <button
-        onClick={onClose}
-        className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-card/10 shrink-0"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  )
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 

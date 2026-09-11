@@ -6,7 +6,8 @@ import {
   setMerchantStatus,
   updateMerchantAdmin,
 } from '@/app/actions/admin'
-import { Badge } from '@/components/ui/badge'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
+import { useConfirmDialog } from '@/components/admin/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -56,14 +57,14 @@ type MerchantRow = {
 }
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-    pending: { label: 'Pendiente', variant: 'secondary' },
-    approved: { label: 'Activo', variant: 'default' },
-    active: { label: 'Activo', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    approved: { label: 'Activo', tone: 'success' },
+    active: { label: 'Activo', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
   }
-  const cfg = map[status] ?? { label: status, variant: 'outline' as const }
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+  const cfg = map[status] ?? { label: status, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
 function formatCUIT(v: string) {
@@ -74,6 +75,7 @@ function formatCUIT(v: string) {
 
 export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
   const router = useRouter()
+  const { confirm, confirmDialog } = useConfirmDialog()
   const [isPending, startTransition] = useTransition()
   const [docsByMerchant, setDocsByMerchant] = useState<Record<string, { id: string; type: string; fileName: string }[]>>({})
   const [edit, setEdit] = useState<MerchantRow | null>(null)
@@ -115,12 +117,19 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
   }, [merchants])
 
   const handleStatus = (id: string, name: string, status: 'active' | 'rejected') => {
-    const verb = status === 'active' ? 'aprobar' : 'rechazar'
-    const confirmed = window.confirm(
-      `¿Estás seguro de ${verb} el comercio "${name}"? La aprobación vuelve a consultar ARCA.`,
+    const verb = status === 'active' ? 'Aprobar' : 'Rechazar'
+    confirm(
+      {
+        title: `¿${verb} el comercio "${name}"?`,
+        description: status === 'active' ? 'La aprobación vuelve a consultar ARCA.' : undefined,
+        confirmLabel: verb,
+        destructive: status === 'rejected',
+      },
+      () => runStatus(id, status),
     )
-    if (!confirmed) return
+  }
 
+  const runStatus = (id: string, status: 'active' | 'rejected') => {
     startTransition(async () => {
       try {
         const r = await setMerchantStatus(id, status)
@@ -152,7 +161,7 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
   }
 
   return (
-    <div className="rounded-xl border">
+    <>
       <Table>
         <TableHeader>
           <TableRow>
@@ -363,6 +372,8 @@ export function MerchantsTable({ merchants }: { merchants: MerchantRow[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {confirmDialog}
+    </>
   )
 }

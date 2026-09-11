@@ -14,8 +14,6 @@ export function OPTIONS(req: Request) {
 export async function GET(req: Request,{ params }: { params: Promise<Record<string, string>> }) {
   try {
     const userId = await requireMobileUserId(req)
-    
-    const body = ['POST','PUT','PATCH'].includes('GET') ? await req.json().catch(() => ({})) : {}
     const id = String((await params).id); return mobileJson(req, await mobileFileUrl(userId, id))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

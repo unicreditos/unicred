@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { BRAND, GROUP, groupOperatorLine, groupSiblingUnits } from '@/lib/brand'
+import { SHOW_MERCHANT_CREDIT_MARKETING } from '@/lib/feature-flags'
 import { formatARS } from '@/lib/finance'
 import { COMERCIO_QUOTE, PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import {
@@ -65,6 +66,11 @@ export const MEGA_MENU = {
 
 type MenuKey = keyof typeof MEGA_MENU
 
+/** 'pymes' queda armado pero oculto mientras el sitio solo promociona crédito personal. */
+const VISIBLE_MENU_KEYS = (Object.keys(MEGA_MENU) as MenuKey[]).filter(
+  (key) => key !== 'pymes' || SHOW_MERCHANT_CREDIT_MARKETING,
+)
+
 function MegaMenuItemLink({
   item,
   onNavigate,
@@ -123,7 +129,7 @@ export function PublicHeader({
         <BrandLogo showText />
 
         <nav className="hidden lg:flex lg:items-center lg:gap-1 text-sm" aria-label="Principal">
-          {(Object.keys(MEGA_MENU) as MenuKey[]).map((key) => {
+          {VISIBLE_MENU_KEYS.map((key) => {
             const menu = MEGA_MENU[key]
             const expanded = desktopOpen === key
             const panelId = `mega-${key}`
@@ -213,7 +219,7 @@ export function PublicHeader({
       {open ? (
         <div id="mobile-nav" className="border-t border-border/60 bg-white lg:hidden">
           <nav className="mx-auto max-w-7xl space-y-1 px-4 py-3 sm:px-6" aria-label="Móvil">
-            {(Object.keys(MEGA_MENU) as MenuKey[]).map((key) => {
+            {VISIBLE_MENU_KEYS.map((key) => {
               const menu = MEGA_MENU[key]
               const expanded = mobileSection === key
               return (
@@ -284,7 +290,9 @@ export function PublicFooter() {
             <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Crédito</div>
             <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
               <li><Link href="/prestamos" className="hover:text-white">Préstamo personal</Link></li>
-              <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
+              {SHOW_MERCHANT_CREDIT_MARKETING ? (
+                <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
+              ) : null}
               <li><Link href="/simulador" className="hover:text-white">Simulador</Link></li>
               <li><Link href="/scoring" className="hover:text-white">Evaluación BCRA</Link></li>
               <li><Link href="/legal/tasas" className="hover:text-white">Tasas y CFT</Link></li>

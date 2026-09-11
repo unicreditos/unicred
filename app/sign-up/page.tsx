@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation'
 export const metadata: Metadata = pageMetadata({
   title: 'Crear cuenta',
   description:
-    'Registrate como persona o comercio. Validamos tu CUIT/CUIL, completamos tus datos y consultamos tu scoring BCRA.',
+    'Registrate con DNI o CUIL, confirmá tu identidad, cargá email y celular, creá tu clave y verificá con Didit.',
   path: '/sign-up',
 })
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { requestProfileChange } from '@/app/actions/account'
 import { grantBcraConsent, updateProfile } from '@/app/actions/loans'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
 import { Badge } from '@/components/ui/badge'
@@ -21,12 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
 import { profile } from '@/lib/db/schema'
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AccountAvatar } from '@/components/unicred/account-avatar'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Lock, Send } from 'lucide-react'
 
 type Profile = typeof profile.$inferSelect
 
@@ -37,6 +40,7 @@ const SITUACIONES_LABORALES = [
   'Profesional independiente',
   'Jubilado / Pensionado',
   'Desempleado',
+  'A completar',
   'Otro',
 ]
 
@@ -49,6 +53,13 @@ export function KYCProfileForm({
 }) {
   const router = useRouter()
   const [consentPending, startConsent] = useTransition()
+  const [requestPending, startRequest] = useTransition()
+  const [showRequest, setShowRequest] = useState(false)
+  const [requestReason, setRequestReason] = useState('')
+  const [requestFields, setRequestFields] = useState('')
+  const [requestMsg, setRequestMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const identityLocked = initialProfile?.kycStatus === 'approved'
+
   const [formState, action, isPending] = useActionState(
     async (_prev: { ok?: boolean; error?: string; message?: string } | null, formData: FormData) => {
       try {
@@ -100,7 +111,10 @@ export function KYCProfileForm({
     }
   }, [formState?.ok])
 
-  const kycStatusLabel: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+  const kycStatusLabel: Record<
+    string,
+    { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
+  > = {
     pending: { label: 'Pendiente', variant: 'secondary' },
     submitted: { label: 'En revisión', variant: 'outline' },
     reviewing: { label: 'En revisión', variant: 'outline' },
@@ -110,9 +124,54 @@ export function KYCProfileForm({
   }
 
   const status = kycStatusLabel[initialProfile?.kycStatus ?? 'pending'] ?? kycStatusLabel.pending
+  const fieldClass = identityLocked ? 'bg-muted/40 text-foreground' : undefined
+
+  function submitProfileChangeRequest() {
+    setRequestMsg(null)
+    startRequest(async () => {
+      const res = await requestProfileChange({ reason: requestReason, fields: requestFields })
+      if (res.ok) {
+        setRequestMsg({
+          ok: true,
+          text: 'Pedido enviado. Vas a ver el caso en Reclamos y ops recibe el aviso.',
+        })
+        setShowRequest(false)
+        setRequestReason('')
+        setRequestFields('')
+        router.refresh()
+        return
+      }
+      setRequestMsg({ ok: false, text: res.error })
+    })
+  }
 
   return (
-    <div className="mx-auto max-w-3xl" id="kyc-form">
+    <div className="mx-auto max-w-3xl space-y-4" id="kyc-form">
+      {identityLocked ? (
+        <div className="flex items-start gap-3 rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-sm text-brand-navy-800">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
+          <div>
+            <p className="font-semibold">Ficha verificada · solo lectura</p>
+            <p className="mt-1 text-xs leading-relaxed text-brand-navy-600">
+              Los datos aprobados con Didit no se editan desde el panel. Pedí el cambio a UNICRÉDITOS: se abre un
+              caso de identidad para el equipo y recibís confirmación por mail.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {requestMsg ? (
+        <div
+          className={
+            requestMsg.ok
+              ? 'rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800'
+              : 'rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive'
+          }
+        >
+          {requestMsg.text}
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -122,12 +181,14 @@ export function KYCProfileForm({
                 email={user?.email}
                 image={user?.image}
                 size="lg"
-                editable
+                editable={!identityLocked}
               />
               <div>
-                <CardTitle>Perfil y validación KYC</CardTitle>
+                <CardTitle>Ficha personal</CardTitle>
                 <CardDescription>
-                  Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican solo con Didit, en la misma solicitud.
+                  {identityLocked
+                    ? 'Identidad y domicilio registrados en tu expediente UNICRÉDITOS.'
+                    : 'Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican con Didit.'}
                 </CardDescription>
               </div>
             </div>
@@ -135,7 +196,7 @@ export function KYCProfileForm({
           </div>
         </CardHeader>
 
-        <form action={action}>
+        <form action={identityLocked ? undefined : action}>
           <CardContent className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cuil">CUIL *</Label>
@@ -146,6 +207,8 @@ export function KYCProfileForm({
                 defaultValue={initialProfile?.cuil ?? ''}
                 required
                 inputMode="numeric"
+                readOnly={identityLocked}
+                className={fieldClass}
               />
             </div>
 
@@ -158,6 +221,8 @@ export function KYCProfileForm({
                 defaultValue={initialProfile?.dni ?? ''}
                 required
                 inputMode="numeric"
+                readOnly={identityLocked}
+                className={fieldClass}
               />
             </div>
 
@@ -169,6 +234,8 @@ export function KYCProfileForm({
                 type="date"
                 defaultValue={initialProfile?.birthDate ?? ''}
                 required
+                readOnly={identityLocked}
+                className={fieldClass}
               />
             </div>
 
@@ -180,6 +247,8 @@ export function KYCProfileForm({
                 placeholder="11 1234-5678"
                 defaultValue={initialProfile?.phone ?? ''}
                 required
+                readOnly={identityLocked}
+                className={fieldClass}
               />
             </div>
 
@@ -188,7 +257,28 @@ export function KYCProfileForm({
               <input type="hidden" name="department" value={geo.department} />
               <input type="hidden" name="city" value={geo.city} />
               <input type="hidden" name="postalCode" value={geo.postalCode} />
-              <GeoArFields value={geo} onChange={setGeo} />
+              {identityLocked ? (
+                <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm sm:grid-cols-2">
+                  <p>
+                    <span className="text-muted-foreground">Provincia · </span>
+                    {geo.province || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Departamento · </span>
+                    {geo.department || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Localidad · </span>
+                    {geo.city || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">CP · </span>
+                    {geo.postalCode || '—'}
+                  </p>
+                </div>
+              ) : (
+                <GeoArFields value={geo} onChange={setGeo} />
+              )}
             </div>
 
             <div className="space-y-2">
@@ -199,13 +289,15 @@ export function KYCProfileForm({
                 placeholder="Calle y número, piso, dpto."
                 defaultValue={initialProfile?.address ?? ''}
                 required
+                readOnly={identityLocked}
+                className={fieldClass}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="monthlyIncome">Ingresos mensuales (ARS) *</Label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-mono text-muted-foreground">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-muted-foreground">
                   $
                 </span>
                 <Input
@@ -215,73 +307,134 @@ export function KYCProfileForm({
                   min="0"
                   step="1000"
                   placeholder="200.000"
-                  className="pl-7 font-mono"
+                  className={`pl-7 font-mono ${fieldClass ?? ''}`}
                   value={monthlyIncome}
                   onChange={(e) => setMonthlyIncome(e.target.value)}
                   required
+                  readOnly={identityLocked}
                 />
               </div>
               {monthlyIncome && !isNaN(Number(monthlyIncome)) && Number(monthlyIncome) > 0 && (
-                <p className="text-xs text-muted-foreground font-mono">
-                  ~ {formatARS(monthlyIncome)} / mes
-                </p>
+                <p className="font-mono text-xs text-muted-foreground">~ {formatARS(monthlyIncome)} / mes</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="employmentStatus">Situación laboral *</Label>
-              <Select
-                name="employmentStatus"
-                value={employmentStatus}
-                onValueChange={(v) => setEmploymentStatus(v ?? '')}
-                required
-              >
-                <SelectTrigger id="employmentStatus" className="w-full">
-                  <SelectValue placeholder="Seleccioná una opción" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SITUACIONES_LABORALES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {identityLocked ? (
+                <>
+                  <Input value={employmentStatus || '—'} readOnly className={fieldClass} />
+                  <input type="hidden" name="employmentStatus" value={employmentStatus} />
+                </>
+              ) : (
+                <Select
+                  name="employmentStatus"
+                  value={employmentStatus}
+                  onValueChange={(v) => setEmploymentStatus(v ?? '')}
+                  required
+                >
+                  <SelectTrigger id="employmentStatus" className="w-full">
+                    <SelectValue placeholder="Seleccioná una opción" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SITUACIONES_LABORALES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {formState?.ok && (
-              <div className="md:col-span-2 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 md:col-span-2 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {formState.message}
               </div>
             )}
             {formState?.ok === false && formState.error && (
-              <div className="md:col-span-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive md:col-span-2">
                 {formState.error}
               </div>
             )}
           </CardContent>
 
-          <CardFooter className="flex items-center justify-end gap-3 border-t">
-            <p className="mr-auto text-xs text-muted-foreground">
-              * Campos obligatorios. Los datos se encriptan y solo se usan para la evaluación crediticia.
-            </p>
-            <Button type="submit" size="lg" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Guardando…
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Guardar perfil
-                </>
-              )}
-            </Button>
+          <CardFooter className="flex flex-wrap items-center justify-end gap-3 border-t">
+            {identityLocked ? (
+              <Button type="button" variant="outline" size="lg" onClick={() => setShowRequest((v) => !v)}>
+                <Send className="h-4 w-4" />
+                {showRequest ? 'Cancelar pedido' : 'Pedir cambio a UNICRÉDITOS'}
+              </Button>
+            ) : (
+              <>
+                <p className="mr-auto text-xs text-muted-foreground">
+                  * Campos obligatorios. Solo se usan para evaluación crediticia.
+                </p>
+                <Button type="submit" size="lg" disabled={isPending}>
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Guardando…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Guardar perfil
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </CardFooter>
         </form>
       </Card>
+
+      {identityLocked && showRequest ? (
+        <Card className="border-brand-primary/30">
+          <CardHeader>
+            <CardTitle className="text-base">Pedido de cambio de ficha</CardTitle>
+            <CardDescription>
+              Se crea un caso en Reclamos (categoría identidad) y ops recibe el aviso. No edites datos vos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="change-fields">Qué querés corregir</Label>
+              <Input
+                id="change-fields"
+                value={requestFields}
+                onChange={(e) => setRequestFields(e.target.value)}
+                placeholder="Ej. domicilio, teléfono, fecha de nacimiento"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="change-reason">Detalle *</Label>
+              <Textarea
+                id="change-reason"
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                rows={4}
+                placeholder="Explicá el dato incorrecto y el valor correcto (mín. 20 caracteres)."
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end gap-2 border-t">
+            <Button type="button" variant="ghost" onClick={() => setShowRequest(false)}>
+              Cerrar
+            </Button>
+            <Button
+              type="button"
+              disabled={requestPending || requestReason.trim().length < 20}
+              onClick={submitProfileChangeRequest}
+            >
+              {requestPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar pedido
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : null}
+
       {!initialProfile?.bcraConsentAt ? (
         <Card className="border-amber-200/80">
           <CardHeader>
@@ -318,7 +471,7 @@ export function KYCProfileForm({
             hour12: false,
             timeZone: 'America/Argentina/Buenos_Aires',
           })}
-          .
+          . Soporte: {BRAND.supportEmail}.
         </p>
       )}
     </div>

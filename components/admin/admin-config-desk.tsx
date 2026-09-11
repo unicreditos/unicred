@@ -70,7 +70,7 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
               </ul>
             ) : null}
             {data?.missingRequired.length ? (
-              <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-2 py-2 text-[11px] text-rose-900">
+              <div className="mt-3 rounded-md border border-destructive/20 bg-destructive/10 px-2 py-2 text-[11px] text-destructive">
                 <p className="font-semibold">Faltan variables requeridas</p>
                 {data.missingRequired.map((c) => (
                   <p key={c.name}>

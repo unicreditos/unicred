@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
     
-    const body = ['POST','PUT','PATCH'].includes('POST') ? await req.json().catch(() => ({})) : {}
+    const body = await req.json().catch(() => ({}))
     return mobileJson(req, await mobileWalletTopup(userId, Number((body as any).amount)))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

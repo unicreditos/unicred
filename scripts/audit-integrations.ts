@@ -65,15 +65,6 @@ async function main() {
     add('ENV', k, v ? 'ok' : 'fail', v ? mask(v) : 'ausente')
   }
 
-  // Payway = referencia opcional (no bloquea prod)
-  {
-    const paywayKeys = ['PAYWAY_ENV', 'PAYWAY_WEBHOOK_SECRET', 'PAYWAY_SANDBOX_PUBLIC_KEY'] as const
-    for (const k of paywayKeys) {
-      const v = process.env[k]
-      add('ENV', k, 'ok', v ? `ref ${mask(v)}` : 'ausente (ok — solo referencia)')
-    }
-  }
-
   // Neon
   {
     const r = await timed(async () => {
@@ -254,9 +245,9 @@ async function main() {
     }
   }
 
-  // Wallet propia (Payway solo referencia de contrato)
+  // Wallet propia
   {
-    add('Wallet', 'API propia', 'ok', 'wallet=native · Payway no es dependencia de producción')
+    add('Wallet', 'API propia', 'ok', 'wallet=native')
   }
 
   // Resend

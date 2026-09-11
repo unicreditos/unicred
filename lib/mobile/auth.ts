@@ -6,6 +6,11 @@ import { account, profile, user as userTable } from '@/lib/db/schema'
 import { getRoleForUser, newId } from '@/lib/session'
 import { bearerFromRequest, signMobileToken, verifyMobileToken } from '@/lib/mobile/jwt'
 
+/** IP del caller para las rutas mobile (login/signup/reset no tienen sesión todavía). */
+export function mobileClientKey(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+}
+
 export type MobileAuthUser = {
   id: string
   email: string

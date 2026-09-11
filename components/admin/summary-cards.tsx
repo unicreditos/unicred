@@ -1,7 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { KpiCard, SectionCard } from '@/components/unicred/dashboard-kit'
 import { formatARS } from '@/lib/finance'
+import { cn } from '@/lib/utils'
 import {
   CreditCard,
   CheckCircle2,
@@ -16,7 +17,6 @@ import {
   Building2,
   Coins,
   ShieldCheck,
-  Globe2,
 } from 'lucide-react'
 
 export type StatsData = {
@@ -31,6 +31,7 @@ export type StatsData = {
   }
   users: { total: number; customers: number; merchants: number; admins: number }
   merchants: { total: number; pending: number; active: number; rejected: number }
+  kyc?: { pending: number }
 }
 
 function pct(part: number, total: number) {
@@ -44,48 +45,42 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Total Créditos',
       value: stats.loans.total.toLocaleString('es-AR'),
       icon: CreditCard,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
+      iconBg: 'bg-muted text-muted-foreground',
       footer: `${pct(stats.loans.active + (stats.loans.paid ?? 0), stats.loans.total)}% cartera viva`,
     },
     {
       title: 'Activos',
       value: stats.loans.active.toLocaleString('es-AR'),
       icon: CheckCircle2,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
-      footer: `Vigentes`,
+      iconBg: 'bg-emerald-500/10 text-emerald-600',
+      footer: 'Vigentes',
     },
     {
       title: 'Pendientes',
       value: stats.loans.pending.toLocaleString('es-AR'),
       icon: Clock,
-      color: 'text-amber-600',
-      bg: 'bg-amber-500/10',
+      iconBg: 'bg-brand-amber/10 text-brand-amber',
       footer: `${pct(stats.loans.pending, stats.loans.total)}% a resolver`,
     },
     {
       title: 'Rechazados',
       value: stats.loans.rejected.toLocaleString('es-AR'),
       icon: XCircle,
-      color: 'text-destructive',
-      bg: 'bg-destructive/10',
+      iconBg: 'bg-destructive/10 text-destructive',
       footer: `${pct(stats.loans.rejected, stats.loans.total)}% tasa rechazo`,
     },
     {
       title: 'Pagados',
       value: (stats.loans.paid ?? 0).toLocaleString('es-AR'),
       icon: ShieldCheck,
-      color: 'text-teal-600',
-      bg: 'bg-teal-500/10',
+      iconBg: 'bg-emerald-500/10 text-emerald-600',
       footer: 'Finalizados OK',
     },
     {
       title: 'Volumen Desembolsado',
       value: formatARS(stats.loans.volume),
       icon: Wallet,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-500/10',
+      iconBg: 'bg-muted text-muted-foreground',
       footer: `Ticket prom. ${stats.loans.active ? formatARS(stats.loans.volume / (stats.loans.active + (stats.loans.paid ?? 0))) : '—'}`,
     },
   ]
@@ -95,29 +90,25 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Usuarios Totales',
       value: stats.users.total.toLocaleString('es-AR'),
       icon: Users,
-      color: 'text-sky-600',
-      bg: 'bg-sky-500/10',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Clientes',
       value: stats.users.customers.toLocaleString('es-AR'),
       icon: CreditCard,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Comercios',
       value: stats.users.merchants.toLocaleString('es-AR'),
       icon: Store,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Administradores',
       value: stats.users.admins.toLocaleString('es-AR'),
       icon: ShieldCheck,
-      color: 'text-purple-600',
-      bg: 'bg-purple-500/10',
+      iconBg: 'bg-muted text-muted-foreground',
     },
   ]
 
@@ -126,8 +117,8 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Comercios Totales',
       value: stats.merchants.total.toLocaleString('es-AR'),
       icon: Building2,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
+      color: 'text-muted-foreground',
+      bg: 'bg-muted',
     },
     {
       title: 'Activos',
@@ -140,8 +131,8 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Pendientes',
       value: stats.merchants.pending.toLocaleString('es-AR'),
       icon: AlertTriangle,
-      color: 'text-amber-600',
-      bg: 'bg-amber-500/10',
+      color: 'text-brand-amber',
+      bg: 'bg-brand-amber/10',
     },
     {
       title: 'Rechazados',
@@ -161,73 +152,6 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
 
   return (
     <div className="space-y-8">
-      {/* FINTECH ADMIN EXECUTIVE CONTROL HERO */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a192f] to-[#0f2744] p-6 sm:p-8 text-white shadow-xl">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                  Torre de Control UNICRÉDITOS
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-400">Mesa Operativa Central · Cartera, Scoring & Originación</p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
-                <Globe2 className="h-3.5 w-3.5" /> BCRA CENDEU Online
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-3 py-1 text-xs font-medium text-cyan-300">
-                <ShieldCheck className="h-3.5 w-3.5" /> Didit KYC Biometría Activo
-              </span>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3 md:items-center">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                Volumen Desembolsado
-              </span>
-              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-white tabular-nums tracking-tight">
-                {formatARS(stats.loans.volume)}
-              </div>
-              <p className="mt-1 text-xs text-slate-300">
-                {stats.loans.total} solicitudes gestionadas en el sistema
-              </p>
-            </div>
-
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                Cartera Activa & Aprobación
-              </span>
-              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-emerald-400 tabular-nums tracking-tight">
-                {approvalPct}%
-              </div>
-              <p className="mt-1 text-xs text-slate-300">
-                {stats.loans.active} créditos vigentes · {stats.loans.paid ?? 0} amortizados OK
-              </p>
-            </div>
-
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                Pendientes de Resolución
-              </span>
-              <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-amber-400 tabular-nums tracking-tight">
-                {stats.loans.pending}
-              </div>
-              <p className="mt-1 text-xs text-slate-300">
-                {pct(stats.loans.pending, stats.loans.total)}% de la cartera en análisis
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold tracking-tight">Cartera de Créditos</h3>
@@ -237,38 +161,25 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {loanCards.map((c) => (
-            <Card key={c.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  {c.title}
-                </CardTitle>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.bg}`}>
-                  <c.icon className={`h-4 w-4 ${c.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-xl font-bold tracking-tight">{c.value}</div>
-                {c.footer ? (
-                  <div className="text-[11px] text-muted-foreground">{c.footer}</div>
-                ) : null}
-              </CardContent>
-            </Card>
+            <KpiCard
+              key={c.title}
+              title={c.title}
+              value={c.value}
+              icon={<c.icon className="h-5 w-5" />}
+              iconBg={c.iconBg}
+              footer={c.footer}
+            />
           ))}
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                Embudos de Créditos
-              </CardTitle>
-              <span className="text-xs text-muted-foreground">Estado actual de la cartera</span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
+        <SectionCard
+          title="Embudos de Créditos"
+          description="Estado actual de la cartera"
+          icon={<TrendingUp className="h-4 w-4" />}
+        >
+          <div className="space-y-5">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-medium">
@@ -282,12 +193,12 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-medium">
-                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  <Clock className="h-3.5 w-3.5 text-brand-amber" />
                   Pendientes de resolución
                 </span>
-                <span className="font-semibold tabular-nums text-amber-600">{pendingPct}%</span>
+                <span className="font-semibold tabular-nums text-brand-amber">{pendingPct}%</span>
               </div>
-              <Progress value={pendingPct} className="h-2 [&>div]:bg-amber-500" />
+              <Progress value={pendingPct} className="h-2 [&>div]:bg-brand-amber" />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -300,40 +211,37 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
               <Progress value={rejectionPct} className="h-2 [&>div]:bg-destructive" />
             </div>
 
-            <div className="grid grid-cols-4 gap-2 pt-3 border-t">
+            <div className="grid grid-cols-4 gap-2 border-t pt-3">
               <div className="rounded-lg bg-emerald-500/10 p-3 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Aprob</div>
-                <div className="text-lg font-bold text-emerald-600 tabular-nums">{stats.loans.active}</div>
+                <div className="mb-1 text-xs text-muted-foreground">Aprob</div>
+                <div className="text-lg font-bold tabular-nums text-emerald-600">{stats.loans.active}</div>
               </div>
-              <div className="rounded-lg bg-amber-500/10 p-3 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Pend</div>
-                <div className="text-lg font-bold text-amber-600 tabular-nums">{stats.loans.pending}</div>
+              <div className="rounded-lg bg-brand-amber/10 p-3 text-center">
+                <div className="mb-1 text-xs text-muted-foreground">Pend</div>
+                <div className="text-lg font-bold tabular-nums text-brand-amber">{stats.loans.pending}</div>
               </div>
               <div className="rounded-lg bg-destructive/10 p-3 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Rech</div>
-                <div className="text-lg font-bold text-destructive tabular-nums">{stats.loans.rejected}</div>
+                <div className="mb-1 text-xs text-muted-foreground">Rech</div>
+                <div className="text-lg font-bold tabular-nums text-destructive">{stats.loans.rejected}</div>
               </div>
-              <div className="rounded-lg bg-teal-500/10 p-3 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Pag</div>
-                <div className="text-lg font-bold text-teal-600 tabular-nums">{stats.loans.paid ?? 0}</div>
+              <div className="rounded-lg bg-emerald-500/10 p-3 text-center">
+                <div className="mb-1 text-xs text-muted-foreground">Pag</div>
+                <div className="text-lg font-bold tabular-nums text-emerald-600">{stats.loans.paid ?? 0}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Coins className="h-4 w-4 text-primary" />
-                Distribución de Comercios
-              </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                {merchantActivePct}% habilitados
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
+        <SectionCard
+          title="Distribución de Comercios"
+          icon={<Coins className="h-4 w-4" />}
+          action={
+            <Badge variant="outline" className="text-xs">
+              {merchantActivePct}% habilitados
+            </Badge>
+          }
+        >
+          <div className="space-y-5">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-medium">
@@ -344,12 +252,12 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
               </div>
               <Progress value={merchantActivePct} className="h-2 [&>div]:bg-emerald-500" />
             </div>
-            <div className="grid gap-3 grid-cols-2 pt-2">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               {merchantCards.map((c) => (
-                <div key={c.title} className="rounded-lg border p-3 space-y-1.5">
+                <div key={c.title} className="space-y-1.5 rounded-lg border p-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-md ${c.bg}`}>
-                      <c.icon className={`h-3.5 w-3.5 ${c.color}`} />
+                    <div className={cn('flex h-7 w-7 items-center justify-center rounded-xl', c.bg)}>
+                      <c.icon className={cn('h-3.5 w-3.5', c.color)} />
                     </div>
                     {c.title}
                   </div>
@@ -357,27 +265,15 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
 
       <div className="space-y-2">
         <h3 className="text-lg font-semibold tracking-tight">Base de Usuarios</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {userCards.map((c) => (
-            <Card key={c.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  {c.title}
-                </CardTitle>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.bg}`}>
-                  <c.icon className={`h-4 w-4 ${c.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tracking-tight">{c.value}</div>
-              </CardContent>
-            </Card>
+            <KpiCard key={c.title} title={c.title} value={c.value} icon={<c.icon className="h-5 w-5" />} iconBg={c.iconBg} />
           ))}
         </div>
       </div>

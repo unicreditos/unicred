@@ -1,29 +1,24 @@
 'use server'
 
-import { randomBytes } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { createClaim } from '@/app/actions/claims'
 import { db } from '@/lib/db'
-import { user } from '@/lib/db/schema'
-import { requireUserId } from '@/lib/session'
-import { eq } from 'drizzle-orm'
+import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
+import { kycVerification, profile, supportCase, user } from '@/lib/db/schema'
+import { assertRole, requireUserId } from '@/lib/session'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 const MAX_BYTES = 1_000_000
 const ALLOWED = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
 
-function extFor(mime: string) {
-  if (mime === 'image/png') return 'png'
-  if (mime === 'image/webp') return 'webp'
-  return 'jpg'
-}
-
-async function persistAvatarFile(userId: string, buffer: Buffer, mime: string) {
-  const dir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
-  await mkdir(dir, { recursive: true })
-  const name = `${userId.slice(0, 12)}-${randomBytes(8).toString('hex')}.${extFor(mime)}`
-  await writeFile(path.join(dir, name), buffer)
-  return `/uploads/avatars/${name}`
+/**
+ * Guarda el avatar como data URL en `user.image` (columna text sin límite,
+ * mismo patrón que merchant_document.content). Vercel corre las server
+ * actions en funciones serverless con filesystem de solo lectura: escribir
+ * en public/uploads/ funcionaba en dev pero fallaba siempre en producción.
+ */
+function persistAvatarFile(buffer: Buffer, mime: string) {
+  return `data:${mime};base64,${buffer.toString('base64')}`
 }
 
 function parseDataUrl(dataUrl: string): { mime: string; buffer: Buffer } | null {
@@ -67,8 +62,92 @@ export async function updateMyAvatar(formData: FormData) {
     return { ok: false as const, error: 'Elegí una imagen.' }
   }
 
-  const image = await persistAvatarFile(userId, buffer, mime)
+  const image = persistAvatarFile(buffer, mime)
   await db.update(user).set({ image, updatedAt: new Date() }).where(eq(user.id, userId))
   revalidatePath('/', 'layout')
   return { ok: true as const, image }
+}
+
+/**
+ * Pedido formal de cambio de ficha verificada.
+ * Abre un caso de soporte (categoría identidad) visible en admin + mail a ops.
+ */
+export async function requestProfileChange(input: { reason: string; fields?: string }) {
+  const userId = await assertRole('customer')
+  await ensureSupportCaseTable()
+
+  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
+  const [diditOk] = await db
+    .select({ id: kycVerification.id })
+    .from(kycVerification)
+    .where(
+      and(
+        eq(kycVerification.userId, userId),
+        eq(kycVerification.provider, 'didit'),
+        eq(kycVerification.status, 'approved'),
+      ),
+    )
+    .limit(1)
+
+  if (prof?.kycStatus !== 'approved' && !diditOk) {
+    return {
+      ok: false as const,
+      error: 'Tu ficha todavía no está verificada. Podés editarla desde el panel.',
+    }
+  }
+
+  const [openCase] = await db
+    .select({ id: supportCase.id })
+    .from(supportCase)
+    .where(
+      and(
+        eq(supportCase.userId, userId),
+        eq(supportCase.category, 'identidad'),
+        eq(supportCase.status, 'open'),
+      ),
+    )
+    .limit(1)
+  if (openCase) {
+    return {
+      ok: false as const,
+      error: 'Ya tenés un pedido de cambio de identidad abierto. Seguilo en Reclamos.',
+      caseId: openCase.id,
+    }
+  }
+
+  const reason = String(input.reason ?? '').trim()
+  if (reason.length < 20) {
+    return { ok: false as const, error: 'Describí el cambio con al menos 20 caracteres.' }
+  }
+
+  const fields = String(input.fields ?? '').trim()
+  const snapshot = [
+    `CUIL: ${prof?.cuil || '—'}`,
+    `DNI: ${prof?.dni || '—'}`,
+    `Tel: ${prof?.phone || '—'}`,
+    `Nac: ${prof?.birthDate || '—'}`,
+    `Domicilio: ${[prof?.address, prof?.city, prof?.province].filter(Boolean).join(', ') || '—'}`,
+  ].join('\n')
+
+  const body = [
+    'Solicitud de modificación de ficha verificada (no editable por el cliente).',
+    fields ? `Campos a modificar: ${fields}` : null,
+    '',
+    'Motivo del cliente:',
+    reason,
+    '',
+    'Snapshot actual:',
+    snapshot,
+  ]
+    .filter((line) => line !== null)
+    .join('\n')
+
+  const created = await createClaim({
+    category: 'identidad',
+    subject: 'Solicitud de cambio de ficha verificada',
+    body,
+  })
+
+  revalidatePath('/dashboard')
+  return { ok: true as const, caseId: created.id }
 }

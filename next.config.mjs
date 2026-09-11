@@ -1,39 +1,14 @@
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
-import fs from 'node:fs'
-import path from 'node:path'
-import dotenv from 'dotenv'
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
-
-// Cargar archivos de variables locales si existen (incluyendo .env.production.local)
-for (const envFile of ['.env.production.local', '.env.local', '.env.development.local', '.env']) {
-  const envPath = path.join(projectRoot, envFile)
-  if (fs.existsSync(envPath)) {
-    try {
-      const parsed = dotenv.parse(fs.readFileSync(envPath))
-      for (const [k, v] of Object.entries(parsed)) {
-        if (
-          !process.env[k] ||
-          process.env[k].includes('host.neon.tech') ||
-          process.env[k].includes('usuario:password') ||
-          (v && v.trim() !== '')
-        ) {
-          process.env[k] = v
-        }
-      }
-    } catch {
-      // Ignorar errores de sintaxis en archivos opcionales
-    }
-  }
-}
 
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  "frame-ancestors 'self' https://*.google.com https://*.googleusercontent.com https://ai.studio https://*.run.app",
+  "frame-ancestors 'self'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
@@ -52,14 +27,6 @@ const csp = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
-  allowedDevOrigins: [
-    '*.run.app',
-    '*.google.com',
-    '*.googleusercontent.com',
-    'localhost:3000',
-    ...(process.env.NG_ALLOWED_HOSTS ? [process.env.NG_ALLOWED_HOSTS] : []),
-  ],
   // Sin esto Turbopack sube hasta el home del usuario buscando el lockfile.
   turbopack: {
     root: projectRoot,
@@ -114,10 +81,11 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           {
             key: 'Permissions-Policy',
             value:

@@ -3,6 +3,7 @@
 import { assertAdmin } from '@/lib/session'
 import { checkEnv } from '@/lib/env'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
+import { getActivePtoVta } from '@/lib/arca/config'
 import {
   FIRST_CREDIT_HARD_CAP,
   INCOME_DTI_RATIO,
@@ -20,6 +21,7 @@ export async function getAdminOpsConfig() {
   const env = checkEnv()
   const afipCuit = (process.env.AFIP_CUIT || '').replace(/\D/g, '')
   const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim()
+  const ptoVta = await getActivePtoVta()
   return {
     envOk: env.ok,
     missingRequired: env.missingRequired.map((c) => ({ name: c.name, detail: c.detail })),
@@ -46,8 +48,12 @@ export async function getAdminOpsConfig() {
       {
         id: 'afip',
         label: 'ARCA / AFIP',
-        ok: Boolean(afipCuit && (process.env.AFIP_CERT || process.env.AFIP_KEY)),
-        hint: afipCuit ? `CUIT ${afipCuit.slice(0, 2)}…${afipCuit.slice(-1)} · factura de intereses` : 'Sin certificado: FE queda en cola',
+        ok: Boolean(afipCuit && (process.env.AFIP_CERT || process.env.AFIP_KEY) && ptoVta),
+        hint: !afipCuit || !(process.env.AFIP_CERT || process.env.AFIP_KEY)
+          ? 'Sin certificado: FE queda en cola'
+          : !ptoVta
+            ? 'Falta configurar el punto de venta en Facturación ARCA'
+            : `CUIT ${afipCuit.slice(0, 2)}…${afipCuit.slice(-1)} · pto. vta. ${ptoVta} · factura de intereses`,
       },
       {
         id: 'treasury',

@@ -24,6 +24,36 @@ export const INCOME_DTI_RATIO = 0.35
  */
 export const FIRST_CREDIT_HARD_CAP = 400_000
 
+/** Situación BCRA (1 a 6) desde la que se rechaza automático. */
+export const BCRA_WORST_SITUATION_REJECT_AT = 4
+
+/** Situación BCRA mínima para que cheques rechazados también rechacen la solicitud. */
+export const BCRA_REJECTED_CHECKS_SITUATION_THRESHOLD = 3
+
+/**
+ * Umbrales de underwriting. Los valores por defecto son los que el código
+ * usó siempre (constantes de arriba); Riesgo puede versionarlos desde el
+ * admin sin tocar código (ver lib/risk-rules.ts). Parámetros configurables,
+ * no una afirmación de política crediticia — ver ese archivo para el detalle.
+ */
+export type RiskRuleParams = {
+  scoreRejectBelow: number
+  scoreAutoQualifyAt: number
+  incomeDtiRatio: number
+  firstCreditHardCap: number
+  bcraWorstSituationRejectAt: number
+  bcraRejectedChecksSituationThreshold: number
+}
+
+export const DEFAULT_RISK_RULES: RiskRuleParams = {
+  scoreRejectBelow: SCORE_REJECT_BELOW,
+  scoreAutoQualifyAt: SCORE_AUTO_QUALIFY_AT,
+  incomeDtiRatio: INCOME_DTI_RATIO,
+  firstCreditHardCap: FIRST_CREDIT_HARD_CAP,
+  bcraWorstSituationRejectAt: BCRA_WORST_SITUATION_REJECT_AT,
+  bcraRejectedChecksSituationThreshold: BCRA_REJECTED_CHECKS_SITUATION_THRESHOLD,
+}
+
 export type UnderwriteDecision =
   | { outcome: 'rejected'; reason: string }
   | { outcome: 'pending_review'; reason: string }
@@ -51,9 +81,9 @@ export type CreditOffer = {
 }
 
 /** Fracción del tope de línea del producto según score (antes de historial). */
-export function scoreTierCatalogFraction(score: number): number {
-  if (score < SCORE_REJECT_BELOW) return 0
-  if (score < SCORE_AUTO_QUALIFY_AT) return 0.1
+export function scoreTierCatalogFraction(score: number, rules: RiskRuleParams = DEFAULT_RISK_RULES): number {
+  if (score < rules.scoreRejectBelow) return 0
+  if (score < rules.scoreAutoQualifyAt) return 0.1
   if (score < 700) return 0.18
   if (score < 750) return 0.3
   if (score < 800) return 0.45
@@ -77,6 +107,7 @@ export function computeCreditOffer(input: {
   productMinAmount: number
   productMaxAmount: number
   history: AppRepaymentHistory
+  rules?: RiskRuleParams
 }): CreditOffer {
   const {
     score,
@@ -86,32 +117,34 @@ export function computeCreditOffer(input: {
     productMinAmount,
     productMaxAmount,
     history,
+    rules = DEFAULT_RISK_RULES,
   } = input
 
   const maxInstallment =
-    monthlyIncome > 0 ? Math.round(monthlyIncome * INCOME_DTI_RATIO * 100) / 100 : 0
+    monthlyIncome > 0 ? Math.round(monthlyIncome * rules.incomeDtiRatio * 100) / 100 : 0
   const capacityPrincipal = maxPrincipalFromInstallment(maxInstallment, term, monthlyRate)
-  const scoreFraction = scoreTierCatalogFraction(score)
+  const scoreFraction = scoreTierCatalogFraction(score, rules)
   const scoreCap = roundDownToStep(productMaxAmount * scoreFraction)
+  const firstCreditHardCap = rules.firstCreditHardCap
 
   const isNewInApp = history.paidCount === 0 && history.completedLoans === 0
   let historyCap: number
   if (scoreFraction <= 0) {
     historyCap = 0
   } else if (history.overdueCount > 0) {
-    historyCap = roundDownToStep(Math.min(FIRST_CREDIT_HARD_CAP * 0.5, scoreCap * 0.4))
+    historyCap = roundDownToStep(Math.min(firstCreditHardCap * 0.5, scoreCap * 0.4))
   } else if (isNewInApp) {
     // Sin historial de pagos en la app: oferta inicial acotada.
     historyCap = roundDownToStep(
-      Math.min(FIRST_CREDIT_HARD_CAP, monthlyIncome > 0 ? monthlyIncome * 3 : FIRST_CREDIT_HARD_CAP),
+      Math.min(firstCreditHardCap, monthlyIncome > 0 ? monthlyIncome * 3 : firstCreditHardCap),
     )
   } else if (history.completedLoans >= 1 && history.paidCount >= 6 && history.overdueCount === 0) {
     // Cumplimiento demostrado: se acerca al tope de score (sigue limitado por capacidad).
     historyCap = productMaxAmount
   } else if (history.paidCount >= 3 && history.overdueCount === 0) {
-    historyCap = roundDownToStep(Math.min(scoreCap, FIRST_CREDIT_HARD_CAP * 2))
+    historyCap = roundDownToStep(Math.min(scoreCap, firstCreditHardCap * 2))
   } else {
-    historyCap = roundDownToStep(Math.min(FIRST_CREDIT_HARD_CAP * 1.25, scoreCap))
+    historyCap = roundDownToStep(Math.min(firstCreditHardCap * 1.25, scoreCap))
   }
 
   const productCap = productMaxAmount
@@ -128,7 +161,7 @@ export function computeCreditOffer(input: {
       ? 'ineligible'
       : (candidates.find((c) => c.v === rawMax)?.k ?? 'product')
 
-  if (score < SCORE_REJECT_BELOW) {
+  if (score < rules.scoreRejectBelow) {
     return {
       eligible: false,
       maxAmount: 0,
@@ -191,23 +224,24 @@ export function decideUnderwriting(input: {
   monthlyIncome: number
   worstSituation: number | null | undefined
   rejectedChecksCount: number
+  rules?: RiskRuleParams
 }): UnderwriteDecision {
-  const { score, installmentAmount, monthlyIncome, worstSituation, rejectedChecksCount } = input
-  const maxInstallment = monthlyIncome * INCOME_DTI_RATIO
+  const { score, installmentAmount, monthlyIncome, worstSituation, rejectedChecksCount, rules = DEFAULT_RISK_RULES } = input
+  const maxInstallment = monthlyIncome * rules.incomeDtiRatio
 
-  if (score.score < SCORE_REJECT_BELOW) {
+  if (score.score < rules.scoreRejectBelow) {
     return {
       outcome: 'rejected',
       reason: 'Score crediticio insuficiente según la evaluación BCRA.',
     }
   }
-  if (worstSituation != null && worstSituation >= 4) {
+  if (worstSituation != null && worstSituation >= rules.bcraWorstSituationRejectAt) {
     return {
       outcome: 'rejected',
       reason: 'Situación crediticia irregular en el BCRA (situación 4 o 5).',
     }
   }
-  if (rejectedChecksCount > 0 && (worstSituation ?? 1) >= 3) {
+  if (rejectedChecksCount > 0 && (worstSituation ?? 1) >= rules.bcraRejectedChecksSituationThreshold) {
     return {
       outcome: 'rejected',
       reason: 'Cheques rechazados y situación irregular en la Central de Deudores del BCRA.',
@@ -216,11 +250,11 @@ export function decideUnderwriting(input: {
   if (monthlyIncome > 0 && installmentAmount > maxInstallment) {
     return {
       outcome: 'rejected',
-      reason: 'La cuota supera el 35% de los ingresos declarados.',
+      reason: `La cuota supera el ${Math.round(rules.incomeDtiRatio * 100)}% de los ingresos declarados.`,
     }
   }
 
-  if (score.score < SCORE_AUTO_QUALIFY_AT) {
+  if (score.score < rules.scoreAutoQualifyAt) {
     return {
       outcome: 'pending_review',
       reason: `Score ${score.score} (${score.band}): queda en evaluación para revisión de crédito.`,

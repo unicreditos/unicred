@@ -141,7 +141,7 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
         title: 'Crédito aprobado',
         detail: formatARS(row.principal),
         at: iso(row.updatedAt),
-        href: '/dashboard?tab=cuotas',
+        href: '/dashboard?tab=cuotas_vigentes',
         tone: 'ok',
       })
     } else if (row.status === 'rejected') {

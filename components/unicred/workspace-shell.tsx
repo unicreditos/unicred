@@ -158,8 +158,21 @@ export function WorkspaceShell({
     writeStorage()
   }
 
-  const toggleGroup = (group: string) => {
-    const next = { ...closedGroups, [group]: !closedGroups[group] }
+  // Por defecto un grupo arranca plegado — salvo el que contiene la página
+  // activa — para que el menú no muestre 20+ ítems de una. Una vez que el
+  // usuario lo toca a mano, se respeta esa elección en vez del default.
+  const groupContainsActive = (items: WorkspaceNavItem[]) =>
+    items.some((item) => item.id === activeId || item.children?.some((c) => c.id === activeId))
+
+  const isGroupClosed = (group: string | null, items: WorkspaceNavItem[]) => {
+    if (!group) return false
+    const explicit = closedGroups[group]
+    if (explicit !== undefined) return explicit
+    return !groupContainsActive(items)
+  }
+
+  const toggleGroup = (group: string, currentlyClosed: boolean) => {
+    const next = { ...closedGroups, [group]: !currentlyClosed }
     window.localStorage.setItem(GROUPS_KEY, JSON.stringify(next))
     writeStorage()
   }
@@ -172,13 +185,13 @@ export function WorkspaceShell({
   const renderNav = (compact: boolean) => (
     <nav className={cn('flex-1 space-y-4 overflow-y-auto py-3 uc-scroll-thin', compact ? 'px-2' : 'space-y-5 px-3')}>
       {grouped.map((block, i) => {
-        const groupClosed = Boolean(block.group && closedGroups[block.group] && !compact)
+        const groupClosed = !compact && isGroupClosed(block.group, block.items)
         return (
           <div key={`${block.group ?? 'g'}-${i}`}>
             {block.group && !compact ? (
               <button
                 type="button"
-                onClick={() => toggleGroup(block.group!)}
+                onClick={() => toggleGroup(block.group!, groupClosed)}
                 className="mb-1.5 flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[11px] font-semibold text-white/45 hover:bg-white/6 hover:text-white/70"
               >
                 <span>{block.group}</span>
@@ -223,7 +236,7 @@ export function WorkspaceShell({
                             ? 'h-12 justify-center rounded-xl'
                             : 'gap-3 rounded-xl px-2.5 py-3 text-[14px]',
                           isActive
-                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
+                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
                             : childActive
                               ? 'font-semibold text-white'
                               : 'font-medium text-white/75 hover:bg-white/8 hover:text-white',
@@ -233,7 +246,7 @@ export function WorkspaceShell({
                           className={cn(
                             'shrink-0',
                             'h-6 w-6',
-                            isActive || childActive ? 'text-brand-cian-300' : 'text-white/70',
+                            isActive || childActive ? 'text-[#FF8A65]' : 'text-white/70',
                           )}
                         />
                         {compact ? null : (
@@ -264,7 +277,7 @@ export function WorkspaceShell({
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
-                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#20BD5A]'
+                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
                                     : 'font-medium text-white/55 hover:bg-white/6 hover:text-white',
                                 )}
                               >
@@ -345,34 +358,34 @@ export function WorkspaceShell({
       ) : null}
 
       <div className={cn('flex h-svh min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-200', collapsed ? 'md:pl-20' : 'md:pl-[248px]')}>
-        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white px-4 sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
           <button
             type="button"
-            className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted md:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menú"
           >
             <Menu className="h-6 w-6" />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[16px] font-semibold tracking-tight text-brand-navy-800">
+            <div className="truncate text-[16px] font-semibold tracking-tight text-foreground">
               {title || active?.label || meta.homeLabel}
             </div>
-            {subtitle ? <p className="truncate text-[12px] text-slate-500">{subtitle}</p> : null}
+            {subtitle ? <p className="truncate text-[12px] text-muted-foreground">{subtitle}</p> : null}
           </div>
           {onSearchRequest ? (
             <button
               type="button"
               onClick={onSearchRequest}
-              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-left transition hover:border-slate-300 lg:flex"
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-left lg:flex"
             >
-              <Search className="h-4 w-4 text-slate-400" aria-hidden />
-              <span className="flex-1 text-[13px] text-slate-400">Buscar cliente, CUIL, crédito…</span>
-              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono text-slate-400 shadow-2xs">Ctrl K</kbd>
+              <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <span className="flex-1 text-[13px] text-muted-foreground">Buscar cliente, CUIL, crédito…</span>
+              <kbd className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
             </button>
           ) : (
             <form
-              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 transition focus-within:border-brand-primary/50 focus-within:bg-white lg:flex"
+              className="hidden min-w-[220px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2 lg:flex"
               role="search"
               onSubmit={(e) => {
                 e.preventDefault()
@@ -380,16 +393,16 @@ export function WorkspaceShell({
                 if (!q) return
                 const enc = encodeURIComponent(q)
                 if (role === 'merchant') router.push(`/merchant?tab=sales&q=${enc}`)
-                else router.push(`/dashboard?tab=cuotas&q=${enc}`)
+                else router.push(`/dashboard?tab=cuotas_vigentes&q=${enc}`)
               }}
             >
-              <Search className="h-4 w-4 text-slate-400" aria-hidden />
+              <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar créditos, cuotas o trámites"
                 aria-label="Buscar créditos"
-                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
               />
             </form>
           )}
@@ -403,16 +416,16 @@ export function WorkspaceShell({
           <NotificationCenter />
           {clientReady ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl border border-transparent px-2 py-1 transition hover:border-slate-200 hover:bg-slate-50">
+              <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-muted">
                 <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
                 <span className="hidden max-w-[180px] truncate text-left sm:inline">
                   <span className="flex items-center gap-1.5">
-                    <span className="block truncate text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
-                    <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                    <span className="block truncate text-[13px] font-semibold text-foreground">{user.name ?? 'Cuenta'}</span>
+                    <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {role === 'admin' ? 'Admin' : role === 'merchant' ? 'Comercio' : 'Titular'}
                     </span>
                   </span>
-                  <span className="block truncate text-[11px] text-slate-500">{user.email}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{user.email}</span>
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72 p-2">
@@ -421,7 +434,7 @@ export function WorkspaceShell({
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{user.name ?? 'Usuario'}</div>
                     <div className="truncate text-xs text-muted-foreground">{user.email}</div>
-                    <p className="mt-1 text-[11px] text-slate-500">JPG, PNG o WebP · máx. 1,5 MB</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">JPG, PNG o WebP · máx. 1,5 MB</p>
                   </div>
                 </div>
                 {onProfile || accountItems?.length ? (
@@ -461,8 +474,8 @@ export function WorkspaceShell({
             <div className="flex items-center gap-2.5 rounded-xl px-1.5 py-1" aria-hidden>
               <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
               <span className="hidden max-w-[170px] truncate text-left sm:inline">
-                <span className="block text-[13px] font-semibold text-slate-800">{user.name ?? 'Cuenta'}</span>
-                <span className="block text-[11px] text-slate-500">{user.email}</span>
+                <span className="block text-[13px] font-semibold text-foreground">{user.name ?? 'Cuenta'}</span>
+                <span className="block text-[11px] text-muted-foreground">{user.email}</span>
               </span>
             </div>
           )}
@@ -481,11 +494,14 @@ export function WorkspaceShell({
       </div>
 
       {mobileTabs?.length ? (
-        <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
+        <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5">
             {(mobileTabs.length ? mobileTabs : nav).slice(0, 4).map((item) => {
               const Icon = item.icon
-              const on = item.id === activeId
+              const navMatch = nav.find((n) => n.id === item.id)
+              const on =
+                item.id === activeId ||
+                !!navMatch?.children?.some((c) => c.id === activeId)
               return (
                 <button
                   key={item.id}
@@ -493,10 +509,10 @@ export function WorkspaceShell({
                   onClick={() => go(item.id)}
                   className={cn(
                     'flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium',
-                    on ? 'text-brand-primary' : 'text-slate-500',
+                    on ? 'text-brand-primary' : 'text-muted-foreground',
                   )}
                 >
-                  <Icon className={cn('h-6 w-6', on ? 'text-brand-primary' : 'text-slate-400')} />
+                  <Icon className={cn('h-6 w-6', on ? 'text-brand-primary' : 'text-muted-foreground')} />
                   {item.label}
                 </button>
               )
@@ -504,9 +520,9 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium text-slate-500"
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium text-muted-foreground"
             >
-              <LayoutGrid className="h-6 w-6 text-slate-400" />
+              <LayoutGrid className="h-6 w-6 text-muted-foreground" />
               Más
             </button>
           </div>
@@ -530,9 +546,9 @@ export function PageIntro({
   return (
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        {kicker ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{kicker}</p> : null}
-        <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-brand-navy-900 sm:text-[22px]">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm text-slate-500">{description}</p> : null}
+        {kicker ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{kicker}</p> : null}
+        <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground sm:text-[22px]">{title}</h1>
+        {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>

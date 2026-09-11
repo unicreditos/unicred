@@ -1,5 +1,6 @@
-import { mobileSignup } from '@/lib/mobile/auth'
+import { mobileSignup, mobileClientKey } from '@/lib/mobile/auth'
 import { mobileJson, mobileOptions } from '@/lib/mobile/cors'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,10 @@ export function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const limit = await consumeRateLimit(`mobile-signup:${mobileClientKey(req)}`, 5, 60 * 60 * 1000)
+    if (!limit.ok) {
+      return mobileJson(req, { message: 'Demasiados registros desde esta conexión. Probá más tarde.' }, { status: 429 })
+    }
     const body = (await req.json().catch(() => null)) as {
       email?: string
       password?: string

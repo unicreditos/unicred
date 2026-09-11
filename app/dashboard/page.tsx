@@ -13,6 +13,7 @@ import {
   disbursement,
   bcraCheck,
 } from '@/lib/db/schema'
+import { estimateAvailableCreditLine } from '@/lib/mobile/data'
 import { getOrCreateProfile, getSession, requireCustomer } from '@/lib/session'
 import { desc, eq, and } from 'drizzle-orm'
 import { Suspense } from 'react'
@@ -170,6 +171,10 @@ export default async function DashboardPage() {
   }))
 
   const kycPct = computeKycPct(prof as any)
+  const preapprovedAmount = await estimateAvailableCreditLine(
+    userId,
+    (prof as any)?.creditScore ?? lastBcraCheck?.computedScore ?? null,
+  ).catch(() => null)
 
   return (
     <Suspense fallback={<DashboardLoading />}>
@@ -182,6 +187,7 @@ export default async function DashboardPage() {
       upcomingInstallments={upcomingInstallments as any}
       kpiTotals={kpiTotals}
       kycPct={kycPct}
+      preapprovedAmount={preapprovedAmount}
       bankAccounts={bankAccounts as any}
       myKyc={myKyc as any}
       contracts={contracts as any}

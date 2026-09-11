@@ -1,6 +1,6 @@
 'use server'
 
-import { listArcaInvoices, retryArcaInvoice } from '@/lib/arca/invoice'
+import { listArcaInvoices, emitArcaInvoice } from '@/lib/arca/invoice'
 import { requireAdmin } from '@/lib/session'
 import { revalidateOps } from '@/lib/revalidate'
 
@@ -25,9 +25,10 @@ export async function getArcaInvoices() {
   }))
 }
 
-export async function retryArcaInvoiceAdmin(id: string) {
+/** Emite (o reintenta) contra ARCA una factura en cola o que falló. Siempre a mano, nunca automático. */
+export async function emitArcaInvoiceAdmin(id: string) {
   await requireAdmin()
-  const result = await retryArcaInvoice(id)
+  const result = await emitArcaInvoice(id)
   revalidateOps()
   return result
 }

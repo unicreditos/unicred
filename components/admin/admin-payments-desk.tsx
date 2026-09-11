@@ -2,6 +2,7 @@
 
 import type { AdminPaymentsDesk } from '@/app/actions/admin-cases'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -54,19 +55,19 @@ export function AdminPaymentsDesk({ desk }: { desk: AdminPaymentsDesk }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select
-          className="h-8 rounded-md border border-input bg-card px-3 text-xs"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          aria-label="Filtrar por estado"
-        >
-          <option value="all">Todos los estados</option>
-          <option value="paid">Acreditados</option>
-          <option value="pending">Pendientes</option>
-          <option value="processing">En proceso</option>
-          <option value="pending_review">A verificar</option>
-          <option value="failed">Rechazados</option>
-        </select>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
+          <SelectTrigger size="sm" className="text-xs" aria-label="Filtrar por estado">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="paid">Acreditados</SelectItem>
+            <SelectItem value="pending">Pendientes</SelectItem>
+            <SelectItem value="processing">En proceso</SelectItem>
+            <SelectItem value="pending_review">A verificar</SelectItem>
+            <SelectItem value="failed">Rechazados</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="text-[11px] text-muted-foreground">
           {filtered.length} de {desk.rows.length}
         </span>

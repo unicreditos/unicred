@@ -61,6 +61,10 @@ export function AdminDashboard({
   opsDesk,
   payments,
   opsConfig = null,
+  myPermissions = [],
+  adminRoles = [],
+  riskRuleVersions = [],
+  dataErrors = [],
 }: {
   user: {
     id: string
@@ -85,6 +89,10 @@ export function AdminDashboard({
   opsDesk: AdminOpsDesk
   payments?: AdminPaymentsDesk
   opsConfig?: AdminOpsConfig | null
+  myPermissions?: string[]
+  adminRoles?: any[]
+  riskRuleVersions?: any[]
+  dataErrors?: string[]
 }) {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -98,9 +106,10 @@ export function AdminDashboard({
   const counts = useMemo(
     () => ({
       pendingLoans: loans.filter((l) => l.status === 'pending').length,
-      pendingKyc: kycList.filter((k: { status: string }) =>
-        ['pending_review', 'pending', 'reviewing', 'submitted', 'in_review'].includes(k.status),
-      ).length,
+      // El detalle completo de KYC solo viaja en la pestaña Identidad/Dashboard
+      // (ver needsKyc en admin/page.tsx); el badge del sidebar usa el conteo
+      // liviano que ya viene siempre en stats.kyc.
+      pendingKyc: stats.kyc?.pending ?? 0,
       overdue: opsDesk.kpis.overdueCount,
       pendingDisb: disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
         .length,
@@ -110,7 +119,7 @@ export function AdminDashboard({
         disbursementList.filter((d: { status: string }) => d.status === 'pending' || d.status === 'processing')
           .length + (opsDesk.kpis.pendingReview ?? 0),
     }),
-    [loans, kycList, opsDesk.kpis.overdueCount, opsDesk.kpis.pendingReview, disbursementList, merchants],
+    [loans, stats.kyc?.pending, opsDesk.kpis.overdueCount, opsDesk.kpis.pendingReview, disbursementList, merchants],
   )
 
   return (
@@ -136,6 +145,12 @@ export function AdminDashboard({
         merchants={merchants}
         onNavigate={go}
       />
+      {dataErrors.length > 0 ? (
+        <div className="mx-3 mt-3 shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-[12px] text-destructive sm:mx-4">
+          <span className="font-semibold">No se pudo cargar: {dataErrors.join(', ')}.</span>{' '}
+          Los datos de esas secciones pueden estar en 0 o incompletos, no reflejan necesariamente la realidad — recargá la página.
+        </div>
+      ) : null}
       <AdminContent
         activeTab={tab}
         personaId={personaId}
@@ -156,6 +171,9 @@ export function AdminDashboard({
         onNavigate={go}
         payments={payments}
         opsConfig={opsConfig}
+        myPermissions={myPermissions}
+        adminRoles={adminRoles}
+        riskRuleVersions={riskRuleVersions}
       />
     </AdminAppShell>
   )

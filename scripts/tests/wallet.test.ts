@@ -44,7 +44,7 @@ describe('Billetera virtual CVU', () => {
     assert.throws(() => parseWalletDestination('xx'))
   })
 
-  it('el riel de tesorería RM queda en cola si no hay Payway live', async () => {
+  it('el riel de tesorería RM queda en cola si no hay Pomelo live', async () => {
     const { executeExternalRail } = await import('../../lib/payments/wallet-rail')
     const result = await executeExternalRail({
       reference: 'UC-OUT-TEST',
@@ -55,7 +55,7 @@ describe('Billetera virtual CVU', () => {
       concept: 'Prueba',
     })
     assert.equal(result.ok, true)
-    assert.ok(result.rail === 'treasury_rm' || result.rail === 'payway' || result.rail === 'pomelo')
+    assert.ok(result.rail === 'treasury_rm' || result.rail === 'pomelo')
     assert.ok(typeof result.message === 'string')
   })
 })

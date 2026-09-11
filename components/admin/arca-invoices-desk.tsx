@@ -1,11 +1,26 @@
 'use client'
 
-import { getArcaInvoices, retryArcaInvoiceAdmin } from '@/app/actions/arca-invoices'
+import { getArcaInvoices, emitArcaInvoiceAdmin } from '@/app/actions/arca-invoices'
 import { Button } from '@/components/ui/button'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
 import { formatARSDecimal } from '@/lib/finance'
 import { useEffect, useState, useTransition } from 'react'
 
 type Invoice = Awaited<ReturnType<typeof getArcaInvoices>>[number]
+
+const STATUS_LABEL: Record<string, string> = {
+  queued: 'En cola',
+  failed: 'Falló',
+  authorized: 'Autorizada',
+  pending_cae: 'En cola',
+}
+
+const STATUS_CLASS: Record<string, string> = {
+  queued: 'bg-muted text-muted-foreground',
+  failed: 'bg-destructive/10 text-destructive',
+  authorized: 'bg-emerald-500/10 text-emerald-700',
+  pending_cae: 'bg-muted text-muted-foreground',
+}
 
 export function ArcaInvoicesDesk() {
   const [rows, setRows] = useState<Invoice[]>([])
@@ -22,19 +37,16 @@ export function ArcaInvoicesDesk() {
   }, [])
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-brand-navy-900">Factura electrónica ARCA</h2>
-          <p className="text-xs text-muted-foreground">
-            IVA 21% sobre intereses de cada cuota cobrada. El recibo interno queda como anexo. Sin CAE,
-            la fila queda en cola.
-          </p>
-        </div>
+    <SectionCard
+      title="Factura electrónica ARCA"
+      description="IVA 21% sobre intereses de cada cuota cobrada. El cálculo se pone en cola solo; emitir contra ARCA es manual."
+      bodyClassName=""
+      action={
         <Button type="button" size="sm" variant="outline" disabled={pending} onClick={load}>
           Actualizar
         </Button>
-      </header>
+      }
+    >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-muted text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -58,7 +70,11 @@ export function ArcaInvoicesDesk() {
             ) : (
               rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="px-4 py-3">{row.status}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_CLASS[row.status] ?? 'bg-muted text-muted-foreground'}`}>
+                      {STATUS_LABEL[row.status] ?? row.status}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{row.cae ?? '—'}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatARSDecimal(row.impNeto)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatARSDecimal(row.impIva)}</td>
@@ -73,12 +89,12 @@ export function ArcaInvoicesDesk() {
                         disabled={pending}
                         onClick={() =>
                           start(async () => {
-                            await retryArcaInvoiceAdmin(row.id)
+                            await emitArcaInvoiceAdmin(row.id)
                             setRows(await getArcaInvoices())
                           })
                         }
                       >
-                        Reintentar CAE
+                        {row.status === 'failed' ? 'Reintentar' : 'Emitir'}
                       </Button>
                     ) : null}
                   </td>
@@ -88,6 +104,6 @@ export function ArcaInvoicesDesk() {
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   )
 }

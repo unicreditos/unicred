@@ -27,15 +27,9 @@ export async function GET() {
     bcra = 'error'
   }
 
-  // Payway es solo referencia de diseño; cobro/billetera = API propia UNICRÉDITOS.
+  // Cobro/billetera = API propia UNICRÉDITOS (+ Mercado Pago).
   const wallet = 'native' as const
-  let paywayRef: 'configured' | 'absent' = 'absent'
-  try {
-    const { getPaywayConfig } = await import('@/lib/payway')
-    paywayRef = getPaywayConfig().configured ? 'configured' : 'absent'
-  } catch {
-    paywayRef = 'absent'
-  }
+  const paywayRef = 'absent' as const
 
   let dbHost = 'none'
   try {

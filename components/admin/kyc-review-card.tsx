@@ -2,6 +2,7 @@
 
 import { refreshKycDidit, setKYCStatus } from '@/app/actions/kyc'
 import { adminUrl } from '@/lib/admin-nav'
+import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -77,19 +78,32 @@ function formatDate(d: Date | string | null | undefined) {
 }
 
 function statusBadge(s: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: 'Pendiente', cls: 'bg-amber-500/15 text-amber-700 border-amber-200/60' },
-    reviewing: { label: 'En revisión', cls: 'bg-sky-500/15 text-sky-700 border-sky-200/60' },
-    submitted: { label: 'Enviado', cls: 'bg-sky-500/15 text-sky-700 border-sky-200/60' },
-    approved: { label: 'Aprobado', cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-200/60' },
-    rejected: { label: 'Rechazado', cls: 'bg-rose-500/15 text-rose-700 border-rose-200/60' },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    pending: { label: 'Pendiente', tone: 'warning' },
+    reviewing: { label: 'En revisión', tone: 'info' },
+    submitted: { label: 'Enviado', tone: 'info' },
+    approved: { label: 'Aprobado', tone: 'success' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
   }
-  const cfg = map[s] ?? { label: s, cls: 'bg-muted text-slate-700' }
-  return (
-    <Badge variant="outline" className={cn('border text-[11px]', cfg.cls)}>
-      {cfg.label}
-    </Badge>
-  )
+  const cfg = map[s] ?? { label: s, tone: 'neutral' as const }
+  return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
+}
+
+/**
+ * `kyc.status` es nuestra decisión interna; `kyc.diditStatus` es el estado
+ * crudo de la sesión en Didit. Cuando ya están sincronizados (el caso común:
+ * aprobamos apenas Didit aprueba) mostrar los dos badges es repetir la misma
+ * info dos veces ("Aprobado" + "Sesión Approved"). Solo vale la pena mostrar
+ * el estado crudo de Didit cuando difiere del nuestro — ahí sí es una señal
+ * nueva para el admin (p. ej. Didit ya aprobó pero todavía no lo confirmamos).
+ */
+function diditStatusIsRedundant(status: string, diditStatus: string): boolean {
+  const equivalents: Record<string, string[]> = {
+    approved: ['approved'],
+    rejected: ['declined', 'kyc expired'],
+  }
+  const normalized = diditStatus.trim().toLowerCase()
+  return (equivalents[status] ?? []).includes(normalized)
 }
 
 function DocPreview({ label, url, icon }: { label: string; url: string | null; icon: React.ReactNode }) {
@@ -154,9 +168,9 @@ export function KYCReviewCard({ kyc }: { kyc: KYCAdminRow }) {
                 <Badge variant="outline" className="text-[10px]">
                   {kyc.provider === 'didit' ? 'Didit' : kyc.provider ?? 'sin proveedor'}
                 </Badge>
-                {kyc.diditStatus ? (
+                {kyc.diditStatus && !diditStatusIsRedundant(kyc.status, kyc.diditStatus) ? (
                   <Badge variant="outline" className="text-[10px]">
-                    Sesión {kyc.diditStatus}
+                    Sesión Didit: {kyc.diditStatus}
                   </Badge>
                 ) : null}
               </div>
@@ -250,7 +264,7 @@ export function KYCReviewCard({ kyc }: { kyc: KYCAdminRow }) {
 
       {kyc.rejectionReason ? (
         <CardContent className="pt-0">
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
             <strong>Motivo de rechazo:</strong> {kyc.rejectionReason}
           </div>
         </CardContent>

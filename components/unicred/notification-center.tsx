@@ -79,21 +79,8 @@ export function NotificationCenter() {
       void pull()
     }, BADGE_POLL_MS)
 
-    let source: EventSource | null = null
-    if (typeof EventSource !== 'undefined') {
-      source = new EventSource('/api/notifications/stream')
-      source.onmessage = (event) => {
-        try {
-          apply(JSON.parse(event.data) as InboxPayload)
-        } catch {
-          /* payload incompleto */
-        }
-      }
-    }
-
     return () => {
       clearInterval(poll)
-      source?.close()
     }
   }, [])
 
