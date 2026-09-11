@@ -359,6 +359,7 @@ export async function getChequeDenunciado(
 
 export type ChequeRechazado = {
   entidad?: string
+  codigoEntidad?: number
   nroCheque?: string | number
   fechaRechazo?: string
   fechaPago?: string
@@ -366,6 +367,46 @@ export type ChequeRechazado = {
   causal?: string
   enRevision?: boolean
   procesoJud?: boolean
+  sucursal?: number | null
+  numeroCuenta?: number | string | null
+  estadoMulta?: string | null
+  fechaPagoMulta?: string | null
+  ctaPersonal?: boolean
+  denomJuridica?: string | null
+}
+
+/**
+ * Enriquece cada cheque con la denuncia puntual (sucursal, cta.) desde
+ * /cheques/v1.0/denunciados/{entidad}/{nroCheque}. Es un llamado por cheque,
+ * así que va en paralelo y con tope: un informe no puede colgarse esperando
+ * decenas de cheques, y si la denuncia puntual falla el resumen ya obtenido
+ * (causal/fecha/monto) sigue siendo válido.
+ */
+async function enrichConDenuncia(cheques: ChequeRechazado[]): Promise<ChequeRechazado[]> {
+  const MAX_ENRICH = 20
+  const targets = cheques.filter((c) => c.codigoEntidad && c.nroCheque).slice(0, MAX_ENRICH)
+  if (!targets.length) return cheques
+
+  const results = await Promise.allSettled(
+    targets.map((c) => getChequeDenunciado(c.codigoEntidad as number, c.nroCheque as number | string)),
+  )
+  const byKey = new Map<string, ChequeDenunciado>()
+  targets.forEach((c, i) => {
+    const r = results[i]
+    if (r.status === 'fulfilled' && r.value.found) byKey.set(`${c.codigoEntidad}:${c.nroCheque}`, r.value)
+  })
+
+  return cheques.map((c) => {
+    const denuncia = c.codigoEntidad && c.nroCheque ? byKey.get(`${c.codigoEntidad}:${c.nroCheque}`) : undefined
+    const detalle = denuncia?.detalles?.[0]
+    if (!detalle) return c
+    return {
+      ...c,
+      sucursal: detalle.sucursal ?? null,
+      numeroCuenta: detalle.numeroCuenta ?? null,
+      causal: c.causal ?? detalle.causal ?? undefined,
+    }
+  })
 }
 
 export type ChequesRechazadosResumen = {
@@ -376,6 +417,20 @@ export type ChequesRechazadosResumen = {
   cheques: ChequeRechazado[]
 }
 
+let _entidadesCache: Map<number, string> | null = null
+async function entidadNombre(codigo: number): Promise<string> {
+  if (!_entidadesCache) {
+    const list = await getChequesEntidades()
+    _entidadesCache = new Map(list.map((e) => [e.codigoEntidad, e.denominacion]))
+  }
+  return _entidadesCache.get(codigo) || `Entidad ${codigo}`
+}
+
+/**
+ * La Central de Deudores anida el detalle real (nro. de cheque, fechas, monto)
+ * dos niveles abajo: causales[].entidades[].detalle[]. La entidad viene como
+ * código numérico (no nombre), hay que resolverlo contra /cheques/v1.0/entidades.
+ */
 export async function getChequesRechazados(cuit: string): Promise<ChequesRechazadosResumen> {
   const clean = normalizeCuit(cuit)
   const empty: ChequesRechazadosResumen = {
@@ -392,16 +447,35 @@ export async function getChequesRechazados(cuit: string): Promise<ChequesRechaza
     `/CentralDeDeudores/v1.0/Deudas/ChequesRechazados/${clean}`,
   ]
 
-  const pushCheque = (cheques: ChequeRechazado[], e: any, causalName?: string) => {
+  // A diferencia de "Deudas" (que informa en miles de pesos), el detalle de
+  // ChequesRechazados viene en pesos corrientes — no reescalar acá.
+  const numAmount = (v: unknown): number | undefined => {
+    if (v == null) return undefined
+    const n = typeof v === 'number' ? v : Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+
+  const pushCheque = async (
+    cheques: ChequeRechazado[],
+    entidadObj: any,
+    detalle: any,
+    causalName?: string,
+  ) => {
+    const codigoEntidad = Number(entidadObj?.entidad ?? entidadObj?.codigoEntidad ?? 0) || undefined
     cheques.push({
-      entidad: e?.entidad ?? e?.nombreEntidad,
-      nroCheque: e?.nroCheque ?? e?.numeroCheque ?? e?.numero,
-      fechaRechazo: e?.fechaRechazo ?? e?.fecha,
-      fechaPago: e?.fechaPago ?? undefined,
-      monto: typeof e?.monto === 'number' ? e.monto * 1000 : e?.monto != null ? Number(e.monto) * 1000 : undefined,
-      causal: causalName ?? e?.causal,
-      enRevision: flag(e?.enRevision ?? e?.revisionPersonal),
-      procesoJud: flag(e?.procesoJud),
+      entidad: codigoEntidad ? await entidadNombre(codigoEntidad) : (entidadObj?.entidad ?? entidadObj?.nombreEntidad ?? detalle?.entidad),
+      codigoEntidad,
+      nroCheque: detalle?.nroCheque ?? detalle?.numeroCheque ?? detalle?.numero,
+      fechaRechazo: detalle?.fechaRechazo ?? detalle?.fecha,
+      fechaPago: detalle?.fechaPago ?? undefined,
+      monto: numAmount(detalle?.monto),
+      causal: causalName ?? detalle?.causal,
+      enRevision: flag(detalle?.enRevision ?? detalle?.revisionPersonal ?? entidadObj?.enRevision),
+      procesoJud: flag(detalle?.procesoJud ?? entidadObj?.procesoJud),
+      estadoMulta: detalle?.estadoMulta ?? null,
+      fechaPagoMulta: detalle?.fechaPagoMulta ?? null,
+      ctaPersonal: detalle?.ctaPersonal != null ? flag(detalle.ctaPersonal) : undefined,
+      denomJuridica: detalle?.denomJuridica ?? null,
     })
   }
 
@@ -416,18 +490,26 @@ export async function getChequesRechazados(cuit: string): Promise<ChequesRechaza
       for (const c of causales) {
         const causalName = c?.causal ?? c?.descripcion ?? undefined
         const entidades = c?.entidades ?? c?.detalle ?? [c]
-        for (const e of Array.isArray(entidades) ? entidades : []) pushCheque(cheques, e, causalName)
+        for (const ent of Array.isArray(entidades) ? entidades : []) {
+          const detalleList = Array.isArray(ent?.detalle)
+            ? ent.detalle
+            : Array.isArray(ent?.detalles)
+              ? ent.detalles
+              : [ent]
+          for (const d of detalleList) await pushCheque(cheques, ent, d, causalName)
+        }
       }
     }
     if (Array.isArray(results?.cheques)) {
-      for (const e of results.cheques) pushCheque(cheques, e)
+      for (const e of results.cheques) await pushCheque(cheques, e, e)
     }
+    const enriched = cheques.length ? await enrichConDenuncia(cheques) : cheques
     return {
-      found: cheques.length > 0 || Boolean(results?.identificacion || results?.denominacion),
+      found: enriched.length > 0 || Boolean(results?.identificacion || results?.denominacion),
       unavailable: false,
       denominacion: results?.denominacion ?? null,
-      count: cheques.length,
-      cheques,
+      count: enriched.length,
+      cheques: enriched,
     }
   }
 
