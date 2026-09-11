@@ -45,7 +45,7 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Total Créditos',
       value: stats.loans.total.toLocaleString('es-AR'),
       icon: CreditCard,
-      iconBg: 'bg-brand-primary/10 text-brand-primary',
+      iconBg: 'bg-muted text-muted-foreground',
       footer: `${pct(stats.loans.active + (stats.loans.paid ?? 0), stats.loans.total)}% cartera viva`,
     },
     {
@@ -73,14 +73,14 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Pagados',
       value: (stats.loans.paid ?? 0).toLocaleString('es-AR'),
       icon: ShieldCheck,
-      iconBg: 'bg-brand-cian/10 text-brand-cian-700',
+      iconBg: 'bg-emerald-500/10 text-emerald-600',
       footer: 'Finalizados OK',
     },
     {
       title: 'Volumen Desembolsado',
       value: formatARS(stats.loans.volume),
       icon: Wallet,
-      iconBg: 'bg-brand-indigo/10 text-brand-indigo',
+      iconBg: 'bg-muted text-muted-foreground',
       footer: `Ticket prom. ${stats.loans.active ? formatARS(stats.loans.volume / (stats.loans.active + (stats.loans.paid ?? 0))) : '—'}`,
     },
   ]
@@ -90,25 +90,25 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Usuarios Totales',
       value: stats.users.total.toLocaleString('es-AR'),
       icon: Users,
-      iconBg: 'bg-brand-navy/10 text-brand-navy',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Clientes',
       value: stats.users.customers.toLocaleString('es-AR'),
       icon: CreditCard,
-      iconBg: 'bg-brand-primary/10 text-brand-primary',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Comercios',
       value: stats.users.merchants.toLocaleString('es-AR'),
       icon: Store,
-      iconBg: 'bg-emerald-500/10 text-emerald-600',
+      iconBg: 'bg-muted text-muted-foreground',
     },
     {
       title: 'Administradores',
       value: stats.users.admins.toLocaleString('es-AR'),
       icon: ShieldCheck,
-      iconBg: 'bg-brand-indigo/10 text-brand-indigo',
+      iconBg: 'bg-muted text-muted-foreground',
     },
   ]
 
@@ -117,8 +117,8 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
       title: 'Comercios Totales',
       value: stats.merchants.total.toLocaleString('es-AR'),
       icon: Building2,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
+      color: 'text-muted-foreground',
+      bg: 'bg-muted',
     },
     {
       title: 'Activos',
@@ -224,9 +224,9 @@ export function SummaryCards({ stats }: { stats: StatsData }) {
                 <div className="mb-1 text-xs text-muted-foreground">Rech</div>
                 <div className="text-lg font-bold tabular-nums text-destructive">{stats.loans.rejected}</div>
               </div>
-              <div className="rounded-lg bg-brand-cian/10 p-3 text-center">
+              <div className="rounded-lg bg-emerald-500/10 p-3 text-center">
                 <div className="mb-1 text-xs text-muted-foreground">Pag</div>
-                <div className="text-lg font-bold tabular-nums text-brand-cian-700">{stats.loans.paid ?? 0}</div>
+                <div className="text-lg font-bold tabular-nums text-emerald-600">{stats.loans.paid ?? 0}</div>
               </div>
             </div>
           </div>

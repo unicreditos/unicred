@@ -1,7 +1,6 @@
 import { LoanSimulator } from '@/components/loan-simulator'
 import { Button } from '@/components/ui/button'
 import { getAccountHref } from '@/lib/session'
-import { cn } from '@/lib/utils'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
 import { BRAND } from '@/lib/brand'
@@ -122,19 +121,19 @@ export default async function HomePage() {
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute -right-24 bottom-0 h-[360px] w-[420px] rounded-full bg-brand-cian/10 blur-3xl"
+            className="pointer-events-none absolute -right-24 bottom-0 h-[360px] w-[420px] rounded-full bg-white/[0.03] blur-3xl"
             aria-hidden
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
             <div className="lg:col-span-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-cian-200">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
               </p>
               <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-white sm:text-[46px] lg:text-[52px]">
                 Un crédito que se entiende antes de pedirlo.
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-snug text-brand-cian-100">
+              <p className="mt-5 max-w-lg text-lg leading-snug text-white/85">
                 {BRAND.valueProp}
               </p>
               <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75">
@@ -153,7 +152,7 @@ export default async function HomePage() {
                       key={p.t}
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[12px] font-semibold text-white/85"
                     >
-                      <Icon className="h-3.5 w-3.5 text-brand-primary-300" />
+                      <Icon className="h-3.5 w-3.5 text-white/60" />
                       {p.t}
                     </span>
                   )
@@ -161,15 +160,15 @@ export default async function HomePage() {
               </div>
               <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-cian-200">Hasta</dt>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Hasta</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-white">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
                 <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-cian-200">Cuotas</dt>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Cuotas</dt>
                   <dd className="mt-1 text-base font-bold text-white">3 a 48 fijas</dd>
                 </div>
                 <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-cian-200">Primer crédito</dt>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Primer crédito</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-white">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
                 </div>
               </dl>
@@ -177,7 +176,7 @@ export default async function HomePage() {
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-full bg-gradient-to-r from-brand-primary to-brand-amber px-7 font-bold text-white shadow-lg shadow-brand-primary/25 transition hover:brightness-[1.06]"
+                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-black/20 hover:bg-brand-primary-600"
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
@@ -193,7 +192,7 @@ export default async function HomePage() {
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-full bg-gradient-to-r from-brand-primary to-brand-amber px-7 font-bold text-white shadow-lg shadow-brand-primary/25 transition hover:brightness-[1.06]"
+                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-black/20 hover:bg-brand-primary-600"
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
@@ -234,7 +233,7 @@ export default async function HomePage() {
                       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-700 text-white shadow-md shadow-brand-primary/25">
                         <Icon className="h-6 w-6" />
                       </span>
-                      <span className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-amber">
+                      <span className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                         Paso 0{idx + 1}/04
                       </span>
                       <h3 className="mt-2 text-sm font-bold text-brand-navy">{s.t}</h3>
@@ -257,22 +256,14 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {benefits.map((b, idx) => {
+              {benefits.map((b) => {
                 const Icon = b.icon
-                const amber = idx % 2 === 1
                 return (
                   <div
                     key={b.t}
                     className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <span
-                      className={cn(
-                        'mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ring-1',
-                        amber
-                          ? 'bg-brand-amber/10 text-brand-amber ring-brand-amber/15'
-                          : 'bg-brand-primary-50 text-brand-primary ring-brand-primary/10',
-                      )}
-                    >
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
                       <Icon className="h-6 w-6" />
                     </span>
                     <h3 className="mt-4 text-sm font-bold text-brand-navy">{b.t}</h3>
@@ -296,31 +287,20 @@ export default async function HomePage() {
                 No hace falta que ya seas cliente de ningún banco. Con tu DNI y una cuenta a tu nombre alcanza para
                 empezar la solicitud.
               </p>
-              <Button
-                asChild
-                className="mt-6 rounded-full bg-gradient-to-r from-brand-primary to-brand-amber font-bold text-white shadow-md shadow-brand-primary/20 transition hover:brightness-[1.06]"
-              >
+              <Button asChild className="mt-6 rounded-full bg-brand-primary font-bold text-white hover:bg-brand-primary-600">
                 <Link href="/sign-up">Empezar solicitud</Link>
               </Button>
             </div>
             <div className="lg:col-span-7">
               <div className="grid gap-4 sm:grid-cols-2">
-                {requirements.map((r, idx) => {
+                {requirements.map((r) => {
                   const Icon = r.icon
-                  const amber = idx % 2 === 1
                   return (
                     <div
                       key={r.t}
                       className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
                     >
-                      <span
-                        className={cn(
-                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1',
-                          amber
-                            ? 'bg-brand-amber/10 text-brand-amber ring-brand-amber/15'
-                            : 'bg-brand-primary-50 text-brand-primary ring-brand-primary/10',
-                        )}
-                      >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
                         <Icon className="h-5 w-5" />
                       </span>
                       <div>

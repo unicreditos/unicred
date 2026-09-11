@@ -636,7 +636,7 @@ export function DashboardTabsWrapper({
                         <span
                           className={cn(
                             'flex h-9 w-9 items-center justify-center rounded-xl',
-                            m.kind === 'in' ? 'bg-brand-indigo/10 text-brand-indigo' : 'bg-emerald-50 text-emerald-700',
+                            m.kind === 'in' ? 'bg-muted text-muted-foreground' : 'bg-emerald-50 text-emerald-700',
                           )}
                         >
                           {m.kind === 'in' ? <Banknote className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -812,7 +812,7 @@ export function DashboardTabsWrapper({
                 <SectionCard
                   title="Contacto"
                   description="Atención remota de lunes a viernes, 9 a 18 hs."
-                  icon={<Handshake className="h-4 w-4 text-brand-cian" />}
+                  icon={<Handshake className="h-4 w-4" />}
                 >
                   <div className="space-y-2.5 text-sm">
                     {[
