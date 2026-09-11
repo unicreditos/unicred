@@ -1,4 +1,5 @@
 import { getAFIPCredentials, getTicketAcceso } from '@/lib/arca/wsaa'
+import { getActivePtoVta } from '@/lib/arca/config'
 
 const WSFE = {
   testing: 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL',
@@ -28,9 +29,13 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
-export function wsfePointOfSale() {
-  const n = Number(process.env.AFIP_PTO_VTA || '1')
-  return Number.isInteger(n) && n > 0 ? n : 1
+/** Punto de venta vigente, configurado desde Sistema → Facturación ARCA. Nunca cae a un default silencioso. */
+export async function wsfePointOfSale(): Promise<number> {
+  const ptoVta = await getActivePtoVta()
+  if (!ptoVta) {
+    throw new Error('No hay punto de venta configurado. Configuralo en Sistema → Facturación ARCA antes de emitir.')
+  }
+  return ptoVta
 }
 
 export function wsfeConfigured() {
@@ -65,7 +70,7 @@ export async function emitFacturaBInterest(input: {
     return { ok: false, error: 'No hay interés gravado para facturar.' }
   }
 
-  const ptoVta = wsfePointOfSale()
+  const ptoVta = await wsfePointOfSale()
   const cbteTipo = 6
   const ticket = await getTicketAcceso('wsfe')
   const soap = await import('soap')

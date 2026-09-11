@@ -579,6 +579,19 @@ export const arcaInvoice = pgTable('arca_invoice', {
   uniqueIndex('arca_invoice_installment_unique').on(t.installmentId),
 ])
 
+/** Punto de venta WsFE, versionado — igual patrón que risk_rule_version: nunca se edita una fila, cada cambio es una versión nueva. */
+export const arcaSalesPointVersion = pgTable('arca_sales_point_version', {
+  id: text('id').primaryKey(),
+  version: integer('version').notNull(),
+  isActive: boolean('isActive').notNull().default(false),
+  ptoVta: integer('ptoVta').notNull(),
+  notes: text('notes'),
+  createdBy: text('createdBy').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  index('arca_sales_point_version_active_idx').on(t.isActive),
+])
+
 /* -------------------------- Métodos de Pago Guardados --------------------- */
 
 export const savedPaymentMethod = pgTable('saved_payment_method', {

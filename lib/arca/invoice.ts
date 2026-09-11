@@ -1,11 +1,12 @@
-import { emitFacturaBInterest, wsfePointOfSale } from '@/lib/arca/wsfe'
+import { emitFacturaBInterest } from '@/lib/arca/wsfe'
+import { getActivePtoVta } from '@/lib/arca/config'
 import { db } from '@/lib/db'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { arcaInvoice, installment, loan, paymentReceipt, profile } from '@/lib/db/schema'
 import { IVA_INTERESES } from '@/lib/finance'
 import { frenchInstallmentSplit } from '@/lib/legal/money-words'
 import { newId } from '@/lib/session'
-import { and, desc, eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
@@ -23,12 +24,18 @@ export function interestInvoiceAmounts(opts: {
   return { impNeto, impIva, impTotal: round2(impNeto + impIva) }
 }
 
-export async function issueInterestInvoiceForInstallment(installmentId: string) {
+/**
+ * Arma la factura de intereses y la deja en cola ('queued') apenas se cobra la
+ * cuota. NO llama a ARCA/AFIP — eso lo dispara un admin a mano desde el panel
+ * (emitArcaInvoice), justo como en Emitia: el cálculo es automático, el envío
+ * que consume numeración oficial es manual.
+ */
+export async function queueInterestInvoiceForInstallment(installmentId: string) {
   await ensureOriginacionSchema()
   const [inst] = await db.select().from(installment).where(eq(installment.id, installmentId)).limit(1)
   if (!inst) return { ok: false as const, error: 'Cuota no encontrada.' }
   if (inst.status !== 'paid') {
-    return { ok: false as const, error: 'La factura de intereses se emite al cobrar la cuota.' }
+    return { ok: false as const, error: 'La factura de intereses se pone en cola al cobrar la cuota.' }
   }
 
   const [existing] = await db
@@ -36,7 +43,7 @@ export async function issueInterestInvoiceForInstallment(installmentId: string) 
     .from(arcaInvoice)
     .where(eq(arcaInvoice.installmentId, installmentId))
     .limit(1)
-  if (existing?.status === 'authorized' && existing.cae) {
+  if (existing) {
     return { ok: true as const, invoiceId: existing.id, already: true }
   }
 
@@ -60,31 +67,47 @@ export async function issueInterestInvoiceForInstallment(installmentId: string) 
   }
 
   const now = new Date()
-  const id = existing?.id ?? newId('fe')
-  if (!existing) {
-    await db.insert(arcaInvoice).values({
-      id,
-      userId: inst.userId,
-      loanId: inst.loanId,
-      installmentId,
-      cbteTipo: 6,
-      ptoVta: wsfePointOfSale(),
-      docTipo: 80,
-      docNro,
-      impNeto: String(amounts.impNeto),
-      impIva: String(amounts.impIva),
-      impTotal: String(amounts.impTotal),
-      status: 'pending_cae',
-      createdAt: now,
-      updatedAt: now,
-    })
+  const id = newId('fe')
+  // Punto de venta informativo al encolar; el real (por si cambió) se relee al emitir.
+  const ptoVtaHint = (await getActivePtoVta()) ?? 0
+  await db.insert(arcaInvoice).values({
+    id,
+    userId: inst.userId,
+    loanId: inst.loanId,
+    installmentId,
+    cbteTipo: 6,
+    ptoVta: ptoVtaHint,
+    docTipo: 80,
+    docNro,
+    impNeto: String(amounts.impNeto),
+    impIva: String(amounts.impIva),
+    impTotal: String(amounts.impTotal),
+    status: 'queued',
+    createdAt: now,
+    updatedAt: now,
+  })
+  return { ok: true as const, invoiceId: id }
+}
+
+/**
+ * Emite de verdad contra ARCA/AFIP una factura ya encolada ('queued') o que
+ * falló antes ('failed'). Siempre disparado a mano por un admin — nunca
+ * automático — porque consume un número de comprobante oficial.
+ */
+export async function emitArcaInvoice(invoiceId: string) {
+  await ensureOriginacionSchema()
+  const [row] = await db.select().from(arcaInvoice).where(eq(arcaInvoice.id, invoiceId)).limit(1)
+  if (!row) return { ok: false as const, error: 'Factura no encontrada.' }
+  if (row.status === 'authorized' && row.cae) {
+    return { ok: true as const, invoiceId: row.id, already: true }
   }
 
+  const now = new Date()
   try {
     const emitted = await emitFacturaBInterest({
-      docNro,
-      impNeto: amounts.impNeto,
-      impIva: amounts.impIva,
+      docNro: row.docNro,
+      impNeto: Number(row.impNeto),
+      impIva: Number(row.impIva),
     })
     if (emitted.ok) {
       await db
@@ -100,28 +123,28 @@ export async function issueInterestInvoiceForInstallment(installmentId: string) 
           issuedAt: now,
           updatedAt: now,
         })
-        .where(eq(arcaInvoice.id, id))
-      return { ok: true as const, invoiceId: id }
+        .where(eq(arcaInvoice.id, invoiceId))
+      return { ok: true as const, invoiceId }
     }
     await db
       .update(arcaInvoice)
-      .set({ status: 'pending_cae', arcaError: emitted.error, updatedAt: now })
-      .where(eq(arcaInvoice.id, id))
-    return { ok: false as const, error: emitted.error, invoiceId: id }
+      .set({ status: 'failed', arcaError: emitted.error, updatedAt: now })
+      .where(eq(arcaInvoice.id, invoiceId))
+    return { ok: false as const, error: emitted.error, invoiceId }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'ARCA no respondió'
     await db
       .update(arcaInvoice)
-      .set({ status: 'pending_cae', arcaError: msg, updatedAt: now })
-      .where(eq(arcaInvoice.id, id))
-    return { ok: false as const, error: msg, invoiceId: id }
+      .set({ status: 'failed', arcaError: msg, updatedAt: now })
+      .where(eq(arcaInvoice.id, invoiceId))
+    return { ok: false as const, error: msg, invoiceId }
   }
 }
 
 export function enqueueInterestInvoices(installmentIds: string[]) {
   const ids = installmentIds.filter(Boolean)
   if (!ids.length) return
-  void Promise.all(ids.map((id) => issueInterestInvoiceForInstallment(id))).catch((err) => {
+  void Promise.all(ids.map((id) => queueInterestInvoiceForInstallment(id))).catch((err) => {
     console.warn('[arca-fe]', (err as Error).message)
   })
 }
@@ -140,9 +163,3 @@ export async function listArcaInvoices(limit = 80) {
   return db.select().from(arcaInvoice).orderBy(desc(arcaInvoice.createdAt)).limit(limit)
 }
 
-export async function retryArcaInvoice(id: string) {
-  await ensureOriginacionSchema()
-  const [row] = await db.select().from(arcaInvoice).where(and(eq(arcaInvoice.id, id))).limit(1)
-  if (!row?.installmentId) return { ok: false as const, error: 'Factura sin cuota asociada.' }
-  return issueInterestInvoiceForInstallment(row.installmentId)
-}

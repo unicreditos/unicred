@@ -12,6 +12,7 @@ import {
 import { TransferReviews } from '@/components/admin/transfer-reviews'
 import { WalletCreditDesk } from '@/components/admin/wallet-credit-desk'
 import { ArcaInvoicesDesk } from '@/components/admin/arca-invoices-desk'
+import { ArcaConfigDesk } from '@/components/admin/arca-config-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
@@ -504,7 +505,8 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
               </tbody>
             </table>
         </SectionCard>
-        <div className="min-h-0 overflow-auto lg:col-span-5">
+        <div className="flex min-h-0 flex-col gap-2 overflow-auto lg:col-span-5">
+          <ArcaConfigDesk />
           <ArcaInvoicesDesk />
         </div>
       </div>
