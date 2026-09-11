@@ -635,8 +635,8 @@ export function DashboardTabsWrapper({
                       <div className="flex min-w-0 items-center gap-3">
                         <span
                           className={cn(
-                            'flex h-9 w-9 items-center justify-center rounded-full',
-                            m.kind === 'in' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700',
+                            'flex h-9 w-9 items-center justify-center rounded-xl',
+                            m.kind === 'in' ? 'bg-brand-indigo/10 text-brand-indigo' : 'bg-emerald-50 text-emerald-700',
                           )}
                         >
                           {m.kind === 'in' ? <Banknote className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -795,7 +795,7 @@ export function DashboardTabsWrapper({
                     >
                       <summary className="flex cursor-pointer items-center justify-between gap-4 list-none">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-[12px] font-black text-brand-primary">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-[12px] font-black text-brand-primary">
                             {String(i + 1).padStart(2, '0')}
                           </span>
                           <div className="font-semibold leading-snug">{f.q}</div>
@@ -855,7 +855,7 @@ export function DashboardTabsWrapper({
                       const inner = (
                         <>
                           <div className="flex min-w-0 items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-brand-primary ring-1 ring-border/80">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-brand-primary ring-1 ring-border/80">
                               <c.icon className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
@@ -1539,7 +1539,7 @@ function BancosPanel({
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(
-                        'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
+                        'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
                         a.accountType === 'cvu'
                           ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400'
                           : a.accountType === 'alias'
@@ -1944,7 +1944,7 @@ function PagosPanel({
                       }}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted">
                           <CreditCard className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div>
@@ -2205,7 +2205,7 @@ function HistorialPagosPanel({ payments }: { payments: PaymentType[] }) {
             <div className="flex min-w-0 items-center gap-2.5">
               <div
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-md',
+                  'flex h-9 w-9 items-center justify-center rounded-xl',
                   p.status === 'paid'
                     ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                     : p.status === 'pending'
