@@ -830,7 +830,7 @@ export function SectionCard({
         className,
       )}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           {icon ? (
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/10">

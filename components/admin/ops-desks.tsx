@@ -15,6 +15,7 @@ import { ArcaInvoicesDesk } from '@/components/admin/arca-invoices-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
 import { adminUrl } from '@/lib/admin-nav'
 import { formatOperationNumber } from '@/lib/coupon'
 import { formatARS } from '@/lib/finance'
@@ -307,9 +308,11 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-8">
-          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-            <h2 className="text-[12px] font-semibold">Mesa de cobranzas</h2>
+        <SectionCard
+          title="Mesa de cobranzas"
+          className="flex min-h-0 flex-col lg:col-span-8"
+          bodyClassName="min-h-0 flex-1 overflow-auto"
+          action={
             <div className="flex flex-wrap gap-1 rounded-md bg-muted p-0.5">
               {(
                 [
@@ -332,8 +335,8 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
                 </button>
               ))}
             </div>
-          </header>
-          <div className="min-h-0 flex-1 overflow-auto">
+          }
+        >
             <table className="w-full min-w-[820px] text-left text-[12px]">
               <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -397,8 +400,7 @@ export function CobranzasDesk({ desk }: { desk: AdminOpsDesk }) {
               )}
             </tbody>
           </table>
-        </div>
-        </section>
+        </SectionCard>
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:col-span-4">
           <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card">
             <OpenNetworkTickets desk={desk} />
@@ -443,20 +445,20 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
         <MetricTile label="Archivo" value={String(desk.receipts.length)} hint="Últimos comprobantes" />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-12">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-7">
-          <header className="shrink-0 space-y-1.5 border-b border-border px-3 py-2">
-            <div>
-              <h2 className="text-[12px] font-semibold text-foreground">Comprobantes</h2>
-              <p className="text-[10px] text-muted-foreground">Mismo talón que ve el cliente · pagos y desembolsos</p>
-            </div>
+        <SectionCard
+          title="Comprobantes"
+          description="Mismo talón que ve el cliente · pagos y desembolsos"
+          className="flex min-h-0 flex-col lg:col-span-7"
+          bodyClassName="min-h-0 flex-1 overflow-auto"
+          action={
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar por número, cliente, tipo o medio"
-              className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-brand-primary"
+              className="h-8 w-56 rounded-md border border-border bg-background px-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-brand-primary"
             />
-          </header>
-          <div className="min-h-0 flex-1 overflow-auto">
+          }
+        >
             <table className="w-full min-w-[720px] text-left text-[12px]">
               <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -501,8 +503,7 @@ export function ComprobantesDesk({ desk }: { desk: AdminOpsDesk }) {
                 )}
               </tbody>
             </table>
-          </div>
-        </section>
+        </SectionCard>
         <div className="min-h-0 overflow-auto lg:col-span-5">
           <ArcaInvoicesDesk />
         </div>
@@ -520,11 +521,11 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
           Cobros acreditados, devoluciones, rechazos, desembolsos y cuotas vencidas. Los cupones de red viven en Cobranzas hasta que se pagan o se anulan.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-        <header className="shrink-0 border-b border-border px-3 py-1.5">
-          <h2 className="text-[12px] font-semibold text-foreground">Historial de movimientos</h2>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto divide-y divide-border">
+      <SectionCard
+        title="Historial de movimientos"
+        className="flex min-h-0 flex-1 flex-col"
+        bodyClassName="min-h-0 flex-1 overflow-auto divide-y divide-border"
+      >
           {desk.movements.length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">Sin movimientos cargados.</p>
           ) : (
@@ -551,8 +552,7 @@ export function MovimientosDesk({ desk }: { desk: AdminOpsDesk }) {
               </div>
             ))
           )}
-        </div>
-      </section>
+      </SectionCard>
     </OpsFloor>
   )
 }
@@ -566,11 +566,11 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
           Contratos de mutuo, pagarés y expediente. La intimación de mora se emite desde la ficha del cliente.
         </p>
       </div>
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-        <header className="shrink-0 border-b border-border px-3 py-1.5">
-          <h2 className="text-[12px] font-semibold text-foreground">Contratos</h2>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto">
+      <SectionCard
+        title="Contratos"
+        className="flex min-h-0 flex-1 flex-col"
+        bodyClassName="min-h-0 flex-1 overflow-auto"
+      >
           <table className="w-full min-w-[720px] text-left text-[12px]">
             <thead className="sticky top-0 bg-muted text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -620,8 +620,7 @@ export function LegalesDesk({ desk }: { desk: AdminOpsDesk }) {
               )}
             </tbody>
           </table>
-        </div>
-      </section>
+      </SectionCard>
     </OpsFloor>
   )
 }
