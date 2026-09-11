@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { db, isPlaceholderDbUrl } from '@/lib/db'
 import { profile, user as userTable } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { cookies, headers } from 'next/headers'
@@ -20,8 +20,9 @@ export function getDashboardUrlByRole(role: Role | null | undefined): string {
 }
 
 export async function syncUserRole(userId: string, role: Role) {
-  await db.update(userTable).set({ role, updatedAt: new Date() }).where(eq(userTable.id, userId))
-  await db.update(profile).set({ role, updatedAt: new Date() }).where(eq(profile.userId, userId))
+  if (isPlaceholderDbUrl(process.env.DATABASE_URL)) return
+  await db.update(userTable).set({ role, updatedAt: new Date() }).where(eq(userTable.id, userId)).catch(() => {})
+  await db.update(profile).set({ role, updatedAt: new Date() }).where(eq(profile.userId, userId)).catch(() => {})
 }
 
 /**
@@ -31,22 +32,37 @@ export async function syncUserRole(userId: string, role: Role) {
  * las 2 consultas desde cero.
  */
 export const getRoleForUser = cache(async (userId: string): Promise<Role> => {
-  // Antes eran 2 round-trips secuenciales — no dependen una de la otra, así
-  // que corren en paralelo. En una base remota cada round-trip pesa, y esta
-  // función se llama en casi cualquier acción autenticada.
-  const [rows, [u]] = await Promise.all([
-    db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1),
-    db.select({ role: userTable.role }).from(userTable).where(eq(userTable.id, userId)).limit(1),
-  ])
-  const fromProfile = rows[0]?.role as Role | undefined
-  const fromUser = (u?.role as Role | undefined) || undefined
-  const role = fromProfile || fromUser || 'customer'
-
-  if (fromProfile && fromUser !== fromProfile) {
-    await db.update(userTable).set({ role: fromProfile, updatedAt: new Date() }).where(eq(userTable.id, userId))
+  if (isPlaceholderDbUrl(process.env.DATABASE_URL)) {
+    return 'customer'
   }
+  try {
+    // Antes eran 2 round-trips secuenciales — no dependen una de la otra, así
+    // que corren en paralelo. En una base remota cada round-trip pesa, y esta
+    // función se llama en casi cualquier acción autenticada.
+    const [rows, [u]] = await Promise.all([
+      db.select({ role: profile.role }).from(profile).where(eq(profile.userId, userId)).limit(1),
+      db.select({ role: userTable.role }).from(userTable).where(eq(userTable.id, userId)).limit(1),
+    ])
+    const fromProfile = rows[0]?.role as Role | undefined
+    const fromUser = (u?.role as Role | undefined) || undefined
+    const role = fromProfile || fromUser || 'customer'
 
-  return role
+    if (fromProfile && fromUser !== fromProfile) {
+      await db
+        .update(userTable)
+        .set({ role: fromProfile, updatedAt: new Date() })
+        .where(eq(userTable.id, userId))
+        .catch(() => {})
+    }
+
+    return role
+  } catch (err) {
+    const msg = (err as Error)?.message || ''
+    if (!msg.includes('ENOTFOUND') && !msg.includes('ECONNREFUSED')) {
+      console.warn('[session] getRoleForUser failed (db offline?):', msg)
+    }
+    return 'customer'
+  }
 })
 
 export async function getDashboardUrlForUser(userId: string): Promise<string> {
@@ -70,13 +86,29 @@ export function _clearSessionOverride() {
   _sessionOverride = null
 }
 
-export async function getSession() {
-  if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return _sessionOverride
-  return auth.api.getSession({ headers: await headers() })
-}
-
 function isAuthSessionCookieName(name: string) {
   return name.includes('session_token') || name.includes('better-auth.session')
+}
+
+export async function getSession() {
+  if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return _sessionOverride
+  try {
+    const jar = await cookies()
+    const hasSessionCookie = jar.getAll().some((c) => isAuthSessionCookieName(c.name))
+    if (!hasSessionCookie) {
+      return null
+    }
+    if (isPlaceholderDbUrl(process.env.DATABASE_URL)) {
+      return null
+    }
+    return await auth.api.getSession({ headers: await headers() })
+  } catch (err) {
+    const msg = (err as Error)?.message || ''
+    if (!msg.includes('ENOTFOUND') && !msg.includes('ECONNREFUSED')) {
+      console.warn('[session] getSession failed (db offline?):', msg)
+    }
+    return null
+  }
 }
 
 /** Cookie huérfana: el proxy la trata como sesión y el panel no la valida. */

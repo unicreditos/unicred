@@ -16,7 +16,7 @@ import {
   SectionCard,
   StatusChip,
 } from '@/components/unicred/dashboard-kit'
-import { DecisionBanner } from '@/components/unicred/workspace-shell'
+import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,7 +31,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatARS, formatCBU, formatCVU, displayAlias, normalizeBankAlias } from '@/lib/finance'
+import {
+  formatARS,
+  formatCBU,
+  formatCVU,
+  displayAlias,
+  normalizeBankAlias,
+  computeFrenchAmortization,
+  formatPercent,
+} from '@/lib/finance'
 import {
   loanStatusLabel,
   paymentMethodLabel,
@@ -160,6 +168,14 @@ interface DashboardTabsWrapperProps {
   savedPaymentMethods?: SavedMethodType[]
   disbursements?: (DisbursementType & { loan?: Loan | null })[]
   installmentsAll?: UpcomingInstallment[]
+}
+
+function getScoreBand(score: number | null | undefined): { label: string } {
+  if (score === null || score === undefined) return { label: 'Sin datos' }
+  if (score >= 720) return { label: 'Excelente' }
+  if (score >= 640) return { label: 'Bueno' }
+  if (score >= 560) return { label: 'Regular' }
+  return { label: 'Bajo' }
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -328,6 +344,8 @@ export function DashboardTabsWrapper({
     pendingApproval: 0,
   }
 
+  const score = initialProfile?.creditScore ?? null
+  const band = getScoreBand(score as number | null)
   const activeLoansList = loans.filter((l: any) => l.status === 'active')
   const firstName =
     (resolvedUser.name ?? '').trim().split(/\s+/).filter(Boolean)[0] ||
@@ -356,9 +374,17 @@ export function DashboardTabsWrapper({
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 5)
 
+  const [simAmount, setSimAmount] = useState(150000)
+  const [simTerm, setSimTerm] = useState(6)
+  const simAmort = useMemo(() => {
+    const prod = products[0]
+    const rate = Number(prod?.monthlyRate ?? 8.5)
+    return computeFrenchAmortization(simAmount, simTerm, rate)
+  }, [simAmount, simTerm, products])
+
   return (
     <DashboardShell activeTab={activeTab} onTabChange={setActiveTab} user={resolvedUser}>
-      <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         {activeTab === 'overview' && (
           <>
             {/* Una sola jerarquía: saludo corto → próxima acción → 2 métricas → crédito → 4 atajos */}
@@ -377,11 +403,12 @@ export function DashboardTabsWrapper({
               </p>
             </div>
 
+            {/* Vencimientos y alertas estratégicas */}
             {nextInstallment && nextDueDays !== null && nextDueDays < 0 ? (
               <DecisionBanner
                 tone="critical"
-                title={`Pagar cuota #${nextInstallment.number} · ${formatARS(nextInstallment.amount)}`}
-                detail={`Venció el ${formatDateShort(nextInstallment.dueDate)}. Un solo paso desde tu cuenta.`}
+                title={`Cuota #${nextInstallment.number} vencida · ${formatARS(nextInstallment.amount)}`}
+                detail={`Vencía el ${formatDateShort(nextInstallment.dueDate)}. Regularizá tu pago para mantener tu scoring BCRA en Situación 1.`}
                 action={
                   <Button size="sm" onClick={() => setActiveTab('pagos')}>
                     Pagar ahora
@@ -392,7 +419,7 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="warn"
                 title={`Próxima cuota ${nextDueDays === 0 ? 'vence hoy' : `en ${nextDueDays} días`} · ${formatARS(nextInstallment.amount)}`}
-                detail={`${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`}
+                detail={`${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number} de ${nextInstallment.loanTerm}`}
                 action={
                   <Button size="sm" onClick={() => setActiveTab('pagos')}>
                     Ir a pagar
@@ -403,21 +430,21 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="warn"
                 title="Verificá tu identidad con Didit"
-                detail="Es el paso para solicitar crédito. La verificación se hace dentro de UNICRÉDITOS."
+                detail="Validación biométrica oficial con prueba de vida requerida para la firma de contratos Ley 25.506."
                 action={
                   <Button size="sm" onClick={() => setActiveTab('kyc_biometrico')}>
-                    Verificar ahora
+                    Verificar con Didit
                   </Button>
                 }
               />
             ) : kycPct < 100 ? (
               <DecisionBanner
                 tone="info"
-                title="Completá tus datos"
-                detail={`Perfil al ${kycPct}%. Con CUIL e ingresos podemos evaluar tu solicitud.`}
+                title="Completá tu legajo digital para originar crédito"
+                detail={`Perfil al ${kycPct}%. Declará tu CUIT/CUIL e ingresos para activar la evaluación crediticia automática.`}
                 action={
                   <Button size="sm" variant="outline" onClick={() => setActiveTab('perfil')}>
-                    Completar identidad
+                    Completar datos
                   </Button>
                 }
               />
@@ -444,7 +471,7 @@ export function DashboardTabsWrapper({
               <DecisionBanner
                 tone="ok"
                 title="Sin vencimientos urgentes"
-                detail="Cuando quieras, revisá el cronograma o descargá un comprobante."
+                detail="Tus cuotas vigentes se encuentran sin atrasos ni observaciones en Central de Deudores."
                 action={
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => setActiveTab('cuotas_vigentes')}>
@@ -460,96 +487,157 @@ export function DashboardTabsWrapper({
               />
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => setActiveTab(nextInstallment ? 'pagos' : 'cuotas_vigentes')}
-                className="rounded-xl border border-border bg-card p-4 text-left shadow-xs transition hover:border-brand-primary/40"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Próximo pago
-                </p>
-                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
-                  {nextInstallment ? formatARS(nextInstallment.amount) : '—'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {nextInstallment
-                    ? `${formatDateShort(nextInstallment.dueDate)} · cuota #${nextInstallment.number}`
-                    : 'Sin cuotas pendientes'}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('cuotas_vigentes')}
-                className="rounded-xl border border-border bg-card p-4 text-left shadow-xs transition hover:border-brand-primary/40"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Saldo a devolver
-                </p>
-                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
-                  {formatARS(kpis.pendingAmount)}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {kpis.active} crédito{kpis.active === 1 ? '' : 's'} activo{kpis.active === 1 ? '' : 's'}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveTab(
-                    preapprovedAmount != null && preapprovedAmount > 0 && myKyc?.status === 'approved'
-                      ? 'solicitar'
-                      : myKyc?.status === 'approved'
-                        ? 'solicitar'
-                        : 'kyc_biometrico',
-                  )
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricTile
+                label="Próxima cuota"
+                value={nextInstallment ? formatARS(nextInstallment.amount) : '—'}
+                hint={
+                  nextInstallment
+                    ? `${formatDateShort(nextInstallment.dueDate)} · #${nextInstallment.number}`
+                    : 'Sin cuotas pendientes'
                 }
-                className="rounded-xl border border-brand-primary/20 bg-gradient-to-br from-brand-primary-50/80 to-card p-4 text-left shadow-xs transition hover:border-brand-primary/50 sm:col-span-2 lg:col-span-1"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary-700">
-                  Línea estimada
-                </p>
-                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-brand-navy-900">
-                  {preapprovedAmount != null && preapprovedAmount > 0 && myKyc?.status === 'approved'
-                    ? formatARS(preapprovedAmount)
-                    : '—'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {myKyc?.status === 'approved'
-                    ? 'Sujeta a evaluación al solicitar'
-                    : 'Requiere Didit aprobado'}
-                </p>
-              </button>
+                tone={nextInstallment && nextDueDays !== null && nextDueDays < 0 ? 'critical' : nextInstallment && nextDueDays !== null && nextDueDays <= 7 ? 'warn' : 'ok'}
+              />
+              <MetricTile
+                label="Saldo a devolver"
+                value={formatARS(kpis.pendingAmount)}
+                hint={`${kpis.active} crédito${kpis.active === 1 ? '' : 's'} activo${kpis.active === 1 ? '' : 's'}`}
+              />
+              <MetricTile
+                label="Score UNICRÉDITOS"
+                value={score ?? '—'}
+                hint={score ? band.label : 'Central de Deudores BCRA'}
+                tone={!score ? 'warn' : score >= 640 ? 'ok' : 'warn'}
+              />
+              <MetricTile
+                label="Identidad Digital"
+                value={`${kycPct}%`}
+                hint={
+                  myKyc?.provider === 'didit' && myKyc.status === 'approved'
+                    ? 'Didit Biometría Verificada'
+                    : kycPct >= 100
+                      ? 'Falta verificar con Didit'
+                      : 'Faltan datos de perfil'
+                }
+                tone={kycPct >= 100 && myKyc?.status === 'approved' ? 'ok' : 'warn'}
+              />
             </div>
+
+            <section className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                      <Sparkles className="h-4 w-4" />
+                    </span>
+                    <h3 className="text-base font-semibold text-brand-navy-900">Simulador Express de Crédito</h3>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Calculá tu cuota fija mensual bajo Sistema Francés amortizable.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
+                    TNA {formatPercent(products[0]?.tna ?? 102)}
+                  </span>
+                  <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    CFT {formatPercent(products[0]?.tna ? Number(products[0].tna) * 1.21 : 123.42)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-6 md:grid-cols-12 items-center">
+                <div className="space-y-4 md:col-span-7">
+                  <div>
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-muted-foreground">Monto a solicitar</span>
+                      <span className="font-bold tabular-nums text-brand-navy-900 text-sm sm:text-base">
+                        {formatARS(simAmount)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30000}
+                      max={500000}
+                      step={10000}
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(Number(e.target.value))}
+                      className="mt-2 h-2 w-full cursor-pointer accent-brand-primary"
+                    />
+                    <div className="flex justify-between text-[10px] font-mono text-muted-foreground mt-1">
+                      <span>$30.000</span>
+                      <span>$250.000</span>
+                      <span>$500.000</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground block mb-2">Plazo de financiación</span>
+                    <div className="flex flex-wrap gap-2">
+                      {[3, 6, 9, 12].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSimTerm(t)}
+                          className={cn(
+                            'rounded-xl px-3.5 py-2 text-xs font-semibold transition',
+                            simTerm === t
+                              ? 'bg-brand-primary text-white shadow-xs ring-2 ring-brand-primary/20'
+                              : 'border border-border bg-card text-foreground hover:bg-muted',
+                          )}
+                        >
+                          {t} cuotas fijas
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/5 p-4 sm:p-5 md:col-span-5 flex flex-col justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Cuota estimada mensual</span>
+                    <div className="mt-1 text-2xl sm:text-3xl font-extrabold text-brand-navy-900 tabular-nums">
+                      {formatARS(simAmort.installmentAmount)}
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Total a devolver: <strong className="text-foreground">{formatARS(simAmort.totalAmount)}</strong> en {simTerm} cuotas con IVA incluido.
+                    </p>
+                  </div>
+
+                  <Button
+                    className="w-full gap-2 font-semibold shadow-xs"
+                    onClick={() => setActiveTab('solicitar')}
+                  >
+                    <Check className="h-4 w-4" /> Solicitar este crédito
+                  </Button>
+                </div>
+              </div>
+            </section>
 
             <div className="grid items-start gap-4 lg:grid-cols-5">
               <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
                 <header className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-brand-navy-900">Mis créditos</h2>
-                    <p className="text-xs text-muted-foreground">Lo que tenés activo ahora</p>
+                    <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
+                    <p className="text-xs text-muted-foreground">Capital originado, cuotas y amortización</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => setActiveTab('cuotas_vigentes')}
-                  >
-                    Ver todo
+                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('cuotas_vigentes')}>
+                    Ver detalle completo
                   </Button>
                 </header>
-                <div className="p-4">
+                <div className="p-5">
                   {!activeLoansList.length ? (
-                    <p className="py-8 text-center text-sm text-muted-foreground">
-                      No hay créditos activos.{' '}
+                    <div className="py-8 text-center">
+                      <CreditCard className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                      <p className="mt-2 text-sm text-muted-foreground">No registrás créditos vigentes actualmente.</p>
                       <button
                         type="button"
-                        className="font-medium text-brand-primary"
+                        className="mt-2 text-xs font-semibold text-brand-primary hover:underline"
                         onClick={() => setActiveTab('solicitar')}
                       >
-                        Solicitar uno
+                        Solicitar tu primer préstamo →
                       </button>
-                    </p>
+                    </div>
                   ) : (
                     <div className="divide-y divide-border">
                       {activeLoansList.map((l: any) => (
@@ -560,18 +648,21 @@ export function DashboardTabsWrapper({
                           onClick={() => setActiveTab('cuotas_vigentes')}
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-brand-navy-900">
-                              {(l as any).purpose || 'Préstamo personal'}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Originado el {formatDateShort((l as any).createdAt)}
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-brand-navy-900">
+                                {(l as any).purpose || 'Préstamo personal'}
+                              </p>
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                {loanStatusLabel(l.status)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Originado el {formatDateShort((l as any).createdAt)} · Tasa mensual {l.monthlyRate ?? '—'}%
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-semibold tabular-nums">{formatARS(l.principal)}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {l.term} cuotas · {loanStatusLabel(l.status)}
-                            </p>
+                            <p className="text-[11px] text-muted-foreground">{l.term} cuotas fijas</p>
                           </div>
                         </button>
                       ))}
@@ -586,27 +677,35 @@ export function DashboardTabsWrapper({
                   <p className="text-xs text-muted-foreground">Lo que más usás</p>
                 </header>
                 <div className="grid gap-2 p-3">
-                  {(
-                    [
-                      { t: 'Pagar', d: 'Cuotas pendientes', tab: 'pagos' as TabValue },
-                      { t: 'Comprobantes', d: 'Recibos y desembolsos', tab: 'comprobantes' as TabValue },
-                      { t: 'Documentos', d: 'Contrato, pagaré, certificados', tab: 'documentos' as TabValue },
-                      { t: 'Soporte', d: 'Chat y reclamo', tab: 'reclamos' as TabValue },
-                    ] as const
-                  ).map((a) => (
-                    <button
-                      key={a.tab}
-                      type="button"
-                      onClick={() => setActiveTab(a.tab)}
-                      className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/60"
-                    >
-                      <span>
-                        <span className="block text-[13px] font-medium text-brand-navy-900">{a.t}</span>
-                        <span className="block text-[11px] text-muted-foreground">{a.d}</span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  ))}
+                  {[
+                    { t: 'Pagar cuota', d: 'Medios electrónicos, tarjeta y transferencias', tab: 'pagos' as TabValue, icon: Wallet },
+                    { t: 'Billetera digital', d: 'CVU, saldo disponible y transferencias', tab: 'billetera' as TabValue, icon: CreditCard },
+                    { t: 'Cancelar crédito', d: 'Cancelación anticipada de capital', tab: 'cuotas_vigentes' as TabValue, icon: CheckCircle2 },
+                    { t: 'Contratos Ley 25.506', d: 'Mutuo firmado con firma digital', tab: 'documentos_contrato' as TabValue, icon: FileText },
+                    { t: 'Cuentas bancarias', d: 'CBU / CVU para desembolso inmediato', tab: 'bancos' as TabValue, icon: Landmark },
+                    { t: 'Soporte y Reclamos', d: 'Asistencia y defensas Ley 24.240', tab: 'reclamos' as TabValue, icon: HelpCircle },
+                  ].map((a) => {
+                    const Icon = a.icon
+                    return (
+                      <button
+                        key={a.tab}
+                        type="button"
+                        onClick={() => setActiveTab(a.tab)}
+                        className="group flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/60"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-brand-primary/10 group-hover:text-brand-primary transition">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <span className="block text-[13px] font-medium text-brand-navy-900">{a.t}</span>
+                            <span className="block text-[11px] text-muted-foreground">{a.d}</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
             </div>

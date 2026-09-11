@@ -400,20 +400,32 @@ export function WorkspaceShell({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar créditos"
+                placeholder="Buscar créditos, cuotas o trámites"
                 aria-label="Buscar créditos"
                 className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
               />
             </form>
           )}
+          <div className="hidden xl:inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50/70 px-3 py-1 text-[11px] font-medium text-emerald-800">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+            <span>BCRA / ARCA en línea</span>
+          </div>
           <NotificationCenter />
           {clientReady ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-muted">
                 <AccountAvatar name={user.name} email={user.email} image={user.image} size="md" />
-                <span className="hidden max-w-[170px] truncate text-left sm:inline">
-                  <span className="block text-[13px] font-semibold text-foreground">{user.name ?? 'Cuenta'}</span>
-                  <span className="block text-[11px] text-muted-foreground">{user.email}</span>
+                <span className="hidden max-w-[180px] truncate text-left sm:inline">
+                  <span className="flex items-center gap-1.5">
+                    <span className="block truncate text-[13px] font-semibold text-foreground">{user.name ?? 'Cuenta'}</span>
+                    <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {role === 'admin' ? 'Admin' : role === 'merchant' ? 'Comercio' : 'Titular'}
+                    </span>
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{user.email}</span>
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72 p-2">

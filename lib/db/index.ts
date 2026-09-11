@@ -15,6 +15,15 @@ function cleanConnectionUrl(url: string | undefined): string | undefined {
   }
 }
 
+export function isPlaceholderDbUrl(url: string | undefined): boolean {
+  if (!url) return true
+  return (
+    url.includes('host.neon.tech') ||
+    url.includes('usuario:password') ||
+    url.includes('example.com')
+  )
+}
+
 const rawDatabaseUrl = process.env.DATABASE_URL
 const cleanedDatabaseUrl = cleanConnectionUrl(rawDatabaseUrl)
 
@@ -23,7 +32,7 @@ const isNeon =
   process.env.POSTGRES_HOST?.includes('neon.tech')
 
 export const pool = new Pool({
-  connectionString: cleanedDatabaseUrl,
+  connectionString: isPlaceholderDbUrl(cleanedDatabaseUrl) ? undefined : cleanedDatabaseUrl,
   max: 10,
   // min:0 + idleTimeoutMillis corto significaba que, apenas pasaban ~30s sin
   // queries, el pool se quedaba sin conexiones abiertas — la siguiente query
@@ -43,6 +52,14 @@ export const pool = new Pool({
         },
       }
     : {}),
+})
+
+pool.on('error', (err) => {
+  // Prevenir que errores de conexión tiren el proceso de Node.js
+  const msg = err?.message || ''
+  if (!msg.includes('ENOTFOUND') && !msg.includes('ECONNREFUSED')) {
+    console.warn('[db pool error]:', msg)
+  }
 })
 
 export const db = drizzle(pool, { schema })

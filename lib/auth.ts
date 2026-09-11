@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { trustedOrigins } from '@/lib/site'
+import { isPlaceholderDbUrl } from '@/lib/db'
 import { Pool } from 'pg'
 
 function cleanConnectionUrl(url: string | undefined): string | undefined {
@@ -66,6 +67,12 @@ function getTrustedOrigins() {
     add(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
     add(process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined)
   }
+  if (process.env.NG_ALLOWED_HOSTS) {
+    add(`https://${process.env.NG_ALLOWED_HOSTS}`)
+  }
+  if (process.env.APP_URL) {
+    add(process.env.APP_URL)
+  }
   return Array.from(origins)
 }
 
@@ -75,7 +82,7 @@ const isNeonAuth = cleanedDatabaseUrl?.includes('neon.tech') ||
   process.env.POSTGRES_HOST?.includes('neon.tech')
 
 const authDbPool = new Pool({
-  connectionString: cleanedDatabaseUrl,
+  connectionString: isPlaceholderDbUrl(cleanedDatabaseUrl) ? undefined : cleanedDatabaseUrl,
   max: 20,
   // min:0 hacía que este pool (separado del de lib/db/index.ts, better-auth
   // no reusa el mismo) se quedara sin conexiones abiertas apenas pasaba un
@@ -97,6 +104,13 @@ const authDbPool = new Pool({
         },
       }
     : {}),
+})
+
+authDbPool.on('error', (err) => {
+  const msg = err?.message || ''
+  if (!msg.includes('ENOTFOUND') && !msg.includes('ECONNREFUSED')) {
+    console.warn('[auth pool error]:', msg)
+  }
 })
 
 export const auth = betterAuth({
@@ -141,7 +155,7 @@ export const auth = betterAuth({
     },
     useSecureCookies: !isDev,
     csrfProtection: true,
-    cookieDomain: process.env.BETTER_AUTH_COOKIE_DOMAIN || undefined,
+    cookieDomain: isDev ? undefined : (process.env.BETTER_AUTH_COOKIE_DOMAIN || undefined),
   },
   logger: {
     level: isDev ? 'warn' : 'error',
