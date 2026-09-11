@@ -89,6 +89,23 @@ function statusBadge(s: string) {
   return <StatusPill tone={cfg.tone}>{cfg.label}</StatusPill>
 }
 
+/**
+ * `kyc.status` es nuestra decisión interna; `kyc.diditStatus` es el estado
+ * crudo de la sesión en Didit. Cuando ya están sincronizados (el caso común:
+ * aprobamos apenas Didit aprueba) mostrar los dos badges es repetir la misma
+ * info dos veces ("Aprobado" + "Sesión Approved"). Solo vale la pena mostrar
+ * el estado crudo de Didit cuando difiere del nuestro — ahí sí es una señal
+ * nueva para el admin (p. ej. Didit ya aprobó pero todavía no lo confirmamos).
+ */
+function diditStatusIsRedundant(status: string, diditStatus: string): boolean {
+  const equivalents: Record<string, string[]> = {
+    approved: ['approved'],
+    rejected: ['declined', 'kyc expired'],
+  }
+  const normalized = diditStatus.trim().toLowerCase()
+  return (equivalents[status] ?? []).includes(normalized)
+}
+
 function DocPreview({ label, url, icon }: { label: string; url: string | null; icon: React.ReactNode }) {
   return (
     <figure className="overflow-hidden rounded-xl border bg-muted/20">
@@ -151,9 +168,9 @@ export function KYCReviewCard({ kyc }: { kyc: KYCAdminRow }) {
                 <Badge variant="outline" className="text-[10px]">
                   {kyc.provider === 'didit' ? 'Didit' : kyc.provider ?? 'sin proveedor'}
                 </Badge>
-                {kyc.diditStatus ? (
+                {kyc.diditStatus && !diditStatusIsRedundant(kyc.status, kyc.diditStatus) ? (
                   <Badge variant="outline" className="text-[10px]">
-                    Sesión {kyc.diditStatus}
+                    Sesión Didit: {kyc.diditStatus}
                   </Badge>
                 ) : null}
               </div>
