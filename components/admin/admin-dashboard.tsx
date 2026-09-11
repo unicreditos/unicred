@@ -146,7 +146,7 @@ export function AdminDashboard({
         onNavigate={go}
       />
       {dataErrors.length > 0 ? (
-        <div className="mx-3 mt-3 shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-900 sm:mx-4">
+        <div className="mx-3 mt-3 shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-[12px] text-destructive sm:mx-4">
           <span className="font-semibold">No se pudo cargar: {dataErrors.join(', ')}.</span>{' '}
           Los datos de esas secciones pueden estar en 0 o incompletos, no reflejan necesariamente la realidad — recargá la página.
         </div>

@@ -1,8 +1,8 @@
 'use client'
 
 import type { AdminPaymentCase } from '@/app/actions/admin-cases'
-import { Button } from '@/components/ui/button'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminLoanHref, adminUrl } from '@/lib/admin-nav'
 import { formatARS } from '@/lib/finance'
 import {
@@ -11,7 +11,6 @@ import {
   paymentMethodLabel,
   paymentStatusLabel,
 } from '@/lib/labels'
-import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 function fmtDate(value: string | null | undefined) {
@@ -39,11 +38,7 @@ export function AdminPaymentCaseView({ data }: { data: AdminPaymentCase }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
-      <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-        <Link href={adminUrl('pagos')}>
-          <ArrowLeft /> Pagos
-        </Link>
-      </Button>
+      <CaseBackLink href={adminUrl('pagos')} label="Pagos" />
 
       <DecisionBanner
         tone={tone}

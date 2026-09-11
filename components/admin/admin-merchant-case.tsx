@@ -22,12 +22,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminLoanHref, adminPaymentHref, adminUrl } from '@/lib/admin-nav'
 import { TAX_CONDITION_LABELS } from '@/lib/arca/tax-condition'
 import { formatARS } from '@/lib/finance'
 import { kycStatusLabel, loanStatusLabel, merchantStatusLabel, paymentStatusLabel } from '@/lib/labels'
 import { MERCHANT_DOC_LABELS } from '@/lib/merchant-kyb'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -106,11 +107,7 @@ export function AdminMerchantCaseView({ data }: { data: AdminMerchantCase }) {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-          <Link href={adminUrl('comercios')}>
-            <ArrowLeft /> Comercios
-          </Link>
-        </Button>
+        <CaseBackLink href={adminUrl('comercios')} label="Comercios" />
         <div className="flex flex-wrap gap-2">
           {merchant.status === 'pending' ? (
             <>

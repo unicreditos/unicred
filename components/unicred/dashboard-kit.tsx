@@ -2,7 +2,9 @@ import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/finance'
 import { BRAND, GROUP } from '@/lib/brand'
 import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
+import { Button } from '@/components/ui/button'
 import {
+  ArrowLeft,
   TrendingUp,
   TrendingDown,
   CheckCircle2,
@@ -841,6 +843,17 @@ export function SectionCard({
       </header>
       <div className="p-4 sm:p-5">{children}</div>
     </section>
+  )
+}
+
+/** Botón "volver" de las vistas de caso/ficha del admin (crédito, comercio, pago, cliente). */
+export function CaseBackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-muted-foreground">
+      <Link href={href}>
+        <ArrowLeft /> {label}
+      </Link>
+    </Button>
   )
 }
 

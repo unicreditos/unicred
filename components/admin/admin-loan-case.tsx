@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink } from '@/components/unicred/dashboard-kit'
 import { adminClientHref, adminMerchantHref, adminPaymentHref, adminUrl } from '@/lib/admin-nav'
 import { formatARS } from '@/lib/finance'
 import {
@@ -23,7 +24,7 @@ import {
   paymentStatusLabel,
 } from '@/lib/labels'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, CheckCircle2, Loader2, Trash2, XCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, Trash2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -133,11 +134,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-          <Link href={backHref}>
-            <ArrowLeft /> {mode === 'solicitud' ? 'Solicitudes' : 'Créditos'}
-          </Link>
-        </Button>
+        <CaseBackLink href={backHref} label={mode === 'solicitud' ? 'Solicitudes' : 'Créditos'} />
         <div className="flex flex-wrap gap-2">
           {loan.status === 'pending' || loan.status === 'rejected' ? (
             <>

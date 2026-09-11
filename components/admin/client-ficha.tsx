@@ -13,12 +13,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { CaseBackLink } from '@/components/unicred/dashboard-kit'
 import { adminUrl, adminLoanHref } from '@/lib/admin-nav'
 import { groupDni, initials } from '@/lib/didit-capture'
 import { formatARS } from '@/lib/finance'
 import { disbursementStatusLabel, loanStatusLabel, paymentMethodLabel, paymentStatusLabel } from '@/lib/labels'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
@@ -231,11 +232,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 -ml-2 text-slate-600">
-          <Link href={adminUrl('usuarios')}>
-            <ArrowLeft /> Personas
-          </Link>
-        </Button>
+        <CaseBackLink href={adminUrl('usuarios')} label="Personas" />
         <Button type="button" size="sm" variant="outline" className="h-8" disabled={busy} onClick={() => void refresh()}>
           <RefreshCw className={cn(busy && 'animate-spin')} />
           Actualizar Didit

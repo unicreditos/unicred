@@ -247,7 +247,7 @@ export function KYCReviewCard({ kyc }: { kyc: KYCAdminRow }) {
 
       {kyc.rejectionReason ? (
         <CardContent className="pt-0">
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
             <strong>Motivo de rechazo:</strong> {kyc.rejectionReason}
           </div>
         </CardContent>

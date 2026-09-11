@@ -523,7 +523,7 @@ function MerchantOverview({
             <LineChart
               points={months.map((m) => m.value)}
               labels={months.map((m) => m.label)}
-              color="#00C853"
+              color="#20BD5A"
               height={220}
               yFormatter={(v) => formatARS(v)}
             />
@@ -539,8 +539,8 @@ function MerchantOverview({
             centerTitle="Ops"
             centerValue={String(totals.totalOps)}
             segments={[
-              { label: 'Vigentes', value: totals.activeCount, color: '#00C853', count: totals.activeCount },
-              { label: 'Cobradas', value: totals.receivedCount, color: '#20BD5A', count: totals.receivedCount },
+              { label: 'Vigentes', value: totals.activeCount, color: '#20BD5A', count: totals.activeCount },
+              { label: 'Cobradas', value: totals.receivedCount, color: '#10B981', count: totals.receivedCount },
               { label: 'Rechazadas', value: totals.rejectedCount, color: '#DC2626', count: totals.rejectedCount },
               { label: 'Otras', value: Math.max(0, totals.totalOps - totals.activeCount - totals.receivedCount - totals.rejectedCount), color: '#94A3B8' },
             ]}
