@@ -21,6 +21,7 @@ import {
   Sparkles,
   Wallet,
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata = pageMetadata({
@@ -114,29 +115,30 @@ export default async function HomePage() {
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
       <main id="contenido-principal">
         {/* Hero: calculadora al frente, no una promesa vacía */}
-        <section className="relative overflow-hidden border-b border-white/10 bg-brand-navy text-white">
-          <div className="absolute inset-0 bg-[#07140f]" />
-          <div
-            className="pointer-events-none absolute -left-28 top-0 h-[420px] w-[480px] rounded-full bg-brand-primary/20 blur-3xl"
+        <section className="relative overflow-hidden border-b border-border">
+          <Image
+            src="/hero-alt.png"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-right"
             aria-hidden
           />
-          <div
-            className="pointer-events-none absolute -right-24 bottom-0 h-[360px] w-[420px] rounded-full bg-white/[0.03] blur-3xl"
-            aria-hidden
-          />
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/10" aria-hidden />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
             <div className="lg:col-span-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
+              <p className="inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
               </p>
-              <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-white sm:text-[46px] lg:text-[52px]">
+              <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:text-[46px] lg:text-[52px]">
                 Un crédito que se entiende antes de pedirlo.
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-snug text-white/85">
+              <p className="mt-5 max-w-lg text-lg leading-snug text-foreground/85">
                 {BRAND.valueProp}
               </p>
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">
                 Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
                 Firmás recién cuando ves TNA, CFT y plan de pagos completos.
               </p>
@@ -150,49 +152,49 @@ export default async function HomePage() {
                   return (
                     <span
                       key={p.t}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[12px] font-semibold text-white/85"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-foreground backdrop-blur"
                     >
-                      <Icon className="h-3.5 w-3.5 text-white/60" />
+                      <Icon className="h-3.5 w-3.5 text-brand-primary" />
                       {p.t}
                     </span>
                   )
                 })}
               </div>
               <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Hasta</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-white">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
+                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Hasta</dt>
+                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Cuotas</dt>
-                  <dd className="mt-1 text-base font-bold text-white">3 a 48 fijas</dd>
+                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Cuotas</dt>
+                  <dd className="mt-1 text-base font-bold text-brand-navy">3 a 48 fijas</dd>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-3">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/55">Primer crédito</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-white">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
+                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Primer crédito</dt>
+                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
                 </div>
               </dl>
               <div className="mt-8 hidden flex-wrap items-center gap-3 sm:flex">
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-black/20 hover:bg-brand-primary-600"
+                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="rounded-full border-white/25 bg-white/5 font-semibold text-white hover:bg-white/10">
+                <Button asChild size="lg" variant="outline" className="rounded-full border-border bg-white/80 font-semibold text-brand-navy backdrop-blur hover:bg-white">
                   <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
                 </Button>
               </div>
             </div>
 
             <div className="lg:col-span-6">
-              <LoanSimulator className="shadow-2xl shadow-black/30" />
+              <LoanSimulator className="shadow-2xl shadow-brand-navy/20" />
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:hidden">
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-black/20 hover:bg-brand-primary-600"
+                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
