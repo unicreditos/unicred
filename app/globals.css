@@ -70,22 +70,23 @@
   --color-brand-primary-800: #0F5A2B;
   --color-brand-primary-900: #0A3C1D;
 
-  --color-brand-cian: #6EE7B7;
-  --color-brand-cian-50: #ECFDF5;
-  --color-brand-cian-100: #D1FAE5;
-  --color-brand-cian-200: #A7F3D0;
-  --color-brand-cian-300: #6EE7B7;
-  --color-brand-cian-400: #34D399;
-  --color-brand-cian-500: #10B981;
-  --color-brand-cian-600: #059669;
-  --color-brand-cian-700: #047857;
-  --color-brand-cian-800: #065F46;
-  --color-brand-cian-900: #064E3B;
+  /* Deprecated aliases — do not use on new product surfaces. Mapped to brand-primary / navy. */
+  --color-brand-cian: #58D184;
+  --color-brand-cian-50: #E8F9EE;
+  --color-brand-cian-100: #C8F0D6;
+  --color-brand-cian-200: #90E1AD;
+  --color-brand-cian-300: #58D184;
+  --color-brand-cian-400: #2CC868;
+  --color-brand-cian-500: #20BD5A;
+  --color-brand-cian-600: #1A9A4A;
+  --color-brand-cian-700: #157A3B;
+  --color-brand-cian-800: #0F5A2B;
+  --color-brand-cian-900: #0A3C1D;
 
   --color-brand-emerald: #20BD5A;
   --color-brand-amber: #F59E0B;
   --color-brand-rose: #F43F5E;
-  --color-brand-indigo: #4F46E5;
+  --color-brand-indigo: #2A3D33;
 
   --color-trustbar: #0C1612;
   --color-trustbar-foreground: #E2E8E4;
@@ -995,8 +996,13 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * Legacy marketing gradients. Prefer solid brand-navy, brand-primary, or the
+ * home glass hero. Kept so leftover class names do not flash a rainbow.
+ */
 .uc-gradient-navy {
-  background-image: linear-gradient(135deg, #07100C 0%, #0C1612 48%, #157A3B 100%);
+  background-color: #0C1612;
+  background-image: none;
 }
 .auth-float-pattern {
   background-image: url('/auth-pattern.svg');
@@ -1004,16 +1010,20 @@
 }
 
 .uc-gradient-brand {
-  background-image: linear-gradient(135deg, #20BD5A 0%, #157A3B 100%);
+  background-color: #20BD5A;
+  background-image: none;
 }
 .uc-gradient-card {
-  background-image: linear-gradient(135deg, rgba(32,189,90,0.06) 0%, rgba(21,122,59,0.04) 100%);
+  background-color: #E8F9EE;
+  background-image: none;
 }
 .uc-text-gradient {
-  background-image: linear-gradient(90deg, #20BD5A 0%, #157A3B 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #157A3B;
+  background-image: none;
+}
+.uc-cost {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 .uc-ring-focus:focus-visible {
   outline: none;

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { getAccountHref } from '@/lib/session'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
+import { PublicFaqList } from '@/components/unicred/public-page-shell'
 import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
 import { LEGAL_COPY } from '@/lib/legal/copy'
@@ -110,6 +111,12 @@ export default async function HomePage() {
     },
   ]
 
+  const heroMetrics = [
+    { t: 'Hasta', d: formatARS(PERSONAL_QUOTE.maxAmount) },
+    { t: 'Cuotas', d: '3 a 48 fijas' },
+    { t: 'Primer crédito', d: formatARS(FIRST_CREDIT_HARD_CAP) },
+  ]
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
@@ -129,71 +136,68 @@ export default async function HomePage() {
             className="absolute inset-0 bg-gradient-to-b from-white/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-navy/15"
             aria-hidden
           />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
+          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:py-20">
             <div className="relative lg:col-span-6">
               <div
                 className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-white/70 via-white/35 to-transparent blur-2xl lg:hidden"
                 aria-hidden
               />
               <div className="relative">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
-                Préstamos personales online
-              </p>
-              <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:text-[46px] lg:text-[52px]">
-                Un crédito que se entiende antes de pedirlo.
-              </h1>
-              <p className="mt-5 max-w-lg text-lg leading-snug text-brand-navy/85">
-                {BRAND.valueProp}
-              </p>
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-brand-navy/70">
-                Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
-                Firmás recién cuando ves TNA, CFT y plan de pagos completos.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[
-                  { icon: ShieldCheck, t: 'Identidad Didit' },
-                  { icon: Landmark, t: 'BCRA antes de firmar' },
-                  { icon: Scale, t: 'CFT sin sorpresas' },
-                ].map((p) => {
-                  const Icon = p.icon
-                  return (
-                    <span
-                      key={p.t}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
+                <p className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
+                  Préstamos personales online
+                </p>
+                <h1 className="mt-5 max-w-xl text-[36px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:mt-6 sm:text-[46px] lg:text-[52px]">
+                  Un crédito que se entiende antes de pedirlo.
+                </h1>
+                <p className="mt-4 max-w-lg text-lg leading-snug text-brand-navy/85 sm:mt-5">
+                  {BRAND.valueProp}
+                </p>
+                <p className="mt-3 max-w-lg text-base leading-relaxed text-brand-navy/70">
+                  Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
+                  Firmás recién cuando ves TNA, CFT y plan de pagos completos.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {[
+                    { icon: ShieldCheck, t: 'Identidad Didit' },
+                    { icon: Landmark, t: 'BCRA antes de firmar' },
+                    { icon: Scale, t: 'CFT sin sorpresas' },
+                  ].map((p) => {
+                    const Icon = p.icon
+                    return (
+                      <span
+                        key={p.t}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/20 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
+                      >
+                        <Icon className="h-3.5 w-3.5 text-brand-primary" />
+                        {p.t}
+                      </span>
+                    )
+                  })}
+                </div>
+                <dl className="mt-6 flex max-w-lg overflow-hidden rounded-2xl border border-white/50 bg-white/20 shadow-sm backdrop-blur-md">
+                  {heroMetrics.map((m, i) => (
+                    <div
+                      key={m.t}
+                      className={`min-w-0 flex-1 px-3 py-3 sm:px-4 ${i > 0 ? 'border-l border-white/35' : ''}`}
                     >
-                      <Icon className="h-3.5 w-3.5 text-brand-primary" />
-                      {p.t}
-                    </span>
-                  )
-                })}
-              </div>
-              <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Hasta</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
+                      <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">{m.t}</dt>
+                      <dd className="mt-1 text-sm font-bold tabular-nums text-brand-navy sm:text-base">{m.d}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-8 hidden flex-wrap items-center gap-3 sm:flex">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
+                  >
+                    <Link href="/sign-up">Solicitar mi crédito</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="rounded-full border-white/50 bg-white/20 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/35">
+                    <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
+                  </Button>
                 </div>
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Cuotas</dt>
-                  <dd className="mt-1 text-base font-bold text-brand-navy">3 a 48 fijas</dd>
-                </div>
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Primer crédito</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
-                </div>
-              </dl>
-              <div className="mt-8 hidden flex-wrap items-center gap-3 sm:flex">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
-                >
-                  <Link href="/sign-up">Solicitar mi crédito</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline" className="rounded-full border-white/40 bg-white/10 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/25">
-                  <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
-                </Button>
-              </div>
               </div>
             </div>
 
@@ -214,14 +218,13 @@ export default async function HomePage() {
 
         <TrustBar tone="light" />
 
-        {/* Cómo funciona */}
         <section id="como-funciona" className="scroll-mt-24 bg-white">
-          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-2xl text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary ring-1 ring-brand-primary/10">
-                <FileCheck2 className="h-3.5 w-3.5" /> Proceso 100% digital
-              </span>
-              <h2 className="mt-4 text-balance text-3xl font-black leading-tight tracking-tight text-brand-navy sm:text-4xl">
+          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
+            <div className="max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
+                Proceso 100% digital
+              </p>
+              <h2 className="mt-3 text-balance text-3xl font-bold leading-tight tracking-tight text-brand-navy sm:text-4xl">
                 Pedilo en 4 pasos, sin sucursal.
               </h2>
               <p className="mt-3 text-base text-muted-foreground">
@@ -229,26 +232,47 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <ol className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
               {steps.map((s, idx) => {
                 const Icon = s.icon
                 return (
-                  <div key={s.t} className="relative">
-                    {idx < steps.length - 1 ? (
-                      <div
-                        aria-hidden
-                        className="absolute left-full top-7 hidden h-px w-6 bg-gradient-to-r from-brand-primary/40 to-transparent lg:block"
-                      />
-                    ) : null}
-                    <div className="flex flex-col items-center rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-700 text-white shadow-md shadow-brand-primary/25">
-                        <Icon className="h-6 w-6" />
+                  <li key={s.t} className="relative">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary">
+                        <Icon className="h-5 w-5" />
                       </span>
-                      <span className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                        Paso 0{idx + 1}/04
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        0{idx + 1}
                       </span>
-                      <h3 className="mt-2 text-sm font-bold text-brand-navy">{s.t}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
+                    </div>
+                    <h3 className="mt-4 text-base font-semibold text-brand-navy">{s.t}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </section>
+
+        <section className="scroll-mt-24 border-y border-border/60">
+          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">¿Por qué elegirnos?</h2>
+              <p className="mt-3 text-base text-muted-foreground">
+                Sin letra chica ni promesas vacías: te mostramos cómo evaluamos y qué vas a firmar.
+              </p>
+            </div>
+            <div className="mt-10 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+              {benefits.map((b) => {
+                const Icon = b.icon
+                return (
+                  <div key={b.t} className="flex gap-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-brand-navy">{b.t}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{b.d}</p>
                     </div>
                   </div>
                 )
@@ -257,41 +281,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Por qué elegirnos */}
-        <section className="scroll-mt-24 border-y border-border/60 bg-slate-50/60">
-          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">¿Por qué elegirnos?</h2>
-              <p className="mt-3 text-base text-muted-foreground">
-                Sin letra chica ni promesas vacías: te mostramos cómo evaluamos y qué vas a firmar.
-              </p>
-            </div>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {benefits.map((b) => {
-                const Icon = b.icon
-                return (
-                  <div
-                    key={b.t}
-                    className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
-                      <Icon className="h-6 w-6" />
-                    </span>
-                    <h3 className="mt-4 text-sm font-bold text-brand-navy">{b.t}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{b.d}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Requisitos mínimos */}
-        <section className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+        <section className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6 lg:py-20">
+          <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
             <div className="lg:col-span-5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary">Requisitos</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">Requisitos</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">
                 Sacá tu crédito con mínimos requisitos.
               </h2>
               <p className="mt-3 text-base leading-relaxed text-muted-foreground">
@@ -302,41 +296,35 @@ export default async function HomePage() {
                 <Link href="/sign-up">Empezar solicitud</Link>
               </Button>
             </div>
-            <div className="lg:col-span-7">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {requirements.map((r) => {
-                  const Icon = r.icon
-                  return (
-                    <div
-                      key={r.t}
-                      className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <h3 className="text-sm font-bold text-brand-navy">{r.t}</h3>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{r.d}</p>
-                      </div>
+            <ul className="divide-y divide-border/60 lg:col-span-7">
+              {requirements.map((r) => {
+                const Icon = r.icon
+                return (
+                  <li key={r.t} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-brand-navy">{r.t}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{r.d}</p>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         </section>
 
-        {/* Quién te presta */}
-        <section id="quien-opera" className="scroll-mt-24 border-t border-border/60 bg-slate-50/60">
-          <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
+        <section id="quien-opera" className="scroll-mt-24 border-t border-border/60 bg-white">
+          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
             <div className="max-w-2xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary">Quién te presta</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">Quién te presta</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">
                 Sociedad nominada, domicilio y reglas a la vista.
               </h2>
               <p className="mt-3 text-base leading-relaxed text-muted-foreground">{LEGAL_COPY.nonBank}</p>
             </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <dl className="mt-10 grid gap-8 sm:grid-cols-2">
               {[
                 { icon: Landmark, t: 'Operador identificado', d: `${BRAND.legalName} · CUIT ${BRAND.cuit} · ${BRAND.address}.` },
                 { icon: Scale, t: 'Costo antes de firmar', d: 'TNA, CFT con IVA sobre intereses y cuponera. La oferta rige por contrato.' },
@@ -345,42 +333,33 @@ export default async function HomePage() {
               ].map((g) => {
                 const Icon = g.icon
                 return (
-                  <div key={g.t} className="rounded-2xl border border-border/70 bg-white p-5 shadow-xs">
-                    <Icon className="h-5 w-5 text-brand-primary" />
-                    <h3 className="mt-3 text-sm font-bold text-brand-navy">{g.t}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{g.d}</p>
+                  <div key={g.t} className="flex gap-4">
+                    <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-primary" />
+                    <div>
+                      <dt className="text-sm font-semibold text-brand-navy">{g.t}</dt>
+                      <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{g.d}</dd>
+                    </div>
                   </div>
                 )
               })}
-            </div>
+            </dl>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section id="preguntas" className="mx-auto w-full max-w-4xl scroll-mt-24 px-4 py-16 sm:px-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">¿Querés saber más?</h2>
+        <section id="preguntas" className="mx-auto w-full max-w-3xl scroll-mt-24 px-4 py-16 sm:px-6 lg:py-20">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">¿Querés saber más?</h2>
             <p className="mt-3 text-base text-muted-foreground">Despejá tus dudas antes de solicitar el crédito.</p>
           </div>
-          <div className="mt-8 space-y-3">
-            {faqs.map((item) => (
-              <details
-                key={item.q}
-                className="group rounded-2xl border border-border/70 bg-card px-5 py-4 open:border-brand-primary/30"
-              >
-                <summary className="cursor-pointer list-none text-sm font-bold text-brand-navy marker:content-none">
-                  {item.q}
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
-              </details>
-            ))}
+          <div className="mt-8">
+            <PublicFaqList items={faqs} />
           </div>
-          <div className="mt-6 text-center">
+          <div className="mt-6">
             <Link href="/preguntas-frecuentes" className="text-sm font-semibold text-brand-primary hover:underline">
               Ver todas las preguntas frecuentes →
             </Link>
           </div>
-          <div className="mt-6">
+          <div className="mt-8">
             <LegalStrip />
           </div>
         </section>
