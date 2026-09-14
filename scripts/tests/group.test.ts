@@ -50,4 +50,15 @@ describe('marca UNIPAGOS · RM International', () => {
     assert.doesNotMatch(home, /PublicBcraTicker/)
     assert.doesNotMatch(hero, /Vista de ejemplo/)
   })
+
+  it('no usa naranja decorativo en auth ni cian de marketing en el chrome público', () => {
+    const authReset = readFileSync(new URL('../../components/auth/reset-password-form.tsx', import.meta.url), 'utf8')
+    const authForgot = readFileSync(new URL('../../components/auth/request-password-reset-form.tsx', import.meta.url), 'utf8')
+    const chrome = readFileSync(new URL('../../components/unicred/public-chrome.tsx', import.meta.url), 'utf8')
+    const home = readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8')
+    assert.doesNotMatch(authReset, /#F5A623|#FF5722/)
+    assert.doesNotMatch(authForgot, /#F5A623|#FF5722/)
+    assert.doesNotMatch(chrome, /brand-cian/)
+    assert.doesNotMatch(home, /font-black/)
+  })
 })

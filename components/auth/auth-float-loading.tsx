@@ -1,6 +1,6 @@
 export function AuthFloatLoading({ wide = false }: { wide?: boolean }) {
   return (
-    <div className="flex min-h-svh flex-col bg-[#F3F5F4]" aria-busy="true" aria-live="polite">
+    <div className="flex min-h-svh flex-col bg-background" aria-busy="true" aria-live="polite">
       <span className="sr-only">Cargando…</span>
       <div className="px-5 py-5 sm:px-10">
         <div className="h-9 w-44 animate-pulse rounded-lg bg-muted" />
