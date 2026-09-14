@@ -114,31 +114,34 @@ export default async function HomePage() {
     <div className="flex min-h-svh flex-col bg-background">
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
       <main id="contenido-principal">
-        {/* Hero: calculadora al frente, no una promesa vacía */}
-        <section className="relative overflow-hidden border-b border-border">
+        {/* Hero: la foto manda; el simulador es vidrio, no un panel opaco */}
+        <section className="relative overflow-hidden">
           <Image
             src="/hero-alt.png"
             alt=""
             fill
             priority
             sizes="100vw"
-            className="object-cover object-right"
+            className="object-cover object-[70%_center] lg:object-right"
             aria-hidden
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/10" aria-hidden />
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent lg:bg-gradient-to-r lg:from-white/20 lg:via-transparent lg:to-brand-navy/10"
+            aria-hidden
+          />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
             <div className="lg:col-span-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
               </p>
               <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:text-[46px] lg:text-[52px]">
                 Un crédito que se entiende antes de pedirlo.
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-snug text-foreground/85">
+              <p className="mt-5 max-w-lg text-lg leading-snug text-brand-navy/85">
                 {BRAND.valueProp}
               </p>
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-brand-navy/70">
                 Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
                 Firmás recién cuando ves TNA, CFT y plan de pagos completos.
               </p>
@@ -152,7 +155,7 @@ export default async function HomePage() {
                   return (
                     <span
                       key={p.t}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-foreground backdrop-blur"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/20 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
                     >
                       <Icon className="h-3.5 w-3.5 text-brand-primary" />
                       {p.t}
@@ -161,16 +164,16 @@ export default async function HomePage() {
                 })}
               </div>
               <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Hasta</dt>
+                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Hasta</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
-                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Cuotas</dt>
+                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Cuotas</dt>
                   <dd className="mt-1 text-base font-bold text-brand-navy">3 a 48 fijas</dd>
                 </div>
-                <div className="rounded-2xl border border-border bg-white/80 px-3 py-3 backdrop-blur">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Primer crédito</dt>
+                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Primer crédito</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
                 </div>
               </dl>
@@ -182,14 +185,14 @@ export default async function HomePage() {
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="rounded-full border-border bg-white/80 font-semibold text-brand-navy backdrop-blur hover:bg-white">
+                <Button asChild size="lg" variant="outline" className="rounded-full border-white/50 bg-white/20 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/35">
                   <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
                 </Button>
               </div>
             </div>
 
             <div className="lg:col-span-6">
-              <LoanSimulator className="shadow-2xl shadow-brand-navy/20" />
+              <LoanSimulator variant="glass" />
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:hidden">
                 <Button
                   asChild
@@ -203,7 +206,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <TrustBar />
+        <TrustBar tone="light" />
 
         {/* Cómo funciona */}
         <section id="como-funciona" className="scroll-mt-24 bg-white">
