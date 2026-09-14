@@ -51,7 +51,7 @@ export async function PublicBcraTicker() {
       <div className="mx-auto flex w-full max-w-7xl items-center gap-4 overflow-x-auto px-4 py-1.5 sm:px-6">
         <Link
           href="/datos-bcra"
-          className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-cian-300 hover:text-white"
+          className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-primary-300 hover:text-white"
         >
           <Landmark className="h-3.5 w-3.5" />
           BCRA oficial
@@ -59,7 +59,7 @@ export async function PublicBcraTicker() {
         <div className="flex min-w-0 flex-1 items-center gap-4 text-[12px] font-semibold tabular-nums">
           {top.map((row) => (
             <span key={row.moneda} className="inline-flex shrink-0 items-baseline gap-1.5">
-              <span className="text-brand-cian-200">{row.moneda}</span>
+              <span className="text-white/60">{row.moneda}</span>
               <span className="text-white">{formatFx(row.valor)}</span>
             </span>
           ))}

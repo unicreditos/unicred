@@ -1,7 +1,7 @@
 import { PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { getAccountHref } from '@/lib/session'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -85,10 +85,10 @@ export function PageSection({
   eyebrow?: string
 }) {
   return (
-    <section id={id} className="scroll-mt-24 space-y-6 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+    <section id={id} className="scroll-mt-24 space-y-6 rounded-2xl border border-border/60 bg-card p-6 sm:p-8">
       <div className="max-w-3xl space-y-2">
-        {eyebrow && <p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">{eyebrow}</p>}
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>
+        {eyebrow && <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">{eyebrow}</p>}
+        <h2 className="text-2xl font-bold tracking-tight text-brand-navy sm:text-3xl">{title}</h2>
         {subtitle && <p className="leading-relaxed text-muted-foreground">{subtitle}</p>}
       </div>
       <div className="pt-2">{children}</div>
@@ -113,21 +113,40 @@ export function FeatureCard({
   badge?: string
 }) {
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/40 p-5 transition hover:border-brand-primary/30 hover:bg-white hover:shadow-md">
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-border/60 bg-background p-5">
       <div className="flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-primary/15 to-brand-cian-500/15 text-brand-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
           {icon}
         </div>
         {badge && (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+          <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-primary-800">
             {badge}
           </span>
         )}
       </div>
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <h3 className="text-base font-semibold text-brand-navy">{title}</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
+    </div>
+  )
+}
+
+export function PublicFaqList({ items }: { items: { q: string; a: string }[] }) {
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <details
+          key={item.q}
+          className="group rounded-2xl border border-border/60 bg-card px-5 py-4 open:border-brand-primary/25"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-brand-navy marker:content-none">
+            {item.q}
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition group-open:rotate-180 group-open:text-brand-primary" />
+          </summary>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
+        </details>
+      ))}
     </div>
   )
 }

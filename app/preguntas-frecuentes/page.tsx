@@ -1,4 +1,4 @@
-import { PageSection, PublicPageShell } from '@/components/unicred/public-page-shell'
+import { PageSection, PublicFaqList, PublicPageShell } from '@/components/unicred/public-page-shell'
 import { BRAND } from '@/lib/brand'
 import { LEGAL_COPY } from '@/lib/legal/copy'
 import { pageMetadata } from '@/lib/seo'
@@ -57,19 +57,7 @@ export default function FaqPage() {
       secondaryAction={{ href: '/sign-up', label: 'Solicitar evaluación' }}
     >
       <PageSection title="Todo lo que necesitás saber">
-        <div className="space-y-3">
-          {FAQS.map((item) => (
-            <details
-              key={item.q}
-              className="group rounded-2xl border border-border/70 bg-card px-5 py-4 open:border-brand-primary/30"
-            >
-              <summary className="cursor-pointer list-none text-sm font-bold text-brand-navy marker:content-none">
-                {item.q}
-              </summary>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
-            </details>
-          ))}
-        </div>
+        <PublicFaqList items={FAQS} />
       </PageSection>
     </PublicPageShell>
   )

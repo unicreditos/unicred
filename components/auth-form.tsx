@@ -1,5 +1,6 @@
 'use client'
 
+import { AuthAlert } from '@/components/auth/auth-shell'
 import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -166,11 +167,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </label>
         ) : null}
 
-        {error && (
-          <p className="text-center text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
+        {error ? <AuthAlert>{error}</AuthAlert> : null}
 
         <p className="pt-1 text-center text-sm text-brand-navy-600">
           {isSignUp ? (

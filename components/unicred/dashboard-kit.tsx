@@ -1,3 +1,9 @@
+/**
+ * Kit de producto UNICRÉDITOS. Ver DESIGN.md.
+ * Canónico: SectionCard, KpiCard, TrustBar, BrandLogo.
+ * App: MetricTile + acentos WorkspaceShell (brand-primary, no cian/naranja).
+ * Público: hero de vidrio en app/page.tsx; no usar HeroLanding en home.
+ */
 import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/finance'
 import { BRAND, GROUP } from '@/lib/brand'
@@ -647,7 +653,7 @@ export function TrustBar({ tone = 'navy' }: { tone?: 'navy' | 'light' }) {
               className={
                 light
                   ? 'flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/15'
-                  : 'flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-brand-cian-300 ring-1 ring-white/5'
+                  : 'flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-brand-primary ring-1 ring-white/5'
               }
             >
               {i.icon}
@@ -670,14 +676,14 @@ export function HeroLanding() {
       />
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-12 lg:py-24">
         <div className="lg:col-span-7">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-cian-200">
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
             {GROUP.productLine} · crédito en línea
           </p>
           <h1 className="mt-6 max-w-3xl text-[40px] font-bold leading-[1.06] tracking-tight text-white sm:text-[54px] lg:text-[60px]">
             Un crédito que se entiende antes de pedirlo.
           </h1>
-          <p className="mt-5 max-w-xl text-lg font-medium leading-snug text-brand-cian-100 sm:text-xl">
+          <p className="mt-5 max-w-xl text-lg font-medium leading-snug text-white/85 sm:text-xl">
             {BRAND.valueProp}
           </p>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-white/75">
@@ -701,7 +707,7 @@ export function HeroLanding() {
           </div>
           <dl className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Tope del primer crédito
               </dt>
               <dd className="mt-1 text-lg font-bold tabular-nums text-white">
@@ -709,13 +715,13 @@ export function HeroLanding() {
               </dd>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Cuotas fijas
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">3 a 48</dd>
             </div>
             <div className="col-span-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 sm:col-span-1">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Antes de firmar
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">TNA y CFT</dd>
@@ -725,7 +731,7 @@ export function HeroLanding() {
 
         <div className="lg:col-span-5">
           <div className="rounded-[1.75rem] border border-white/15 bg-white/[0.06] p-6 sm:p-8">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-cian-200">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary-200">
               Lo que sí hacemos
             </p>
             <ul className="mt-5 space-y-4">

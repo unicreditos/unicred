@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { AuthShell } from '@/components/auth/auth-shell'
+import { AuthAlert, AuthNotice, AuthShell } from '@/components/auth/auth-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,9 +32,10 @@ export function ResetPasswordForm() {
           </Link>
         }
       >
-        <p className="text-sm text-muted-foreground">
-          Por seguridad, cada enlace sirve una sola vez y vence al cabo de 1 hora.
-        </p>
+        <AuthNotice>
+          Por seguridad, cada enlace sirve una sola vez y vence al cabo de 1 hora. Pedí uno nuevo
+          para elegir la contraseña.
+        </AuthNotice>
       </AuthShell>
     )
   }
@@ -102,18 +103,10 @@ export function ResetPasswordForm() {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
+        {error ? <AuthAlert>{error}</AuthAlert> : null}
 
         <div className="grid grid-cols-2 gap-3">
-          <Button
-            type="button"
-            asChild
-            className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
-          >
+          <Button type="button" asChild variant="outline" className="h-12 text-base font-semibold">
             <Link href="/sign-in">Volver</Link>
           </Button>
           <Button type="submit" disabled={loading} className="h-12 text-base font-semibold">
