@@ -120,17 +120,22 @@ export default async function HomePage() {
             src="/hero-alt.png"
             alt=""
             fill
-            priority
+            fetchPriority="high"
             sizes="100vw"
-            className="object-cover object-[70%_center] lg:object-right"
+            className="object-cover object-right"
             aria-hidden
           />
           <div
-            className="absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent lg:bg-gradient-to-r lg:from-white/20 lg:via-transparent lg:to-brand-navy/10"
+            className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/20 to-transparent lg:bg-gradient-to-r lg:from-white/15 lg:via-transparent lg:to-brand-navy/10"
             aria-hidden
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
-            <div className="lg:col-span-6">
+            <div className="relative lg:col-span-6">
+              <div
+                className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-white/70 via-white/35 to-transparent blur-2xl lg:hidden"
+                aria-hidden
+              />
+              <div className="relative">
               <p className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
@@ -188,6 +193,7 @@ export default async function HomePage() {
                 <Button asChild size="lg" variant="outline" className="rounded-full border-white/50 bg-white/20 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/35">
                   <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
                 </Button>
+              </div>
               </div>
             </div>
 

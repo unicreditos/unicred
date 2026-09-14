@@ -131,7 +131,7 @@ export function LoanSimulator({
                   term === t
                     ? 'border-primary bg-primary text-primary-foreground'
                     : glass
-                      ? 'border-white/50 bg-white/55 text-brand-navy hover:border-primary/50 hover:bg-white/80'
+                      ? 'border-white/40 bg-white/30 text-brand-navy hover:border-primary/50 hover:bg-white/55'
                       : 'border-border bg-background text-foreground hover:border-primary/50',
                 )}
                 aria-pressed={term === t}
@@ -145,7 +145,7 @@ export function LoanSimulator({
         <dl
           className={cn(
             'space-y-2 rounded-lg p-4 text-sm',
-            glass ? 'bg-white/50 ring-1 ring-white/40 backdrop-blur-sm' : 'bg-muted',
+            glass ? 'bg-white/25 ring-1 ring-white/35 backdrop-blur-sm' : 'bg-muted',
           )}
         >
           <div className="flex justify-between">
