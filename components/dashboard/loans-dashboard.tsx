@@ -4,15 +4,7 @@ import { getLoanInstallments, withdrawLoanAcceptance } from '@/app/actions/loans
 import { AmortizationTable } from '@/components/dashboard/amortization-table'
 import { EarlySettlementCard } from '@/components/dashboard/early-settlement-card'
 import { PayInstallmentButton } from '@/components/payments/pay-installment-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -21,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { SectionCard, StatusChip } from '@/components/unicred/dashboard-kit'
+import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
 import { formatARS, formatPercent } from '@/lib/finance'
 import Link from 'next/link'
 import { installment, loan } from '@/lib/db/schema'
@@ -33,78 +27,38 @@ import {
   CreditCard,
   Inbox,
   Loader2,
-  Wallet,
   XCircle,
   ChevronRight,
   AlertCircle,
-  Receipt,
-  ShieldAlert,
-  FileSearch,
 } from 'lucide-react'
 
 type Loan = typeof loan.$inferSelect
 type Installment = typeof installment.$inferSelect
 
-const LOAN_STATUS: Record<
-  string,
-  { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; tone: string }
-> = {
-  pending: {
-    label: 'En evaluación',
-    variant: 'secondary',
-    tone: 'bg-muted/60 text-muted-foreground',
-  },
-  approved: {
-    label: 'Aprobado',
-    variant: 'default',
-    tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  },
-  rejected: {
-    label: 'Rechazado',
-    variant: 'destructive',
-    tone: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-  },
-  active: {
-    label: 'Activo',
-    variant: 'default',
-    tone: 'bg-primary/10 text-primary',
-  },
-  paid: {
-    label: 'Cancelado',
-    variant: 'outline',
-    tone: 'bg-accent text-accent-foreground',
-  },
-  cancelled: {
-    label: 'Arrepentido',
-    variant: 'outline',
-    tone: 'bg-muted text-muted-foreground',
-  },
+function loanChipStatus(status: string) {
+  switch (status) {
+    case 'pending':
+      return 'en_evaluacion'
+    case 'approved':
+      return 'aprobado'
+    case 'rejected':
+      return 'rechazado'
+    case 'active':
+      return 'activo'
+    case 'paid':
+      return 'pagado'
+    case 'cancelled':
+      return 'arrepentido'
+    default:
+      return status
+  }
 }
 
-const INSTALLMENT_STATUS: Record<
-  string,
-  { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: React.ComponentType<{ className?: string }> }
-> = {
-  pending: {
-    label: 'Pendiente',
-    variant: 'secondary',
-    icon: Clock3,
-  },
-  paid: {
-    label: 'Pagada',
-    variant: 'default',
-    icon: CheckCircle2,
-  },
-  cancelled: {
-    label: 'Anulada',
-    variant: 'outline',
-    icon: XCircle,
-  },
-  overdue: {
-    label: 'Vencida',
-    variant: 'destructive',
-    icon: XCircle,
-  },
+function loanRowTone(status: string) {
+  if (status === 'rejected') return 'bg-rose-500/10 text-rose-700'
+  if (status === 'paid') return 'bg-emerald-500/10 text-emerald-700'
+  if (status === 'pending') return 'bg-amber-500/10 text-amber-800'
+  return 'bg-muted text-muted-foreground'
 }
 
 function formatDate(d: Date | string) {
@@ -220,141 +174,114 @@ export function LoansDashboard({
   if (!selectedLoan) {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total solicitudes"
-            value={String(listed.length)}
-            icon={CreditCard}
-            tone="bg-primary/10 text-primary"
-          />
-          <StatCard
-            label="Activos"
-            value={String(totals.active)}
-            icon={Wallet}
-            tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          />
-          <StatCard
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricTile label="Total solicitudes" value={String(listed.length)} />
+          <MetricTile label="Activos" value={String(totals.active)} tone={totals.active ? 'ok' : 'default'} />
+          <MetricTile
             label="Saldo pendiente"
             value={formatARS(totals.pendingAmount)}
-            icon={Receipt}
-            tone="bg-amber-500/10 text-amber-700 dark:text-amber-400"
-            mono
+            tone={totals.pendingAmount ? 'warn' : 'default'}
           />
-          <StatCard
+          <MetricTile
             label="Rechazados"
             value={String(totals.rejected)}
-            icon={XCircle}
-            tone="bg-rose-500/10 text-rose-700 dark:text-rose-400"
+            tone={totals.rejected ? 'critical' : 'default'}
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <LayoutDashboardLocalIcon />
+        <SectionCard
+          title={view === 'historial' ? 'Historial de créditos' : view === 'vigentes' ? 'Créditos vigentes' : 'Mis préstamos y solicitudes'}
+          description={
+            view === 'historial'
+              ? 'Créditos cancelados, rechazados o anulados.'
+              : 'Solo los créditos activos generan cuotas y deuda. El cupón de Pago Fácil o Rapipago se emite al pagar.'
+          }
+        >
+          {listed.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Inbox className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle>
-                  {view === 'historial' ? 'Historial de créditos' : view === 'vigentes' ? 'Créditos vigentes' : 'Mis préstamos y solicitudes'}
-                </CardTitle>
-                <CardDescription>
-                  {view === 'historial'
-                    ? 'Créditos cancelados, rechazados o anulados.'
-                    : 'Solo los créditos activos generan cuotas y deuda. El cupón de Pago Fácil o Rapipago se emite al pagar.'}
-                </CardDescription>
+                <p className="text-sm font-medium text-foreground">
+                  Todavía no tenés solicitudes
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Andá a &quot;Solicitar crédito&quot; para enviar tu primera solicitud.
+                </p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            {listed.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Inbox className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Todavía no tenés solicitudes
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Andá a &quot;Solicitar crédito&quot; para enviar tu primera solicitud.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-border rounded-lg border border-border">
-                {listed.map((l) => {
-                  const s = LOAN_STATUS[l.status] ?? LOAN_STATUS.pending
-                  const rejected = isTerminalRejected(l.status)
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => setSelectedLoanId(l.id)}
-                      className="flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/50"
+          ) : (
+            <div className="divide-y divide-border rounded-lg border border-border">
+              {listed.map((l) => {
+                const rejected = isTerminalRejected(l.status)
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setSelectedLoanId(l.id)}
+                    className="flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${loanRowTone(l.status)}`}
                     >
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${s.tone}`}
-                      >
+                      {rejected ? (
+                        <XCircle className="h-5 w-5" />
+                      ) : l.status === 'paid' ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : l.status === 'pending' ? (
+                        <Clock3 className="h-5 w-5" />
+                      ) : (
+                        <CreditCard className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {rejected || l.status === 'pending'
+                            ? `Solicitud ${formatARS(l.principal)} · ${l.term} cuotas`
+                            : `Préstamo ${formatARS(l.principal)} · ${l.term} cuotas`}
+                        </p>
+                        <StatusChip status={loanChipStatus(l.status)} />
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground font-mono">
                         {rejected ? (
-                          <XCircle className="h-5 w-5" />
-                        ) : l.status === 'paid' ? (
-                          <CheckCircle2 className="h-5 w-5" />
+                          <>
+                            <span>Sin desembolso</span>
+                            {l.scoreAtApproval != null ? <span>Score: {l.scoreAtApproval}</span> : null}
+                            <span>{formatDate(l.createdAt)}</span>
+                          </>
                         ) : l.status === 'pending' ? (
-                          <Clock3 className="h-5 w-5" />
+                          <>
+                            <span>En evaluación</span>
+                            <span>Cuota estimada: {formatARS(l.installmentAmount)}</span>
+                            <span>{formatDate(l.createdAt)}</span>
+                          </>
                         ) : (
-                          <CreditCard className="h-5 w-5" />
+                          <>
+                            <span>Cuota: {formatARS(l.installmentAmount)}</span>
+                            <span>TNA: {formatPercent(l.tna)}</span>
+                            <span>{formatDate(l.createdAt)}</span>
+                          </>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {rejected || l.status === 'pending'
-                              ? `Solicitud ${formatARS(l.principal)} · ${l.term} cuotas`
-                              : `Préstamo ${formatARS(l.principal)} · ${l.term} cuotas`}
-                          </p>
-                          <Badge variant={s.variant}>{s.label}</Badge>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground font-mono">
-                          {rejected ? (
-                            <>
-                              <span>Sin desembolso</span>
-                              {l.scoreAtApproval != null ? <span>Score: {l.scoreAtApproval}</span> : null}
-                              <span>{formatDate(l.createdAt)}</span>
-                            </>
-                          ) : l.status === 'pending' ? (
-                            <>
-                              <span>En evaluación</span>
-                              <span>Cuota estimada: {formatARS(l.installmentAmount)}</span>
-                              <span>{formatDate(l.createdAt)}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>Cuota: {formatARS(l.installmentAmount)}</span>
-                              <span>TNA: {formatPercent(l.tna)}</span>
-                              <span>{formatDate(l.createdAt)}</span>
-                            </>
-                          )}
-                        </div>
-                        {rejected && l.rejectionReason ? (
-                          <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 line-clamp-2">
-                            Motivo: {l.rejectionReason}
-                          </p>
-                        ) : null}
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      {rejected && l.rejectionReason ? (
+                        <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 line-clamp-2">
+                          Motivo: {l.rejectionReason}
+                        </p>
+                      ) : null}
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </SectionCard>
       </div>
     )
   }
 
-  const statusCfg = LOAN_STATUS[selectedLoan.status] ?? LOAN_STATUS.pending
   const rejected = isTerminalRejected(selectedLoan.status)
   const withdrawn = isWithdrawn(selectedLoan.status)
   const pendingReview = selectedLoan.status === 'pending'
@@ -393,7 +320,7 @@ export function LoansDashboard({
                 ? `Solicitud ${formatARS(selectedLoan.principal)} · ${selectedLoan.term} cuotas`
                 : `Préstamo ${formatARS(selectedLoan.principal)} · ${selectedLoan.term} cuotas`}
             </h2>
-            <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+            <StatusChip status={loanChipStatus(selectedLoan.status)} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground font-mono">
             Solicitado el {formatDate(selectedLoan.createdAt)}
@@ -407,132 +334,90 @@ export function LoansDashboard({
       </div>
 
       {rejected ? (
-        <Card className="border-rose-200/80 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-          <CardContent className="flex gap-3 p-4 sm:p-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400">
-              <ShieldAlert className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">
-                En este momento no podemos aprobar tu solicitud
-              </p>
-              <p className="text-sm text-rose-700/90 dark:text-rose-300/90">
-                {selectedLoan.rejectionReason?.trim() ||
-                  'La evaluación no llegó al umbral de aprobación. No se acreditó dinero ni se generó plan de pagos.'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Podés volver a solicitar cuando tu perfil, tus ingresos o tu situación en BCRA hayan cambiado. Los montos de abajo son solo referenciales.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <DecisionBanner
+          tone="critical"
+          title="En este momento no podemos aprobar tu solicitud"
+          detail={
+            selectedLoan.rejectionReason?.trim() ||
+            'La evaluación no llegó al umbral de aprobación. No se acreditó dinero ni se generó plan de pagos.'
+          }
+        />
       ) : null}
 
       {pendingReview ? (
-        <Card className="border-amber-200/80 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20">
-          <CardContent className="flex gap-3 p-4 sm:p-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700">
-              <FileSearch className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Solicitud en evaluación
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Todavía no hay desembolso ni cuotas. Te avisamos cuando se resuelva.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <DecisionBanner
+          tone="warn"
+          title="Solicitud en evaluación"
+          detail="Todavía no hay desembolso ni cuotas. Te avisamos cuando se resuelva."
+        />
       ) : null}
 
       {withdrawn ? (
-        <Card className="border-border/80 bg-muted/60 dark:border-slate-800 dark:bg-slate-950/40">
-          <CardContent className="flex gap-3 p-4 sm:p-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <XCircle className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold">Crédito anulado por arrepentimiento</p>
-              <p className="text-sm text-muted-foreground">
-                {selectedLoan.rejectionReason?.trim() ||
-                  'Ejerciste el derecho de arrepentimiento. No hay deuda ni desembolso.'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <DecisionBanner
+          tone="info"
+          title="Crédito anulado por arrepentimiento"
+          detail={
+            selectedLoan.rejectionReason?.trim() ||
+            'Ejerciste el derecho de arrepentimiento. No hay deuda ni desembolso.'
+          }
+        />
       ) : null}
 
       {canTryWithdraw ? (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex flex-col gap-3 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold">Derecho de arrepentimiento</p>
-              <p className="text-sm text-muted-foreground">
-                Si ya aceptaste el contrato y el dinero todavía no se acreditó, podés anularlo
-                dentro de los 10 días corridos (Ley 24.240 art. 34).
-              </p>
-              {withdrawError ? (
-                <p className="text-sm text-destructive">{withdrawError}</p>
-              ) : null}
+        <DecisionBanner
+          tone="info"
+          title="Derecho de arrepentimiento"
+          detail="Si ya aceptaste el contrato y el dinero todavía no se acreditó, podés anularlo dentro de los 10 días corridos (Ley 24.240 art. 34)."
+          action={
+            <div className="flex flex-col items-end gap-1">
+              {withdrawError ? <p className="text-sm text-destructive">{withdrawError}</p> : null}
+              <Button
+                variant="outline"
+                disabled={withdrawing}
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      '¿Arrepentirte de este crédito? Solo vale si el contrato está aceptado y el dinero no se acreditó.',
+                    )
+                  ) {
+                    return
+                  }
+                  setWithdrawing(true)
+                  setWithdrawError(null)
+                  const r = await withdrawLoanAcceptance(selectedLoan.id)
+                  setWithdrawing(false)
+                  if (!r.ok) {
+                    setWithdrawError(r.error)
+                    return
+                  }
+                  window.location.reload()
+                }}
+              >
+                {withdrawing ? 'Registrando…' : 'Arrepentirme'}
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              disabled={withdrawing}
-              onClick={async () => {
-                if (
-                  !window.confirm(
-                    '¿Arrepentirte de este crédito? Solo vale si el contrato está aceptado y el dinero no se acreditó.',
-                  )
-                ) {
-                  return
-                }
-                setWithdrawing(true)
-                setWithdrawError(null)
-                const r = await withdrawLoanAcceptance(selectedLoan.id)
-                setWithdrawing(false)
-                if (!r.ok) {
-                  setWithdrawError(r.error)
-                  return
-                }
-                window.location.reload()
-              }}
-            >
-              {withdrawing ? 'Registrando…' : 'Arrepentirme'}
-            </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile
           label={funded ? 'Monto acreditado' : 'Monto solicitado'}
           value={formatARS(selectedLoan.principal)}
-          icon={Wallet}
-          tone={rejected ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}
-          mono
+          tone={rejected ? 'default' : 'ok'}
         />
-        <StatCard
+        <MetricTile
           label={funded ? 'Cuota mensual' : 'Cuota estimada'}
           value={formatARS(selectedLoan.installmentAmount)}
-          icon={CreditCard}
-          tone={rejected ? 'bg-muted text-muted-foreground' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'}
-          mono
         />
-        <StatCard
+        <MetricTile
           label={funded ? 'Total a devolver' : 'Total estimado'}
           value={formatARS(selectedLoan.totalAmount)}
-          icon={Receipt}
-          tone={rejected ? 'bg-muted text-muted-foreground' : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'}
-          mono
         />
-        <StatCard
+        <MetricTile
           label="TNA · CFT"
-          value={`${formatPercent(selectedLoan.tna)}`}
-          icon={CalendarClock}
-          tone={rejected ? 'bg-muted text-muted-foreground' : 'bg-sky-500/10 text-sky-700 dark:text-sky-400'}
-          mono
-          sub={selectedLoan.cft ? `CFT ${formatPercent(selectedLoan.cft)}` : undefined}
+          value={formatPercent(selectedLoan.tna)}
+          hint={selectedLoan.cft ? `CFT ${formatPercent(selectedLoan.cft)}` : undefined}
         />
       </div>
 
@@ -549,34 +434,18 @@ export function LoansDashboard({
         {(selectedLoan.status === 'active' || selectedLoan.status === 'paid') ? (
           <EarlySettlementCard loanId={selectedLoan.id} loanStatus={selectedLoan.status} />
         ) : null}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-base">Plan de pagos</CardTitle>
-                <CardDescription>
-                  {paidCount} pagada{paidCount === 1 ? '' : 's'} · {pendingCount} pendiente
-                  {pendingCount === 1 ? '' : 's'}
-                  {overdueCount > 0 && (
-                    <>
-                      {' '}
-                      ·{' '}
-                      <span className="text-rose-600 dark:text-rose-400">
-                        {overdueCount} vencida{overdueCount === 1 ? '' : 's'}
-                      </span>
-                    </>
-                  )}
-                </CardDescription>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Progreso</p>
-                <p className="font-mono text-sm font-semibold">
-                  {installments.length > 0 ? `${paidCount} / ${installments.length}` : '—'}
-                </p>
-              </div>
+        <SectionCard
+          title="Plan de pagos"
+          description={`${paidCount} pagada${paidCount === 1 ? '' : 's'} · ${pendingCount} pendiente${pendingCount === 1 ? '' : 's'}${overdueCount > 0 ? ` · ${overdueCount} vencida${overdueCount === 1 ? '' : 's'}` : ''}`}
+          action={
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Progreso</p>
+              <p className="font-mono text-sm font-semibold">
+                {installments.length > 0 ? `${paidCount} / ${installments.length}` : '—'}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          }
+        >
             {loadingInstallments ? (
               <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -607,9 +476,14 @@ export function LoansDashboard({
                   <TableBody>
                     {installments.map((inst) => {
                       const overdue = isOverdue(inst.dueDate, inst.status)
-                      const statusKey = overdue ? 'overdue' : inst.status
-                      const cfg = INSTALLMENT_STATUS[statusKey] ?? INSTALLMENT_STATUS.pending
-                      const StatusIcon = cfg.icon
+                      const chip =
+                        inst.status === 'paid'
+                          ? 'pagado'
+                          : inst.status === 'cancelled'
+                            ? 'anulada'
+                            : overdue
+                              ? 'vencido'
+                              : 'pendiente'
                       return (
                         <TableRow
                           key={inst.id}
@@ -640,12 +514,7 @@ export function LoansDashboard({
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={cfg.variant} className="gap-1">
-                              <StatusIcon className="h-3 w-3" />
-                              {overdue && inst.status !== 'paid' && inst.status !== 'cancelled'
-                                ? 'Vencida'
-                                : cfg.label}
-                            </Badge>
+                            <StatusChip status={chip} />
                           </TableCell>
                           <TableCell>
                             <p className="text-xs text-muted-foreground">
@@ -682,35 +551,25 @@ export function LoansDashboard({
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">Talonario</CardTitle>
-                <CardDescription>
-                  Cronograma de este crédito. El cupón de Pago Fácil o Rapipago se emite cuando elegís ese medio en
-                  Pagar, porque tiene vencimiento.
-                </CardDescription>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/dashboard?tab=documentos_talonario&doc=talonario&docId=${encodeURIComponent(selectedLoan.id)}`}>
-                  Ver cronograma
-                </Link>
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
+        </SectionCard>
+        <SectionCard
+          title="Talonario"
+          description="Cronograma de este crédito. El cupón de Pago Fácil o Rapipago se emite cuando elegís ese medio en Pagar, porque tiene vencimiento."
+          action={
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/dashboard?tab=documentos_talonario&doc=talonario&docId=${encodeURIComponent(selectedLoan.id)}`}>
+                Ver cronograma
+              </Link>
+            </Button>
+          }
+        >
+          <p className="text-sm text-muted-foreground">Abrí el cronograma para ver cuotas y vencimientos de este crédito.</p>
+        </SectionCard>
         {overdueInstallments.length > 0 ? (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Historial de mora</CardTitle>
-              <CardDescription>
-                Cuotas vencidas o pagadas después del vencimiento. UNICRÉDITOS no liquida punitorios de oficio.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <SectionCard
+            title="Historial de mora"
+            description="Cuotas vencidas o pagadas después del vencimiento. UNICRÉDITOS no liquida punitorios de oficio."
+          >
               <div className="space-y-2">
                 {overdueInstallments.map((inst) => (
                   <div key={inst.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
@@ -725,21 +584,18 @@ export function LoansDashboard({
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
         ) : null}
         </>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Plan de pagos</CardTitle>
-            <CardDescription>
-              {rejected
-                ? 'No se generó plan de pagos porque la solicitud fue rechazada.'
-                : 'El plan de pagos se genera solo si la solicitud se aprueba.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <SectionCard
+          title="Plan de pagos"
+          description={
+            rejected
+              ? 'No se generó plan de pagos porque la solicitud fue rechazada.'
+              : 'El plan de pagos se genera solo si la solicitud se aprueba.'
+          }
+        >
             <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-10 text-center">
               {rejected ? (
                 <XCircle className="h-8 w-8 text-rose-500/80" />
@@ -755,51 +611,9 @@ export function LoansDashboard({
                   : 'Cuando se apruebe, vas a ver acá el cronograma y podrás pagar cada cuota.'}
               </p>
             </div>
-          </CardContent>
-        </Card>
+        </SectionCard>
       )}
     </div>
-  )
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  tone,
-  mono,
-  sub,
-}: {
-  label: string
-  value: string
-  icon: React.ComponentType<{ className?: string }>
-  tone: string
-  mono?: boolean
-  sub?: string
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p
-              className={`mt-1 text-base font-semibold text-foreground ${mono ? 'font-mono' : ''}`}
-            >
-              {value}
-            </p>
-            {sub && (
-              <p className="mt-0.5 text-xs text-muted-foreground font-mono">{sub}</p>
-            )}
-          </div>
-          <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`}
-          >
-            <Icon className="h-4.5 w-4.5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -820,24 +634,3 @@ function computeLoanStats(loans: Loan[]) {
   return { active, rejected, pendingAmount }
 }
 
-function LayoutDashboardLocalIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-    >
-      <rect width="7" height="9" x="3" y="3" rx="1" />
-      <rect width="7" height="5" x="14" y="3" rx="1" />
-      <rect width="7" height="9" x="14" y="12" rx="1" />
-      <rect width="7" height="5" x="3" y="16" rx="1" />
-    </svg>
-  )
-}

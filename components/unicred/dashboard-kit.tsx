@@ -296,13 +296,11 @@ export function ProgressBar({
       ? 'bg-emerald-500'
       : tone === 'amber'
         ? 'bg-brand-amber'
-        : tone === 'cian'
-          ? 'bg-brand-cian-500'
-          : 'bg-gradient-to-r from-brand-primary to-brand-cian-500'
+        : 'bg-brand-primary'
   return (
     <div
       className={cn(
-        'h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10',
+        'h-2 w-full overflow-hidden rounded-full bg-muted dark:bg-white/10',
         className,
       )}
     >
@@ -354,7 +352,7 @@ export function StatusChip({
     rechazado: 'bg-destructive/10 text-destructive border-destructive/20 ring-destructive/10',
     vencido: 'bg-destructive/10 text-destructive border-destructive/20 ring-destructive/10',
     en_evaluacion:
-      'bg-brand-indigo/10 text-brand-indigo-700 border-brand-indigo/20 ring-brand-indigo/10',
+      'bg-muted text-amber-800 border-border ring-amber-500/10',
   }
   const cls = map[s] ?? 'bg-muted text-muted-foreground border-border'
   const labelMap: Record<string, string> = {
@@ -411,12 +409,11 @@ export function LoanCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition hover:shadow-md',
+        'rounded-2xl border border-border bg-card shadow-xs transition hover:shadow-sm',
         className,
       )}
     >
-      <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-brand-primary/5 blur-2xl" />
-      <div className="relative p-4 sm:p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
