@@ -39,19 +39,12 @@ export function LoanSimulator({
     [amount, term, monthlyRate],
   )
 
-  return (
-    <Card
-      className={cn(
-        'w-full overflow-hidden p-0',
-        glass &&
-          'border-white/40 bg-white/80 text-brand-navy shadow-lg shadow-brand-navy/10 ring-1 ring-white/50 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/20',
-        className,
-      )}
-    >
+  const body = (
+    <>
       <div
         className={cn(
           'px-6 py-4',
-          glass ? 'border-b border-white/30 bg-white/10' : 'uc-gradient-navy text-white',
+          glass ? 'border-b border-white/25 bg-white/5' : 'uc-gradient-navy text-white',
         )}
       >
         <p
@@ -91,7 +84,7 @@ export function LoanSimulator({
               className={cn(
                 'font-mono text-sm font-semibold',
                 glass
-                  ? 'rounded-md bg-white/70 px-2 py-0.5 text-brand-navy'
+                  ? 'rounded-md bg-white/75 px-2 py-0.5 text-brand-navy shadow-sm'
                   : 'text-foreground',
               )}
             >
@@ -131,7 +124,7 @@ export function LoanSimulator({
                   term === t
                     ? 'border-primary bg-primary text-primary-foreground'
                     : glass
-                      ? 'border-white/40 bg-white/30 text-brand-navy hover:border-primary/50 hover:bg-white/55'
+                      ? 'border-white/50 bg-white/45 text-brand-navy hover:border-primary/50 hover:bg-white/70'
                       : 'border-border bg-background text-foreground hover:border-primary/50',
                 )}
                 aria-pressed={term === t}
@@ -145,7 +138,7 @@ export function LoanSimulator({
         <dl
           className={cn(
             'space-y-2 rounded-lg p-4 text-sm',
-            glass ? 'bg-white/25 ring-1 ring-white/35 backdrop-blur-sm' : 'bg-muted',
+            glass ? 'bg-white/40 ring-1 ring-white/50 backdrop-blur-sm' : 'bg-muted',
           )}
         >
           <div className="flex justify-between">
@@ -189,6 +182,21 @@ export function LoanSimulator({
           </Button>
         )}
       </div>
-    </Card>
+    </>
   )
+
+  if (glass) {
+    return (
+      <div
+        className={cn(
+          'w-full overflow-hidden rounded-xl border border-white/40 bg-white/15 text-sm text-brand-navy shadow-lg shadow-brand-navy/10 backdrop-blur-2xl',
+          className,
+        )}
+      >
+        {body}
+      </div>
+    )
+  }
+
+  return <Card className={cn('w-full overflow-hidden p-0', className)}>{body}</Card>
 }

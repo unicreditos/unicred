@@ -126,7 +126,7 @@ export default async function HomePage() {
             aria-hidden
           />
           <div
-            className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/20 to-transparent lg:bg-gradient-to-r lg:from-white/15 lg:via-transparent lg:to-brand-navy/10"
+            className="absolute inset-0 bg-gradient-to-b from-white/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-navy/15"
             aria-hidden
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
@@ -136,7 +136,7 @@ export default async function HomePage() {
                 aria-hidden
               />
               <div className="relative">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
               </p>
@@ -160,7 +160,7 @@ export default async function HomePage() {
                   return (
                     <span
                       key={p.t}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/20 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
                     >
                       <Icon className="h-3.5 w-3.5 text-brand-primary" />
                       {p.t}
@@ -169,15 +169,15 @@ export default async function HomePage() {
                 })}
               </div>
               <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Hasta</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
-                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Cuotas</dt>
                   <dd className="mt-1 text-base font-bold text-brand-navy">3 a 48 fijas</dd>
                 </div>
-                <div className="rounded-2xl border border-white/50 bg-white/20 px-3 py-3 shadow-sm backdrop-blur-md">
+                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Primer crédito</dt>
                   <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
                 </div>
@@ -190,7 +190,7 @@ export default async function HomePage() {
                 >
                   <Link href="/sign-up">Solicitar mi crédito</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="rounded-full border-white/50 bg-white/20 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/35">
+                <Button asChild size="lg" variant="outline" className="rounded-full border-white/40 bg-white/10 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/25">
                   <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
                 </Button>
               </div>
