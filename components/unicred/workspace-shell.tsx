@@ -34,10 +34,10 @@ export type WorkspaceNavItem = {
   children?: readonly WorkspaceNavChild[]
 }
 
-const ROLE_META: Record<WorkspaceRole, { eyebrow: string; homeLabel: string; homeHref: string }> = {
-  customer: { eyebrow: 'Cuenta', homeLabel: 'Inicio', homeHref: '/dashboard' },
-  admin: { eyebrow: 'Backoffice', homeLabel: 'Dashboard', homeHref: '/admin' },
-  merchant: { eyebrow: 'Comercio', homeLabel: 'Inicio', homeHref: '/merchant' },
+const ROLE_META: Record<WorkspaceRole, { homeLabel: string; homeHref: string }> = {
+  customer: { homeLabel: 'Inicio', homeHref: '/dashboard' },
+  admin: { homeLabel: 'Dashboard', homeHref: '/admin' },
+  merchant: { homeLabel: 'Inicio', homeHref: '/merchant' },
 }
 
 const SIDEBAR_KEY = 'uc-sidebar-collapsed'
@@ -236,7 +236,7 @@ export function WorkspaceShell({
                             ? 'h-12 justify-center rounded-xl'
                             : 'gap-3 rounded-xl px-2.5 py-3 text-[14px]',
                           isActive
-                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
+                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_var(--color-brand-primary)]'
                             : childActive
                               ? 'font-semibold text-white'
                               : 'font-medium text-white/75 hover:bg-white/8 hover:text-white',
@@ -246,7 +246,7 @@ export function WorkspaceShell({
                           className={cn(
                             'shrink-0',
                             'h-6 w-6',
-                            isActive || childActive ? 'text-[#FF8A65]' : 'text-white/70',
+                            isActive || childActive ? 'text-brand-primary' : 'text-white/70',
                           )}
                         />
                         {compact ? null : (
@@ -277,7 +277,7 @@ export function WorkspaceShell({
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
-                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
+                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_var(--color-brand-primary)]'
                                     : 'font-medium text-white/55 hover:bg-white/6 hover:text-white',
                                 )}
                               >
@@ -299,7 +299,7 @@ export function WorkspaceShell({
   )
 
   return (
-    <div className="flex h-svh overflow-hidden bg-[#F4F6F9] text-foreground">
+    <div className="flex h-svh overflow-hidden bg-background text-foreground">
       <SupportPresenceBeacon />
       <aside
         className={cn(
@@ -310,9 +310,6 @@ export function WorkspaceShell({
         <div className={cn('flex h-16 items-center border-b border-white/8', collapsed ? 'justify-center px-2' : 'px-4')}>
           <BrandLogo href={meta.homeHref} showText={!collapsed} light className="[&_span.flex]:gap-0" />
         </div>
-        {collapsed ? null : (
-          <div className="px-4 pt-3 pb-1 text-[11px] font-medium text-brand-cian-300/80">{meta.eyebrow}</div>
-        )}
         {renderNav(collapsed)}
         <div className={cn('border-t border-white/8', collapsed ? 'p-2' : 'px-3 py-3')}>
           <button

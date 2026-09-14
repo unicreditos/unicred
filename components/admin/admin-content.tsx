@@ -857,7 +857,7 @@ export function AdminContent({
       const s = l.scoreAtApproval || 0
       if (s >= 800) dist[4]++; else if (s >= 650) dist[3]++; else if (s >= 500) dist[2]++; else if (s >= 350) dist[1]++; else dist[0]++
     })
-    const distColors = ['#F43F5E', '#F59E0B', '#EAB308', '#0EA5E9', '#10B981']
+    const distColors = ['#F43F5E', '#F59E0B', '#6E8779', '#20BD5A', '#157A3B']
     const distLabels = ['Crítico <350', 'Riesgo 350-500', 'Medio 500-650', 'Bueno 650-800', 'Excelente >800']
     return (
       <OpsFloor>
@@ -889,7 +889,7 @@ export function AdminContent({
                     <div key={label} className="grid grid-cols-[1fr_auto] items-center gap-3 text-sm">
                       <div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-600">{label}</span>
+                          <span className="text-xs text-muted-foreground">{label}</span>
                           <span className="tabular-nums text-xs font-semibold">{n} · {p}%</span>
                         </div>
                         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">

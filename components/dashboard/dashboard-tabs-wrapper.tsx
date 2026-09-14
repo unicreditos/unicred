@@ -41,7 +41,6 @@ import {
   formatPercent,
 } from '@/lib/finance'
 import {
-  loanStatusLabel,
   paymentMethodLabel,
   paymentStatusLabel,
 } from '@/lib/labels'
@@ -523,19 +522,11 @@ export function DashboardTabsWrapper({
               />
             </div>
 
-            <section className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
-                      <Sparkles className="h-4 w-4" />
-                    </span>
-                    <h3 className="text-base font-semibold text-brand-navy-900">Simulador Express de Crédito</h3>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Calculá tu cuota fija mensual bajo Sistema Francés amortizable.
-                  </p>
-                </div>
+            <SectionCard
+              title="Simulador Express de Crédito"
+              description="Calculá tu cuota fija mensual bajo Sistema Francés amortizable."
+              icon={<Sparkles className="h-4 w-4" />}
+              action={
                 <div className="flex items-center gap-2">
                   <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
                     TNA {formatPercent(products[0]?.tna ?? 102)}
@@ -544,9 +535,9 @@ export function DashboardTabsWrapper({
                     CFT {formatPercent(products[0]?.tna ? Number(products[0].tna) * 1.21 : 123.42)}
                   </span>
                 </div>
-              </div>
-
-              <div className="mt-5 grid gap-6 md:grid-cols-12 items-center">
+              }
+            >
+              <div className="grid items-center gap-6 md:grid-cols-12">
                 <div className="space-y-4 md:col-span-7">
                   <div>
                     <div className="flex justify-between text-xs font-medium">
@@ -612,20 +603,19 @@ export function DashboardTabsWrapper({
                   </Button>
                 </div>
               </div>
-            </section>
+            </SectionCard>
 
             <div className="grid items-start gap-4 lg:grid-cols-5">
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
-                <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <div>
-                    <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
-                    <p className="text-xs text-muted-foreground">Capital originado, cuotas y amortización</p>
-                  </div>
+              <SectionCard
+                title="Créditos vigentes"
+                description="Capital originado, cuotas y amortización"
+                className="lg:col-span-3"
+                action={
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setActiveTab('cuotas_vigentes')}>
                     Ver detalle completo
                   </Button>
-                </header>
-                <div className="p-5">
+                }
+              >
                   {!activeLoansList.length ? (
                     <div className="py-8 text-center">
                       <CreditCard className="mx-auto h-8 w-8 text-muted-foreground/50" />
@@ -652,9 +642,7 @@ export function DashboardTabsWrapper({
                               <p className="truncate text-sm font-semibold text-brand-navy-900">
                                 {(l as any).purpose || 'Préstamo personal'}
                               </p>
-                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                {loanStatusLabel(l.status)}
-                              </span>
+                              <StatusChip status={l.status} />
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               Originado el {formatDateShort((l as any).createdAt)} · Tasa mensual {l.monthlyRate ?? '—'}%
@@ -668,15 +656,14 @@ export function DashboardTabsWrapper({
                       ))}
                     </div>
                   )}
-                </div>
-              </section>
+              </SectionCard>
 
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-2">
-                <header className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-semibold text-brand-navy-900">Accesos rápidos</h2>
-                  <p className="text-xs text-muted-foreground">Lo que más usás</p>
-                </header>
-                <div className="grid gap-2 p-3">
+              <SectionCard
+                title="Accesos rápidos"
+                description="Lo que más usás"
+                className="lg:col-span-2"
+                bodyClassName="grid gap-2 p-3"
+              >
                   {[
                     { t: 'Pagar cuota', d: 'Medios electrónicos, tarjeta y transferencias', tab: 'pagos' as TabValue, icon: Wallet },
                     { t: 'Billetera digital', d: 'CVU, saldo disponible y transferencias', tab: 'billetera' as TabValue, icon: CreditCard },
@@ -706,19 +693,16 @@ export function DashboardTabsWrapper({
                       </button>
                     )
                   })}
-                </div>
-              </section>
+              </SectionCard>
             </div>
 
             <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
 
             {recentMoves.length > 0 ? (
-              <section className="rounded-xl border border-border bg-card shadow-sm">
-                <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <div>
-                    <h2 className="text-sm font-semibold text-brand-navy-900">Últimos movimientos</h2>
-                    <p className="text-xs text-muted-foreground">Pagos y desembolsos recientes</p>
-                  </div>
+              <SectionCard
+                title="Últimos movimientos"
+                description="Pagos y desembolsos recientes"
+                action={
                   <Button
                     variant="ghost"
                     size="sm"
@@ -727,8 +711,9 @@ export function DashboardTabsWrapper({
                   >
                     Ver historial
                   </Button>
-                </header>
-                <div className="divide-y divide-border p-4">
+                }
+                bodyClassName="divide-y divide-border p-4"
+              >
                   {recentMoves.slice(0, 4).map((m) => (
                     <div key={m.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                       <div className="flex min-w-0 items-center gap-3">
@@ -748,7 +733,7 @@ export function DashboardTabsWrapper({
                       <p
                         className={cn(
                           'text-sm font-semibold tabular-nums',
-                          m.kind === 'in' ? 'text-sky-700' : 'text-emerald-700',
+                          m.kind === 'in' ? 'text-foreground' : 'text-emerald-700',
                         )}
                       >
                         {m.kind === 'in' ? '+' : ''}
@@ -756,8 +741,7 @@ export function DashboardTabsWrapper({
                       </p>
                     </div>
                   ))}
-                </div>
-              </section>
+              </SectionCard>
             ) : null}
           </>
         )}
@@ -1368,8 +1352,9 @@ function kycVariant(s: string | null | undefined) {
       return 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200/60'
     case 'reviewing':
     case 'submitted':
+      return 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-200/60'
     case 'verified':
-      return 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-200/60'
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200/60'
     case 'pending':
       return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200/60'
     default:
@@ -1415,23 +1400,18 @@ function KYCBiometricPanel({
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ShieldCheck className="h-5 w-5 text-primary" /> Identidad Didit
-              </CardTitle>
-              <CardDescription>
-                La verificación se hace dentro de UNICRÉDITOS: DNI, prueba de vida y coincidencia facial.
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className={cn('border px-2.5 py-1', kycVariant(kyc?.status))}>
-              {kycLabel(kyc?.status)}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
+      <SectionCard
+        title="Identidad Didit"
+        description="La verificación se hace dentro de UNICRÉDITOS: DNI, prueba de vida y coincidencia facial."
+        icon={<ShieldCheck className="h-4 w-4" />}
+        className="lg:col-span-2"
+        bodyClassName="space-y-4 p-4 text-sm sm:p-5"
+        action={
+          <Badge variant="outline" className={cn('border px-2.5 py-1', kycVariant(kyc?.status))}>
+            {kycLabel(kyc?.status)}
+          </Badge>
+        }
+      >
           <p className="text-muted-foreground">
             UNICRÉDITOS no recibe fotos ni videos cargados a mano. El flujo de Didit se abre acá, sin salir de la web.
           </p>
@@ -1464,17 +1444,14 @@ function KYCBiometricPanel({
               Face match {String(kyc.faceMatchScore)}%
             </p>
           )}
-        </CardContent>
-      </Card>
+        </SectionCard>
 
-      <Card className="lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="text-base">Verificar con Didit</CardTitle>
-          <CardDescription>
-            Completá DNI y prueba de vida acá, sin salir de UNICRÉDITOS. Sin aprobación de Didit no se puede solicitar crédito.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <SectionCard
+        title="Verificar con Didit"
+        description="Completá DNI y prueba de vida acá, sin salir de UNICRÉDITOS. Sin aprobación de Didit no se puede solicitar crédito."
+        className="lg:col-span-3"
+        bodyClassName="space-y-3 p-4 sm:p-5"
+      >
           {shots.length > 0 ? (
             <div className="grid grid-cols-3 gap-2">
               {shots.map((s) => (
@@ -1529,8 +1506,7 @@ function KYCBiometricPanel({
             </>
           )}
           {diditError && <p className="text-sm text-destructive">{diditError}</p>}
-        </CardContent>
-      </Card>
+      </SectionCard>
     </div>
   )
 }
@@ -1607,16 +1583,12 @@ function BancosPanel({
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
-      <Card className="lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Landmark className="h-5 w-5 text-primary" /> Mis cuentas de desembolso
-          </CardTitle>
-          <CardDescription>
-            Las cuentas se usarán para acreditar tus préstamos y cobrar reintegros.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SectionCard
+        title="Mis cuentas de desembolso"
+        description="Las cuentas se usarán para acreditar tus préstamos y cobrar reintegros."
+        icon={<Landmark className="h-4 w-4" />}
+        className="lg:col-span-3"
+      >
           {accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
               <Landmark className="h-10 w-10 text-muted-foreground/60" />
@@ -1637,14 +1609,7 @@ function BancosPanel({
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={cn(
-                        'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-                        a.accountType === 'cvu'
-                          ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400'
-                          : a.accountType === 'alias'
-                            ? 'bg-violet-500/15 text-violet-700 dark:text-violet-400'
-                            : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
-                      )}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
                     >
                       <Landmark className="h-5 w-5" />
                     </div>
@@ -1756,8 +1721,7 @@ function BancosPanel({
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       <Card className="lg:col-span-2">
         <CardHeader>
@@ -1795,7 +1759,7 @@ function BancosPanel({
           {preview ? (
             <div className="space-y-2 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-3 text-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Datos de la cuenta</p>
-              <div className="grid gap-1.5 text-xs text-slate-700">
+              <div className="grid gap-1.5 text-xs text-foreground">
                 <div className="flex justify-between gap-2">
                   <span className="text-muted-foreground">Entidad</span>
                   <span className="font-semibold text-foreground">{preview.bankName}</span>
@@ -2106,23 +2070,17 @@ function PagosPanel({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Wallet className="h-5 w-5 text-primary" /> Cuotas pendientes
-            </CardTitle>
-            <CardDescription>
-              Seleccioná una o más cuotas y tocá Pagar para abrir el formulario. El historial está en Pagos → Historial.
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="text-xs">
-            {pending.length} pendiente{pending.length === 1 ? '' : 's'}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <SectionCard
+      title="Cuotas pendientes"
+      description="Seleccioná una o más cuotas y tocá Pagar para abrir el formulario. El historial está en Pagos → Historial."
+      icon={<Wallet className="h-4 w-4" />}
+      action={
+        <Badge variant="outline" className="text-xs">
+          {pending.length} pendiente{pending.length === 1 ? '' : 's'}
+        </Badge>
+      }
+      bodyClassName="space-y-4 p-4 sm:p-5"
+    >
         {pending.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
             <CheckCircle2 className="h-10 w-10 text-emerald-600" />
@@ -2210,15 +2168,7 @@ function PagosPanel({
                         </TableCell>
                         <TableCell className="text-right font-mono font-bold">{formatARS(i.amount)}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              !overdue && 'bg-sky-500/80 hover:bg-sky-500',
-                              overdue && 'bg-rose-500 hover:bg-rose-500',
-                            )}
-                          >
-                            {overdue ? 'Vencida' : 'Pendiente'}
-                          </Badge>
+                          <StatusChip status={overdue ? 'vencido' : 'pendiente'} />
                         </TableCell>
                         <TableCell>
                           <Button
@@ -2262,43 +2212,34 @@ function PagosPanel({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+    </SectionCard>
   )
 }
 
 function HistorialPagosPanel({ payments }: { payments: PaymentType[] }) {
   if (payments.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Receipt className="h-5 w-5 text-primary" /> Historial de pagos
-          </CardTitle>
-          <CardDescription>Acá aparecen los pagos registrados en tu cuenta.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SectionCard
+        title="Historial de pagos"
+        description="Acá aparecen los pagos registrados en tu cuenta."
+        icon={<Receipt className="h-4 w-4" />}
+      >
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
             <Clock className="h-10 w-10 text-muted-foreground" />
             <p className="text-sm font-medium">Todavía no hay pagos</p>
             <p className="max-w-xs text-xs text-muted-foreground">Cuando pagues una cuota, el movimiento queda listado acá.</p>
           </div>
-        </CardContent>
-      </Card>
+      </SectionCard>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Receipt className="h-5 w-5 text-primary" /> Historial de pagos
-        </CardTitle>
-        <CardDescription>
-          {payments.length} movimiento{payments.length === 1 ? '' : 's'} · los comprobantes PDF están en Comprobantes.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <SectionCard
+      title="Historial de pagos"
+      description={`${payments.length} movimiento${payments.length === 1 ? '' : 's'} · los comprobantes PDF están en Comprobantes.`}
+      icon={<Receipt className="h-4 w-4" />}
+      bodyClassName="space-y-2 p-4 sm:p-5"
+    >
         {payments.map((p) => (
           <div key={p.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -2336,8 +2277,7 @@ function HistorialPagosPanel({ payments }: { payments: PaymentType[] }) {
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+    </SectionCard>
   )
 }
 
@@ -2374,17 +2314,11 @@ function ComprobantesPanel({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Receipt className="h-5 w-5 text-primary" /> Mis comprobantes
-            </CardTitle>
-            <CardDescription>
-              Todos tus recibos válidos. Podés descargarlos en PDF en cualquier momento.
-            </CardDescription>
-          </div>
+    <SectionCard
+      title="Mis comprobantes"
+      description="Todos tus recibos válidos. Podés descargarlos en PDF en cualquier momento."
+      icon={<Receipt className="h-4 w-4" />}
+      action={
           <div className="rounded-lg bg-muted p-1 flex w-fit">
             {(['pagos', 'desembolsos'] as const).map((t) => (
               <button
@@ -2403,9 +2337,8 @@ function ComprobantesPanel({
               </button>
             ))}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+      }
+    >
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-12 text-center">
             <Receipt className="h-10 w-10 text-muted-foreground/60" />
@@ -2487,7 +2420,7 @@ function ComprobantesPanel({
                             isRec
                               ? receipt!.receiptType === 'disbursement'
                                 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200/60'
-                                : 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-200/60'
+                                : 'bg-muted text-muted-foreground border-border'
                               : disb!.status === 'credited'
                                 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200/60'
                                 : disb!.status === 'failed'
@@ -2536,7 +2469,6 @@ function ComprobantesPanel({
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </SectionCard>
   )
 }
