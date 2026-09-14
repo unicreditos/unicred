@@ -133,13 +133,13 @@ export default async function HomePage() {
             aria-hidden
           />
           <div
-            className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/10 to-transparent lg:bg-gradient-to-r lg:from-white/25 lg:via-transparent lg:to-brand-navy/20"
+            className="absolute inset-0 bg-gradient-to-b from-white/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-navy/15"
             aria-hidden
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:py-20">
             <div className="relative lg:col-span-6">
               <div
-                className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-white/80 via-white/40 to-transparent blur-2xl lg:hidden"
+                className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-white/70 via-white/35 to-transparent blur-2xl lg:hidden"
                 aria-hidden
               />
               <div className="relative">
