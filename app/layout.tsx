@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
   display: 'swap',
 })
 
-const siteTitle = 'UNICRÉDITOS — Créditos personales online'
+const siteTitle = 'UNICRÉDITOS'
 const siteDescription =
-  'Crédito en línea en Argentina. Simulá cuota, TNA y CFT, verificá identidad y consultamos la Central de Deudores del BCRA antes de firmar. unicreditos.com'
+  'Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),
