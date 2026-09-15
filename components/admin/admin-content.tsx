@@ -306,9 +306,9 @@ export function AdminContent({
             <div className="text-[10px] text-destructive">Rechazados</div>
             <div className="text-[15px] font-semibold tabular-nums text-destructive">{counts.rejected ?? 0}</div>
           </div>
-          <div className="rounded-lg border border-teal-200 bg-teal-50/50 px-2.5 py-1.5">
-            <div className="text-[10px] text-teal-700">Pagados</div>
-            <div className="text-[15px] font-semibold tabular-nums text-teal-700">{counts.paid ?? 0}</div>
+          <div className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-1.5">
+            <div className="text-[10px] text-success">Pagados</div>
+            <div className="text-[15px] font-semibold tabular-nums text-success">{counts.paid ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card px-2.5 py-1.5">
             <div className="text-[10px] text-primary">Volumen</div>
@@ -1100,7 +1100,7 @@ export function AdminContent({
                       </TableCell>
                       <TableCell className="text-sm">{l.a}</TableCell>
                       <TableCell className="font-mono text-xs font-semibold">{l.o}</TableCell>
-                      <TableCell>{l.sev === 'error' ? <Badge variant="destructive" className="h-5 text-[11px]">ERROR</Badge> : l.sev === 'warning' ? <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 text-amber-700 text-[11px]">WARNING</Badge> : <Badge variant="outline" className="h-5 border-sky-500/30 bg-sky-500/10 text-sky-700 text-[11px]">INFO</Badge>}</TableCell>
+                      <TableCell>{l.sev === 'error' ? <Badge variant="destructive" className="h-5 text-[11px]">ERROR</Badge> : l.sev === 'warning' ? <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 text-amber-700 text-[11px]">WARNING</Badge> : <Badge variant="outline" className="h-5 text-[11px]">INFO</Badge>}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

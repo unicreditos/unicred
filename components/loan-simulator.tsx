@@ -67,7 +67,7 @@ export function LoanSimulator({
         </p>
         <p
           className={cn(
-            'mt-1 text-3xl font-black tracking-tight',
+            'mt-1 text-3xl font-bold tracking-tight',
             glass ? 'text-brand-navy' : 'text-white',
           )}
         >

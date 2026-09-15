@@ -43,8 +43,8 @@ const CHIP: Record<ClientFichaStatus, { label: string; className: string; dot: s
   },
   finalizado: {
     label: 'Finalizado',
-    className: 'bg-muted text-slate-600 border-border',
-    dot: 'bg-slate-400',
+    className: 'bg-muted text-muted-foreground border-border',
+    dot: 'bg-muted-foreground/50',
   },
 }
 
@@ -97,7 +97,7 @@ function MediaGrid({ items }: { items: Array<{ label: string; url: string; kind:
             <img src={item.url} alt={item.label} className="aspect-[4/3] w-full bg-card object-contain" />
           )}
           <figcaption className="flex items-center justify-between gap-2 bg-card px-3 py-2 text-xs">
-            <span className="text-slate-600">{item.label}</span>
+            <span className="text-muted-foreground">{item.label}</span>
             <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-brand-primary hover:underline">
               Abrir
             </a>
@@ -242,7 +242,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
           <div className="flex min-w-0 items-start gap-3">
             {portrait ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={portrait} alt="" className="h-12 w-12 rounded-lg object-cover ring-1 ring-slate-200" />
+              <img src={portrait} alt="" className="h-12 w-12 rounded-lg object-cover ring-1 ring-border" />
             ) : (
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-navy-900 text-sm font-semibold text-white">
                 {initials(ficha.user.name)}
@@ -595,7 +595,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <StatusChip status={credit.chip} />
-                        <span className="text-xs font-medium text-slate-600">{loanStatusLabel(credit.status)}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{loanStatusLabel(credit.status)}</span>
                         <Link href={adminLoanHref(credit.id, credit.status)} className="text-xs text-brand-primary hover:underline">
                           Expediente
                         </Link>
@@ -607,7 +607,7 @@ export function ClientFicha({ ficha }: { ficha: ClientFicha }) {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 bg-sky-600 hover:bg-sky-700"
+                          className="h-8"
                           disabled={busy}
                           onClick={() => void disburseCredit(credit.id, credit.contractStatus === 'accepted')}
                         >

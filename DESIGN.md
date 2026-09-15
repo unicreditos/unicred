@@ -1,6 +1,6 @@
-# UNICRÉDITOS — sistema visual (Fase 1)
+# UNICRÉDITOS — sistema visual
 
-Producto: crédito de consumo digital en Argentina. Una sola voz de **público → auth → app**.
+Producto: crédito de consumo digital en Argentina. Una sola voz de **público → auth → dashboard → admin → merchant**.
 Paleta corta, números tabulares, español `es-AR`. No inventar claims regulatorios.
 
 ## Tokens canónicos (`app/globals.css`)
@@ -16,31 +16,29 @@ Paleta corta, números tabulares, español `es-AR`. No inventar claims regulator
 | Estado aviso | `warning` / amber | solo mora, pendiente, riesgo |
 | Estado error | `destructive` / rose | solo rechazo, fallo, alerta |
 
-Ámbar y rojo **no** se usan de adorno. Cian e índigo quedaron deprecados: los aliases
-`brand-cian*` y `brand-indigo` apuntan a verdes/neutros para no romper clases viejas.
-No introducir naranja (`#FF5722`, `#F5A623`) en chrome público ni auth.
+Ámbar y rojo **no** se usan de adorno. Cian e índigo son aliases deprecados hacia verdes/navy.
+Naranja (`#FF5722`, `#F5A623`) no entra en chrome de producto. El isotipo usa `brand-primary`.
 
-`.uc-gradient-navy` / `.uc-gradient-card` / `.uc-text-gradient` son **legacy**.
-En superficies de producto preferí navy sólido, vidrio del hero, o `brand-primary`.
+`.uc-gradient-*` es **legacy**. Preferí navy sólido, vidrio del hero, o `brand-primary`.
 
 ## Primitivas
 
-- **SectionCard** (`dashboard-kit`) — panel de app: header muted + cuerpo. Dashboard / admin.
+- **BrandLogo / BrandMark** — círculo navy + `$` verde; wordmark Geist/Jakarta, no Impact.
+- **SectionCard** (`dashboard-kit`) — panel de app: header muted + cuerpo.
 - **MetricTile** (`workspace-shell`) — KPI con `tabular-nums`. Amber/rose solo por `tone`.
-- **Hero de vidrio** (`app/page.tsx` + `LoanSimulator variant="glass"`) — foto primero;
-  el simulador es translúcido, no un Card opaco. Contraste navy sobre el vidrio.
-- **WorkspaceShell** — acento `brand-primary` en nav activa (inset bar), no arcoíris.
-- **PublicPageShell** / **PageSection** / **FeatureCard** — páginas públicas. Ritmo
-  plano, pocos bordes, sin gradiente cian.
-- **PublicCtaBanner** — único momento navy de marca en el sitio público.
-- **AuthFloatLayout** — formularios **sólidos** (blanco, sombra suave). CTA `brand-primary`.
+- **StatusChip / StatusPill** — mismos tonos: success / warning / danger / muted. Sin sky/teal/violet.
+- **Hero de vidrio** (`app/page.tsx` + `LoanSimulator variant="glass"`) — foto primero.
+- **WorkspaceShell** — acento `brand-primary` en nav activa.
+- **PublicPageShell / PageSection / FeatureCard** — páginas públicas.
+- **PublicCtaBanner** — único momento navy de marketing.
+- **AuthFloatLayout** — formularios sólidos. CTA `brand-primary`.
+- **PublicErrorFrame** — 404/error con el mismo header/footer.
 
 ## Números de costo
 
-Cuota, TNA, TEA, CFT y montos van siempre con `tabular-nums` (y `font-mono` si el
-contexto ya lo usa). Contraste alto sobre vidrio (`text-brand-navy`) y sobre sólido.
+Cuota, TNA, TEA, CFT y montos: `tabular-nums`. Contraste alto sobre vidrio y sólido.
 
-## Fuera de esta fase
+## Qué no se toca
 
-Dashboard cliente en profundidad, mesas admin, merchant, campaña de borrar
-`summary-cards`, y cualquier cambio de underwriting / pagos / ledger / auth backend.
+Underwriting, pagos, ledger y auth backend. Los documentos imprimibles pueden seguir
+usando tinta de papelería; la UI en pantalla usa este sistema.

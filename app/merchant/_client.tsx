@@ -1389,7 +1389,7 @@ function CustomersTab({ sales }: { sales: SaleType[] }) {
           label="Operaciones totales"
           value={String(totalOps)}
           Icon={FileSpreadsheet}
-          tone="bg-sky-500/10 text-sky-700 dark:text-sky-400"
+          tone="bg-brand-primary/10 text-brand-primary-800"
         />
         <StatCard
           label="Total vendido"
@@ -1492,7 +1492,7 @@ function LiquidationsTab({
           label="Total liquidado"
           value={formatARS(totals.totalGross ?? 0)}
           Icon={Banknote}
-          tone="bg-sky-500/10 text-sky-700 dark:text-sky-400"
+          tone="bg-brand-primary/10 text-brand-primary-800"
           mono
         />
       </div>
@@ -1682,13 +1682,13 @@ function VentaRapidaTab({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-brand-cian" /> Venta rápida
+                  <Zap className="h-5 w-5 text-brand-primary" /> Venta rápida
                 </CardTitle>
                 <CardDescription>
                   Completá 3 campos y generá la operación. Link de pago en menos de 10 segundos.
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="h-6 border-brand-cian/30 bg-brand-cian/10 text-brand-cian">
+              <Badge variant="outline" className="h-6 border-brand-primary/30 bg-brand-primary/10 text-brand-primary">
                 <Sparkles className="h-3 w-3 mr-1" /> 100% Online
               </Badge>
             </div>
@@ -1857,7 +1857,7 @@ function VentaRapidaTab({
 
       <div className="lg:col-span-5 space-y-5">
         <Card className="border-brand-primary/20 shadow-sm relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-navy via-brand-primary to-brand-cian" />
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-brand-primary" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Calculator className="h-4 w-4 text-primary" /> Simulador en tiempo real
@@ -1867,7 +1867,7 @@ function VentaRapidaTab({
             <div className="space-y-4">
               <div className="text-center py-4">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Valor cuota estimado</p>
-                <p className="mt-2 font-mono text-4xl font-black uc-text-gradient">
+                <p className="mt-2 font-mono text-4xl font-bold tabular-nums text-brand-primary">
                   {sim ? formatARS(sim.installmentAmount) : "—"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">{term} cuotas mensuales fijas</p>
@@ -1888,7 +1888,7 @@ function VentaRapidaTab({
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="font-bold">Total a devolver</span>
-                <span className="font-mono text-xl font-black">{sim ? formatARS(sim.totalAmount) : "—"}</span>
+                <span className="font-mono text-xl font-bold tabular-nums">{sim ? formatARS(sim.totalAmount) : "—"}</span>
               </div>
             </div>
           </CardContent>
@@ -1906,7 +1906,7 @@ function VentaRapidaTab({
                 { n: 3, t: "Acreditás el dinero", d: "Desembolso en 24hs hábiles a tu CBU." },
               ].map((s) => (
                 <li key={s.n} className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[11px] font-black text-brand-primary">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[11px] font-bold text-brand-primary">
                     {s.n}
                   </span>
                   <div>
@@ -1954,7 +1954,7 @@ function SolicitudesRecibidasTab({ sales }: { sales: SaleType[] }) {
           >
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">{q.label}</p>
-              <span className="font-mono text-2xl font-black">{q.count}</span>
+              <span className="font-mono text-2xl font-bold tabular-nums">{q.count}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {q.count === 1 ? "solicitud" : "solicitudes"}
@@ -2224,7 +2224,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Volumen financiado" value={formatARS(totals.totalPrincipal ?? 0)} icon={<TrendingUp className="h-5 w-5" />} iconBg="bg-brand-primary/10 text-brand-primary" footer={<span className="text-xs text-muted-foreground">Capital originado en el período</span>} />
-        <KpiCard title="Operaciones" value={(totals.totalOps ?? 0).toLocaleString("es-AR")} icon={<CreditCard className="h-5 w-5" />} iconBg="bg-sky-500/10 text-sky-700" />
+        <KpiCard title="Operaciones" value={(totals.totalOps ?? 0).toLocaleString("es-AR")} icon={<CreditCard className="h-5 w-5" />} iconBg="bg-brand-primary/10 text-brand-primary" />
         <KpiCard title="Ticket medio" value={formatARS(totals.avgTicket ?? 0)} icon={<BarChart3 className="h-5 w-5" />} iconBg="bg-amber-500/10 text-amber-600" />
         <KpiCard title="Clientes" value={(totals.totalCustomers ?? 0).toLocaleString("es-AR")} icon={<Users className="h-5 w-5" />} iconBg="bg-emerald-500/10 text-emerald-700" />
       </div>
@@ -2241,7 +2241,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
           />
         </SectionCard>
 
-        <SectionCard title="Mix de estados" description="Distribución actual" icon={<CircleDot className="h-4 w-4 text-brand-cian" />} className="lg:col-span-4">
+        <SectionCard title="Mix de estados" description="Distribución actual" icon={<CircleDot className="h-4 w-4 text-brand-primary" />} className="lg:col-span-4">
           <div className="flex flex-col items-center justify-center py-2">
             <DonutChart
               segments={catSegments.length ? catSegments : [{ label: "Sin datos", value: 1, color: "#CBD5E1" }]}
@@ -2293,7 +2293,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
         <SectionCard
           title="Rendimiento"
           description="Indicadores de tus operaciones"
-          icon={<FileBarChart className="h-4 w-4 text-brand-cian" />}
+          icon={<FileBarChart className="h-4 w-4 text-brand-primary" />}
           className="lg:col-span-5"
         >
           <dl className="space-y-4 py-2">

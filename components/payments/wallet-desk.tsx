@@ -82,7 +82,7 @@ export function WalletDesk({
 
   if (!wallet) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border bg-card p-6 text-sm text-slate-600">
+      <div className="flex items-center gap-2 rounded-xl border bg-card p-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Abriendo tu billetera…
       </div>
     )
@@ -94,10 +94,10 @@ export function WalletDesk({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl border border-brand-navy/10 bg-gradient-to-br from-brand-navy-900 via-brand-navy-800 to-brand-primary-900 text-white shadow-lg shadow-brand-navy/20">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-brand-navy text-white">
         <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
           <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/65">
               <WalletCards className="h-4 w-4" /> Billetera UNICRÉDITOS
             </p>
             <p className="mt-3 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
@@ -146,7 +146,7 @@ export function WalletDesk({
               El saldo de esta billetera es un ledger interno. No publiques ni copies un CVU: UNICRÉDITOS no
               emite CVU Coelsa. Para recibir el préstamo usá Cuentas de desembolso (CBU/CVU bancario a tu nombre).
             </p>
-            <div className="rounded-xl border bg-muted p-3 text-sm text-slate-700">
+            <div className="rounded-xl border bg-muted p-3 text-sm text-brand-navy-700">
               Referencia interna de tesorería: {wallet.id.slice(0, 8).toUpperCase()}
             </div>
           </div>
@@ -277,7 +277,7 @@ export function WalletDesk({
                   <span
                     className={cn(
                       'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                      row.direction === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-slate-600',
+                      row.direction === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-muted-foreground',
                     )}
                   >
                     {row.direction === 'in' ? (
@@ -389,7 +389,7 @@ export function WalletPayBox({
       <div className="rounded-lg border bg-muted p-3">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Saldo</p>
         <p className="text-xl font-semibold tabular-nums">{formatARSDecimal(wallet.balance)}</p>
-        <p className="mt-2 text-xs text-slate-600">Ledger interno · no es CVU Coelsa.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Ledger interno · no es CVU Coelsa.</p>
       </div>
       {enough ? (
         <Button type="button" className="w-full font-semibold" disabled={busy} onClick={() => void pay()}>
@@ -397,7 +397,7 @@ export function WalletPayBox({
         </Button>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-muted-foreground">
             Faltan {formatARS(Math.max(0, amount - wallet.balance))} para cubrir esta cuota.
           </p>
           <p className="text-xs text-muted-foreground">

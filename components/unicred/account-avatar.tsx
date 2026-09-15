@@ -90,7 +90,7 @@ export function AccountAvatar({
 
   return (
     <div className={cn('relative shrink-0', className)}>
-      <Avatar className={cn(box, 'ring-1 ring-slate-200')}>
+      <Avatar className={cn(box, 'ring-1 ring-border')}>
         <AvatarImage src={preview || image || ''} alt={name ?? 'Usuario'} />
         <AvatarFallback className="bg-brand-navy-800 text-sm font-semibold text-white">
           {initialsFrom(name, email)}

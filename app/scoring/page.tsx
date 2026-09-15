@@ -37,7 +37,7 @@ export default function ScoringPage() {
             {escalas.map((n) => (
               <div key={n.nivel} className={`flex flex-col gap-2 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${n.tono}`}>
                 <div className="flex items-center gap-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 text-lg font-bold ring-1 ring-slate-200">{n.nivel}</span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 text-lg font-bold ring-1 ring-border">{n.nivel}</span>
                   <div>
                     <h3 className="text-base font-bold">{n.nombre}</h3>
                     <p className="text-sm opacity-80">

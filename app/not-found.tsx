@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { PublicErrorFrame } from '@/components/unicred/public-error-frame'
 import { ArrowRight, Calculator, Home, LifeBuoy, MapPinOff, Store } from 'lucide-react'
 import Link from 'next/link'
 
@@ -26,16 +26,17 @@ const shortcuts = [
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-16 sm:px-6">
+    <PublicErrorFrame>
+    <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
       <div className="w-full max-w-3xl">
         <div className="text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
             <MapPinOff className="h-3.5 w-3.5" /> Error 404
           </span>
-          <p className="mt-6 font-mono text-6xl font-black tracking-tight text-primary tabular-nums sm:text-7xl">
+          <p className="mt-6 font-mono text-6xl font-bold tracking-tight text-primary tabular-nums sm:text-7xl">
             404
           </p>
-          <h1 className="mt-3 text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-3 text-balance text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">
             No encontramos esta página
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
@@ -59,12 +60,11 @@ export default function NotFound() {
           {shortcuts.map((shortcut) => {
             const Icon = shortcut.icon
             return (
-              <Card key={shortcut.href} className="h-full transition-shadow hover:shadow-md">
-                <CardContent className="flex h-full flex-col gap-2">
+              <div key={shortcut.href} className="flex h-full flex-col gap-2 rounded-2xl border border-border/60 bg-card p-5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Icon className="h-4.5 w-4.5" />
                   </span>
-                  <h2 className="text-sm font-bold text-foreground">{shortcut.title}</h2>
+                  <h2 className="text-sm font-bold text-brand-navy">{shortcut.title}</h2>
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {shortcut.description}
                   </p>
@@ -74,12 +74,12 @@ export default function NotFound() {
                   >
                     Ir ahora <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
-                </CardContent>
-              </Card>
+              </div>
             )
           })}
         </div>
       </div>
     </main>
+    </PublicErrorFrame>
   )
 }

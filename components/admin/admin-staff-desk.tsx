@@ -81,7 +81,7 @@ export function AdminStaffDesk({
               {staff.map((u) => {
                 const currentRole = u.adminRoleId ? roleById.get(u.adminRoleId) : null
                 return (
-                  <tr key={u.id} className="border-t border-slate-100">
+                  <tr key={u.id} className="border-t border-border/70">
                     <td className="px-4 py-2.5">
                       <p className="font-medium">{u.name || '—'}</p>
                       <p className="text-[11px] text-muted-foreground">{u.email}</p>
