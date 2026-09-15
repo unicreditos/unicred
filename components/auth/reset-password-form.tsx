@@ -86,7 +86,7 @@ export function ResetPasswordForm() {
             minLength={8}
             autoComplete="new-password"
             placeholder="Mínimo 8 caracteres"
-            className="h-12 rounded-lg border-slate-200 px-3.5"
+            className="h-12 rounded-lg border-border px-3.5"
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -99,7 +99,7 @@ export function ResetPasswordForm() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="h-12 rounded-lg border-slate-200 px-3.5"
+            className="h-12 rounded-lg border-border px-3.5"
           />
         </div>
 

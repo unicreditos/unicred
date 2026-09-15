@@ -43,7 +43,7 @@ export function PublicInquiryForm({
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2" noValidate>
       <label className="space-y-1.5">
-        <span className="text-xs font-semibold text-slate-700">Nombre completo</span>
+        <span className="text-xs font-semibold text-foreground">Nombre completo</span>
         <input
           name="name"
           required
@@ -52,11 +52,11 @@ export function PublicInquiryForm({
           placeholder="Tu nombre y apellido"
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
         />
       </label>
       <label className="space-y-1.5">
-        <span className="text-xs font-semibold text-slate-700">Correo</span>
+        <span className="text-xs font-semibold text-foreground">Correo</span>
         <input
           name="email"
           required
@@ -66,28 +66,28 @@ export function PublicInquiryForm({
           placeholder="vos@email.com"
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
         />
       </label>
       {extraFields}
       <label className="space-y-1.5 sm:col-span-2">
-        <span className="text-xs font-semibold text-slate-700">Asunto</span>
+        <span className="text-xs font-semibold text-foreground">Asunto</span>
         <input
           name="subject"
           autoComplete="off"
           defaultValue={defaultSubject}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
         />
       </label>
       <label className="space-y-1.5 sm:col-span-2">
-        <span className="text-xs font-semibold text-slate-700">Mensaje</span>
+        <span className="text-xs font-semibold text-foreground">Mensaje</span>
         <textarea
           name="message"
           required
           rows={6}
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
         />
       </label>
       {state?.error ? (

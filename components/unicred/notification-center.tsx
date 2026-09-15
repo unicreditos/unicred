@@ -145,7 +145,7 @@ export function NotificationCenter() {
                   }}
                   className={cn(
                     'flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2.5 text-left hover:bg-muted/60',
-                    item.unread ? 'bg-sky-50/50' : '',
+                    item.unread ? 'bg-brand-primary/5' : '',
                   )}
                 >
                   <span className="mt-0.5">{toneIcon(item.tone)}</span>

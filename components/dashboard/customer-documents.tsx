@@ -388,7 +388,7 @@ export function CustomerDocumentsDesk({
           <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" /> Todos los documentos
           </Button>
-          <p className="text-sm font-medium text-slate-600">{viewing.title}</p>
+          <p className="text-sm font-medium text-brand-navy-700">{viewing.title}</p>
         </div>
         <InAppDocumentPanel kind={viewing.kind} id={viewing.id} />
       </div>
@@ -419,14 +419,14 @@ export function CustomerDocumentsDesk({
           ) : (
             groups.map((group) => (
               <div key={group.label} className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   {group.label}
                 </p>
                 {group.items.map((item) => (
                   <button
                     key={`${item.kind}-${item.id}`}
                     type="button"
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 text-left transition hover:border-brand-primary/40 hover:bg-slate-50"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-left transition hover:border-brand-primary/40 hover:bg-muted/40"
                     onClick={() => onOpen(item.kind, item.id)}
                   >
                     <div className="min-w-0">

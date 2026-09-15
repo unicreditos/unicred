@@ -152,7 +152,7 @@ export function LoanRequestSimulator({
 
   const bandColor: Record<string, string> = {
     excelente: 'text-emerald-600 dark:text-emerald-400',
-    bueno: 'text-sky-600 dark:text-sky-400',
+    bueno: 'text-brand-primary',
     regular: 'text-amber-600 dark:text-amber-400',
     bajo: 'text-rose-600 dark:text-rose-400',
   }

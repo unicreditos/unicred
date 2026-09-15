@@ -878,7 +878,7 @@ export function DashboardTabsWrapper({
                     >
                       <summary className="flex cursor-pointer items-center justify-between gap-4 list-none">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-[12px] font-black text-brand-primary">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-[12px] font-bold text-brand-primary">
                             {String(i + 1).padStart(2, '0')}
                           </span>
                           <div className="font-semibold leading-snug">{f.q}</div>

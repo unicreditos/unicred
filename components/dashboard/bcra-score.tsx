@@ -193,7 +193,7 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
             <CardTitle className="text-sm">Factores del score</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-slate-600">
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
           {persistedReasons.length ? (
             persistedReasons.map((r) => (
               <p key={r} className="rounded-lg border border-border bg-muted px-3 py-2">{r}</p>

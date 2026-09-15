@@ -228,7 +228,7 @@ export function PayInstallmentDialog({
       : `${installments.length} cuotas · ${formatARS(total)}`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-navy/50 p-3 sm:items-center">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
         <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div>
@@ -242,7 +242,7 @@ export function PayInstallmentDialog({
 
         {!chosen ? (
           <div className="space-y-3 p-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               Elegí el medio. El pago se hace desde tu cuenta UNICRÉDITOS. Si es tarjeta, se abre el formulario acá
               mismo. Si es Pago Fácil o Rapipago, el cupón se emite ahora porque vence.
             </p>
@@ -334,7 +334,7 @@ export function PayInstallmentDialog({
           </form>
         ) : (
           <div className="space-y-4 p-4">
-            <p className="text-xs font-medium text-slate-600">
+            <p className="text-xs font-medium text-muted-foreground">
               {isCardMethod(chosen)
                 ? 'Cargá los datos de la tarjeta como en un punto de venta. El cobro es de UNICRÉDITOS: no tenés que entrar a tu cuenta de Mercado Pago.'
                 : 'Se emite solo el cupón de este medio. Tiene fecha de vencimiento: imprimilo o pagalo ahora.'}

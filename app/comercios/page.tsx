@@ -37,14 +37,14 @@ export default function ComerciosPage() {
         </PageSection>
 
         <PageSection eyebrow="Qué no prometemos" title="Publicidad que sacamos">
-          <ul className="grid gap-3 sm:grid-cols-2 text-sm text-slate-700">
+          <ul className="grid gap-3 sm:grid-cols-2 text-sm text-brand-navy-700">
             {[
               'No hay ticket medio de $94.000 ni “+38%”.',
               'No hay “0 fraude” ni cobro 100% garantizado.',
               'No hay WhatsApp automático, multi-sucursal ni roles de vendedor.',
               'No hay cuotas sin interés para el consumidor.',
             ].map((t) => (
-              <li key={t} className="rounded-2xl border border-slate-200/70 bg-white p-4">
+              <li key={t} className="rounded-2xl border border-border/60 bg-background p-4">
                 {t}
               </li>
             ))}
@@ -61,8 +61,8 @@ export default function ComerciosPage() {
               'Habilitación de UNICRÉDITOS después de cruzar ARCA y Didit',
               'El comprador debe registrarse en UNICRÉDITOS',
             ].map((r) => (
-              <li key={r} className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-white p-4 text-sm leading-relaxed text-slate-700">
-                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {r}
+              <li key={r} className="flex items-start gap-2 rounded-xl border border-border/60 bg-background p-4 text-sm leading-relaxed text-brand-navy-700">
+                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" /> {r}
               </li>
             ))}
           </ul>
@@ -75,8 +75,8 @@ export default function ComerciosPage() {
               { t: '2 · UNICRÉDITOS valida', d: 'Se vuelve a consultar ARCA. Sin Didit, clave inactiva o expediente incompleto no se habilita.' },
               { t: '3 · Cargás el CUIL del cliente', d: 'Si califica, se origina el crédito a su nombre.' },
             ].map((s) => (
-              <li key={s.t} className="rounded-2xl border border-slate-200/70 bg-white p-5">
-                <h3 className="text-base font-bold text-slate-900">{s.t}</h3>
+              <li key={s.t} className="rounded-2xl border border-border/60 bg-background p-5">
+                <h3 className="text-base font-bold text-brand-navy">{s.t}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
               </li>
             ))}

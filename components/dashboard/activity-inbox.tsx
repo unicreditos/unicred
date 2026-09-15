@@ -71,7 +71,7 @@ export function ActivityInbox({ onOpenHref }: { onOpenHref: (href: string) => vo
               }}
               className={cn(
                 'flex w-full items-start gap-3 rounded-xl border border-border/60 bg-background p-4 text-left transition hover:border-brand-primary/30 hover:bg-brand-primary-50/30',
-                item.unread ? 'border-brand-primary/40 bg-sky-50/50' : '',
+                item.unread ? 'border-brand-primary/40 bg-brand-primary/5' : '',
               )}
             >
               <span className="mt-0.5">{toneIcon(item.tone)}</span>

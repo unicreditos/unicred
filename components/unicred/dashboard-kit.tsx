@@ -155,7 +155,7 @@ export function DonutChart({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           {centerTitle ? <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{centerTitle}</div> : null}
-          {centerValue ? <div className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums">{centerValue}</div> : null}
+          {centerValue ? <div className="mt-0.5 text-xl font-bold tracking-tight text-foreground tabular-nums">{centerValue}</div> : null}
         </div>
       </div>
       <div className="w-full sm:w-auto space-y-1.5">
@@ -293,7 +293,7 @@ export function ProgressBar({
 }: {
   value: number
   max?: number
-  tone?: 'primary' | 'emerald' | 'amber' | 'cian'
+  tone?: 'primary' | 'emerald' | 'amber' | 'cian' // cian: alias deprecado → primary
   className?: string
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
@@ -517,13 +517,13 @@ function InfoField({
 
 export function BrandMark({
   className,
-  tone = 'orange',
+  tone = 'brand',
 }: {
   className?: string
-  /** orange = marca principal; white = fondos oscuros; cream = variante Global-Cash */
-  tone?: 'orange' | 'white' | 'cream'
+  /** brand = verde de producto; white/cream = fondos oscuros. `orange` es alias deprecado de brand. */
+  tone?: 'brand' | 'orange' | 'white' | 'cream'
 }) {
-  const fg = tone === 'orange' ? '#FF5722' : tone === 'cream' ? '#ECF0E5' : '#FFFFFF'
+  const fg = tone === 'white' ? '#FFFFFF' : tone === 'cream' ? '#ECF0E5' : '#20BD5A'
   const cut = '#000000'
   return (
     <svg viewBox="0 0 100 100" className={cn('h-5 w-5', className)} aria-hidden>
@@ -538,7 +538,7 @@ export function BrandMark({
         textAnchor="middle"
         fontSize="22"
         fontWeight="700"
-        fontFamily="Impact, Haettenschweiler, Arial Black, sans-serif"
+        fontFamily="Geist, Plus Jakarta Sans, Arial, sans-serif"
         fill={cut}
       >
         $
@@ -566,16 +566,15 @@ export function BrandLogo({
           light ? 'bg-black ring-1 ring-white/15' : 'bg-black shadow-sm ring-1 ring-black/20',
         )}
       >
-        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'orange'} />
+        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'brand'} />
       </span>
       {showText ? (
         <span className="flex flex-col leading-none">
           <span
             className={cn(
-              'text-[17px] font-black uppercase tracking-[-0.04em]',
+              'text-[16px] font-bold uppercase tracking-[-0.03em]',
               light ? 'text-[#ECF0E5]' : 'text-brand-navy-800 dark:text-white',
             )}
-            style={{ fontFamily: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif" }}
           >
             {BRAND.company}
           </span>
@@ -598,7 +597,7 @@ export function DigitalCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A0A0A] via-[#1A120E] to-[#FF5722] p-5 text-white shadow-xl',
+        'relative overflow-hidden rounded-2xl bg-brand-navy p-5 text-white shadow-xl',
         className,
       )}
     >
@@ -609,7 +608,7 @@ export function DigitalCard({
             <BrandMark className="h-[1.65rem] w-[1.65rem]" tone="cream" />
           </span>
           <span>
-            <span className="block text-sm font-black tracking-[0.06em]">{BRAND.company}</span>
+            <span className="block text-sm font-bold tracking-[0.06em]">{BRAND.company}</span>
             <span className="block max-w-[160px] text-[10px] font-medium leading-snug text-white/70">{BRAND.slogan}</span>
           </span>
         </span>
@@ -643,7 +642,7 @@ export function TrustBar({ tone = 'navy' }: { tone?: 'navy' | 'light' }) {
       className={
         light
           ? 'w-full border-y border-border/50 bg-white/80 text-brand-navy-600 backdrop-blur-md'
-          : 'w-full bg-brand-navy-800 text-slate-200'
+          : 'w-full bg-brand-navy-800 text-white/80'
       }
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-3 px-4 py-3 sm:justify-between">

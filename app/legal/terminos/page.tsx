@@ -167,13 +167,13 @@ export default function TerminosPage() {
 
         <div className="space-y-6 lg:col-span-3">
           {secciones.map(s => (
-            <section key={s.id} id={`sec-${s.id}`} className="space-y-3 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-lg font-bold text-slate-900">
+            <section key={s.id} id={`sec-${s.id}`} className="space-y-3 rounded-2xl border border-border/60 bg-card p-6">
+              <h2 className="flex items-center gap-3 text-lg font-bold text-brand-navy">
                 <FileCheck2 className="h-5 w-5 text-brand-primary" />{s.t}
               </h2>
               <div className="space-y-2.5">
                 {s.p.map((par, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700 first-letter:pl-0">{par}</p>
+                  <p key={i} className="text-sm leading-relaxed text-brand-navy-700 first-letter:pl-0">{par}</p>
                 ))}
               </div>
             </section>

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { PublicErrorFrame } from '@/components/unicred/public-error-frame'
 import { AlertTriangle, Home, LifeBuoy, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
@@ -18,9 +18,10 @@ export default function Error({
   }, [error])
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-16 sm:px-6">
-      <Card className="w-full max-w-xl">
-        <CardContent className="flex flex-col gap-5 py-2">
+    <PublicErrorFrame>
+    <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
+      <div className="w-full max-w-xl rounded-2xl border border-border/60 bg-card p-6 sm:p-8">
+        <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
               <AlertTriangle className="h-5 w-5" />
@@ -29,7 +30,7 @@ export default function Error({
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 Algo falló
               </p>
-              <h1 className="text-xl font-black tracking-tight text-foreground sm:text-2xl">
+              <h1 className="text-xl font-bold tracking-tight text-brand-navy sm:text-2xl">
                 No pudimos cargar esta sección
               </h1>
             </div>
@@ -64,8 +65,9 @@ export default function Error({
               </Link>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
+    </PublicErrorFrame>
   )
 }
