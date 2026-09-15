@@ -57,7 +57,7 @@ import {
   DonutChart,
   StatusChip,
 } from "@/components/unicred/dashboard-kit"
-import { DecisionBanner, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
+import { DecisionBanner, MetricTile, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
 import { SupportChatPanel } from "@/components/support/support-chat"
 import {
   Banknote,
@@ -68,7 +68,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleDot,
-  Clock3,
   CreditCard,
   FileBarChart,
   FileSpreadsheet,
@@ -85,8 +84,6 @@ import {
   Ticket,
   TrendingUp,
   Users,
-  Wallet,
-  XCircle,
   Zap,
   AlertCircle,
 } from "lucide-react"
@@ -196,24 +193,6 @@ const MERCHANT_TITLES: Record<TabValue, { title: string; subtitle: string }> = {
 }
 
 const MERCHANT_TAB_IDS = Object.keys(MERCHANT_TITLES) as TabValue[]
-
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
-    pending: { variant: "secondary", label: "Pendiente", icon: AlertCircle },
-    approved: { variant: "outline", label: "Aprobado", icon: CheckCircle2 },
-    disbursed: { variant: "outline", label: "Desembolsado", icon: Banknote },
-    active: { variant: "default", label: "Activo", icon: CheckCircle2 },
-    paid: { variant: "outline", label: "Cancelado", icon: CheckCircle2 },
-    rejected: { variant: "destructive", label: "Rechazado", icon: XCircle },
-  }
-  const v = variants[status] ?? variants.pending
-  const Icon = v.icon
-  return (
-    <Badge variant={v.variant as any} className="gap-1">
-      <Icon className="h-3 w-3" /> {v.label}
-    </Badge>
-  )
-}
 
 export function MerchantTabsClient({
   user,
@@ -991,7 +970,7 @@ function MerchantProfileForm({
             <div
               className={`rounded-lg px-3 py-2 text-sm ${
                 msg.type === "ok"
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-brand-primary/10 text-brand-primary"
                   : "bg-destructive/10 text-destructive"
               }`}
             >
@@ -1014,14 +993,14 @@ function MerchantProfileForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Store className="h-4 w-4 text-primary" /> Estado
+              <Store className="h-4 w-4 text-brand-primary" /> Estado
             </CardTitle>
             <CardDescription>Adhesión y expediente fiscal</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Alta</span>
-              <StatusBadge status={existing?.status ?? "pending"} />
+              <StatusChip status={existing?.status ?? "pending"} />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">KYB</span>
@@ -1258,7 +1237,7 @@ function SaleForm({
             <div
               className={`rounded-lg px-3 py-2 text-sm ${
                 msg.type === "ok"
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-brand-primary/10 text-brand-primary"
                   : "bg-destructive/10 text-destructive"
               }`}
             >
@@ -1292,7 +1271,7 @@ function SaleForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" /> Simulación
+              <CreditCard className="h-4 w-4 text-brand-primary" /> Simulación
             </CardTitle>
             <CardDescription>Valores estimados de la operación</CardDescription>
           </CardHeader>
@@ -1324,7 +1303,7 @@ function SaleForm({
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Valor cuota</span>
-                  <span className="font-mono font-semibold text-primary">
+                  <span className="font-mono font-semibold text-brand-primary">
                     {formatARS(sim.installmentAmount)}
                   </span>
                 </div>
@@ -1379,31 +1358,15 @@ function CustomersTab({ sales }: { sales: SaleType[] }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Clientes únicos"
-          value={String(grouped.length)}
-          Icon={Users}
-          tone="bg-primary/10 text-primary"
-        />
-        <StatCard
-          label="Operaciones totales"
-          value={String(totalOps)}
-          Icon={FileSpreadsheet}
-          tone="bg-brand-primary/10 text-brand-primary-800"
-        />
-        <StatCard
-          label="Total vendido"
-          value={formatARS(totalAmount)}
-          Icon={TrendingUp}
-          tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          mono
-        />
+        <MetricTile label="Clientes únicos" value={String(grouped.length)} />
+        <MetricTile label="Operaciones totales" value={String(totalOps)} />
+        <MetricTile label="Total vendido" value={formatARS(totalAmount)} tone="ok" />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> Clientes
+            <Users className="h-4 w-4 text-brand-primary" /> Clientes
           </CardTitle>
           <CardDescription>Ventas agrupadas por cliente</CardDescription>
         </CardHeader>
@@ -1467,40 +1430,20 @@ function LiquidationsTab({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total financiado"
-          value={formatARS(totals.totalPrincipal ?? 0)}
-          Icon={CreditCard}
-          tone="bg-primary/10 text-primary"
-          mono
-        />
-        <StatCard
+        <MetricTile label="Total financiado" value={formatARS(totals.totalPrincipal ?? 0)} />
+        <MetricTile
           label={`Comisión UNICRÉDITOS (${formatPercent(commissionRate)})`}
-          value={`- ${formatARS(totals.totalCommission ?? 0)}`}
-          Icon={Receipt}
-          tone="bg-rose-500/10 text-rose-700 dark:text-rose-400"
-          mono
+          value={`− ${formatARS(totals.totalCommission ?? 0)}`}
+          tone="critical"
         />
-        <StatCard
-          label="Neto para comercio"
-          value={formatARS(totals.totalNet ?? 0)}
-          Icon={Wallet}
-          tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          mono
-        />
-        <StatCard
-          label="Total liquidado"
-          value={formatARS(totals.totalGross ?? 0)}
-          Icon={Banknote}
-          tone="bg-brand-primary/10 text-brand-primary-800"
-          mono
-        />
+        <MetricTile label="Neto para comercio" value={formatARS(totals.totalNet ?? 0)} tone="ok" />
+        <MetricTile label="Total liquidado" value={formatARS(totals.totalGross ?? 0)} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-primary" /> Detalle de ventas
+            <Receipt className="h-4 w-4 text-brand-primary" /> Detalle de ventas
           </CardTitle>
           <CardDescription>Todas las operaciones a liquidar</CardDescription>
         </CardHeader>
@@ -1549,11 +1492,11 @@ function LiquidationsTab({
                     <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400">
                       - {formatARS(comm)}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-primary">
+                    <TableCell className="text-right font-mono font-semibold text-brand-primary">
                       {formatARS(net)}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={s.status} />
+                      <StatusChip status={s.status} />
                     </TableCell>
                   </TableRow>
                 )
@@ -1563,44 +1506,6 @@ function LiquidationsTab({
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-function StatCard({
-  label,
-  value,
-  Icon,
-  tone,
-  mono,
-}: {
-  label: string
-  value: string
-  Icon: React.ComponentType<{ className?: string }>
-  tone: string
-  mono?: boolean
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p
-              className={`mt-1 text-base font-semibold text-foreground ${
-                mono ? "font-mono" : ""
-              }`}
-            >
-              {value}
-            </p>
-          </div>
-          <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`}
-          >
-            <Icon className="h-4.5 w-4.5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -1860,7 +1765,7 @@ function VentaRapidaTab({
           <div className="absolute inset-x-0 top-0 h-1.5 bg-brand-primary" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Calculator className="h-4 w-4 text-primary" /> Simulador en tiempo real
+              <Calculator className="h-4 w-4 text-brand-primary" /> Simulador en tiempo real
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1967,7 +1872,7 @@ function SolicitudesRecibidasTab({ sales }: { sales: SaleType[] }) {
         <CardHeader className="flex-row items-center justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Inbox className="h-4 w-4 text-primary" /> Bandeja de solicitudes
+              <Inbox className="h-4 w-4 text-brand-primary" /> Bandeja de solicitudes
             </CardTitle>
             <CardDescription>Todas las operaciones originadas desde tu comercio</CardDescription>
           </div>
@@ -2101,16 +2006,16 @@ function ConciliacionTab({ merchant, sales, totals }: { merchant: MerchantType |
         Bruto, comisión y neto según tus ventas cargadas. No hay matching bancario automático ni fecha de depósito inventada.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Neto de ventas" value={formatARS(totals.totalNet ?? 0)} Icon={Banknote} tone="bg-brand-primary/10 text-brand-primary" mono />
-        <StatCard label="Créditos vigentes" value={formatARS(totalVigente)} Icon={CheckCircle2} tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" mono />
-        <StatCard label="En originación" value={formatARS(totalEnCurso)} Icon={Clock3} tone="bg-amber-500/10 text-amber-700 dark:text-amber-500" mono />
+        <MetricTile label="Neto de ventas" value={formatARS(totals.totalNet ?? 0)} />
+        <MetricTile label="Créditos vigentes" value={formatARS(totalVigente)} tone="ok" />
+        <MetricTile label="En originación" value={formatARS(totalEnCurso)} tone="warn" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-12">
         <Card className="lg:col-span-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Scale className="h-4 w-4 text-primary" /> Ventas y comisión
+              <Scale className="h-4 w-4 text-brand-primary" /> Ventas y comisión
             </CardTitle>
             <CardDescription>Estado real de cada operación enviada a UNICRÉDITOS</CardDescription>
           </CardHeader>
@@ -2143,7 +2048,7 @@ function ConciliacionTab({ merchant, sales, totals }: { merchant: MerchantType |
                       <TableCell className="text-right font-mono font-bold">{formatARS(r.neto)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{r.fechaOp.toLocaleDateString("es-AR")}</TableCell>
                       <TableCell>
-                        <StatusBadge status={r.status} />
+                        <StatusChip status={r.status} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2333,7 +2238,7 @@ function AyudaTab({ initialCaseId }: { initialCaseId?: string }) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5 text-primary" /> Centro de Ayuda UNICRÉDITOS Comercios
+              <HelpCircle className="h-5 w-5 text-brand-primary" /> Centro de Ayuda UNICRÉDITOS Comercios
             </CardTitle>
             <CardDescription>Respuestas inmediatas a las dudas más frecuentes</CardDescription>
           </CardHeader>

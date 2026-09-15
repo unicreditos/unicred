@@ -1,16 +1,7 @@
 'use client'
 
 import { requestLoan } from '@/app/actions/loans'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -22,6 +13,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
+import { EmptyState } from '@/components/unicred/workspace-shell'
 import { computeFrenchAmortization, formatARS, formatPercent } from '@/lib/finance'
 import { loanProduct } from '@/lib/db/schema'
 import { useActionState, useMemo, useState } from 'react'
@@ -166,42 +159,29 @@ export function LoanRequestSimulator({
 
   if (!products.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sin productos activos</CardTitle>
-          <CardDescription>
-            En este momento no hay líneas de crédito publicadas. Escribí a soporte o reintentá más tarde.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={<CreditCard className="h-10 w-10" />}
+        title="Sin productos activos"
+        description="En este momento no hay líneas de crédito publicadas. Escribí a soporte o reintentá más tarde."
+      />
     )
   }
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 lg:grid-cols-5">
-      {/* Simulator Card */}
       <div className="lg:col-span-3">
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle>Solicitar crédito</CardTitle>
-                <CardDescription>
-                  Simulá tu cuota, elegí el producto y enviá la solicitud.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
+        <SectionCard
+          title="Solicitar crédito"
+          description="Simulá tu cuota, elegí el producto y enviá la solicitud."
+          icon={<CreditCard className="h-4 w-4" />}
+          bodyClassName="p-0"
+        >
           <form action={action}>
             <input type="hidden" name="productId" value={selectedProductId} />
             <input type="hidden" name="amount" value={amount} />
             <input type="hidden" name="term" value={term} />
 
-            <CardContent className="space-y-6">
+            <div className="space-y-6 p-4 sm:p-5">
               <div className="space-y-2">
                 <Label>Producto</Label>
                 <Select
@@ -239,7 +219,7 @@ export function LoanRequestSimulator({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label>Monto solicitado</Label>
-                      <span className="font-mono text-sm font-semibold text-foreground">
+                      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                         {formatARS(amount)}
                       </span>
                     </div>
@@ -265,10 +245,10 @@ export function LoanRequestSimulator({
                           key={t}
                           type="button"
                           onClick={() => setTerm(t)}
-                          className={`h-9 w-14 rounded-md border text-sm font-medium transition-colors ${
+                          className={`h-9 w-14 rounded-md border text-sm font-medium tabular-nums transition-colors ${
                             term === t
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-background text-foreground hover:border-primary/50'
+                              ? 'border-brand-primary bg-brand-primary text-white'
+                              : 'border-border bg-background text-foreground hover:border-brand-primary/50'
                           }`}
                         >
                           {t}
@@ -289,9 +269,9 @@ export function LoanRequestSimulator({
                   </div>
                 </>
               )}
-            </CardContent>
+            </div>
 
-            <CardFooter className="flex flex-col items-stretch gap-2 border-t sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col items-stretch gap-2 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-5">
               {!identityReady ? (
                 <p className="mr-auto text-xs text-amber-700">
                   Completá Didit (DNI y prueba de vida) antes de enviar el pedido.
@@ -310,26 +290,25 @@ export function LoanRequestSimulator({
                   </>
                 )}
               </Button>
-            </CardFooter>
+            </div>
           </form>
-        </Card>
+        </SectionCard>
       </div>
 
-      {/* Resume Card */}
       <div className="lg:col-span-2">
-        <Card className="overflow-hidden sticky top-24">
-          <div className="bg-sidebar px-6 py-5">
-            <p className="text-sm font-medium text-sidebar-foreground/70">Cuota estimada</p>
+        <SectionCard title="Cuota estimada" className="sticky top-24" bodyClassName="p-0">
+          <div className="bg-brand-navy px-5 py-5 text-white">
+            <p className="text-sm font-medium text-white/70">Cuota estimada</p>
             {amortization && (
-              <p className="mt-1 font-mono text-3xl font-bold text-sidebar-foreground">
+              <p className="mt-1 font-sans text-3xl font-semibold tabular-nums tracking-tight">
                 {formatARS(amortization.installmentAmount)}
-                <span className="ml-1 text-base font-normal text-sidebar-foreground/60">
+                <span className="ml-1 text-base font-normal text-white/60">
                   /mes
                 </span>
               </p>
             )}
           </div>
-          <CardContent className="space-y-4 p-6">
+          <div className="space-y-4 p-5">
             <div>
               <p className="text-sm font-medium text-foreground">
                 {selectedProduct?.name ?? '—'}
@@ -343,26 +322,26 @@ export function LoanRequestSimulator({
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Total a devolver</dt>
-                  <dd className="font-mono font-semibold">
+                  <dd className="font-semibold tabular-nums">
                     {formatARS(amortization.totalAmount)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Intereses</dt>
-                  <dd className="font-mono">{formatARS(amortization.totalInterest)}</dd>
+                  <dd className="tabular-nums">{formatARS(amortization.totalInterest)}</dd>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">TNA</dt>
-                  <dd className="font-mono">{formatPercent(amortization.tna)}</dd>
+                  <dd className="tabular-nums">{formatPercent(amortization.tna)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">TEA</dt>
-                  <dd className="font-mono">{formatPercent(amortization.tea)}</dd>
+                  <dd className="tabular-nums">{formatPercent(amortization.tea)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">CFT est. (IVA sobre intereses)</dt>
-                  <dd className="font-mono">{formatPercent(amortization.cft)}</dd>
+                  <dd className="tabular-nums">{formatPercent(amortization.cft)}</dd>
                 </div>
                 <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
                   CFT informado = TEA con IVA 21% sobre intereses. No hay seguros ni gastos de otorgamiento.
@@ -373,8 +352,8 @@ export function LoanRequestSimulator({
                 Seleccioná un producto para ver los detalles.
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
 
       {/* Result Modal */}
@@ -452,17 +431,17 @@ export function LoanRequestSimulator({
                     </div>
                     <div className="flex items-center gap-2">
                       <Scale className="h-4 w-4 text-muted-foreground" />
-                      <Badge
-                        variant={
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                           resultModal.band === 'excelente' || resultModal.band === 'bueno'
-                            ? 'default'
+                            ? 'border-emerald-200/60 bg-emerald-500/10 text-emerald-700'
                             : resultModal.band === 'regular'
-                              ? 'secondary'
-                              : 'destructive'
-                        }
+                              ? 'border-brand-amber/30 bg-brand-amber/10 text-brand-amber-700'
+                              : 'border-destructive/20 bg-destructive/10 text-destructive'
+                        }`}
                       >
                         {resultModal.band ? bandLabel[resultModal.band] : '—'}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -483,7 +462,7 @@ export function LoanRequestSimulator({
                   <ul className="space-y-1.5">
                     {resultModal.reasons.map((r, i) => (
                       <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary" />
                         {r}
                       </li>
                     ))}
