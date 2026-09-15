@@ -254,7 +254,7 @@ export function AdminLoanCaseView({ data, mode }: { data: AdminLoanCase; mode: '
                     event.tone === 'ok' && 'bg-emerald-500',
                     event.tone === 'warn' && 'bg-amber-500',
                     event.tone === 'critical' && 'bg-rose-500',
-                    event.tone === 'default' && 'bg-slate-300',
+                    event.tone === 'default' && 'bg-muted-foreground/40',
                   )}
                 />
                 <div className="min-w-0">

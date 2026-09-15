@@ -74,7 +74,7 @@ export function CookieConsent() {
           <button
             type="button"
             onClick={() => save('essential')}
-            className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
             Solo esenciales
           </button>

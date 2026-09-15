@@ -188,7 +188,7 @@ export function RiskRulesDesk({ versions, canWrite }: { versions: RiskRuleVersio
           </thead>
           <tbody>
             {versions.map((v) => (
-              <tr key={v.id} className="border-t border-slate-100">
+              <tr key={v.id} className="border-t border-border/70">
                 <td className="px-4 py-1.5 font-mono">
                   v{v.version} {v.isActive ? <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">activa</span> : null}
                 </td>

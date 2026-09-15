@@ -155,7 +155,7 @@ export function ServicesDesk() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-brand-primary/15 bg-gradient-to-br from-brand-primary/5 via-white to-brand-cian-50/40 p-5 sm:p-6">
+      <div className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
         <div className="flex flex-wrap items-start gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-primary text-white">
             <Zap className="h-5 w-5" />

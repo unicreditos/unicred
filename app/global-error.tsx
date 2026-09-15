@@ -21,7 +21,7 @@ export default function GlobalError({
               <AlertOctagon className="h-5 w-5" />
             </span>
 
-            <h1 className="mt-5 text-2xl font-black tracking-tight text-foreground">
+            <h1 className="mt-5 text-2xl font-bold tracking-tight text-foreground">
               UNICRÉDITOS no está disponible en este momento
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">

@@ -76,8 +76,8 @@ function kycTone(status?: string | null): StatusTone {
 }
 
 function roleTone(role?: string | null) {
-  if (role === 'admin') return 'border-violet-200 bg-violet-50 text-violet-800'
-  if (role === 'merchant') return 'border-sky-200 bg-sky-50 text-sky-800'
+  if (role === 'admin') return 'border-brand-navy-200 bg-brand-navy-50 text-brand-navy-800'
+  if (role === 'merchant') return 'border-brand-primary/20 bg-brand-primary/10 text-brand-primary-800'
   return 'border-border bg-muted text-muted-foreground'
 }
 

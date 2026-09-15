@@ -79,7 +79,7 @@ export function RequestPasswordResetForm() {
             required
             autoComplete="email"
             placeholder="Ingresá el mail de tu cuenta"
-            className="h-12 rounded-lg border-slate-200 px-3.5"
+            className="h-12 rounded-lg border-border px-3.5"
           />
         </div>
 

@@ -87,7 +87,7 @@ function MegaMenuItemLink({
         'group flex items-start gap-3 rounded-xl px-3 py-2.5 transition ' +
         (item.featured
           ? 'col-span-2 mt-1 border border-dashed border-brand-primary/20 bg-brand-primary-50/50 font-semibold text-brand-primary hover:bg-brand-primary-50'
-          : 'hover:bg-slate-50 hover:text-brand-primary')
+          : 'hover:bg-muted hover:text-brand-primary')
       }
     >
       {Icon ? (
@@ -270,16 +270,16 @@ export function PublicHeader({
 export function PublicFooter() {
   const year = new Date().getFullYear()
   return (
-    <footer className="border-t border-white/10 bg-brand-navy text-slate-200">
+    <footer className="border-t border-white/10 bg-brand-navy text-white/80">
       <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="space-y-4 md:col-span-4">
             <BrandLogo showText light />
-            <p className="max-w-md text-sm leading-relaxed text-slate-300/85">
+            <p className="max-w-md text-sm leading-relaxed text-white/70">
               {groupOperatorLine()} No somos un banco: originamos y administramos créditos sujetos a evaluación
               crediticia, con TNA, CFT e impuestos informados en cada simulación y contrato.
             </p>
-            <div className="flex flex-wrap gap-3 text-xs text-slate-300/80">
+            <div className="flex flex-wrap gap-3 text-xs text-white/65">
               <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-brand-primary" /> Ley 25.326</span>
               <span className="inline-flex items-center gap-1.5"><Landmark className="h-3.5 w-3.5 text-brand-primary" /> Consulta BCRA</span>
               <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-brand-primary" /> TLS 1.3</span>
@@ -288,7 +288,7 @@ export function PublicFooter() {
 
           <div className="md:col-span-2">
             <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Crédito</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
+            <ul className="mt-4 space-y-2 text-sm text-white/75">
               <li><Link href="/prestamos" className="hover:text-white">Préstamo personal</Link></li>
               {SHOW_MERCHANT_CREDIT_MARKETING ? (
                 <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
@@ -302,7 +302,7 @@ export function PublicFooter() {
 
           <div className="md:col-span-3">
             <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Quién opera</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
+            <ul className="mt-4 space-y-2 text-sm text-white/75">
               <li><Link href="/legal/usuario-financiero" className="hover:text-white">Usuario financiero</Link></li>
               <li><Link href="/legal/arrepentimiento" className="hover:text-white">Arrepentimiento (10 días)</Link></li>
               <li><Link href="/legal/defensa-consumidor" className="hover:text-white">Defensa del consumidor</Link></li>
@@ -312,7 +312,7 @@ export function PublicFooter() {
 
           <div className="md:col-span-3">
             <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Ayuda y legales</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/90">
+            <ul className="mt-4 space-y-2 text-sm text-white/80">
               <li><Link href="/preguntas-frecuentes" className="hover:text-white">Preguntas frecuentes</Link></li>
               <li><Link href="/contacto" className="hover:text-white">Contacto</Link></li>
               <li><Link href="/legal/arrepentimiento" className="hover:text-white">Botón de arrepentimiento</Link></li>
@@ -328,21 +328,21 @@ export function PublicFooter() {
 
         <div className="mt-10 border-t border-white/10 pt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Marcas de {GROUP.name}</div>
-          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-200/80">
+          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75">
             {groupSiblingUnits().map((unit) => (
               <li key={unit.id}>
                 <a href={unit.href} target="_blank" rel="noopener noreferrer" className="hover:text-white">
                   {unit.name}
                 </a>
-                <span className="ml-1 text-slate-400/80">· {unit.role}</span>
+                <span className="ml-1 text-white/45">· {unit.role}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-300/80 md:flex-row md:items-center">
+        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/65 md:flex-row md:items-center">
           <p suppressHydrationWarning>© {year} UNICRÉDITOS · {BRAND.domain} · {BRAND.domains.slice(1).join(' · ')}</p>
-          <p className="max-w-xl text-slate-300/80 md:text-right">
+          <p className="max-w-xl text-white/65 md:text-right">
             La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en contrato.
           </p>
         </div>

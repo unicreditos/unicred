@@ -81,7 +81,7 @@ function DisbursementApprovals({ rows }: { rows: DisbursementRow[] }) {
                   {d.customer?.cuil ? ` · CUIL ${d.customer.cuil}` : ''}
                 </p>
                 {dest ? (
-                  <p className="mt-1 font-mono text-[11px] text-slate-600">
+                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                     <Landmark className="mr-1 inline h-3 w-3" />
                     {dest.bankName} · {dest.accountType.toUpperCase()}
                     {dest.cbu ? ` · ${formatCBU(dest.cbu)}` : ''}

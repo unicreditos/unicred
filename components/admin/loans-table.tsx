@@ -342,7 +342,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     if (l.status === 'approved') {
       return (
         <div className="flex flex-wrap justify-end gap-1.5">
-          <Button size="sm" variant="default" disabled={isPending} className="gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => handleMarkActive(l)}>
+          <Button size="sm" variant="default" disabled={isPending} className="gap-1" onClick={() => handleMarkActive(l)}>
             <RotateCcw className="h-3.5 w-3.5" /> Activar / Desembolsar
           </Button>
           <Button size="sm" variant="outline" disabled={isPending} className="gap-1" onClick={() => openEdit(l)}>
@@ -370,7 +370,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     if (l.status === 'active') {
       return (
         <div className="flex flex-wrap justify-end gap-1.5">
-          <Button size="sm" variant="outline" disabled={isPending} className="gap-1 text-teal-700 border-teal-200 hover:bg-teal-50" onClick={() => handleMarkPaid(l)}>
+          <Button size="sm" variant="outline" disabled={isPending} className="gap-1 text-brand-primary border-brand-primary/25 hover:bg-brand-primary/5" onClick={() => handleMarkPaid(l)}>
             <Check className="h-3.5 w-3.5" /> Marcar pagado
           </Button>
           <Button size="sm" variant="outline" disabled={isPending} className="gap-1" onClick={() => openEdit(l)}>
@@ -382,7 +382,7 @@ export function LoansTable({ loans }: { loans: LoanRow[] }) {
     if (l.status === 'paid') {
       return (
         <div className="flex flex-wrap justify-end gap-1.5">
-          <Badge variant="outline" className="gap-1 border-teal-300 text-teal-700 px-2 py-1 text-[11px] bg-teal-50">
+          <Badge variant="outline" className="gap-1 border-success/30 text-success px-2 py-1 text-[11px] bg-success/10">
             <Check className="h-3 w-3" /> Cancelado
           </Badge>
           <Button size="sm" variant="ghost" disabled={isPending} className="gap-1 h-7 text-[11px]" onClick={() => openEdit(l)}>

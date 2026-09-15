@@ -58,7 +58,7 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
             <h2 className="text-[12px] font-semibold">Motor de originación</h2>
             <p className="text-[10px] text-muted-foreground">Umbrales en código. Cambiarlos es un deploy, no una fila de reglas.</p>
           </header>
-          <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[12px] text-slate-700">
+          <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[12px] text-foreground">
             {data ? (
               <ul className="space-y-2">
                 <li>Score &lt; {data.motor.rejectBelow}: rechazo automático.</li>
@@ -80,8 +80,8 @@ export function AdminConfigDesk({ data }: { data: AdminOpsConfig | null }) {
               </div>
             ) : null}
             {data?.missingOptional.length ? (
-              <div className="mt-3 rounded-md border border-border bg-muted px-2 py-2 text-[11px] text-slate-600">
-                <p className="font-semibold text-slate-800">Opcionales sin cargar</p>
+              <div className="mt-3 rounded-md border border-border bg-muted px-2 py-2 text-[11px] text-muted-foreground">
+                <p className="font-semibold text-foreground">Opcionales sin cargar</p>
                 {data.missingOptional.map((c) => (
                   <p key={c.name}>
                     {c.name}: {c.detail}

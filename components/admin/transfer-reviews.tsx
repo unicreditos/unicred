@@ -53,7 +53,7 @@ export function TransferReviews() {
             <div>
               <p className="text-sm font-semibold">{row.customerName}</p>
               <p className="text-xs text-muted-foreground">{row.customerEmail}</p>
-              <p className="mt-1 font-mono text-xs text-slate-600">{row.loanId}</p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">{row.loanId}</p>
               <p className="text-xs text-muted-foreground">
                 Informó {formatARS(row.declaredAmount)} · ref {row.reference || '—'} ·{' '}
                 {row.transferDate || 'sin fecha'}
