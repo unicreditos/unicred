@@ -1,7 +1,7 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
 import { frenchAmortizationSchedule, formatARS, formatPercent } from '@/lib/finance'
 import { useMemo, useState } from 'react'
 
@@ -26,53 +26,46 @@ export function AmortizationTable({
   if (!rows.length) return null
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">Tabla de amortización</CardTitle>
-            <CardDescription>
-              Sistema francés. TNA {tna != null ? formatPercent(tna) : '—'}
-              {cft != null ? ` · CFT ${formatPercent(cft)}` : ''}. Sin seguros ni gastos de otorgamiento.
-            </CardDescription>
-          </div>
-          <button
-            type="button"
-            className="text-xs font-medium text-primary"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? 'Ocultar detalle' : 'Ver capital e interés'}
-          </button>
-        </div>
-      </CardHeader>
+    <SectionCard
+      title="Tabla de amortización"
+      description={`Sistema francés. TNA ${tna != null ? formatPercent(tna) : '—'}${cft != null ? ` · CFT ${formatPercent(cft)}` : ''}. Sin seguros ni gastos de otorgamiento.`}
+      action={
+        <button
+          type="button"
+          className="text-xs font-medium text-brand-primary hover:underline"
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? 'Ocultar detalle' : 'Ver capital e interés'}
+        </button>
+      }
+      bodyClassName={open ? 'p-4 sm:p-5' : 'hidden'}
+    >
       {open ? (
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cuota</TableHead>
-                  <TableHead className="text-right">Importe</TableHead>
-                  <TableHead className="text-right">Capital</TableHead>
-                  <TableHead className="text-right">Interés</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.number}>
-                    <TableCell className="font-mono text-sm">#{row.number}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{formatARS(row.installment)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{formatARS(row.capital)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{formatARS(row.interest)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{formatARS(row.balance)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
+      <div className="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Cuota</TableHead>
+              <TableHead className="text-right">Importe</TableHead>
+              <TableHead className="text-right">Capital</TableHead>
+              <TableHead className="text-right">Interés</TableHead>
+              <TableHead className="text-right">Saldo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.number}>
+                <TableCell className="font-mono text-sm tabular-nums">#{row.number}</TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums">{formatARS(row.installment)}</TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums">{formatARS(row.capital)}</TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums">{formatARS(row.interest)}</TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums">{formatARS(row.balance)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       ) : null}
-    </Card>
+    </SectionCard>
   )
 }

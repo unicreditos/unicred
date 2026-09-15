@@ -30,7 +30,6 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
@@ -45,7 +44,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { csvDateSuffix, downloadCsv } from '@/lib/csv'
 import { formatARS, formatCBU, formatCVU } from '@/lib/finance'
 import { StatusPill, type StatusTone } from '@/components/admin/status-pill'
-import { DecisionBanner, MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
+import { DecisionBanner, EmptyState, MetricTile, OpsFloor } from '@/components/unicred/workspace-shell'
 import * as React from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import {
@@ -471,15 +470,11 @@ export function AdminContent({
 
         <div className="min-h-0 flex-1 overflow-auto">
           {filteredKyc.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 flex flex-col items-center justify-center text-center gap-3">
-                <UserCheck className="h-10 w-10 text-emerald-600" />
-                <p className="font-medium">Nada para mostrar</p>
-                <p className="max-w-sm text-xs text-muted-foreground">
-                  No hay validaciones en este filtro. Cambiá a «Todos» o buscá por nombre, CUIL o DNI.
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={<UserCheck className="h-10 w-10" />}
+              title="Nada para mostrar"
+              description="No hay validaciones en este filtro. Cambiá a «Todos» o buscá por nombre, CUIL o DNI."
+            />
           ) : (
             <div className="space-y-2">
               {filteredKyc.map((k) => (

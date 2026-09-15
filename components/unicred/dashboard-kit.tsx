@@ -342,6 +342,10 @@ export function StatusChip({
     expired: 'vencido',
     cancelled: 'rechazado',
     in_review: 'en_evaluacion',
+    submitted: 'en_evaluacion',
+    reviewing: 'en_evaluacion',
+    verified: 'aprobado',
+    disbursed: 'activo',
   }
   const raw = String(status).toLowerCase()
   const s = ALIASES[raw] ?? raw

@@ -32,7 +32,7 @@ Naranja (`#FF5722`, `#F5A623`) no entra en chrome de producto. El isotipo usa `b
 - **PublicPageShell / PageSection / FeatureCard** — páginas públicas.
 - **PublicCtaBanner** — único momento navy de marketing.
 - **AuthFloatLayout** — formularios sólidos. CTA `brand-primary`.
-- **PublicErrorFrame** — 404/error con el mismo header/footer.
+- **EmptyState** — vacío dashed, mismo en dashboard / admin / merchant.
 
 ## Números de costo
 
