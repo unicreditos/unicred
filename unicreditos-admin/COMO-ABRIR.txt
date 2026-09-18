@@ -1,0 +1,10 @@
+UNICRÉDITOS Admin Backoffice — cómo abrirlo en local
+
+1. Descomprimí este zip.
+2. En una terminal, entrá a la carpeta unicreditos-admin.
+3. Corré:
+   npm install
+   npm run dev
+4. Abrí http://localhost:3000  (redirige a /admin)
+
+No hace falta GitHub ni Origin para verlo. Los datos son de ejemplo (mock).
