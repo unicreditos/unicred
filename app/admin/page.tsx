@@ -1,275 +1,49 @@
-import {
-  getAdminStats,
-  getAllLoans,
-  getBcraVariables,
-  getPendingMerchants,
-  getAllBankAccounts,
-  getAllUsers,
-  getAdminAuditLog,
-} from '@/app/actions/admin'
-import { getAllKYCReviews } from '@/app/actions/kyc'
-import { getAllDisbursements } from '@/app/actions/banking'
-import { getAdminClientFicha } from '@/app/actions/admin-ficha'
-import { getAdminOpsDesk } from '@/app/actions/admin-ops'
-import { getAdminOpsConfig } from '@/app/actions/admin-config'
-import { listAdminPayments } from '@/app/actions/admin-cases'
-import { AdminDashboard } from '@/components/admin/admin-dashboard'
-import { parseAdminTab } from '@/lib/admin-nav'
-import { db } from '@/lib/db'
-import {
-  profile,
-  user as userTable,
-  loan as loansTable,
-  bankAccount,
-  loanProduct,
-  loanContract,
-} from '@/lib/db/schema'
-import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
-import { ensurePerfIndexes } from '@/lib/db/ensure-perf-indexes'
-import { getSession, requireAdmin, getDashboardUrlByRole, getRoleForUser } from '@/lib/session'
-import { getAdminPermissions, listAdminRoles } from '@/lib/rbac'
-import { listRiskRuleVersions } from '@/lib/risk-rules'
-import { eq, inArray } from 'drizzle-orm'
-import { redirect } from 'next/navigation'
+import { requireAdmin } from '@/lib/session'
 
-export const dynamic = 'force-dynamic'
-
-export const metadata = {
-  title: 'Backoffice',
-  robots: { index: false, follow: false },
-}
-
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string; persona?: string }>
-}) {
-  const { tab: rawTab, persona: personaId } = await searchParams
-  const activeTab = personaId ? 'usuarios' : parseAdminTab(rawTab)
-  const userId = await requireAdmin()
-  const session = await getSession()
-  if (!session?.user) {
-    redirect('/sign-in')
-  }
-
-  await Promise.all([ensureOriginacionSchema(), ensurePerfIndexes()])
-  const [p] = await db
-    .select({ role: profile.role })
-    .from(profile)
-    .where(eq(profile.userId, userId))
-    .limit(1)
-
-  if (!p || p.role !== 'admin') {
-    const role = await getRoleForUser(userId)
-    redirect(getDashboardUrlByRole(role))
-  }
-
-  const myPermissions = Array.from(await getAdminPermissions(userId))
-
-  const fichaPromise = personaId
-    ? getAdminClientFicha(personaId)
-        .then((ficha) => ({ ficha, error: null as string | null }))
-        .catch((err: unknown) => ({
-          ficha: null,
-          error: err instanceof Error ? err.message : 'No se pudo abrir la ficha.',
-        }))
-    : Promise.resolve({ ficha: null, error: null as string | null })
-
-  // stats/loans/merchants/kyc/disbursements(base)/users/opsDesk se usan en TODAS las
-  // pestañas (contadores del sidebar, buscador Ctrl+K, Torre de control), así que se
-  // piden siempre. El resto solo lo necesita una pestaña puntual: pedirlo siempre
-  // hacía que cambiar de pestaña re-consultara las 24 secciones del panel en cada click.
-  const needsBcra = activeTab === 'bcra'
-  const needsBankAccounts = activeTab === 'cuentas-bancarias'
-  const needsProducts = activeTab === 'analytics' || activeTab === 'tarifas'
-  const needsAuditLog = activeTab === 'logs_auditoria'
-  const needsPayments = activeTab === 'pagos'
-  const needsOpsConfig = activeTab === 'parametros'
-  const needsDisbEnrichment = activeTab === 'desembolsos' || activeTab === 'aprobaciones'
-  const needsRoles = activeTab === 'staff'
-  const needsRiskRules = activeTab === 'scoring'
-  // El detalle completo de KYC (OCR, fotos, sesión Didit) solo lo necesitan
-  // la pestaña Identidad y la Torre de control (que muestra las primeras 3
-  // pendientes); en el resto solo se usa el conteo de getAdminStats().
-  const needsKyc = activeTab === 'kyc' || activeTab === 'overview'
-
-  // Antes cada fetch fallido volvía silenciosamente a ceros: un admin podía
-  // ver "0 solicitudes" y pensar que la cartera está vacía cuando en
-  // realidad la consulta explotó. dataErrors junta qué falló para mostrarlo
-  // arriba en vez de tragárselo.
-  const dataErrors: string[] = []
-  function track<T>(label: string, fallback: T) {
-    return (e: Error) => {
-      console.error(`[admin] ${label} failed:`, e.message)
-      dataErrors.push(label)
-      return fallback
-    }
-  }
-
-  const [stats, loans, merchants, bcra, kycRaw, disbRaw, bankAccounts, users, products, auditLog, fichaResult, opsDesk, payments, opsConfig, adminRoles, riskRuleVersions] = await Promise.all([
-    getAdminStats().catch(
-      track('Estadísticas del dashboard', {
-        loans: { total: 0, active: 0, pending: 0, rejected: 0, paid: 0, volume: 0, outstanding: 0 },
-        users: { total: 0, customers: 0, merchants: 0, admins: 0 },
-        merchants: { total: 0, pending: 0, active: 0, rejected: 0 },
-        kyc: { pending: 0 },
-      }),
-    ),
-    getAllLoans().catch(track('Créditos', [] as any[])),
-    getPendingMerchants().catch(track('Comercios', [] as any[])),
-    needsBcra
-      ? getBcraVariables().catch(track('Variables BCRA', [] as any[]))
-      : Promise.resolve([] as any[]),
-    needsKyc
-      ? getAllKYCReviews(500).catch(track('Revisiones KYC', [] as any[]))
-      : Promise.resolve([] as any[]),
-    getAllDisbursements(100).catch(track('Desembolsos', [] as any[])),
-    needsBankAccounts
-      ? getAllBankAccounts().catch(track('Cuentas bancarias', [] as any[]))
-      : Promise.resolve([] as any[]),
-    getAllUsers().catch(track('Usuarios', [] as any[])),
-    needsProducts
-      ? db.select().from(loanProduct).orderBy(loanProduct.name).catch(track('Productos', [] as any[]))
-      : Promise.resolve([] as any[]),
-    needsAuditLog
-      ? getAdminAuditLog(200).catch(track('Auditoría', [] as any[]))
-      : Promise.resolve([] as any[]),
-    fichaPromise,
-    getAdminOpsDesk().catch(
-      track('Mesa de operaciones (cobranzas/pagos)', {
-        generatedAt: new Date().toISOString(),
-        market: { country: 'Argentina', currency: 'ARS' },
-        kpis: {
-          overdueCount: 0,
-          overdueAmount: 0,
-          due7Count: 0,
-          due7Amount: 0,
-          collectedMonth: 0,
-          receiptsMonth: 0,
-          pendingReview: 0,
-          openTickets: 0,
-        },
-        installments: [],
-        receipts: [],
-        movements: [],
-        openTickets: [],
-        contracts: [],
-      }),
-    ),
-    needsPayments
-      ? listAdminPayments(200).catch(track('Pagos', { kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }))
-      : Promise.resolve({ kpis: { total: 0, volume: 0, pending: 0, failed: 0 }, rows: [] }),
-    needsOpsConfig
-      ? getAdminOpsConfig().catch(track('Configuración', null))
-      : Promise.resolve(null),
-    needsRoles
-      ? listAdminRoles().catch(track('Roles', [] as Awaited<ReturnType<typeof listAdminRoles>>))
-      : Promise.resolve([] as Awaited<ReturnType<typeof listAdminRoles>>),
-    needsRiskRules
-      ? listRiskRuleVersions().catch(track('Reglas de riesgo', [] as Awaited<ReturnType<typeof listRiskRuleVersions>>))
-      : Promise.resolve([] as Awaited<ReturnType<typeof listRiskRuleVersions>>),
-  ])
-
-  const userIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.userId))) : []
-  const loanIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.loanId).filter(Boolean) as string[])) : []
-  const bankIdsForDisb = needsDisbEnrichment ? Array.from(new Set(disbRaw.map((d) => d.bankAccountId).filter(Boolean) as string[])) : []
-
-  const [custRows, loanRows, bankRows, contractRows] = needsDisbEnrichment
-    ? await Promise.all([
-        userIdsForDisb.length
-          ? db
-              .select({
-                userId: profile.userId,
-                fullName: userTable.name,
-                cuil: profile.cuil,
-                email: userTable.email,
-              })
-              .from(profile)
-              .leftJoin(userTable, eq(profile.userId, userTable.id))
-              .where(inArray(profile.userId, userIdsForDisb))
-          : Promise.resolve([]),
-        loanIdsForDisb.length
-          ? db
-              .select({
-                id: loansTable.id,
-                principal: loansTable.principal,
-                term: loansTable.term,
-                totalAmount: loansTable.totalAmount,
-                status: loansTable.status,
-              })
-              .from(loansTable)
-              .where(inArray(loansTable.id, loanIdsForDisb))
-          : Promise.resolve([]),
-        bankIdsForDisb.length
-          ? db
-              .select({
-                id: bankAccount.id,
-                bankName: bankAccount.bankName,
-                accountType: bankAccount.accountType,
-                cbu: bankAccount.cbu,
-                cvu: bankAccount.cvu,
-                alias: bankAccount.alias,
-                holderName: bankAccount.holderName,
-                holderCuil: bankAccount.holderCuil,
-              })
-              .from(bankAccount)
-              .where(inArray(bankAccount.id, bankIdsForDisb))
-          : Promise.resolve([]),
-        loanIdsForDisb.length
-          ? db
-              .select({
-                id: loanContract.id,
-                loanId: loanContract.loanId,
-                status: loanContract.status,
-              })
-              .from(loanContract)
-              .where(inArray(loanContract.loanId, loanIdsForDisb))
-          : Promise.resolve([]),
-      ])
-    : [[], [], [], []]
-
-  const custMap = new Map(custRows.map((r: any) => [r.userId, r]))
-  const loanMap = new Map(loanRows.map((r: any) => [r.id, r]))
-  const bankMap = new Map(bankRows.map((r: any) => [r.id, r]))
-  const contractMap = new Map(contractRows.map((r: any) => [r.loanId, r]))
-
-  const disbursementList = disbRaw.map((d) => ({
-    ...d,
-    customer: custMap.get(d.userId) ?? null,
-    loan: d.loanId ? loanMap.get(d.loanId) ?? null : null,
-    bankAccount: d.bankAccountId ? bankMap.get(d.bankAccountId) ?? null : null,
-    contract: d.loanId ? contractMap.get(d.loanId) ?? null : null,
-  }))
+/**
+ * El panel de administración (rutas + componentes en app/admin/** y
+ * components/admin/**) se reemplazó por unicreditos-admin, una app Next.js
+ * aparte conectada a GET/POST /api/admin/desk. Esta página solo redirige a
+ * los operadores que todavía llegan acá (links viejos, favoritos, el inbox
+ * interno que arma /admin?tab=... en lib/notifications.ts).
+ */
+export default async function AdminMovedPage() {
+  await requireAdmin()
+  const adminAppUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL || ''
 
   return (
-    <AdminDashboard
-      user={{
-        id: session.user.id,
-        name: session.user.name ?? null,
-        email: session.user.email ?? null,
-        image: session.user.image ?? null,
-      }}
-      stats={stats as any}
-      loans={loans as any}
-      merchants={merchants as any}
-      bcra={bcra as any}
-      kycList={kycRaw as any}
-      disbursementList={disbursementList as any}
-      bankAccounts={bankAccounts as any}
-      users={users as any}
-      products={products as any}
-      auditLog={auditLog as any}
-      activeTab={activeTab}
-      personaId={personaId ?? null}
-      ficha={fichaResult.ficha}
-      fichaError={fichaResult.error}
-      opsDesk={opsDesk}
-      payments={payments}
-      opsConfig={opsConfig}
-      myPermissions={myPermissions}
-      adminRoles={adminRoles}
-      riskRuleVersions={riskRuleVersions}
-      dataErrors={dataErrors}
-    />
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-lg font-semibold text-slate-900">El backoffice se mudó</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Este panel ya no vive acá. Ahora es una app aparte (
+          <code className="rounded bg-slate-100 px-1 py-0.5 text-[13px]">unicreditos-admin</code>
+          ), conectada a los mismos datos.
+        </p>
+        {adminAppUrl ? (
+          <a
+            href={adminAppUrl}
+            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Ir al backoffice
+          </a>
+        ) : (
+          <div className="mt-6 rounded-lg bg-slate-50 p-4 text-left text-[13px] text-slate-600">
+            <p className="font-medium text-slate-800">No hay URL configurada todavía.</p>
+            <p className="mt-1">
+              En desarrollo, corré <code className="rounded bg-slate-100 px-1">unicreditos-admin</code> aparte:
+            </p>
+            <pre className="mt-2 overflow-x-auto rounded bg-slate-900 px-3 py-2 text-[12px] text-slate-100">
+              cd unicreditos-admin{'\n'}npm run dev
+            </pre>
+            <p className="mt-2">
+              Y abrí <code className="rounded bg-slate-100 px-1">http://localhost:43123</code>. En producción, definí{' '}
+              <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_ADMIN_APP_URL</code> con la URL donde quede
+              desplegado.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
