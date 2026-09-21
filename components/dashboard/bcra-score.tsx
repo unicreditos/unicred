@@ -14,7 +14,7 @@ import {
 import { bcraCheck, profile } from '@/lib/db/schema'
 import { Loader2, RefreshCw, Scale } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 type Profile = typeof profile.$inferSelect
@@ -96,7 +96,7 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
     : (((lastBcraCheck?.rawResult as any)?.score?.reasons ?? []) as string[])
   const titular = snap?.deudas.denominacion || snap?.historicas.denominacion
 
-  const consult = () => {
+  const consult = useCallback(() => {
     start(async () => {
       const r = await consultMyBcra()
       if (!r.ok) {
@@ -109,7 +109,7 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
       toast.success('Central de Deudores extraída: deudas, históricas y cheques')
       router.refresh()
     })
-  }
+  }, [router])
 
   useEffect(() => {
     if (!autoConsult || autoRan.current || pending) return
@@ -120,7 +120,7 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
     if (!needs) return
     autoRan.current = true
     consult()
-  }, [autoConsult, lastBcraCheck, pending, profile?.cuil])
+  }, [autoConsult, consult, lastBcraCheck, pending, profile?.cuil])
 
   const consultBtn = (
     <Button size="sm" onClick={consult} disabled={pending || !profile?.cuil} className="gap-1.5 shrink-0">
