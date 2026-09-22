@@ -5,6 +5,7 @@ import {
   reportCouponTransfer,
   type PaymentMethod,
 } from '@/app/actions/payments'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -221,7 +222,7 @@ export function CouponPayDesk({
             </p>
           ) : mpQr ? (
             <div className="mt-3 flex flex-col items-center">
-              <img src={mpQr} alt="QR de checkout Mercado Pago" className="h-48 w-48" />
+              <Image src={mpQr} alt="QR de checkout Mercado Pago" width={192} height={192} unoptimized className="h-48 w-48" />
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 Escaneá con la app Mercado Pago. Importe {formatARSDecimal(amount)}.
               </p>
