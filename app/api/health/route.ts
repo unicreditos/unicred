@@ -27,9 +27,8 @@ export async function GET() {
     bcra = 'error'
   }
 
-  // Cobro/billetera = API propia UNICRÉDITOS (+ Mercado Pago).
-  const wallet = 'native' as const
-  const paywayRef = 'absent' as const
+  const wallet = process.env.MERCADO_PAGO_ACCESS_TOKEN?.trim() ? 'configured' : 'unconfigured'
+  const paywayRef = 'not_configured' as const
 
   const cron = process.env.CRON_SECRET?.trim() ? 'ok' : 'missing'
   const ok = env.ok && database !== 'error'
