@@ -1,0 +1,11 @@
+{
+  "name": "UNICRÉDITOS",
+  "description": "Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

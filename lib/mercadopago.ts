@@ -47,7 +47,7 @@ const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET ?? ''
 const publicKey = process.env.MERCADO_PAGO_PUBLIC_KEY
 
 if (!accessToken) {
-  console.warn('[mercadopago] ⚠ MERCADO_PAGO_ACCESS_TOKEN no configurado — usando modo fallback interno')
+  console.warn('[mercadopago] Mercado Pago deshabilitado: falta MERCADO_PAGO_ACCESS_TOKEN')
 }
 if (!webhookSecret) {
   console.error('[mercadopago] ❌ MERCADO_PAGO_WEBHOOK_SECRET no configurado — webhook rechazará todas las solicitudes')

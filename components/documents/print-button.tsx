@@ -18,12 +18,14 @@ export function DocumentPrintTitle({ fileName }: { fileName: string }) {
 }
 
 export function PrintButton({
-  label = 'Imprimir / Guardar PDF',
+  label = 'Imprimir',
   fileName,
+  variant = 'outline',
 }: {
   label?: string
   /** Nombre sugerido del PDF (sin .pdf). */
   fileName?: string
+  variant?: 'default' | 'outline' | 'secondary' | 'ghost'
 }) {
   function handlePrint() {
     const prev = document.title
@@ -44,7 +46,7 @@ export function PrintButton({
   }
 
   return (
-    <Button size="sm" className="gap-1.5 no-print" onClick={handlePrint}>
+    <Button variant={variant} size="sm" className="gap-1.5 no-print" onClick={handlePrint} id="btn-print-document">
       <Printer className="h-4 w-4" /> {label}
     </Button>
   )

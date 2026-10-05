@@ -1,5 +1,6 @@
 'use client'
 
+import { ExportPdfButton } from '@/components/documents/export-pdf-button'
 import { DocumentPrintTitle, PrintButton } from '@/components/documents/print-button'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -44,7 +45,7 @@ function DocumentPreviewShellInner({
       <DocumentPrintTitle fileName={fileName} />
       {embed ? null : (
         <div className="no-print document-preview-toolbar">
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Button asChild variant="outline" size="sm" className="gap-1.5" id="btn-back-document">
             <Link href={backHref}>
               <ArrowLeft className="h-4 w-4" /> Volver
             </Link>
@@ -53,14 +54,17 @@ function DocumentPreviewShellInner({
             <p className="truncate text-sm font-medium text-slate-800">{meta}</p>
             <p className="hidden text-[11px] text-slate-500 sm:block">
               {hint ??
-                'Vista previa A4. En el diálogo de impresión usá «Guardar como PDF» — el archivo se nombrará según este documento.'}
+                'Vista previa A4. Podés exportar el documento directamente como archivo PDF o imprimirlo según tu preferencia.'}
             </p>
           </div>
           {extra}
+          <ExportPdfButton fileName={fileName} />
           <PrintButton fileName={fileName} />
         </div>
       )}
-      <div className="document-preview-canvas">{children}</div>
+      <div className="document-preview-canvas" id="document-preview-canvas">
+        {children}
+      </div>
     </div>
   )
 }

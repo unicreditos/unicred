@@ -27,31 +27,8 @@ export async function GET() {
     bcra = 'error'
   }
 
-  // Cobro/billetera = API propia UNICRÉDITOS (+ Mercado Pago).
-  const wallet = 'native' as const
-  const paywayRef = 'absent' as const
-
-  let dbHost = 'none'
-  try {
-    if (process.env.DATABASE_URL) {
-      const { createHash } = await import('node:crypto')
-      const host = new URL(process.env.DATABASE_URL).hostname
-      dbHost = createHash('sha256').update(host).digest('hex').slice(0, 10)
-    }
-  } catch {
-    dbHost = 'invalid'
-  }
-
-  let users = -1
-  try {
-    if (database === 'ok') {
-      const { pool } = await import('@/lib/db')
-      const r = await pool.query<{ n: string }>('select count(*)::text as n from "user"')
-      users = Number(r.rows[0]?.n || 0)
-    }
-  } catch {
-    users = -1
-  }
+  const wallet = process.env.MERCADO_PAGO_ACCESS_TOKEN?.trim() ? 'configured' : 'unconfigured'
+  const paywayRef = 'not_configured' as const
 
   const cron = process.env.CRON_SECRET?.trim() ? 'ok' : 'missing'
   const ok = env.ok && database !== 'error'
@@ -62,8 +39,6 @@ export async function GET() {
       service: 'unicred',
       time: new Date().toISOString(),
       database,
-      dbHost,
-      users,
       bcra,
       wallet,
       paywayRef,
@@ -73,6 +48,9 @@ export async function GET() {
         missingOptional: env.missingOptional.length,
       },
     },
-    { status: ok ? 200 : 503 },
+    {
+      status: ok ? 200 : 503,
+      headers: { 'Cache-Control': 'no-store' },
+    },
   )
 }
