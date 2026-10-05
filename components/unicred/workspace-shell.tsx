@@ -183,7 +183,7 @@ export function WorkspaceShell({
   }
 
   const renderNav = (compact: boolean) => (
-    <nav className={cn('flex-1 space-y-4 overflow-y-auto py-3 uc-scroll-thin', compact ? 'px-2' : 'space-y-5 px-3')}>
+    <nav className={cn('flex-1 overflow-y-auto py-4 uc-scroll-thin', compact ? 'px-2' : 'px-3')}>
       {grouped.map((block, i) => {
         const groupClosed = !compact && isGroupClosed(block.group, block.items)
         return (
@@ -199,7 +199,7 @@ export function WorkspaceShell({
               </button>
             ) : null}
             {groupClosed ? null : (
-              <div className="space-y-1">
+              <div className="flex flex-col gap-1">
                 {block.items.map((item) => {
                   const kids = item.children ?? []
                   const childActive = kids.some((c) => c.id === activeId)
@@ -236,7 +236,7 @@ export function WorkspaceShell({
                             ? 'h-12 justify-center rounded-xl'
                             : 'gap-3 rounded-xl px-2.5 py-3 text-[14px]',
                           isActive
-                            ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
+                            ? 'bg-sidebar-primary/15 font-semibold text-white shadow-[inset_3px_0_0_0_var(--sidebar-primary)]'
                             : childActive
                               ? 'font-semibold text-white'
                               : 'font-medium text-white/75 hover:bg-white/8 hover:text-white',
@@ -246,7 +246,7 @@ export function WorkspaceShell({
                           className={cn(
                             'shrink-0',
                             'h-6 w-6',
-                            isActive || childActive ? 'text-[#FF8A65]' : 'text-white/70',
+                            isActive || childActive ? 'text-sidebar-primary' : 'text-white/70',
                           )}
                         />
                         {compact ? null : (
@@ -266,7 +266,7 @@ export function WorkspaceShell({
                         )}
                       </button>
                       {!compact && kids.length && isOpen ? (
-                        <div className="mb-1 ml-4 mt-0.5 space-y-px border-l border-white/10 pl-2">
+                        <div className="mb-1 ml-4 mt-1 flex flex-col gap-px border-l border-white/10 pl-2">
                           {kids.map((child) => {
                             const on = child.id === activeId
                             return (
@@ -277,7 +277,7 @@ export function WorkspaceShell({
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
-                                    ? 'bg-white/12 font-semibold text-white shadow-[inset_3px_0_0_0_#FF5722]'
+                                    ? 'bg-sidebar-primary/15 font-semibold text-white shadow-[inset_3px_0_0_0_var(--sidebar-primary)]'
                                     : 'font-medium text-white/55 hover:bg-white/6 hover:text-white',
                                 )}
                               >
@@ -299,11 +299,11 @@ export function WorkspaceShell({
   )
 
   return (
-    <div className="flex h-svh overflow-hidden bg-[#F4F6F9] text-foreground">
+    <div className="flex h-svh overflow-hidden bg-background text-foreground">
       <SupportPresenceBeacon />
       <aside
         className={cn(
-          'no-print fixed inset-y-0 left-0 z-40 hidden flex-col bg-brand-navy-900 transition-[width] duration-200 md:flex',
+          'no-print fixed inset-y-0 left-0 z-40 hidden flex-col bg-sidebar transition-[width] duration-200 md:flex',
           collapsed ? 'w-20' : 'w-[248px]',
         )}
       >
@@ -345,7 +345,7 @@ export function WorkspaceShell({
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
           <button type="button" aria-label="Cerrar menú" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="relative flex h-full w-[248px] flex-col bg-brand-navy-900">
+          <aside className="relative flex h-full w-[248px] flex-col bg-sidebar">
             <div className="flex h-16 items-center justify-between border-b border-white/8 px-4">
               <BrandLogo href={meta.homeHref} showText light />
               <button type="button" onClick={() => setMobileOpen(false)} className="text-white/70">
@@ -358,7 +358,7 @@ export function WorkspaceShell({
       ) : null}
 
       <div className={cn('flex h-svh min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-200', collapsed ? 'md:pl-20' : 'md:pl-[248px]')}>
-        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex h-[4.5rem] items-center gap-3 border-b border-border/70 bg-card/90 px-4 backdrop-blur-xl sm:px-6">
           <button
             type="button"
             className="rounded-xl p-2 text-muted-foreground hover:bg-muted md:hidden"
@@ -482,7 +482,7 @@ export function WorkspaceShell({
         </header>
         <main
           className={cn(
-            'min-h-0 flex-1 overflow-y-auto px-3 py-3 uc-scroll-thin sm:px-4 lg:px-5',
+            'min-h-0 flex-1 overflow-y-auto px-3 py-4 uc-scroll-thin sm:px-6 lg:px-8',
             // Admin: el piso operativo llena la altura disponible pero nunca recorta;
             // si el contenido excede el viewport, el <main> hace scroll natural.
             fillViewport ? 'flex flex-col' : '',
