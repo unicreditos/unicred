@@ -8,7 +8,6 @@ import {
   Headphones,
   LayoutDashboard,
   Sparkles,
-  UserRound,
   Wallet,
 } from 'lucide-react'
 
@@ -112,15 +111,8 @@ const SOPORTE_CHILDREN = [
   { id: 'ayuda', label: 'Preguntas frecuentes' },
 ] as const
 
-const CUENTA_CHILDREN = [
-  { id: 'perfil', label: 'Identidad' },
-  { id: 'kyc_biometrico', label: 'Didit y biometría' },
-  { id: 'bancos', label: 'CBU / CVU desembolso' },
-  { id: 'cuenta', label: 'Clave de acceso' },
-  { id: 'notificaciones', label: 'Actividad' },
-] as const
-
-/** Orden mental del cliente: ¿qué debo hacer ahora? → pagar → mis créditos → pedir → papeles → ayuda → cuenta */
+/** Orden del cliente: inicio → pagar → créditos → pedir → papeles → ayuda.
+ *  Identidad, Didit, CBU, clave y actividad viven en el menú del usuario (header). */
 const NAV: WorkspaceNavItem[] = [
   { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
   { id: 'pagos', label: 'Pagar', icon: Wallet, children: PAGOS_CHILDREN },
@@ -128,7 +120,6 @@ const NAV: WorkspaceNavItem[] = [
   { id: 'solicitar', label: 'Solicitar', icon: Sparkles },
   { id: 'documentos', label: 'Documentos', icon: FileText, children: DOCS_CHILDREN },
   { id: 'reclamos', label: 'Soporte', icon: Headphones, children: SOPORTE_CHILDREN },
-  { id: 'perfil', label: 'Mi cuenta', icon: UserRound, children: CUENTA_CHILDREN },
 ]
 
 /** Bottom bar: 4 acciones + “Más”. Prioridad: pagar y créditos. */

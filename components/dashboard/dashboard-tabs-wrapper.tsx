@@ -995,6 +995,8 @@ export function DashboardTabsWrapper({
             <KYCProfileForm
               initialProfile={initialProfile}
               user={resolvedUser}
+              diditApproved={myKyc?.provider === 'didit' && myKyc.status === 'approved'}
+              onOpenDidit={() => setActiveTab('kyc_biometrico')}
             />
           )}
           {activeTab === 'solicitar' && (
@@ -1012,9 +1014,15 @@ export function DashboardTabsWrapper({
                 />
               ) : null}
               {kycPct < 100 ? (
-                <KYCProfileForm
-                  initialProfile={initialProfile}
-                  user={resolvedUser}
+                <DecisionBanner
+                  tone="warn"
+                  title="Falta completar la ficha"
+                  detail="CUIL, domicilio e ingresos se cargan una sola vez, en Identidad."
+                  action={
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('perfil')}>
+                      Ir a mi ficha
+                    </Button>
+                  }
                 />
               ) : null}
               {myKyc?.provider !== 'didit' || myKyc.status !== 'approved' ? (

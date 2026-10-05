@@ -4,7 +4,6 @@ import { formatARS } from '@/lib/finance'
 import { CONSUMO_QUOTE } from '@/lib/loan-catalog'
 import { listPublicMerchants } from '@/lib/merchants/directory'
 import { pageMetadata } from '@/lib/seo'
-import { getAccountHref } from '@/lib/session'
 import { QrCode, ShoppingBag, Store } from 'lucide-react'
 
 export const metadata = pageMetadata({
@@ -21,7 +20,6 @@ export default async function ComprarEnCuotasPage({
 }) {
   const { merchant: merchantParam } = await searchParams
   const merchants = await listPublicMerchants({ limit: 80 })
-  const { isLoggedIn } = await getAccountHref()
 
   return (
     <PublicPageShell
@@ -30,8 +28,8 @@ export default async function ComprarEnCuotasPage({
       description={`Hasta ${formatARS(CONSUMO_QUOTE.maxAmount)} en comercios físicos y online. Sin tarjeta de crédito: usás tu cuenta UNICRÉDITOS.`}
       icon={<ShoppingBag className="h-3.5 w-3.5" />}
       primaryAction={{
-        href: isLoggedIn ? '#online' : '/sign-up',
-        label: isLoggedIn ? 'Financiar compra online' : 'Crear cuenta y comprar',
+        href: '#online',
+        label: 'Financiar compra online',
       }}
       secondaryAction={{ href: '/red-comercios', label: 'Ver comercios' }}
     >
@@ -68,21 +66,7 @@ export default async function ComprarEnCuotasPage({
       </PageSection>
 
       <PageSection id="online" eyebrow="Checkout online" title="Financiá tu compra ahora">
-        {isLoggedIn ? (
-          <OnlineConsumoForm merchants={merchants} initialMerchantId={merchantParam} />
-        ) : (
-          <p className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
-            Ingresá a tu cuenta para financiar una compra online.{' '}
-            <a className="font-semibold text-brand-primary" href="/sign-in">
-              Ingresar
-            </a>{' '}
-            o{' '}
-            <a className="font-semibold text-brand-primary" href="/sign-up">
-              crear cuenta
-            </a>
-            .
-          </p>
-        )}
+        <OnlineConsumoForm merchants={merchants} initialMerchantId={merchantParam} />
       </PageSection>
     </PublicPageShell>
   )

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatARS } from '@/lib/finance'
 import { CONSUMO_QUOTE } from '@/lib/loan-catalog'
+import { useSession } from '@/lib/auth-client'
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -18,6 +19,7 @@ export function OnlineConsumoForm({
   merchants: { id: string; businessName: string; category: string | null; city: string | null }[]
   initialMerchantId?: string
 }) {
+  const { data: session, isPending } = useSession()
   const router = useRouter()
   const [merchantId, setMerchantId] = useState(
     initialMerchantId && merchants.some((m) => m.id === initialMerchantId)
@@ -52,6 +54,26 @@ export function OnlineConsumoForm({
       )
       router.push('/dashboard?tab=mis_solicitudes')
     })
+  }
+
+  if (isPending) {
+    return <p className="text-sm text-muted-foreground">Cargando…</p>
+  }
+
+  if (!session?.user) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
+        Ingresá a tu cuenta para financiar una compra online.{' '}
+        <a className="font-semibold text-brand-primary" href="/sign-in">
+          Ingresar
+        </a>{' '}
+        o{' '}
+        <a className="font-semibold text-brand-primary" href="/sign-up">
+          crear cuenta
+        </a>
+        .
+      </p>
+    )
   }
 
   if (merchants.length === 0) {

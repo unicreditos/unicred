@@ -1,16 +1,22 @@
 'use client'
 
 import { createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, type PaymentMethod } from '@/app/actions/payments'
-import { MercadoPagoCheckoutBrick, type BrickChannel } from '@/components/payments/mp-checkout-brick'
 import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatARS } from '@/lib/finance'
+import type { BrickChannel } from '@/lib/payments/brick-methods'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
+const MercadoPagoCheckoutBrick = dynamic(
+  () => import('@/components/payments/mp-checkout-brick').then((mod) => mod.MercadoPagoCheckoutBrick),
+  { ssr: false },
+)
 
 type InstallmentPay = {
   id: string

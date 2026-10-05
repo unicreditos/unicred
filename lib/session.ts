@@ -90,7 +90,7 @@ function isAuthSessionCookieName(name: string) {
   return name.includes('session_token') || name.includes('better-auth.session')
 }
 
-export async function getSession() {
+export const getSession = cache(async () => {
   if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return _sessionOverride
   try {
     const jar = await cookies()
@@ -109,7 +109,7 @@ export async function getSession() {
     }
     return null
   }
-}
+})
 
 /** Cookie huérfana: el proxy la trata como sesión y el panel no la valida. */
 async function clearStaleAuthCookies() {

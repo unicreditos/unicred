@@ -24,8 +24,9 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
+import { useSession } from '@/lib/auth-client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export const MEGA_MENU = {
   personas: {
@@ -110,14 +111,27 @@ function MegaMenuItemLink({
   )
 }
 
-export function PublicHeader({
-  isLoggedIn = false,
-  accountHref = '/dashboard',
-}: {
-  isLoggedIn?: boolean
-  accountHref?: string
-}) {
+export function PublicHeader() {
+  const { data: session, isPending } = useSession()
+  const [accountHref, setAccountHref] = useState('/dashboard')
+  const isLoggedIn = !isPending && Boolean(session?.user)
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    let cancel = false
+    fetch('/api/me/dashboard-url', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data: { dashboardUrl?: string }) => {
+        if (cancel || !data.dashboardUrl || data.dashboardUrl === '/sign-in') return
+        setAccountHref(data.dashboardUrl)
+      })
+      .catch(() => {})
+    return () => {
+      cancel = true
+    }
+  }, [session?.user?.id])
   const [mobileSection, setMobileSection] = useState<MenuKey | null>(null)
   const [desktopOpen, setDesktopOpen] = useState<MenuKey | null>(null)
   const accountLabel =

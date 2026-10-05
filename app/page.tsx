@@ -1,6 +1,5 @@
 import { LoanSimulator } from '@/components/loan-simulator'
 import { Button } from '@/components/ui/button'
-import { getAccountHref } from '@/lib/session'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
 import { BRAND } from '@/lib/brand'
@@ -31,9 +30,7 @@ export const metadata = pageMetadata({
   path: '/',
 })
 
-export default async function HomePage() {
-  const { isLoggedIn, accountHref } = await getAccountHref()
-
+export default function HomePage() {
   const steps = [
     {
       icon: Sparkles,
@@ -112,7 +109,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
+      <PublicHeader />
       <main id="contenido-principal">
         {/* Hero: la foto manda; el simulador es vidrio, no un panel opaco */}
         <section className="relative overflow-hidden">

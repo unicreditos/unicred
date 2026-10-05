@@ -1,12 +1,11 @@
 import { PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { TrustBar } from '@/components/unicred/dashboard-kit'
-import { getAccountHref } from '@/lib/session'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 
-export async function PublicPageShell({
+export function PublicPageShell({
   title,
   eyebrow,
   description,
@@ -23,11 +22,9 @@ export async function PublicPageShell({
   primaryAction?: { href: string; label: string }
   secondaryAction?: { href: string; label: string }
 }) {
-  const { isLoggedIn, accountHref } = await getAccountHref()
-
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
+      <PublicHeader />
 
       <main id="contenido-principal">
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 sm:pt-14 lg:px-8">

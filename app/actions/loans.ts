@@ -188,6 +188,17 @@ export async function evaluateLoanOffer(input: { productId: string; term: number
   }
 }
 
+function parseProfileBirthDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? '').trim())
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return date
+}
+
 export async function updateProfile(input: {
   cuil: string
   dni: string
@@ -220,7 +231,7 @@ export async function updateProfile(input: {
       ),
     )
     .limit(1)
-  if (lockProf?.kycStatus === 'approved' || diditApprovedRow) {
+  if (lockProf?.kycStatus === 'approved' || lockProf?.kycStatus === 'verified' || diditApprovedRow) {
     throw new Error(
       'Tu identidad ya fue verificada. Los datos de ficha no se pueden editar desde el panel. Pedí el cambio a soporte UNICRÉDITOS.',
     )
@@ -235,69 +246,52 @@ export async function updateProfile(input: {
     throw new Error('DNI inválido: deben ser 7 u 8 dígitos numéricos (sin puntos).')
   }
   const incomeNum = Number(input.monthlyIncome)
-  if (!Number.isFinite(incomeNum) || incomeNum < 0) {
+  if (!Number.isFinite(incomeNum) || incomeNum <= 0) {
     throw new Error('Ingresos mensuales inválidos.')
   }
-  if (!input.birthDate || isNaN(new Date(input.birthDate).getTime())) {
-    throw new Error('Fecha de nacimiento inválida.')
+  if (cuilClean.slice(2, 10) !== dniClean.padStart(8, '0')) {
+    throw new Error('El DNI no coincide con el CUIL.')
   }
-  if (!input.province?.trim() || !input.city?.trim() || !input.address?.trim()) {
-    throw new Error('Completá provincia, ciudad y dirección.')
+  const birth = parseProfileBirthDate(input.birthDate)
+  if (!birth) throw new Error('Fecha de nacimiento inválida.')
+  const adultLimit = new Date()
+  adultLimit.setFullYear(adultLimit.getFullYear() - 18)
+  if (birth > adultLimit) throw new Error('Tenés que ser mayor de 18 años.')
+  const oldest = new Date()
+  oldest.setFullYear(oldest.getFullYear() - 100)
+  if (birth < oldest) throw new Error('Fecha de nacimiento inválida.')
+  if (!input.province?.trim() || !input.department?.trim() || !input.city?.trim() || !input.address?.trim()) {
+    throw new Error('Completá provincia, departamento, localidad y dirección.')
   }
-  if (!input.employmentStatus?.trim()) {
-    throw new Error('Estado laboral obligatorio.')
+  const postal = String(input.postalCode ?? '').trim()
+  if (postal.length < 4) throw new Error('Código postal inválido.')
+  const phoneDigits = String(input.phone ?? '').replace(/\D/g, '')
+  if (phoneDigits.length < 8 || phoneDigits.length > 13) {
+    throw new Error('Teléfono inválido. Ingresá el número con código de área, sin 0 ni 15.')
+  }
+  const employment = input.employmentStatus?.trim() ?? ''
+  if (!employment || employment === 'A completar') {
+    throw new Error('Elegí tu situación laboral.')
   }
 
-  const [existingProf] = await db
-    .select({ kycStatus: profile.kycStatus, cuil: profile.cuil, dni: profile.dni })
-    .from(profile)
+  await db
+    .update(profile)
+    .set({
+      cuil: cuilClean,
+      dni: dniClean,
+      phone: String(input.phone ?? '').trim(),
+      birthDate: input.birthDate,
+      province: input.province.trim(),
+      department: input.department?.trim() || null,
+      city: input.city.trim(),
+      postalCode: postal,
+      address: input.address.trim(),
+      monthlyIncome: String(incomeNum),
+      employmentStatus: employment,
+      kycStatus: 'submitted',
+      updatedAt: new Date(),
+    })
     .where(eq(profile.userId, userId))
-    .limit(1)
-  const [diditOk] = await db
-    .select({ id: kycVerification.id })
-    .from(kycVerification)
-    .where(
-      and(
-        eq(kycVerification.userId, userId),
-        eq(kycVerification.provider, 'didit'),
-        eq(kycVerification.status, 'approved'),
-      ),
-    )
-    .limit(1)
-  // Un DNI/CUIL nuevo es una identidad distinta a la que Didit verificó:
-  // nunca conservar "approved" sobre datos de identidad que cambiaron.
-  const identityChanged =
-    Boolean(existingProf) && (existingProf!.cuil !== cuilClean || existingProf!.dni !== dniClean)
-  const keepApproved = !identityChanged && (existingProf?.kycStatus === 'approved' || Boolean(diditOk))
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(profile)
-      .set({
-        cuil: cuilClean,
-        dni: dniClean,
-        phone: String(input.phone ?? '').trim(),
-        birthDate: input.birthDate,
-        province: input.province.trim(),
-        department: input.department?.trim() || null,
-        city: input.city.trim(),
-        postalCode: input.postalCode?.trim() || null,
-        address: input.address.trim(),
-        monthlyIncome: String(incomeNum),
-        employmentStatus: input.employmentStatus.trim(),
-        kycStatus: keepApproved ? 'approved' : 'submitted',
-        updatedAt: new Date(),
-      })
-      .where(eq(profile.userId, userId))
-
-    if (identityChanged) {
-      // Invalida la verificación previa: hace falta re-verificar la identidad nueva.
-      await tx
-        .update(kycVerification)
-        .set({ status: 'pending', updatedAt: new Date(), reviewedBy: 'identity_changed' })
-        .where(and(eq(kycVerification.userId, userId), eq(kycVerification.status, 'approved')))
-    }
-  })
   revalidateCustomer()
   return { ok: true }
 }

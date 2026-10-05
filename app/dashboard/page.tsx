@@ -13,7 +13,7 @@ import {
   disbursement,
   bcraCheck,
 } from '@/lib/db/schema'
-import { estimateAvailableCreditLine } from '@/lib/mobile/data'
+import { computeCreditOffer, SCORE_REJECT_BELOW } from '@/lib/loan-underwriting'
 import { getOrCreateProfile, getSession, requireCustomer } from '@/lib/session'
 import { desc, eq, and } from 'drizzle-orm'
 import { Suspense } from 'react'
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
   const [
     products,
     loans,
-    upcomingInstallments,
+    installmentsAllArr,
     bankAccounts,
     myKycArr,
     contractsRaw,
@@ -50,11 +50,11 @@ export default async function DashboardPage() {
     paymentReceiptsArr,
     savedPaymentMethods,
     disbursementsArr,
-    installmentsAllArr,
+    lastBcraArr,
   ] = await Promise.all([
     getLoanProducts().catch((e) => { console.error('[dashboard] getLoanProducts failed:', e.message); return [] as any[] }),
     getMyLoans().catch((e) => { console.error('[dashboard] getMyLoans failed:', e.message); return [] as any[] }),
-    getMyInstallments({ upcomingOnly: true }).catch((e) => { console.error('[dashboard] upcomingInstallments failed:', e.message); return [] as any[] }),
+    getMyInstallments().catch((e) => { console.error('[dashboard] installments failed:', e.message); return [] as any[] }),
     db
       .select()
       .from(bankAccount)
@@ -109,22 +109,21 @@ export default async function DashboardPage() {
       .orderBy(desc(disbursement.createdAt))
       .limit(20)
       .catch((e) => { console.error('[dashboard] disbursement failed:', e.message); return [] }),
-    getMyInstallments({ upcomingOnly: false }).catch((e) => { console.error('[dashboard] installmentsAll failed:', e.message); return [] as any[] }),
+    db
+      .select()
+      .from(bcraCheck)
+      .where(eq(bcraCheck.userId, userId))
+      .orderBy(desc(bcraCheck.createdAt))
+      .limit(1)
+      .catch((e) => {
+        console.error('[dashboard] bcraCheck failed:', e.message)
+        return [] as any[]
+      }),
   ])
-
-  const lastBcraArr = await db
-    .select()
-    .from(bcraCheck)
-    .where(eq(bcraCheck.userId, userId))
-    .orderBy(desc(bcraCheck.createdAt))
-    .limit(1)
-    .catch((e) => {
-      console.error('[dashboard] bcraCheck failed:', e.message)
-      return [] as any[]
-    })
 
   const lastBcraCheck = lastBcraArr[0] ?? null
   const myKyc = myKycArr[0] ?? null
+  const upcomingInstallments = upcomingWithin60(installmentsAllArr)
 
   const loanMap = new Map(loans.map((l: any) => [l.id, l]))
   const contracts = contractsRaw.map((c: any) => ({ ...c, loan: (loanMap.get(c.loanId) ?? null) as any }))
@@ -171,10 +170,7 @@ export default async function DashboardPage() {
   }))
 
   const kycPct = computeKycPct(prof as any)
-  const preapprovedAmount = await estimateAvailableCreditLine(
-    userId,
-    (prof as any)?.creditScore ?? lastBcraCheck?.computedScore ?? null,
-  ).catch(() => null)
+  const preapprovedAmount = estimateLine(prof as any, products, loans, installmentsAllArr, lastBcraCheck?.computedScore)
 
   return (
     <Suspense fallback={<DashboardLoading />}>
@@ -200,6 +196,51 @@ export default async function DashboardPage() {
     />
     </Suspense>
   )
+}
+
+function upcomingWithin60(rows: { status?: string | null; dueDate?: Date | string | null }[]) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const in60 = new Date(today)
+  in60.setDate(in60.getDate() + 60)
+  return rows
+    .filter((row) => {
+      if (row.status === 'paid' || row.status === 'cancelled') return false
+      const due = new Date(row.dueDate as string)
+      due.setHours(0, 0, 0, 0)
+      if (row.status === 'overdue' || due < today) return true
+      return due <= in60
+    })
+    .slice(0, 48)
+}
+
+function estimateLine(
+  prof: { monthlyIncome?: unknown; creditScore?: number | null } | null,
+  products: { minAmount?: unknown; maxAmount?: unknown; minTerm?: number | null; maxTerm?: number | null; monthlyRate?: unknown }[],
+  loans: { status?: string | null }[],
+  installments: { status?: string | null }[],
+  bcraScore?: number | null,
+) {
+  const product = [...products].sort((a, b) => Number(a.minAmount) - Number(b.minAmount))[0]
+  if (!product) return null
+  const monthlyIncome = Number(prof?.monthlyIncome ?? 0)
+  const raw = prof?.creditScore ?? bcraScore ?? null
+  const score = raw == null || raw < SCORE_REJECT_BELOW ? 650 : raw
+  const term = Math.min(Math.max(Number(product.minTerm) || 6, 12), Number(product.maxTerm) || 24)
+  const offer = computeCreditOffer({
+    score,
+    monthlyIncome: monthlyIncome > 0 ? monthlyIncome : 300_000,
+    term,
+    monthlyRate: Number(product.monthlyRate),
+    productMinAmount: Number(product.minAmount),
+    productMaxAmount: Number(product.maxAmount),
+    history: {
+      paidCount: installments.filter((row) => row.status === 'paid').length,
+      overdueCount: installments.filter((row) => row.status === 'overdue').length,
+      completedLoans: loans.filter((row) => row.status === 'paid').length,
+    },
+  })
+  return offer.eligible ? offer.maxAmount : 0
 }
 
 function computeKycPct(p: typeof profile.$inferSelect | null): number {

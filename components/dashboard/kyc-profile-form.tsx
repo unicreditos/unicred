@@ -26,10 +26,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
 import { profile } from '@/lib/db/schema'
+import { AccountAvatar } from '@/components/unicred/account-avatar'
+import { CheckCircle2, Circle, Loader2, Lock, Send, ShieldCheck } from 'lucide-react'
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AccountAvatar } from '@/components/unicred/account-avatar'
-import { CheckCircle2, Loader2, Lock, Send } from 'lucide-react'
 
 type Profile = typeof profile.$inferSelect
 
@@ -40,48 +40,112 @@ const SITUACIONES_LABORALES = [
   'Profesional independiente',
   'Jubilado / Pensionado',
   'Desempleado',
-  'A completar',
   'Otro',
 ]
+
+function digits(value: string) {
+  return value.replace(/\D/g, '')
+}
+
+function formatCuil(raw: string) {
+  const d = digits(raw).slice(0, 11)
+  if (d.length <= 2) return d
+  if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`
+  return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`
+}
+
+function incomeSeed(value: Profile['monthlyIncome'] | undefined) {
+  if (value == null || value === '') return ''
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  return String(Math.round(n))
+}
 
 export function KYCProfileForm({
   initialProfile,
   user,
+  diditApproved = false,
+  onOpenDidit,
 }: {
   initialProfile: Profile | null
   user?: { name?: string | null; email?: string | null; image?: string | null }
+  diditApproved?: boolean
+  onOpenDidit?: () => void
 }) {
   const router = useRouter()
   const [consentPending, startConsent] = useTransition()
   const [requestPending, startRequest] = useTransition()
+  const [consentError, setConsentError] = useState<string | null>(null)
   const [showRequest, setShowRequest] = useState(false)
   const [requestReason, setRequestReason] = useState('')
   const [requestFields, setRequestFields] = useState('')
   const [requestMsg, setRequestMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const identityLocked = initialProfile?.kycStatus === 'approved'
+
+  const identityLocked =
+    initialProfile?.kycStatus === 'approved' ||
+    initialProfile?.kycStatus === 'verified' ||
+    diditApproved
+
+  const [cuil, setCuil] = useState(formatCuil(initialProfile?.cuil ?? ''))
+  const [dni, setDni] = useState(digits(initialProfile?.dni ?? '').slice(0, 8))
+  const [birthDate, setBirthDate] = useState(initialProfile?.birthDate ?? '')
+  const [phone, setPhone] = useState(initialProfile?.phone ?? '')
+  const [address, setAddress] = useState(initialProfile?.address ?? '')
+  const [monthlyIncome, setMonthlyIncome] = useState(incomeSeed(initialProfile?.monthlyIncome))
+  const [geo, setGeo] = useState<GeoValue>({
+    province: initialProfile?.province ?? '',
+    department: initialProfile?.department ?? '',
+    city: initialProfile?.city ?? '',
+    postalCode: initialProfile?.postalCode ?? '',
+  })
+  const [employmentStatus, setEmploymentStatus] = useState(initialProfile?.employmentStatus ?? '')
+
+  const profileStamp = [
+    initialProfile?.updatedAt ? String(initialProfile.updatedAt) : '',
+    initialProfile?.cuil ?? '',
+    initialProfile?.kycStatus ?? '',
+    initialProfile?.bcraConsentAt ? String(initialProfile.bcraConsentAt) : '',
+  ].join('|')
+
+  useEffect(() => {
+    setCuil(formatCuil(initialProfile?.cuil ?? ''))
+    setDni(digits(initialProfile?.dni ?? '').slice(0, 8))
+    setBirthDate(initialProfile?.birthDate ?? '')
+    setPhone(initialProfile?.phone ?? '')
+    setAddress(initialProfile?.address ?? '')
+    setMonthlyIncome(incomeSeed(initialProfile?.monthlyIncome))
+    setGeo({
+      province: initialProfile?.province ?? '',
+      department: initialProfile?.department ?? '',
+      city: initialProfile?.city ?? '',
+      postalCode: initialProfile?.postalCode ?? '',
+    })
+    setEmploymentStatus(initialProfile?.employmentStatus ?? '')
+    // Solo cuando cambia la ficha guardada. profileStamp ya resume esos campos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileStamp])
 
   const [formState, action, isPending] = useActionState(
     async (_prev: { ok?: boolean; error?: string; message?: string } | null, formData: FormData) => {
       try {
-        const monthlyIncomeStr = formData.get('monthlyIncome') as string
         const res = await updateProfile({
-          cuil: (formData.get('cuil') as string).replace(/\D/g, ''),
-          dni: (formData.get('dni') as string).replace(/\D/g, ''),
-          phone: formData.get('phone') as string,
-          birthDate: formData.get('birthDate') as string,
-          province: formData.get('province') as string,
-          department: formData.get('department') as string,
-          city: formData.get('city') as string,
-          postalCode: formData.get('postalCode') as string,
-          address: formData.get('address') as string,
-          monthlyIncome: Number(monthlyIncomeStr) || 0,
-          employmentStatus: formData.get('employmentStatus') as string,
+          cuil: digits(String(formData.get('cuil') ?? '')),
+          dni: digits(String(formData.get('dni') ?? '')),
+          phone: String(formData.get('phone') ?? ''),
+          birthDate: String(formData.get('birthDate') ?? ''),
+          province: String(formData.get('province') ?? ''),
+          department: String(formData.get('department') ?? ''),
+          city: String(formData.get('city') ?? ''),
+          postalCode: String(formData.get('postalCode') ?? ''),
+          address: String(formData.get('address') ?? ''),
+          monthlyIncome: Number(formData.get('monthlyIncome')) || 0,
+          employmentStatus: String(formData.get('employmentStatus') ?? ''),
         })
         if (res.ok) {
           router.refresh()
-          return { ok: true, message: 'Perfil guardado correctamente.' }
+          return { ok: true, message: 'Ficha guardada.' }
         }
-        return { ok: false, error: 'No se pudo guardar el perfil.' }
+        return { ok: false, error: 'No se pudo guardar la ficha.' }
       } catch (err) {
         return { ok: false, error: (err as Error).message }
       }
@@ -89,26 +153,9 @@ export function KYCProfileForm({
     null,
   )
 
-  const [monthlyIncome, setMonthlyIncome] = useState<string>(
-    initialProfile?.monthlyIncome ? String(initialProfile.monthlyIncome) : '',
-  )
-  const [geo, setGeo] = useState<GeoValue>({
-    province: initialProfile?.province ?? '',
-    department: initialProfile?.department ?? '',
-    city: initialProfile?.city ?? '',
-    postalCode: initialProfile?.postalCode ?? '',
-  })
-  const [employmentStatus, setEmploymentStatus] = useState<string>(
-    initialProfile?.employmentStatus ?? '',
-  )
-
   useEffect(() => {
-    if (formState?.ok) {
-      const t = setTimeout(() => {
-        document.getElementById('kyc-form')?.scrollTo({ top: 0, behavior: 'smooth' })
-      }, 100)
-      return () => clearTimeout(t)
-    }
+    if (!formState?.ok) return
+    document.getElementById('kyc-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [formState?.ok])
 
   const kycStatusLabel: Record<
@@ -120,11 +167,21 @@ export function KYCProfileForm({
     reviewing: { label: 'En revisión', variant: 'outline' },
     verified: { label: 'Verificado', variant: 'default' },
     approved: { label: 'Aprobado', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
   }
-
   const status = kycStatusLabel[initialProfile?.kycStatus ?? 'pending'] ?? kycStatusLabel.pending
   const fieldClass = identityLocked ? 'bg-muted/40 text-foreground' : undefined
+  const employmentOptions =
+    employmentStatus && !SITUACIONES_LABORALES.includes(employmentStatus)
+      ? [employmentStatus, ...SITUACIONES_LABORALES]
+      : SITUACIONES_LABORALES
+
+  const checks = [
+    { label: 'Identidad', ok: digits(cuil).length === 11 && digits(dni).length >= 7 && Boolean(birthDate) && digits(phone).length >= 8 },
+    { label: 'Domicilio', ok: Boolean(geo.province && geo.department && geo.city && geo.postalCode && address.trim()) },
+    { label: 'Ingresos', ok: Number(monthlyIncome) > 0 && Boolean(employmentStatus) && employmentStatus !== 'A completar' },
+    { label: 'Didit', ok: diditApproved || initialProfile?.kycStatus === 'approved' },
+    { label: 'BCRA', ok: Boolean(initialProfile?.bcraConsentAt) },
+  ]
 
   function submitProfileChangeRequest() {
     setRequestMsg(null)
@@ -133,7 +190,7 @@ export function KYCProfileForm({
       if (res.ok) {
         setRequestMsg({
           ok: true,
-          text: 'Pedido enviado. Vas a ver el caso en Reclamos y ops recibe el aviso.',
+          text: 'Pedido enviado. Lo seguís en Soporte y el equipo recibe el aviso.',
         })
         setShowRequest(false)
         setRequestReason('')
@@ -147,16 +204,43 @@ export function KYCProfileForm({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4" id="kyc-form">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {checks.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-3 py-2 text-xs font-semibold"
+          >
+            {item.ok ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+            ) : (
+              <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            )}
+            {item.label}
+          </div>
+        ))}
+      </div>
+
       {identityLocked ? (
         <div className="flex items-start gap-3 rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-sm text-brand-navy-800">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
           <div>
             <p className="font-semibold">Ficha verificada · solo lectura</p>
             <p className="mt-1 text-xs leading-relaxed text-brand-navy-600">
-              Los datos aprobados con Didit no se editan desde el panel. Pedí el cambio a UNICRÉDITOS: se abre un
-              caso de identidad para el equipo y recibís confirmación por mail.
+              CUIL, domicilio e ingresos quedan fijos después de Didit. Si hay un error, pedí el cambio: se abre un
+              caso y te confirmamos por mail.
             </p>
           </div>
+        </div>
+      ) : null}
+
+      {!diditApproved && initialProfile?.kycStatus !== 'approved' ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <p>Falta la verificación biométrica. Sin Didit no se puede pedir un crédito.</p>
+          {onOpenDidit ? (
+            <Button type="button" size="sm" variant="outline" onClick={onOpenDidit}>
+              <ShieldCheck className="h-4 w-4" /> Verificar con Didit
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -181,14 +265,15 @@ export function KYCProfileForm({
                 email={user?.email}
                 image={user?.image}
                 size="lg"
-                editable={!identityLocked}
+                editable
               />
               <div>
-                <CardTitle>Ficha personal</CardTitle>
+                <CardTitle>{user?.name?.trim() || 'Ficha personal'}</CardTitle>
                 <CardDescription>
+                  {user?.email ? <span className="block text-foreground/80">{user.email}</span> : null}
                   {identityLocked
-                    ? 'Identidad y domicilio registrados en tu expediente UNICRÉDITOS.'
-                    : 'Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican con Didit.'}
+                    ? 'Datos del expediente. La foto de la cuenta sí se puede cambiar.'
+                    : 'Completá identidad, domicilio e ingresos. El DNI se confirma con Didit.'}
                 </CardDescription>
               </div>
             </div>
@@ -197,179 +282,176 @@ export function KYCProfileForm({
         </CardHeader>
 
         <form action={identityLocked ? undefined : action}>
-          <CardContent className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="cuil">CUIL *</Label>
-              <Input
-                id="cuil"
-                name="cuil"
-                placeholder="00-12345678-0"
-                defaultValue={initialProfile?.cuil ?? ''}
-                required
-                inputMode="numeric"
-                readOnly={identityLocked}
-                className={fieldClass}
-              />
-            </div>
+          <CardContent className="space-y-8">
+            <fieldset className="grid gap-4 md:grid-cols-2">
+              <legend className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
+                Identidad
+              </legend>
+              <div className="space-y-2">
+                <Label htmlFor="cuil">CUIL</Label>
+                <Input
+                  id="cuil"
+                  name="cuil"
+                  placeholder="20-12345678-3"
+                  value={cuil}
+                  onChange={(e) => setCuil(formatCuil(e.target.value))}
+                  required
+                  inputMode="numeric"
+                  autoComplete="off"
+                  readOnly={identityLocked}
+                  className={fieldClass}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dni">DNI</Label>
+                <Input
+                  id="dni"
+                  name="dni"
+                  placeholder="12345678"
+                  value={dni}
+                  onChange={(e) => setDni(digits(e.target.value).slice(0, 8))}
+                  required
+                  inputMode="numeric"
+                  readOnly={identityLocked}
+                  className={fieldClass}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthDate">Fecha de nacimiento</Label>
+                <Input
+                  id="birthDate"
+                  name="birthDate"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  required
+                  readOnly={identityLocked}
+                  className={fieldClass}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Celular</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  placeholder="11 5555 5555"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  inputMode="tel"
+                  autoComplete="tel"
+                  readOnly={identityLocked}
+                  className={fieldClass}
+                />
+                <p className="text-xs text-muted-foreground">Con código de área, sin 0 ni 15.</p>
+              </div>
+            </fieldset>
 
-            <div className="space-y-2">
-              <Label htmlFor="dni">DNI *</Label>
-              <Input
-                id="dni"
-                name="dni"
-                placeholder="12345678"
-                defaultValue={initialProfile?.dni ?? ''}
-                required
-                inputMode="numeric"
-                readOnly={identityLocked}
-                className={fieldClass}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="birthDate">Fecha de nacimiento *</Label>
-              <Input
-                id="birthDate"
-                name="birthDate"
-                type="date"
-                defaultValue={initialProfile?.birthDate ?? ''}
-                required
-                readOnly={identityLocked}
-                className={fieldClass}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono *</Label>
-              <Input
-                id="phone"
-                name="phone"
-                placeholder="11 1234-5678"
-                defaultValue={initialProfile?.phone ?? ''}
-                required
-                readOnly={identityLocked}
-                className={fieldClass}
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
+            <fieldset className="space-y-4">
+              <legend className="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">Domicilio</legend>
               <input type="hidden" name="province" value={geo.province} />
               <input type="hidden" name="department" value={geo.department} />
               <input type="hidden" name="city" value={geo.city} />
               <input type="hidden" name="postalCode" value={geo.postalCode} />
               {identityLocked ? (
                 <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm sm:grid-cols-2">
-                  <p>
-                    <span className="text-muted-foreground">Provincia · </span>
-                    {geo.province || '—'}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Departamento · </span>
-                    {geo.department || '—'}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Localidad · </span>
-                    {geo.city || '—'}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">CP · </span>
-                    {geo.postalCode || '—'}
-                  </p>
+                  <p><span className="text-muted-foreground">Provincia · </span>{geo.province || '—'}</p>
+                  <p><span className="text-muted-foreground">Departamento · </span>{geo.department || '—'}</p>
+                  <p><span className="text-muted-foreground">Localidad · </span>{geo.city || '—'}</p>
+                  <p><span className="text-muted-foreground">CP · </span>{geo.postalCode || '—'}</p>
                 </div>
               ) : (
                 <GeoArFields value={geo} onChange={setGeo} />
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Dirección *</Label>
-              <Input
-                id="address"
-                name="address"
-                placeholder="Calle y número, piso, dpto."
-                defaultValue={initialProfile?.address ?? ''}
-                required
-                readOnly={identityLocked}
-                className={fieldClass}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="monthlyIncome">Ingresos mensuales (ARS) *</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-muted-foreground">
-                  $
-                </span>
+              <div className="space-y-2">
+                <Label htmlFor="address">Calle, número, piso y depto</Label>
                 <Input
-                  id="monthlyIncome"
-                  name="monthlyIncome"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  placeholder="200.000"
-                  className={`pl-7 font-mono ${fieldClass ?? ''}`}
-                  value={monthlyIncome}
-                  onChange={(e) => setMonthlyIncome(e.target.value)}
+                  id="address"
+                  name="address"
+                  placeholder="Av. Corrientes 1234, 4° B"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                   required
+                  autoComplete="street-address"
                   readOnly={identityLocked}
+                  className={fieldClass}
                 />
               </div>
-              {monthlyIncome && !isNaN(Number(monthlyIncome)) && Number(monthlyIncome) > 0 && (
-                <p className="font-mono text-xs text-muted-foreground">~ {formatARS(monthlyIncome)} / mes</p>
-              )}
-            </div>
+            </fieldset>
 
-            <div className="space-y-2">
-              <Label htmlFor="employmentStatus">Situación laboral *</Label>
-              {identityLocked ? (
-                <>
+            <fieldset className="grid gap-4 md:grid-cols-2">
+              <legend className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-brand-primary md:col-span-2">
+                Capacidad de pago
+              </legend>
+              <div className="space-y-2">
+                <Label htmlFor="monthlyIncome">Ingresos netos mensuales</Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="monthlyIncome"
+                    name="monthlyIncome"
+                    type="number"
+                    min="1"
+                    step="1000"
+                    placeholder="200000"
+                    className={`pl-7 font-mono ${fieldClass ?? ''}`}
+                    value={monthlyIncome}
+                    onChange={(e) => setMonthlyIncome(e.target.value)}
+                    required
+                    readOnly={identityLocked}
+                  />
+                </div>
+                {Number(monthlyIncome) > 0 ? (
+                  <p className="font-mono text-xs text-muted-foreground">~ {formatARS(monthlyIncome)} / mes</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employmentStatus">Situación laboral</Label>
+                <input type="hidden" name="employmentStatus" value={employmentStatus} />
+                {identityLocked ? (
                   <Input value={employmentStatus || '—'} readOnly className={fieldClass} />
-                  <input type="hidden" name="employmentStatus" value={employmentStatus} />
-                </>
-              ) : (
-                <Select
-                  name="employmentStatus"
-                  value={employmentStatus}
-                  onValueChange={(v) => setEmploymentStatus(v ?? '')}
-                  required
-                >
-                  <SelectTrigger id="employmentStatus" className="w-full">
-                    <SelectValue placeholder="Seleccioná una opción" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SITUACIONES_LABORALES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+                ) : (
+                  <Select value={employmentStatus || undefined} onValueChange={(v) => setEmploymentStatus(v ?? '')}>
+                    <SelectTrigger id="employmentStatus" className="w-full">
+                      <SelectValue placeholder="Seleccioná una opción" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employmentOptions.map((item) => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </fieldset>
 
-            {formState?.ok && (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 md:col-span-2 dark:text-emerald-400">
+            {formState?.ok ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {formState.message}
               </div>
-            )}
-            {formState?.ok === false && formState.error && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive md:col-span-2">
+            ) : null}
+            {formState?.ok === false && formState.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {formState.error}
               </div>
-            )}
+            ) : null}
           </CardContent>
 
           <CardFooter className="flex flex-wrap items-center justify-end gap-3 border-t">
             {identityLocked ? (
               <Button type="button" variant="outline" size="lg" onClick={() => setShowRequest((v) => !v)}>
                 <Send className="h-4 w-4" />
-                {showRequest ? 'Cancelar pedido' : 'Pedir cambio a UNICRÉDITOS'}
+                {showRequest ? 'Cancelar pedido' : 'Pedir un cambio'}
               </Button>
             ) : (
               <>
                 <p className="mr-auto text-xs text-muted-foreground">
-                  * Campos obligatorios. Solo se usan para evaluación crediticia.
+                  La cuota ofrecida no supera el 35% de estos ingresos.
                 </p>
                 <Button type="submit" size="lg" disabled={isPending}>
                   {isPending ? (
@@ -380,7 +462,7 @@ export function KYCProfileForm({
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4" />
-                      Guardar perfil
+                      Guardar ficha
                     </>
                   )}
                 </Button>
@@ -393,29 +475,29 @@ export function KYCProfileForm({
       {identityLocked && showRequest ? (
         <Card className="border-brand-primary/30">
           <CardHeader>
-            <CardTitle className="text-base">Pedido de cambio de ficha</CardTitle>
+            <CardTitle className="text-base">Pedido de cambio</CardTitle>
             <CardDescription>
-              Se crea un caso en Reclamos (categoría identidad) y ops recibe el aviso. No edites datos vos.
+              Se abre un caso en Soporte, categoría identidad. No modifiques los datos vos.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="change-fields">Qué querés corregir</Label>
+              <Label htmlFor="change-fields">Qué hay que corregir</Label>
               <Input
                 id="change-fields"
                 value={requestFields}
                 onChange={(e) => setRequestFields(e.target.value)}
-                placeholder="Ej. domicilio, teléfono, fecha de nacimiento"
+                placeholder="Domicilio, teléfono o fecha de nacimiento"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="change-reason">Detalle *</Label>
+              <Label htmlFor="change-reason">Detalle</Label>
               <Textarea
                 id="change-reason"
                 value={requestReason}
                 onChange={(e) => setRequestReason(e.target.value)}
                 rows={4}
-                placeholder="Explicá el dato incorrecto y el valor correcto (mín. 20 caracteres)."
+                placeholder="Dato incorrecto y valor correcto. Mínimo 20 caracteres."
               />
             </div>
           </CardContent>
@@ -438,23 +520,30 @@ export function KYCProfileForm({
       {!initialProfile?.bcraConsentAt ? (
         <Card className="border-amber-200/80">
           <CardHeader>
-            <CardTitle className="text-base">Autorización CENDEU</CardTitle>
+            <CardTitle className="text-base">Central de Deudores</CardTitle>
             <CardDescription>
-              Sin esta autorización no se puede consultar la Central de Deudores ni solicitar un crédito.
+              Sin esta autorización no consultamos el BCRA ni se puede solicitar un crédito.
             </CardDescription>
           </CardHeader>
-          <CardFooter>
+          <CardFooter className="flex flex-col items-start gap-3">
+            {consentError ? <p className="text-sm text-destructive">{consentError}</p> : null}
             <Button
               type="button"
               variant="outline"
               disabled={consentPending}
               onClick={() => {
+                setConsentError(null)
                 startConsent(async () => {
-                  await grantBcraConsent()
-                  router.refresh()
+                  try {
+                    await grantBcraConsent()
+                    router.refresh()
+                  } catch (err) {
+                    setConsentError((err as Error).message || 'No se pudo registrar la autorización.')
+                  }
                 })
               }}
             >
+              {consentPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Autorizo la consulta a la Central de Deudores del BCRA
             </Button>
           </CardFooter>
