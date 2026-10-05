@@ -21,6 +21,8 @@ export function DataTable<T extends { id: string }>({
   pageSize = 10,
   onRowClick,
   trailing,
+  emptyTitle = "Sin resultados",
+  emptyDescription = "Probá con otro filtro o término de búsqueda. No hay filas para mostrar.",
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -29,6 +31,8 @@ export function DataTable<T extends { id: string }>({
   pageSize?: number;
   onRowClick?: (row: T) => void;
   trailing?: ReactNode;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -80,10 +84,7 @@ export function DataTable<T extends { id: string }>({
             {slice.length === 0 ? (
               <tr>
                 <td colSpan={columns.length}>
-                  <EmptyState
-                    title="Sin resultados"
-                    description="Probá con otro filtro o término de búsqueda. No hay filas para mostrar."
-                  />
+                  <EmptyState title={emptyTitle} description={emptyDescription} />
                 </td>
               </tr>
             ) : (

@@ -9,6 +9,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const ROLE_LABEL: Record<string, string> = {
+  director: "Dirección",
+  originacion: "Originación",
+  tesoreria: "Tesorería",
+  riesgo: "Riesgo",
+  soporte: "Soporte",
+  auditor: "Auditoría",
+};
+
 export function CommandPalette({
   open,
   onClose,
@@ -229,7 +238,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             </div>
             <div className="leading-tight">
               <p className="text-[12.5px] font-semibold">{op.name.split(" ")[0]}</p>
-              <p className="text-[10.5px] text-muted">Directora</p>
+              <p className="text-[10.5px] text-muted">{ROLE_LABEL[op.role] || op.role}</p>
             </div>
           </div>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white sm:hidden">

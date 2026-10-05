@@ -1,7 +1,7 @@
 "use client";
 
 import { LogoMark } from "@/components/admin/logo";
-import { useAdmin } from "@/lib/data/client";
+import { CURRENT_OPERATOR_ID, useAdmin } from "@/lib/data/client";
 import { isNavActive, NAV_GROUPS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -78,11 +78,30 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </nav>
-      <div className="border-t border-white/10 px-4 py-4">
-        <p className="text-[11px] text-slate-500">Operador en sesión</p>
-        <p className="text-[13px] font-medium text-white">Agustina Urrutia</p>
-        <p className="text-[11.5px] text-slate-400">Dirección · Argentina</p>
-      </div>
+      <OperatorFoot />
+    </div>
+  );
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  director: "Dirección",
+  originacion: "Originación",
+  tesoreria: "Tesorería",
+  riesgo: "Riesgo",
+  soporte: "Soporte",
+  auditor: "Auditoría",
+};
+
+function OperatorFoot() {
+  const { state } = useAdmin();
+  const op = state.operators.find((o) => o.id === CURRENT_OPERATOR_ID);
+  return (
+    <div className="border-t border-white/10 px-4 py-4">
+      <p className="text-[11px] text-slate-500">Operador en sesión</p>
+      <p className="truncate text-[13px] font-medium text-white">{op?.name || "Operador"}</p>
+      <p className="truncate text-[11.5px] text-slate-400">
+        {op ? ROLE_LABEL[op.role] || op.role : "Sesión"}
+      </p>
     </div>
   );
 }

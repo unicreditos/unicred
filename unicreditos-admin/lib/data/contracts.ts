@@ -60,6 +60,15 @@ export type KycDecisionInput = {
   notes: string;
 };
 
+export type CreateApplicationInput = {
+  clientId: string;
+  productId: string;
+  merchantId?: string | null;
+  amount: number;
+  installments: number;
+  purpose: string;
+};
+
 export interface AdminDataSource {
   getState(): AdminState;
   subscribe(listener: () => void): () => void;
@@ -71,6 +80,7 @@ export interface AdminDataSource {
   getMerchant(id: string): Merchant | undefined;
   getPayment(id: string): Payment | undefined;
 
+  createApplication(input: CreateApplicationInput): Promise<void>;
   approveApplication(input: ApproveInput): void;
   rejectApplication(input: RejectInput): void;
   cancelApplication(id: string, operatorId: string, reason: string): void;

@@ -1,6 +1,7 @@
 import type {
   AdminDataSource,
   ApproveInput,
+  CreateApplicationInput,
   DisburseInput,
   KycDecisionInput,
   MatchTransferInput,
@@ -218,7 +219,10 @@ type MutateResponse = {
   permissions?: string[];
 };
 
-async function mutate(action: string, payload: Record<string, unknown>): Promise<void> {
+async function mutate(
+  action: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const data = await apiFetch<MutateResponse>("/api/admin/desk/mutate", {
       method: "POST",
@@ -234,12 +238,19 @@ async function mutate(action: string, payload: Record<string, unknown>): Promise
       if (data.degraded) errorMessage = data.buildError || errorMessage;
     }
     if (data.ok === false) {
-      throw new Error(data.error || "No se pudo completar la acción");
+      const message = data.error || "No se pudo completar la acción";
+      errorMessage = message;
+      emit();
+      return { ok: false, error: message };
     }
+    emit();
+    return { ok: true };
   } catch (err) {
-    errorMessage = err instanceof Error ? err.message : "No se pudo completar la acción";
+    const message = err instanceof Error ? err.message : "No se pudo completar la acción";
+    errorMessage = message;
+    emit();
+    return { ok: false, error: message };
   }
-  emit();
 }
 
 export const unicredSource: AdminDataSource = {
@@ -267,6 +278,17 @@ export const unicredSource: AdminDataSource = {
   },
   getPayment(id) {
     return state.payments.find((p) => p.id === id);
+  },
+  async createApplication(input: CreateApplicationInput) {
+    const result = await mutate("createApplication", {
+      clientId: input.clientId,
+      productId: input.productId,
+      merchantId: input.merchantId || null,
+      amount: input.amount,
+      installments: input.installments,
+      purpose: input.purpose,
+    });
+    if (!result.ok) throw new Error(result.error || "No se pudo crear la solicitud");
   },
   approveApplication(input: ApproveInput) {
     void mutate("approveApplication", { applicationId: input.applicationId, comment: input.comment });

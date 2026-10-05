@@ -99,6 +99,30 @@ export const mockSource: AdminDataSource = {
   getPayment(id) {
     return state.payments.find((p) => p.id === id);
   },
+  async createApplication(input) {
+    const id = `SOL-MOCK-${state.applications.length + 1}`;
+    state = {
+      ...state,
+      applications: [
+        {
+          id,
+          clientId: input.clientId,
+          productId: input.productId,
+          merchantId: input.merchantId || null,
+          amount: input.amount,
+          installments: input.installments,
+          status: "pending",
+          purpose: input.purpose,
+          createdAt: new Date().toISOString(),
+          decidedAt: null,
+          operatorId: null,
+          notes: "",
+        },
+        ...state.applications,
+      ],
+    };
+    emit();
+  },
   approveApplication(input: ApproveInput) {
     const app = state.applications.find((a) => a.id === input.applicationId);
     if (!app || app.status !== "pending") return;
