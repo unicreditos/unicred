@@ -32,7 +32,7 @@ export default async function SignInPage({
   }
   return (
     <Suspense fallback={null}>
-      <AuthForm mode="sign-in" />
+      <AuthForm />
     </Suspense>
   )
 }

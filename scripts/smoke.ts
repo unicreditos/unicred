@@ -52,7 +52,7 @@ async function main() {
       status: [200],
       bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Central de Deudores'],
     }),
-    probe('productos', '/productos', { status: [200] }),
+    probe('productos (redirige a préstamos)', '/productos', { status: [308, 307, 302] }),
     probe('simulador', '/simulador', { status: [200] }),
     probe('legales', '/legal/terminos', {
       status: [200],
@@ -67,14 +67,6 @@ async function main() {
     probe('manifest', '/manifest.webmanifest', { status: [200] }),
     probe('admin sin sesión', '/admin', { status: [307, 308, 302] }),
     probe('dashboard sin sesión', '/dashboard', { status: [307, 308, 302] }),
-    probe('directo', '/directo', {
-      status: [200],
-      bodyIncludes: ['primer crédito', 'UNICRÉDITOS', 'UNIPAGOS'],
-    }),
-    probe('directo productos', '/directo/productos', {
-      status: [200],
-      bodyIncludes: ['Préstamo personal', 'primer crédito'],
-    }),
     probe('didit webhook vivo', '/api/webhooks/didit', { status: [200], bodyIncludes: 'didit' }),
     probe('mp webhook health', '/api/webhooks/mercadopago', { status: [200], bodyIncludes: 'webhook' }),
 

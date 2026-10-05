@@ -19,7 +19,7 @@ export default function SimuladorPage() {
       description="Ajustá monto y plazo. Ves cuota estimada, TNA, TEA y CFT (IVA sobre intereses). Sin compromiso. No es una oferta."
       icon={<Calculator className="h-3.5 w-3.5" />}
       primaryAction={{ href: '/sign-up', label: 'Solicitar este crédito' }}
-      secondaryAction={{ href: '/productos', label: 'Ver productos' }}
+      secondaryAction={{ href: '/prestamos', label: 'Ver el préstamo' }}
     >
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">

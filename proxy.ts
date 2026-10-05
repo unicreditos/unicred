@@ -1,5 +1,5 @@
 import { CANONICAL_HOST, shouldRedirectHost } from '@/lib/site'
-import { loggedInSignupBouncePath } from '@/directo/intent'
+import { loggedInSignupBouncePath } from '@/lib/loan-intent'
 import { customerDashboardDocUrl, parsePrintDocumentPath } from '@/lib/documents/customer-view'
 import {
   installmentPosPath,
@@ -126,9 +126,9 @@ export function proxy(request: NextRequest) {
         url.search = dest.search
         return NextResponse.redirect(url)
       }
-      const fromDirecto = loggedInSignupBouncePath(pathname, request.nextUrl.searchParams)
-      if (fromDirecto) {
-        const dest = new URL(fromDirecto, url)
+      const fromIntent = loggedInSignupBouncePath(pathname, request.nextUrl.searchParams)
+      if (fromIntent) {
+        const dest = new URL(fromIntent, url)
         url.pathname = dest.pathname
         url.search = dest.search
         return NextResponse.redirect(url)

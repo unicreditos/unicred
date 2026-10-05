@@ -1,389 +1,293 @@
-import { LoanSimulator } from '@/components/loan-simulator'
+import { LiveStatement } from '@/components/landing/live-statement'
 import { Button } from '@/components/ui/button'
-import { TrustBar } from '@/components/unicred/dashboard-kit'
-import { PublicFooter, PublicHeader, LegalStrip, PublicCtaBanner } from '@/components/unicred/public-chrome'
-import { BRAND } from '@/lib/brand'
+import { PublicCtaBanner, PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { formatARS } from '@/lib/finance'
-import { LEGAL_COPY } from '@/lib/legal/copy'
-import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
+import { INCOME_DTI_RATIO } from '@/lib/loan-underwriting'
 import { pageMetadata } from '@/lib/seo'
-import {
-  Banknote,
-  CalendarClock,
-  CreditCard,
-  FileCheck2,
-  IdCard,
-  Landmark,
-  Scale,
-  ShieldCheck,
-  Sparkles,
-  Wallet,
-} from 'lucide-react'
-import Image from 'next/image'
+import { ArrowRight, Check, FileSignature, Fingerprint, Landmark, ScrollText } from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata = pageMetadata({
-  title: 'Créditos personales online',
+  title: 'Préstamos personales online',
   description:
-    'Préstamo personal online en Argentina. Simulá la cuota, verificá tu identidad y consultamos la Central de Deudores del BCRA antes de firmar. TNA y CFT a la vista.',
+    'Préstamo personal online en Argentina. Simulá la cuota con TNA, TEA y CFT a la vista, verificá tu identidad y firmá solo cuando el costo total te cierra.',
   path: '/',
 })
 
+const SOURCES = [
+  { k: 'BCRA', v: 'Central de Deudores, con tu autorización' },
+  { k: 'ARCA', v: 'Validación de tu CUIL y datos fiscales' },
+  { k: 'Didit', v: 'DNI y prueba de vida biométrica' },
+  { k: 'CBU/CVU', v: 'Titularidad validada antes de transferir' },
+] as const
+
+const STEPS = [
+  {
+    t: 'Simulás sin cuenta',
+    d: 'Elegís monto y plazo y ves cuota, TNA, TEA, CFT y total a devolver. Nada de esto te compromete.',
+  },
+  {
+    t: 'Te registrás y verificás identidad',
+    d: 'Ingresás tu DNI o CUIL, confirmamos tus datos con ARCA y validás tu cara y tu documento con Didit.',
+  },
+  {
+    t: 'Evaluamos tu perfil',
+    d: 'Con tu consentimiento consultamos la Central de Deudores del BCRA y calculamos tu score. La decisión es automática o pasa a revisión humana.',
+  },
+  {
+    t: 'Firmás con todo a la vista',
+    d: 'Si calificás, ves el plan de cuotas, el contrato y el pagaré. Firmás desde tu panel, solo si el costo te cierra.',
+  },
+  {
+    t: 'Recibís la plata',
+    d: 'Tesorería transfiere a tu CBU o CVU y se generan tus cuotas. Pagás con transferencia y subís el comprobante desde tu panel.',
+  },
+] as const
+
+const DOCUMENTS = [
+  {
+    icon: FileSignature,
+    t: 'Contrato de mutuo',
+    d: 'Con TNA, TEA, CFT y plan de cuotas. Se firma con aceptación electrónica y queda registrado con su huella digital.',
+  },
+  {
+    icon: ScrollText,
+    t: 'Pagaré',
+    d: 'Se emite junto al contrato, con el importe en números y letras y el desglose de capital e interés.',
+  },
+  {
+    icon: Landmark,
+    t: 'Liquidación y cuponera',
+    d: 'La liquidación del desembolso y el talonario de cuotas con sus vencimientos, listos para imprimir.',
+  },
+  {
+    icon: Fingerprint,
+    t: 'Recibos y certificados',
+    d: 'Un recibo por cada cuota y, al cancelar, libre deuda y constancia de cancelación.',
+  },
+] as const
+
+const RULES = [
+  { t: 'Sin punitorios', d: 'Si te atrasás en una cuota no aplicamos intereses punitorios.' },
+  { t: 'Sin gastos ni seguros', d: 'No cobramos gastos de otorgamiento ni seguros: el CFT es solo interés más IVA.' },
+  {
+    t: `Cuota hasta el ${Math.round(INCOME_DTI_RATIO * 100)}% de tu ingreso`,
+    d: 'No te ofrecemos una cuota que supere ese tope sobre lo que declarás.',
+  },
+  { t: '10 días para arrepentirte', d: 'Desde la firma podés revocar el crédito con el botón de arrepentimiento, sin costo.' },
+] as const
+
+const FAQ = [
+  {
+    q: '¿Qué pasa con mis datos del BCRA?',
+    a: 'Consultamos la Central de Deudores solo después de que lo autorizás en el registro, y guardamos la fecha y la IP de ese consentimiento. Lo usamos para calcular tu score y la oferta máxima.',
+  },
+  {
+    q: '¿Cuánto tarda la respuesta?',
+    a: 'La evaluación es automática: si tu perfil califica la oferta aparece al terminar la verificación. Los casos dudosos pasan a revisión manual de la mesa de créditos.',
+  },
+  {
+    q: '¿Puedo tener más de un crédito a la vez?',
+    a: 'No. Mientras tengas un crédito en evaluación, aprobado o vigente no podés pedir otro. Al cancelarlo, tu historial de pagos puede mejorar tu próxima oferta.',
+  },
+  {
+    q: '¿Cómo pago las cuotas?',
+    a: 'Por transferencia a la cuenta de UNICRÉDITOS. Informás el pago y adjuntás el comprobante desde tu panel; lo revisamos y se acredita en tu cuota.',
+  },
+] as const
+
 export default function HomePage() {
-  const steps = [
-    {
-      icon: Sparkles,
-      t: 'Simulá tu cuota',
-      d: 'Elegí monto y plazo acá mismo. Ves la cuota, TNA y CFT antes de crear la cuenta, sin compromiso.',
-    },
-    {
-      icon: IdCard,
-      t: 'Creá tu cuenta y verificá identidad',
-      d: 'DNI, CUIL y prueba de vida con Didit, dentro de UNICRÉDITOS. Consultamos el BCRA con tu autorización.',
-    },
-    {
-      icon: FileCheck2,
-      t: 'Firmá con los números a la vista',
-      d: 'Si tu perfil califica, ves el plan de cuotas y el contrato. Firmás solo cuando el costo total te cierra.',
-    },
-    {
-      icon: Banknote,
-      t: 'Recibís el dinero',
-      d: 'Acreditamos en tu CBU o CVU. Contrato, pagaré, cuponera y recibos quedan siempre en tu panel.',
-    },
-  ]
-
-  const benefits = [
-    {
-      icon: Sparkles,
-      t: 'Solicitud simple y 100% online',
-      d: 'Sin sucursales ni turnos. Todo el trámite se hace desde tu celular o computadora.',
-    },
-    {
-      icon: Scale,
-      t: 'Costo completo antes de firmar',
-      d: 'TNA, CFT con IVA sobre intereses y cuota fija. Sin letra chica de último momento.',
-    },
-    {
-      icon: ShieldCheck,
-      t: 'Identidad verificada de verdad',
-      d: 'Didit valida DNI y prueba de vida. No aceptamos fotos cargadas a mano ni crédito anónimo.',
-    },
-    {
-      icon: Landmark,
-      t: 'Evaluación seria con el BCRA',
-      d: 'Consultamos la Central de Deudores con tu autorización. La cuota no supera el 35% de tus ingresos.',
-    },
-  ]
-
-  const requirements = [
-    { icon: IdCard, t: 'DNI y CUIL a tu nombre', d: 'Mayor de edad, residente en Argentina.' },
-    { icon: Wallet, t: 'CBU o CVU del titular', d: 'Para acreditar el préstamo y descontar las cuotas.' },
-    { icon: Banknote, t: 'Ingresos netos comprobables', d: 'La cuota ofrecida nunca supera el 35% de tus ingresos.' },
-    { icon: CreditCard, t: 'Sin crédito anónimo', d: 'Identidad verificada con Didit: DNI, selfie y prueba de vida.' },
-  ]
-
-  const faqs = [
-    {
-      q: '¿Cómo solicito el préstamo personal?',
-      a: 'Simulá el monto y plazo acá arriba, creá tu cuenta, verificá tu identidad con Didit y consultamos la Central de Deudores del BCRA. Si tu perfil califica, ves el plan de cuotas y firmás el contrato antes de que acreditemos el dinero.',
-    },
-    {
-      q: '¿UNICRÉDITOS es un banco?',
-      a: LEGAL_COPY.nonBank,
-    },
-    {
-      q: '¿Cuánto tarda la evaluación?',
-      a: 'No prometemos aprobación en minutos: el tiempo depende de la verificación de identidad y de la respuesta de la API del BCRA. Si el perfil no califica, no hay desembolso.',
-    },
-    {
-      q: '¿Cómo recibo el dinero y pago las cuotas?',
-      a: 'Acreditamos en el CBU o CVU a tu nombre cargado en el panel. Pagás cada cuota desde tu cuenta con tarjeta, Pago Fácil, Rapipago, billetera o transferencia.',
-    },
-    {
-      q: '¿Puedo arrepentirme después de firmar?',
-      a: LEGAL_COPY.arrepentimiento,
-    },
-  ]
-
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="min-h-screen bg-paper text-brand-navy-900">
       <PublicHeader />
+
       <main id="contenido-principal">
-        {/* Hero: la foto manda; el simulador es vidrio, no un panel opaco */}
+        {/* Hero */}
         <section className="relative overflow-hidden">
-          <Image
-            src="/hero-alt.png"
-            alt=""
-            fill
-            fetchPriority="high"
-            sizes="100vw"
-            className="object-cover object-right"
-            aria-hidden
-          />
           <div
-            className="absolute inset-0 bg-gradient-to-b from-white/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-navy/15"
             aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(32,189,90,0.14),transparent_70%)]"
           />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
-            <div className="relative lg:col-span-6">
-              <div
-                className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-white/70 via-white/35 to-transparent blur-2xl lg:hidden"
-                aria-hidden
-              />
-              <div className="relative">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy/80 shadow-sm backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
-                Préstamos personales online
+          <div className="relative mx-auto grid w-full max-w-7xl items-start gap-12 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-28 lg:pt-20">
+            <div className="lg:col-span-6">
+              <p className="inline-flex items-center gap-2 rounded-full border border-brand-navy-200 bg-white px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-brand-navy-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" /> Préstamos personales · 100% online
               </p>
-              <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:text-[46px] lg:text-[52px]">
-                Un crédito que se entiende antes de pedirlo.
+              <h1 className="mt-6 font-display text-[2.75rem] font-extrabold leading-[0.98] tracking-[-0.045em] text-brand-navy-900 sm:text-6xl lg:text-[4.5rem]">
+                Sabé cuánto devolvés. <span className="text-brand-primary-700">Antes de pedir.</span>
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-snug text-brand-navy/85">
-                {BRAND.valueProp}
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-navy-600">
+                Elegí monto y plazo, mirá la cuota, la TNA y el CFT reales y recién después creá tu cuenta. Te
+                mostramos el costo completo, incluso cuando es alto.
               </p>
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-brand-navy/70">
-                Simulá la cuota acá al lado, verificá tu identidad y consultamos la Central de Deudores del BCRA.
-                Firmás recién cuando ves TNA, CFT y plan de pagos completos.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[
-                  { icon: ShieldCheck, t: 'Identidad Didit' },
-                  { icon: Landmark, t: 'BCRA antes de firmar' },
-                  { icon: Scale, t: 'CFT sin sorpresas' },
-                ].map((p) => {
-                  const Icon = p.icon
-                  return (
-                    <span
-                      key={p.t}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-brand-navy shadow-sm backdrop-blur-md"
-                    >
-                      <Icon className="h-3.5 w-3.5 text-brand-primary" />
-                      {p.t}
-                    </span>
-                  )
-                })}
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" className="h-12 rounded-full px-6 text-base font-semibold">
+                  <Link href="/sign-up">
+                    Crear mi cuenta <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="h-12 rounded-full border-brand-navy-200 bg-white px-6 text-base font-semibold"
+                >
+                  <Link href="/sign-in">Ya tengo cuenta</Link>
+                </Button>
               </div>
-              <dl className="mt-6 grid max-w-md grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Hasta</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
+              <dl className="mt-10 grid max-w-lg grid-cols-3 gap-6 border-t border-brand-navy-200 pt-6">
+                <div>
+                  <dt className="text-xs text-brand-navy-500">Hasta</dt>
+                  <dd className="mt-1 font-display text-2xl font-bold tabular-nums">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Cuotas</dt>
-                  <dd className="mt-1 text-base font-bold text-brand-navy">3 a 48 fijas</dd>
+                <div>
+                  <dt className="text-xs text-brand-navy-500">Plazo</dt>
+                  <dd className="mt-1 font-display text-2xl font-bold tabular-nums">
+                    {PERSONAL_QUOTE.minTerm} a {PERSONAL_QUOTE.maxTerm}
+                    <span className="ml-1 text-sm font-medium text-brand-navy-500">cuotas</span>
+                  </dd>
                 </div>
-                <div className="rounded-2xl border border-white/40 bg-white/10 px-3 py-3 shadow-sm backdrop-blur-md">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-navy/60">Primer crédito</dt>
-                  <dd className="mt-1 text-base font-bold tabular-nums text-brand-navy">{formatARS(FIRST_CREDIT_HARD_CAP)}</dd>
+                <div>
+                  <dt className="text-xs text-brand-navy-500">Cuota</dt>
+                  <dd className="mt-1 font-display text-2xl font-bold">Fija</dd>
                 </div>
               </dl>
-              <div className="mt-8 hidden flex-wrap items-center gap-3 sm:flex">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
-                >
-                  <Link href="/sign-up">Solicitar mi crédito</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline" className="rounded-full border-white/40 bg-white/10 font-semibold text-brand-navy shadow-sm backdrop-blur-md hover:bg-white/25">
-                  <Link href="/preguntas-frecuentes">Ver preguntas frecuentes</Link>
-                </Button>
-              </div>
-              </div>
             </div>
 
-            <div className="lg:col-span-6">
-              <LoanSimulator variant="glass" />
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:hidden">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-full bg-brand-primary px-7 font-bold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-600"
-                >
-                  <Link href="/sign-up">Solicitar mi crédito</Link>
-                </Button>
-              </div>
+            <div className="lg:col-span-6 lg:pl-6">
+              <LiveStatement />
             </div>
           </div>
         </section>
 
-        <TrustBar tone="light" />
+        {/* Fuentes */}
+        <section aria-label="Fuentes de verificación" className="border-y border-brand-navy-200 bg-white">
+          <div className="mx-auto grid w-full max-w-7xl gap-px px-4 sm:px-6 md:grid-cols-4">
+            {SOURCES.map((s) => (
+              <div key={s.k} className="py-6 md:px-6 md:first:pl-0">
+                <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary-700">{s.k}</p>
+                <p className="mt-1.5 text-sm leading-snug text-brand-navy-600">{s.v}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Cómo funciona */}
-        <section id="como-funciona" className="scroll-mt-24 bg-white">
-          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-2xl text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary ring-1 ring-brand-primary/10">
-                <FileCheck2 className="h-3.5 w-3.5" /> Proceso 100% digital
-              </span>
-              <h2 className="mt-4 text-balance text-3xl font-black leading-tight tracking-tight text-brand-navy sm:text-4xl">
-                Pedilo en 4 pasos, sin sucursal.
-              </h2>
-              <p className="mt-3 text-base text-muted-foreground">
-                La oferta se firma recién cuando ves TNA, CFT y plan de cuotas completos.
-              </p>
-            </div>
-
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {steps.map((s, idx) => {
-                const Icon = s.icon
-                return (
-                  <div key={s.t} className="relative">
-                    {idx < steps.length - 1 ? (
-                      <div
-                        aria-hidden
-                        className="absolute left-full top-7 hidden h-px w-6 bg-gradient-to-r from-brand-primary/40 to-transparent lg:block"
-                      />
-                    ) : null}
-                    <div className="flex flex-col items-center rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-700 text-white shadow-md shadow-brand-primary/25">
-                        <Icon className="h-6 w-6" />
-                      </span>
-                      <span className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                        Paso 0{idx + 1}/04
-                      </span>
-                      <h3 className="mt-2 text-sm font-bold text-brand-navy">{s.t}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Por qué elegirnos */}
-        <section className="scroll-mt-24 border-y border-border/60 bg-slate-50/60">
-          <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">¿Por qué elegirnos?</h2>
-              <p className="mt-3 text-base text-muted-foreground">
-                Sin letra chica ni promesas vacías: te mostramos cómo evaluamos y qué vas a firmar.
-              </p>
-            </div>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {benefits.map((b) => {
-                const Icon = b.icon
-                return (
-                  <div
-                    key={b.t}
-                    className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
-                      <Icon className="h-6 w-6" />
-                    </span>
-                    <h3 className="mt-4 text-sm font-bold text-brand-navy">{b.t}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{b.d}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Requisitos mínimos */}
-        <section className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
-            <div className="lg:col-span-5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary">Requisitos</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">
-                Sacá tu crédito con mínimos requisitos.
-              </h2>
-              <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                No hace falta que ya seas cliente de ningún banco. Con tu DNI y una cuenta a tu nombre alcanza para
-                empezar la solicitud.
-              </p>
-              <Button asChild className="mt-6 rounded-full bg-brand-primary font-bold text-white hover:bg-brand-primary-600">
-                <Link href="/sign-up">Empezar solicitud</Link>
-              </Button>
-            </div>
-            <div className="lg:col-span-7">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {requirements.map((r) => {
-                  const Icon = r.icon
-                  return (
-                    <div
-                      key={r.t}
-                      className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary-50 text-brand-primary ring-1 ring-brand-primary/10">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <h3 className="text-sm font-bold text-brand-navy">{r.t}</h3>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{r.d}</p>
-                      </div>
-                    </div>
-                  )
-                })}
+        <section id="como-funciona" className="mx-auto w-full max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
+          <div className="grid gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <div className="lg:sticky lg:top-28">
+                <h2 className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl">
+                  De la simulación a tu cuenta, en cinco pasos.
+                </h2>
+                <p className="mt-4 text-base leading-relaxed text-brand-navy-600">
+                  El orden importa: no firmás nada hasta ver el plan de cuotas completo.
+                </p>
               </div>
             </div>
+            <ol className="lg:col-span-8">
+              {STEPS.map((s, i) => (
+                <li key={s.t} className="grid grid-cols-[3.5rem_1fr] gap-4 border-t border-brand-navy-200 py-7 first:border-t-0 first:pt-0">
+                  <span className="font-mono text-sm tabular-nums text-brand-primary-700">{String(i + 1).padStart(2, '0')}</span>
+                  <div>
+                    <h3 className="font-display text-2xl font-bold tracking-tight">{s.t}</h3>
+                    <p className="mt-2 max-w-xl text-base leading-relaxed text-brand-navy-600">{s.d}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
-        {/* Quién te presta */}
-        <section id="quien-opera" className="scroll-mt-24 border-t border-border/60 bg-slate-50/60">
-          <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
+        {/* Documentos */}
+        <section className="bg-white">
+          <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
             <div className="max-w-2xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary">Quién te presta</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">
-                Sociedad nominada, domicilio y reglas a la vista.
+              <h2 className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl">
+                Todo lo que firmás queda en tu panel.
               </h2>
-              <p className="mt-3 text-base leading-relaxed text-muted-foreground">{LEGAL_COPY.nonBank}</p>
+              <p className="mt-4 text-base leading-relaxed text-brand-navy-600">
+                Contrato, pagaré, cuponera y recibos se generan con tus datos reales y los podés descargar cuando quieras.
+              </p>
             </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { icon: Landmark, t: 'Operador identificado', d: `${BRAND.legalName} · CUIT ${BRAND.cuit} · ${BRAND.address}.` },
-                { icon: Scale, t: 'Costo antes de firmar', d: 'TNA, CFT con IVA sobre intereses y cuponera. La oferta rige por contrato.' },
-                { icon: ShieldCheck, t: 'Tope de cuota 35%', d: 'La cuota no puede superar el 35% de los ingresos declarados.' },
-                { icon: CalendarClock, t: 'Derechos del consumidor', d: 'Arrepentimiento 10 días (Ley 24.240), baja y reclamos por formulario o email.' },
-              ].map((g) => {
-                const Icon = g.icon
-                return (
-                  <div key={g.t} className="rounded-2xl border border-border/70 bg-white p-5 shadow-xs">
-                    <Icon className="h-5 w-5 text-brand-primary" />
-                    <h3 className="mt-3 text-sm font-bold text-brand-navy">{g.t}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{g.d}</p>
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {DOCUMENTS.map((d) => (
+                <article key={d.t} className="rounded-3xl border border-brand-navy-200 bg-paper p-6">
+                  <d.icon className="h-6 w-6 text-brand-primary-700" aria-hidden />
+                  <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{d.t}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-brand-navy-600">{d.d}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Reglas */}
+        <section className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+          <div className="grid gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <h2 className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl">
+                Las reglas, escritas sin letra chica.
+              </h2>
+              <div className="mt-8 rounded-3xl bg-ink p-6 text-white">
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">Costo de referencia</p>
+                <p className="mt-3 font-display text-5xl font-bold tabular-nums text-signal-amber">
+                  {PERSONAL_QUOTE.cftLabel}
+                </p>
+                <p className="mt-1 text-sm text-white/65">
+                  CFT con IVA sobre intereses (TNA {PERSONAL_QUOTE.tnaLabel}). Es un crédito caro: por eso lo ves completo
+                  antes de decidir.
+                </p>
+              </div>
+            </div>
+            <ul className="divide-y divide-brand-navy-200 border-y border-brand-navy-200 lg:col-span-7">
+              {RULES.map((r) => (
+                <li key={r.t} className="flex gap-4 py-6">
+                  <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-ink">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+                  </span>
+                  <div>
+                    <h3 className="font-display text-xl font-bold tracking-tight">{r.t}</h3>
+                    <p className="mt-1 text-base leading-relaxed text-brand-navy-600">{r.d}</p>
                   </div>
-                )
-              })}
-            </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
         {/* FAQ */}
-        <section id="preguntas" className="mx-auto w-full max-w-4xl scroll-mt-24 px-4 py-16 sm:px-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">¿Querés saber más?</h2>
-            <p className="mt-3 text-base text-muted-foreground">Despejá tus dudas antes de solicitar el crédito.</p>
-          </div>
-          <div className="mt-8 space-y-3">
-            {faqs.map((item) => (
-              <details
-                key={item.q}
-                className="group rounded-2xl border border-border/70 bg-card px-5 py-4 open:border-brand-primary/30"
+        <section className="border-t border-brand-navy-200 bg-white">
+          <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:py-24">
+            <h2 className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] lg:col-span-4">
+              Lo que más nos preguntan.
+            </h2>
+            <div className="lg:col-span-8">
+              {FAQ.map((f) => (
+                <details key={f.q} className="group border-b border-brand-navy-200 py-5 first:pt-0">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-display text-lg font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
+                    {f.q}
+                    <span className="text-2xl font-light text-brand-primary-700 transition group-open:rotate-45" aria-hidden>
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 max-w-2xl text-base leading-relaxed text-brand-navy-600">{f.a}</p>
+                </details>
+              ))}
+              <Link
+                href="/preguntas-frecuentes"
+                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary-700 hover:underline"
               >
-                <summary className="cursor-pointer list-none text-sm font-bold text-brand-navy marker:content-none">
-                  {item.q}
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
-              </details>
-            ))}
-          </div>
-          <div className="mt-6 text-center">
-            <Link href="/preguntas-frecuentes" className="text-sm font-semibold text-brand-primary hover:underline">
-              Ver todas las preguntas frecuentes →
-            </Link>
-          </div>
-          <div className="mt-6">
-            <LegalStrip />
+                Ver todas las preguntas <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </section>
 
         <PublicCtaBanner />
       </main>
+
       <PublicFooter />
     </div>
   )

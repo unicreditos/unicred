@@ -514,29 +514,21 @@ export function BrandMark({
   tone = 'orange',
 }: {
   className?: string
-  /** orange = marca principal; white = fondos oscuros; cream = variante Global-Cash */
+  /** orange = marca principal (verde); white/cream = sobre fondos oscuros o verdes */
   tone?: 'orange' | 'white' | 'cream'
 }) {
-  const fg = tone === 'orange' ? '#FF5722' : tone === 'cream' ? '#ECF0E5' : '#FFFFFF'
-  const cut = '#000000'
+  const onDark = tone !== 'orange'
   return (
-    <svg viewBox="0 0 100 100" className={cn('h-5 w-5', className)} aria-hidden>
-      <g fill={fg}>
-        <path d="M24.2 36.8 A 31 31 0 0 1 71.5 27.2 L 78.8 24.1 80.2 36.4 69.6 33.8 A 21.5 21.5 0 0 0 30.6 41.2 Z" />
-        <path d="M75.8 63.2 A 31 31 0 0 1 28.5 72.8 L 21.2 75.9 19.8 63.6 30.4 66.2 A 21.5 21.5 0 0 0 69.4 58.8 Z" />
-        <circle cx="50" cy="50" r="17.5" />
-      </g>
-      <text
-        x="50"
-        y="57.5"
-        textAnchor="middle"
-        fontSize="22"
-        fontWeight="700"
-        fontFamily="Impact, Haettenschweiler, Arial Black, sans-serif"
-        fill={cut}
-      >
-        $
-      </text>
+    <svg viewBox="0 0 48 48" className={cn('h-5 w-5', className)} aria-hidden>
+      <rect width="48" height="48" rx="13" fill={onDark ? '#FFFFFF' : '#20BD5A'} />
+      <path
+        d="M14 11v15a10 10 0 0 0 20 0V11"
+        fill="none"
+        stroke={onDark ? '#08170F' : '#FFFFFF'}
+        strokeWidth="5.2"
+        strokeLinecap="round"
+      />
+      <circle cx="24" cy="26" r="3.4" fill={onDark ? '#20BD5A' : '#08170F'} />
     </svg>
   )
 }
@@ -554,27 +546,24 @@ export function BrandLogo({
 }) {
   return (
     <Link href={href} className={cn('inline-flex items-center gap-2.5 select-none', className)}>
-      <span
-        className={cn(
-          'relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full',
-          light ? 'bg-black ring-1 ring-white/15' : 'bg-black shadow-sm ring-1 ring-black/20',
-        )}
-      >
-        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'orange'} />
-      </span>
+      <BrandMark className="h-9 w-9" tone={light ? 'white' : 'orange'} />
       {showText ? (
         <span className="flex flex-col leading-none">
           <span
             className={cn(
-              'text-[17px] font-black uppercase tracking-[-0.04em]',
-              light ? 'text-[#ECF0E5]' : 'text-brand-navy-800 dark:text-white',
+              'font-display text-[19px] font-extrabold tracking-[-0.04em]',
+              light ? 'text-white' : 'text-brand-navy-800',
             )}
-            style={{ fontFamily: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif" }}
           >
-            {BRAND.company}
+            unicréditos
           </span>
-          <span className={cn('mt-0.5 max-w-[200px] text-[10px] font-medium leading-snug', light ? 'text-white/70' : 'text-muted-foreground')}>
-            {GROUP.productLine}
+          <span
+            className={cn(
+              'mt-1 text-[10px] font-medium uppercase tracking-[0.16em]',
+              light ? 'text-white/60' : 'text-brand-navy-400',
+            )}
+          >
+            Préstamos personales
           </span>
         </span>
       ) : null}

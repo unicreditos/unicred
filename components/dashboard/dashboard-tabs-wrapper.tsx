@@ -11,7 +11,7 @@ import { ActivityInbox } from '@/components/dashboard/activity-inbox'
 import { AccountSettings } from '@/components/dashboard/account-settings'
 import { ClaimsPanel } from '@/components/dashboard/claims-panel'
 import { DueCalendar } from '@/components/dashboard/due-calendar'
-import { parseDirectoIntent } from '@/directo/intent'
+import { parseLoanIntent } from '@/lib/loan-intent'
 import {
   SectionCard,
   StatusChip,
@@ -224,7 +224,7 @@ export function DashboardTabsWrapper({
   const urlTabRaw = isDashboardTab(rawTab) ? rawTab : null
   const urlTab = urlTabRaw ? normalizeDashboardTab(urlTabRaw) : null
   const [activeTab, setActiveTabState] = useState<TabValue>(urlTab ?? 'overview')
-  const directoIntent = parseDirectoIntent(searchParams)
+  const directoIntent = parseLoanIntent(searchParams)
 
   const [syncedUrl, setSyncedUrl] = useState(() => urlTab ?? '')
   const currentUrl = urlTab ?? ''

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import { AnalyticsGate } from '@/components/analytics-gate'
 import { CookieConsent } from '@/components/cookie-consent'
 import { SiteJsonLd } from '@/components/json-ld'
@@ -7,13 +7,19 @@ import { SkipLink } from '@/components/skip-link'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
-const sans = Plus_Jakarta_Sans({
+const sans = Instrument_Sans({
   subsets: ['latin'],
   variable: '--font-geist-sans',
   display: 'swap',
 })
 
-const geistMono = Geist_Mono({
+const display = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-display-face',
+  display: 'swap',
+})
+
+const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
   display: 'swap',
@@ -21,7 +27,7 @@ const geistMono = Geist_Mono({
 
 const siteTitle = 'UNICRÉDITOS'
 const siteDescription =
-  'Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.'
+  'Préstamos personales 100% online. Simulá la cuota con TNA, TEA y CFT a la vista, verificá tu identidad y firmá solo cuando el costo total te cierra.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),
@@ -70,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-AR" className={`${sans.variable} ${geistMono.variable} bg-background`}>
+    <html lang="es-AR" className={`${sans.variable} ${display.variable} ${mono.variable} bg-background`}>
       <body className="font-sans antialiased">
         <SkipLink />
         <SiteJsonLd />

@@ -1,4 +1,4 @@
-/** Rutas donde una sesión no debe rebotar al panel. Home y crédito público se ven con sesión; /directo también. */
+/** Rutas donde una sesión no debe rebotar al panel. Home y crédito público se ven con sesión. */
 
 const WORKSPACE_PREFIXES = ['/dashboard', '/admin', '/merchant', '/api/', '/verification/']
 
@@ -60,7 +60,6 @@ export function isWorkspaceStayPath(pathname: string) {
   if (isAuthEntryPath(pathname)) return true
   if (WORKSPACE_EXACT.has(pathname) || pathname.startsWith('/restablecer-clave/')) return true
   if (pathname.startsWith('/legal/')) return true
-  if (pathname === '/directo' || pathname.startsWith('/directo/')) return true
   // Productos y ayuda públicos: se pueden ver con sesión abierta (el header muestra "Mi cuenta").
   if (
     pathname === '/prestamos' ||

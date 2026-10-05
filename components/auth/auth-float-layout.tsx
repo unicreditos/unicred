@@ -1,10 +1,21 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
-import { GROUP, groupOperatorLine } from '@/lib/brand'
+import { groupOperatorLine } from '@/lib/brand'
+import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import { cn } from '@/lib/utils'
+import { Check } from 'lucide-react'
 
+const PROMISES = [
+  'TNA, TEA y CFT a la vista antes de firmar',
+  'Sin punitorios, gastos de otorgamiento ni seguros',
+  '10 días para arrepentirte, sin costo',
+  'Contrato, pagaré y recibos siempre en tu panel',
+] as const
+
+/** Pantalla dividida: panel de marca a la izquierda, formulario a la derecha. */
 export function AuthFloatLayout({
   children,
   headline,
@@ -19,59 +30,85 @@ export function AuthFloatLayout({
   className?: string
 }) {
   return (
-    <div id="contenido-principal" className="relative flex min-h-svh flex-col overflow-hidden bg-[#F4F6F3]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 50% at 10% -10%, rgba(32,189,90,0.12), transparent 55%), radial-gradient(ellipse 55% 40% at 100% 0%, rgba(12,22,18,0.06), transparent 50%), linear-gradient(180deg, #eef2ef 0%, #F4F6F3 38%, #F4F6F3 100%)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="auth-float-pattern pointer-events-none absolute inset-x-0 top-0 h-[42%] opacity-[0.04]"
-      />
-
-      <header className="relative z-10 flex items-center px-5 py-5 sm:px-10">
-        <BrandLogo showText />
-      </header>
-
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-14 pt-2">
-        {headline ? (
-          <div className="mb-8 max-w-2xl text-center">
-            <h1
-              suppressHydrationWarning
-              className="font-display text-3xl font-medium tracking-tight text-brand-navy-900 sm:text-4xl"
-            >
-              {headline}
-            </h1>
-            {lede ? (
-              <p
-                suppressHydrationWarning
-                className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-brand-navy-600 sm:text-base"
-              >
-                {lede}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
+    <div id="contenido-principal" className="grid min-h-svh bg-paper lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
-          className={cn(
-            'w-full rounded-2xl border border-brand-navy-200/90 bg-white shadow-[0_24px_60px_rgba(12,22,18,0.10)]',
-            size === 'sm' && 'max-w-[420px] p-8 sm:p-10',
-            size === 'md' && 'max-w-lg p-8 sm:p-10',
-            size === 'wide' && 'max-w-5xl p-6 sm:p-10',
-            className,
-          )}
-        >
-          {children}
+          aria-hidden
+          className="pointer-events-none absolute -left-24 top-1/3 h-96 w-96 rounded-full bg-brand-primary/20 blur-3xl"
+        />
+        <BrandLogo showText light className="relative" />
+
+        <div className="relative max-w-md">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-brand-primary-300">
+            Préstamo personal · referencia
+          </p>
+          <p className="mt-3 font-display text-6xl font-extrabold leading-none tracking-[-0.04em] text-signal-amber tabular-nums">
+            CFT {PERSONAL_QUOTE.cftLabel}
+          </p>
+          <h2 className="mt-8 font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em]">
+            El costo completo, antes de firmar.
+          </h2>
+          <ul className="mt-8 space-y-3.5">
+            {PROMISES.map((p) => (
+              <li key={p} className="flex items-start gap-3 text-[15px] leading-snug text-white/80">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-ink">
+                  <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                </span>
+                {p}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <p className="mt-8 max-w-md text-center text-[11px] leading-relaxed text-brand-navy-400">
-          {GROUP.productLine}. {groupOperatorLine()}
-        </p>
+        <p className="relative max-w-md text-[11px] leading-relaxed text-white/45">{groupOperatorLine()}</p>
+      </aside>
+
+      <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-14 lg:py-10">
+        <div className="flex items-center justify-between">
+          <div className="lg:hidden">
+            <BrandLogo showText />
+          </div>
+          <Link
+            href="/"
+            className="ml-auto text-sm font-medium text-brand-navy-500 transition hover:text-brand-navy-900"
+          >
+            Volver al inicio
+          </Link>
+        </div>
+
+        <div className="flex flex-1 flex-col justify-center py-10">
+          <div
+            className={cn(
+              'mx-auto w-full',
+              size === 'sm' && 'max-w-[420px]',
+              size === 'md' && 'max-w-lg',
+              size === 'wide' && 'max-w-xl',
+              className,
+            )}
+          >
+            {headline ? (
+              <div className="mb-8">
+                <h1
+                  suppressHydrationWarning
+                  className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-navy-900 sm:text-[2.75rem]"
+                >
+                  {headline}
+                </h1>
+                {lede ? (
+                  <p
+                    suppressHydrationWarning
+                    className="mt-3 max-w-md text-base leading-relaxed text-brand-navy-600"
+                  >
+                    {lede}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {children}
+          </div>
+        </div>
+
+        <p className="text-center text-[11px] leading-relaxed text-brand-navy-400 lg:hidden">{groupOperatorLine()}</p>
       </div>
     </div>
   )

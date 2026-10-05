@@ -51,6 +51,9 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/mercado', destination: '/datos-bcra', permanent: false },
+      { source: '/directo', destination: '/', permanent: true },
+      { source: '/directo/:path*', destination: '/prestamos', permanent: true },
+      { source: '/productos', destination: '/prestamos', permanent: true },
       { source: '/pedir', destination: '/', permanent: true },
       { source: '/pedir/solicitud', destination: '/sign-up', permanent: true },
       { source: '/pedir/solicitud/:path*', destination: '/sign-up', permanent: true },
