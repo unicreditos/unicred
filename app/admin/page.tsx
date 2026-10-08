@@ -34,6 +34,52 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const active = state.credits.filter((c) => c.status === 'active')
   const last30 = active.filter((c) => c.disbursedAt && daysBetween(c.disbursedAt, now) <= 30).length
   const pending = state.applications.filter((a) => a.status === 'pending')
+
+  // Solicitudes procesadas (resueltas: aprobadas, rechazadas o anuladas)
+  const processedApplications = state.applications.filter((a) => a.status !== 'pending')
+  const totalProcessed = processedApplications.length
+
+  // Desembolsos del mes en curso a partir de state.applications
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+  const isCurrentMonth = (dateStr: string | null | undefined) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear
+  }
+
+  const processedThisMonth = processedApplications.filter(
+    (a) => isCurrentMonth(a.decidedAt) || isCurrentMonth(a.createdAt),
+  ).length
+
+  // Identificar créditos y desembolsos liquidados en el mes en curso
+  const disbursedCreditAppIds = new Set(
+    state.credits
+      .filter((c) => isCurrentMonth(c.disbursedAt))
+      .map((c) => c.applicationId || c.id),
+  )
+
+  const creditedDisbursementAppIds = new Set(
+    state.disbursements
+      .filter((d) => d.status === 'completed' && isCurrentMonth(d.completedAt || d.requestedAt))
+      .map((d) => d.creditId),
+  )
+
+  // Aplicaciones de state.applications asociadas a desembolsos del mes actual
+  const disbursedAppsThisMonth = state.applications.filter((a) => {
+    if (disbursedCreditAppIds.has(a.id) || creditedDisbursementAppIds.has(a.id)) {
+      return true
+    }
+    const matchingCredit = state.credits.find((c) => c.applicationId === a.id || c.id === a.id)
+    if (matchingCredit) {
+      return matchingCredit.disbursedAt ? isCurrentMonth(matchingCredit.disbursedAt) : (a.status === 'approved' && isCurrentMonth(a.decidedAt))
+    }
+    return a.status === 'approved' && isCurrentMonth(a.decidedAt)
+  })
+
+  // Monto total desembolsado en el mes usando datos de state.applications
+  const totalDisbursedThisMonth = sum(disbursedAppsThisMonth, (a) => a.amount)
+
   const kycOk = new Set(state.clients.filter((c) => c.kycStatus === 'verified').map((c) => c.id))
   const inFinance = pending.filter((a) => kycOk.has(a.clientId)).length
   const late = active.filter((c) => c.bucket !== 'al_dia')
@@ -106,6 +152,20 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             ),
           },
           {
+            href: '/admin/originacion/solicitudes',
+            label: 'Solicitudes procesadas',
+            value: fmtInt(totalProcessed),
+            amount: money(totalDisbursedThisMonth),
+            amountLabel: 'desembolsado este mes',
+            testId: 'summary-card-processed-applications',
+            ariaLabel: `Solicitudes procesadas: ${totalProcessed}. Desembolsado en el mes: ${money(totalDisbursedThisMonth)}`,
+            foot: (
+              <>
+                <span className="uc-trend-up uc-num">+{processedThisMonth}</span> este mes · <span className="uc-num">{disbursedAppsThisMonth.length}</span> desembolsadas
+              </>
+            ),
+          },
+          {
             href: '/admin/cobranzas/mora',
             label: 'Cartera en mora',
             value: late.length,
@@ -143,6 +203,63 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           },
         ]}
       />
+
+      <div className="uc-section-gap" />
+
+      <div
+        className="uc-card"
+        data-testid="processed-applications-summary-card"
+        style={{
+          padding: '18px 22px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          background: 'linear-gradient(135deg, var(--uc-surface) 0%, color-mix(in srgb, var(--uc-accent) 6%, var(--uc-surface)) 100%)',
+          border: '1px solid color-mix(in srgb, var(--uc-accent) 25%, var(--uc-border))',
+          borderRadius: 'var(--uc-radius)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 10,
+              background: 'color-mix(in srgb, var(--uc-accent) 15%, transparent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--uc-accent)',
+            }}
+          >
+            <Icon name="check" />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--uc-text-muted)' }}>
+              Resumen de originación mensual · Processed Applications Summary
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--uc-text)', marginTop: 2 }}>
+              <span className="uc-num" data-testid="total-processed-applications">{totalProcessed}</span> solicitudes procesadas
+              <span style={{ fontWeight: 400, color: 'var(--uc-text-muted)', margin: '0 8px' }}>·</span>
+              <span className="uc-num" data-testid="total-disbursed-current-month">{money(totalDisbursedThisMonth)}</span> desembolsados en el mes
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 13, color: 'var(--uc-text-muted)' }}>
+          <div>
+            <b className="uc-num" style={{ color: 'var(--uc-text)', fontSize: 14 }}>{processedThisMonth}</b> resueltas este mes
+          </div>
+          <span style={{ color: 'var(--uc-border)' }}>|</span>
+          <div>
+            <b className="uc-num" style={{ color: 'var(--uc-text)', fontSize: 14 }}>{disbursedAppsThisMonth.length}</b> desembolsos efectivos
+          </div>
+          <ButtonLink href="/admin/originacion/solicitudes" style={{ padding: '6px 14px', fontSize: 13 }}>
+            Ver solicitudes
+          </ButtonLink>
+        </div>
+      </div>
 
       <div className="uc-section-gap" />
 

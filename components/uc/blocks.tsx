@@ -97,13 +97,21 @@ export type KpiProps = {
   amountLabel?: string
   foot?: ReactNode
   extra?: ReactNode
+  testId?: string
+  ariaLabel?: string
 }
 
 export function KpiGrid({ items }: { items: KpiProps[] }) {
   return (
     <section className="uc-kpis" aria-label="Indicadores principales">
       {items.map((k) => (
-        <Link key={k.label} className="uc-kpi" href={k.href}>
+        <Link
+          key={k.label}
+          className="uc-kpi"
+          href={k.href}
+          data-testid={k.testId}
+          aria-label={k.ariaLabel}
+        >
           <div className="uc-kpi-head">
             <span className="uc-kpi-label">{k.label}</span>
           </div>
