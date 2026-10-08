@@ -93,15 +93,19 @@
 .uc *,.uc *::before,.uc *::after{box-sizing:border-box}
 
 .uc{
-  font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-family:var(--font-geist-sans),"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-size:14px;line-height:1.45;color:var(--uc-text);background:var(--uc-bg);
   -webkit-font-smoothing:antialiased;
+}
+.uc h1,.uc h2,.uc h3,.uc-page-head h1,.uc-card-h h2,.uc-section-title h2{
+  font-family:var(--font-display-face),"Bricolage Grotesque",-apple-system,sans-serif;
+  letter-spacing:-0.025em;
 }
 .uc a{color:var(--uc-accent);text-decoration:none}
 .uc a:hover{color:var(--uc-accent-hover)}
 .uc button,.uc input,.uc select{font:inherit;color:inherit}
 .uc :focus-visible{outline:2px solid var(--uc-focus);outline-offset:2px;border-radius:4px}
-.uc-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.uc-num{font-family:var(--font-geist-mono),"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .uc-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 svg.uc-i{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 svg.uc-i.uc-sm{width:16px;height:16px}
@@ -176,7 +180,7 @@ svg.uc-i.uc-xs{width:14px;height:14px}
 .uc-card{background:var(--uc-surface);border:1px solid var(--uc-border);border-radius:var(--uc-radius);box-shadow:var(--uc-shadow-sm)}
 
 /* ========================================================= KPI */
-.uc-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.uc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
 .uc-kpi{
   display:flex;flex-direction:column;gap:6px;padding:20px 22px;color:var(--uc-text);
   background:var(--uc-surface);border:1px solid var(--uc-border);border-radius:var(--uc-radius);box-shadow:var(--uc-shadow-sm);

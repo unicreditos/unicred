@@ -656,25 +656,35 @@ async function buildFromDb(): Promise<AdminDeskState> {
   })
 
   // --- loans → applications / credits ---
-  const appStatuses = new Set(['pending', 'approved', 'rejected', 'cancelled'])
+  const appStatuses = new Set(['pending', 'approved', 'rejected', 'cancelled', 'active', 'paid'])
   const creditStatuses = new Set(['approved', 'active', 'paid', 'cancelled'])
 
   const applications: LoanApplication[] = loanRows
     .filter((l) => appStatuses.has(l.status))
-    .map((l) => ({
-      id: l.id,
-      clientId: l.userId,
-      productId: l.productId || '',
-      merchantId: l.merchantId,
-      amount: num(l.principal),
-      installments: l.term,
-      status: l.status as LoanApplication['status'],
-      purpose: l.purpose || '',
-      createdAt: iso(l.createdAt) || new Date().toISOString(),
-      decidedAt: l.status === 'pending' ? null : iso(l.updatedAt),
-      operatorId: null,
-      notes: l.rejectionReason || '',
-    }))
+    .map((l) => {
+      const status: LoanApplication['status'] =
+        l.status === 'pending'
+          ? 'pending'
+          : l.status === 'rejected'
+            ? 'rejected'
+            : l.status === 'cancelled'
+              ? 'cancelled'
+              : 'approved'
+      return {
+        id: l.id,
+        clientId: l.userId,
+        productId: l.productId || '',
+        merchantId: l.merchantId,
+        amount: num(l.principal),
+        installments: l.term,
+        status,
+        purpose: l.purpose || '',
+        createdAt: iso(l.createdAt) || new Date().toISOString(),
+        decidedAt: l.status === 'pending' ? null : iso(l.updatedAt) || iso(l.disbursedAt),
+        operatorId: null,
+        notes: l.rejectionReason || '',
+      }
+    })
 
   const creditLoans = loanRows.filter((l) => creditStatuses.has(l.status))
   const creditLoanIds = creditLoans.map((l) => l.id)

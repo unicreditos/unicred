@@ -61,6 +61,9 @@ export function trustedOrigins() {
   }
   add('unicreditos://')
   add('exp://localhost:8081')
+  add('https://ais-dev-rchiaxiqnb64aswlnyl6fv-60345912105.us-west1.run.app')
+  add('https://ais-pre-rchiaxiqnb64aswlnyl6fv-60345912105.us-west1.run.app')
+  if (process.env.CLOUD_RUN_URL) add(process.env.CLOUD_RUN_URL)
 
   return Array.from(origins)
 }
