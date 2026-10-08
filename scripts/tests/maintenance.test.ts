@@ -3,14 +3,35 @@ import { describe, it } from 'node:test'
 import { isOpenDuringMaintenance, maintenanceEnabled } from '../../lib/maintenance'
 
 describe('mantenimiento', () => {
-  it('deja abiertos el ingreso, los paneles, los cobros y los legales', () => {
-    for (const path of ['/sign-in', '/admin', '/admin/clientes/planilla', '/dashboard', '/dashboard/pagos', '/merchant', '/api/auth/login', '/pagar/cuota_1', '/legal/arrepentimiento', '/mantenimiento']) {
+  it('solo deja el aviso y los avisos automáticos de pago e identidad', () => {
+    for (const path of [
+      '/mantenimiento',
+      '/api/webhooks/mercadopago',
+      '/api/webhooks/didit',
+      '/api/cron/reconcile-payments',
+      '/api/cron/reconcile-kyc',
+    ]) {
       assert.equal(isOpenDuringMaintenance(path), true, path)
     }
   })
 
-  it('cierra el sitio público', () => {
-    for (const path of ['/', '/prestamos', '/contacto', '/preguntas-frecuentes', '/scoring', '/comercios']) {
+  it('cierra ingreso, paneles, cobros, legales y el resto del sitio', () => {
+    for (const path of [
+      '/',
+      '/prestamos',
+      '/contacto',
+      '/sign-in',
+      '/sign-up',
+      '/admin',
+      '/admin/clientes/planilla',
+      '/dashboard',
+      '/dashboard/pagos',
+      '/merchant',
+      '/api/auth/login',
+      '/pagar/cuota_1',
+      '/legal/arrepentimiento',
+      '/legal/baja',
+    ]) {
       assert.equal(isOpenDuringMaintenance(path), false, path)
     }
   })

@@ -1,5 +1,5 @@
 /**
- * El sitio público queda en mantenimiento mientras se revisa cada área.
+ * Todo el sitio queda cerrado hasta el despliegue completo.
  * MAINTENANCE_MODE=off lo vuelve a abrir sin otro cambio de código.
  * Si la variable no está, el mantenimiento sigue activo.
  */
@@ -9,20 +9,16 @@ export function maintenanceEnabled() {
   return true
 }
 
-/** Rutas que siguen vivas: ingreso, paneles, cobros, legales y webhooks. */
+/**
+ * Nadie entra al sitio. Solo queda el aviso y los avisos que Mercado Pago y
+ * Didit envían solos: si se cortan, un pago o una verificación en curso se pierde.
+ */
 const OPEN_PREFIXES = [
   '/mantenimiento',
-  '/sign-in',
-  '/sign-up',
-  '/recuperar-clave',
-  '/restablecer-clave',
-  '/admin',
-  '/dashboard',
-  '/merchant',
-  '/api',
-  '/pagar',
-  '/legal',
-  '/verification',
+  '/api/webhooks/mercadopago',
+  '/api/webhooks/didit',
+  '/api/cron/reconcile-payments',
+  '/api/cron/reconcile-kyc',
 ]
 
 export function isOpenDuringMaintenance(pathname: string) {
