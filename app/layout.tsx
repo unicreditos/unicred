@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
+import dynamic from 'next/dynamic'
 import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
-import { AnalyticsGate } from '@/components/analytics-gate'
-import { CookieConsent } from '@/components/cookie-consent'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
-import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
+
+const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
+const Toaster = dynamic(() => import('@/components/ui/sonner').then((m) => m.Toaster))
 
 const sans = Instrument_Sans({
   subsets: ['latin'],
@@ -23,6 +24,7 @@ const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
   display: 'swap',
+  preload: false,
 })
 
 const siteTitle = 'UNICRÉDITOS'
@@ -93,7 +95,6 @@ export default function RootLayout({
         {children}
         <CookieConsent />
         <Toaster richColors closeButton position="top-right" />
-        <AnalyticsGate />
       </body>
     </html>
   )
