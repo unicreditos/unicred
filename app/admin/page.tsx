@@ -1,10 +1,12 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Icon } from '@/components/uc/icons'
-import { KpiGrid, PageHead, SectionTitle, TodoList } from '@/components/uc/blocks'
+import { Badge, ButtonLink, CardHead, Grid, KpiGrid, PageHead, Pad, SectionTitle, TodoList } from '@/components/uc/blocks'
 import { loadDesk } from '@/lib/admin-desk/load'
-import { daysBetween, fdatetime, fmtInt, money } from '@/lib/uc/format'
+import { clientIndex, fullName } from '@/lib/uc/admin'
+import { daysBetween, fdate, fdatetime, fmtInt, money } from '@/lib/uc/format'
 
-export const metadata = { title: 'Vista rápida' }
+export const metadata = { title: 'Centro de Control' }
 
 /** Enlaces viejos del tipo /admin?tab=creditos que siguen en notificaciones y mails. */
 const LEGACY_TABS: Record<string, string> = {
@@ -27,6 +29,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
 
   const { state } = await loadDesk()
   const now = new Date()
+  const idx = clientIndex(state)
 
   const active = state.credits.filter((c) => c.status === 'active')
   const last30 = active.filter((c) => c.disbursedAt && daysBetween(c.disbursedAt, now) <= 30).length
@@ -46,9 +49,36 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const kycOpen = state.kyc.filter((k) => k.status === 'pending' || k.status === 'in_review').length
   const pct = (n: number) => (late.length ? ((n / late.length) * 100).toFixed(1) : '0')
 
+  // Actividad reciente de cartera (pagos acreditados y solicitudes)
+  const recentPayments = state.payments
+    .slice(0, 6)
+    .map((p) => {
+      const client = idx.get(p.clientId)
+      return {
+        id: p.id,
+        at: p.paidAt,
+        clientName: fullName(client),
+        detail: p.channel === 'mercadopago' ? 'Cobranza Mercado Pago' : 'Transferencia bancaria',
+        amount: p.amount,
+        status: p.status === 'reconciled' || p.status === 'matched' ? 'Acreditado' : p.status === 'pending' ? 'Pendiente' : 'Rechazado',
+        tone: p.status === 'reconciled' || p.status === 'matched' ? 'success' as const : p.status === 'pending' ? 'info' as const : 'danger' as const,
+      }
+    })
+
   return (
     <>
-      <PageHead title="Vista rápida" description={`Resumen de la cartera al ${fdatetime(now)} h`} />
+      <PageHead
+        title="Centro de Control · Backoffice"
+        description={`Cartera activa y operaciones al ${fdatetime(now)} h`}
+        actions={
+          <div className="uc-cta-row" style={{ gap: 10 }}>
+            <ButtonLink href="/admin/clientes/planilla">Planilla de clientes</ButtonLink>
+            <ButtonLink href="/admin/finanzas/resumen">Balance y tesorería</ButtonLink>
+            <ButtonLink primary href="/admin/originacion/solicitudes">Ver solicitudes</ButtonLink>
+          </div>
+        }
+      />
+
       <KpiGrid
         items={[
           {
@@ -56,22 +86,22 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             label: 'Préstamos vigentes',
             value: fmtInt(active.length),
             amount: money(sum(active, (c) => c.amount)),
-            amountLabel: 'importe total otorgado',
+            amountLabel: 'importe total colocado',
             foot: (
               <>
-                <span className="uc-trend-up uc-num">+{last30}</span> otorgados en los últimos 30 días
+                <span className="uc-trend-up uc-num">+{last30}</span> otorgados en últimos 30 días
               </>
             ),
           },
           {
             href: '/admin/originacion/solicitudes',
-            label: 'Créditos pendientes de emisión',
+            label: 'Solicitudes en revisión',
             value: pending.length,
             amount: money(sum(pending, (a) => a.amount)),
-            amountLabel: 'solicitado',
+            amountLabel: 'solicitado en cartera',
             foot: (
               <>
-                <Icon name="clock" size="xs" /> Sin aprobar · <span className="uc-num">{inFinance}</span> en revisión de Finanzas
+                <Icon name="clock" size="xs" /> <span className="uc-num">{inFinance}</span> listas para decisión de Finanzas
               </>
             ),
           },
@@ -80,7 +110,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             label: 'Cartera en mora',
             value: late.length,
             amount: money(sum(late, (c) => c.principalOutstanding)),
-            amountLabel: 'saldo en mora',
+            amountLabel: 'saldo vencido a recuperar',
             extra: (
               <div className="uc-buckets" aria-label="Mora por tramo de días de atraso">
                 <div className="uc-bucket-bar">
@@ -104,49 +134,129 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             money: true,
             value: money(sum(queued, (d) => d.amount)),
             amount: `${queued.length} créditos`,
-            amountLabel: 'a transferir',
+            amountLabel: 'en cola bancaria',
             foot: (
               <>
-                <Icon name="clip" size="xs" /> <span className="uc-num">{noCbu}</span> sin CBU/CVU cargado
+                <Icon name="clip" size="xs" /> <span className="uc-num">{noCbu}</span> sin CBU validado
               </>
             ),
           },
         ]}
       />
 
-      <SectionTitle title="Pendientes de acción" aside="Lo que necesita a alguien del equipo hoy" />
-      <TodoList
-        items={[
-          {
-            href: '/admin/originacion/aprobaciones',
-            sev: 'var(--uc-warning)',
-            count: pending.length,
-            txt: 'Solicitudes esperan revisión manual de Finanzas',
-            small: 'Las que el scoring no resolvió solo: las decide una persona de Finanzas',
-          },
-          {
-            href: '/admin/cobranzas/comprobantes',
-            sev: 'var(--uc-accent)',
-            count: transfers,
-            txt: 'Transferencias de clientes por conciliar',
-            small: 'Verificá el movimiento en el extracto bancario antes de acreditar la cuota',
-          },
-          {
-            href: '/admin/cobranzas/mora',
-            sev: 'var(--uc-danger)',
-            count: tr[1] + tr[2],
-            txt: 'Créditos con más de 30 días de atraso',
-            small: 'Derivar a gestión de cobranzas',
-          },
-          {
-            href: '/admin/originacion/kyc',
-            sev: 'var(--uc-info)',
-            count: kycOpen,
-            txt: 'Validaciones de identidad en curso',
-            small: 'Esperando el resultado de la verificación biométrica',
-          },
-        ]}
-      />
+      <div className="uc-section-gap" />
+
+      <Grid cols="21">
+        <div>
+          <SectionTitle title="Bandeja de decisiones operativas" aside="Acciones que requieren intervención del equipo" />
+          <TodoList
+            items={[
+              {
+                href: '/admin/originacion/aprobaciones',
+                sev: 'var(--uc-warning)',
+                count: pending.length,
+                txt: 'Solicitudes listas para decisión de Finanzas',
+                small: 'Casos que requieren aprobación o rechazo manual fundado',
+              },
+              {
+                href: '/admin/cobranzas/comprobantes',
+                sev: 'var(--uc-accent)',
+                count: transfers,
+                txt: 'Comprobantes de transferencia por conciliar',
+                small: 'Cotejar extracto bancario antes de acreditar la cuota en sistema',
+              },
+              {
+                href: '/admin/cobranzas/mora',
+                sev: 'var(--uc-danger)',
+                count: tr[1] + tr[2],
+                txt: 'Créditos con más de 30 días de atraso',
+                small: 'Gestión de cobranza activa y aviso prejudicial',
+              },
+              {
+                href: '/admin/originacion/kyc',
+                sev: 'var(--uc-info)',
+                count: kycOpen,
+                txt: 'Validaciones biométricas en revisión',
+                small: 'Verificaciones de identidad Didit pendientes de confirmar',
+              },
+            ]}
+          />
+        </div>
+
+        <div>
+          <SectionTitle title="Monitoreo de cobranzas recientes" aside="Últimas operaciones" />
+          <Pad>
+            <CardHead title="Movimientos acreditados" aside={<Link href="/admin/cobranzas/pagos">Ver todos</Link>} />
+            {recentPayments.length > 0 ? (
+              <ul className="uc-feed">
+                {recentPayments.map((p) => (
+                  <li key={p.id}>
+                    <span className="uc-fi">
+                      <Icon name="check" size="sm" />
+                    </span>
+                    <span className="uc-ft">
+                      <b>{p.clientName}</b>
+                      <small>
+                        {p.detail} {p.at ? `· ${fdate(p.at)}` : ''}
+                      </small>
+                    </span>
+                    <span className="uc-fa">
+                      <b className="uc-num">{money(p.amount)}</b>
+                      <span style={{ display: 'block', marginTop: 2 }}>
+                        <Badge tone={p.tone}>{p.status}</Badge>
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="uc-note">No se registran movimientos recientes.</p>
+            )}
+          </Pad>
+        </div>
+      </Grid>
+
+      <SectionTitle title="Accesos directos de gestión" aside="Navegación rápida por módulo" />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 14,
+        }}
+      >
+        {[
+          { title: 'Originación', desc: `${state.applications.length} solicitudes`, href: '/admin/originacion/solicitudes', icon: 'origin' as const },
+          { title: 'Aprobaciones', desc: `${pending.length} pendientes`, href: '/admin/originacion/aprobaciones', icon: 'check' as const },
+          { title: 'Identidad KYC', desc: `${state.kyc.length} validaciones`, href: '/admin/originacion/kyc', icon: 'user' as const },
+          { title: 'Créditos Activos', desc: `${active.length} vigentes`, href: '/admin/creditos/otorgados', icon: 'credit' as const },
+          { title: 'Desembolsos', desc: `${queued.length} en cola`, href: '/admin/creditos/desembolso', icon: 'clip' as const },
+          { title: 'Contratos', desc: `${state.contracts.length} emitidos`, href: '/admin/creditos/contratos', icon: 'file' as const },
+          { title: 'Cobranzas & Mora', desc: `${late.length} en atraso`, href: '/admin/cobranzas/mora', icon: 'wallet' as const },
+          { title: 'Planilla Clientes', desc: `${state.clients.length} usuarios`, href: '/admin/clientes/planilla', icon: 'users' as const },
+          { title: 'Auditoría Legal', desc: 'Registro inmutable', href: '/admin/sistema/auditoria', icon: 'lock' as const },
+        ].map((item) => (
+          <Link
+            key={item.title}
+            href={item.href}
+            className="uc-card"
+            style={{
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              transition: 'transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <b style={{ color: 'var(--uc-text)', fontSize: 14 }}>{item.title}</b>
+              <Icon name={item.icon} size="xs" style={{ color: 'var(--uc-accent)' }} />
+            </div>
+            <span className="uc-num" style={{ fontSize: 12, color: 'var(--uc-text-muted)' }}>
+              {item.desc}
+            </span>
+          </Link>
+        ))}
+      </div>
     </>
   )
 }

@@ -31,6 +31,15 @@ export function isPlaceholderDbUrl(url: string | undefined): boolean {
   )
 }
 
+import dotenv from 'dotenv'
+import path from 'node:path'
+
+if (typeof window === 'undefined') {
+  try {
+    dotenv.config({ path: path.join(process.cwd(), '.env'), override: true })
+  } catch {}
+}
+
 const rawDatabaseUrl = process.env.DATABASE_URL
 const cleanedDatabaseUrl = cleanConnectionUrl(rawDatabaseUrl)
 
@@ -56,7 +65,7 @@ export const pool = new Pool({
   // simple fuera la query). min:1 mantiene una conexión viva para absorber
   // ese caso; idleTimeoutMillis más alto reduce cuántas veces se repite
   // dentro de una misma sesión de uso normal.
-  min: 1,
+  min: isPlaceholderDbUrl(cleanedDatabaseUrl) ? 0 : 1,
   connectionTimeoutMillis: 30000,
   idleTimeoutMillis: 120000,
   allowExitOnIdle: false,

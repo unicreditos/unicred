@@ -27,7 +27,7 @@ const mono = JetBrains_Mono({
 
 const siteTitle = 'UNICRÉDITOS'
 const siteDescription =
-  'Préstamos personales 100% online. Simulá la cuota con TNA, TEA y CFT a la vista, verificá tu identidad y firmá solo cuando el costo total te cierra.'
+  'Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),

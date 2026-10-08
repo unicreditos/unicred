@@ -65,6 +65,15 @@ function getTrustedOrigins() {
   return Array.from(origins)
 }
 
+import dotenv from 'dotenv'
+import path from 'node:path'
+
+if (typeof window === 'undefined') {
+  try {
+    dotenv.config({ path: path.join(process.cwd(), '.env'), override: true })
+  } catch {}
+}
+
 const rawDatabaseUrl = process.env.DATABASE_URL
 const cleanedDatabaseUrl = cleanConnectionUrl(rawDatabaseUrl)
 const isNeonAuth = cleanedDatabaseUrl?.includes('neon.tech') ||
@@ -88,7 +97,7 @@ const authDbPool = new Pool({
   // se pagaba una y otra vez — medido en vivo, ~2s parejos en cualquier
   // acción sin importar qué tan simple fuera. min:1 mantiene una conexión
   // lista.
-  min: 1,
+  min: isPlaceholderDbUrl(cleanedDatabaseUrl) ? 0 : 1,
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 60000,
   allowExitOnIdle: false,
