@@ -1,6 +1,7 @@
 import { KYCBiometricPanel } from '@/components/dashboard/kyc-biometric-panel'
 import { Badge, CardHead, Kv, Pad, PageHead } from '@/components/uc/blocks'
-import { loadCustomer } from '@/lib/customer/load'
+import { loadCustomerKyc, loadCustomerShell } from '@/lib/customer/load'
+import { getOrCreateProfile } from '@/lib/session'
 import { fdate } from '@/lib/uc/format'
 
 export const metadata = { title: 'Identidad' }
@@ -15,7 +16,9 @@ const STATE: Record<string, { label: string; tone: 'success' | 'danger' | 'warni
 }
 
 export default async function IdentidadPage() {
-  const { profile, kyc, identityVerified } = await loadCustomer()
+  const { userId } = await loadCustomerShell()
+  const [profile, kyc] = await Promise.all([getOrCreateProfile(), loadCustomerKyc(userId)])
+  const identityVerified = kyc?.provider === 'didit' && kyc.status === 'approved'
   const st = identityVerified ? STATE.approved : (STATE[kyc?.status ?? ''] ?? { label: 'Sin verificar', tone: 'neutral' as const })
 
   return (

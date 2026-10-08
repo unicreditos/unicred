@@ -1,12 +1,12 @@
 import { getMyBankAccounts } from '@/app/actions/banking'
 import { BankAccountsSection } from '@/components/dashboard/bank-accounts-section'
 import { PageHead } from '@/components/uc/blocks'
-import { loadCustomer } from '@/lib/customer/load'
+import { loadCustomerBase } from '@/lib/customer/load'
 
 export const metadata = { title: 'Cuentas para cobrar' }
 
 export default async function CuentasPage() {
-  const { user, profile } = await loadCustomer()
+  const { user, profile } = await loadCustomerBase()
   const accounts = await getMyBankAccounts().catch(() => [])
   return (
     <>

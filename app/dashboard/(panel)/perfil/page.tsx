@@ -1,13 +1,13 @@
 import { KYCProfileForm } from '@/components/dashboard/kyc-profile-form'
 import { CardHead, Grid, Kv, Pad, PageHead, ProgressBar, SectionTitle } from '@/components/uc/blocks'
 import { fmtDni } from '@/lib/uc/admin'
-import { loadCustomer, oneLineAddress, profileProgress } from '@/lib/customer/load'
+import { loadCustomerBase, oneLineAddress, profileProgress } from '@/lib/customer/load'
 import { fdate } from '@/lib/uc/format'
 
 export const metadata = { title: 'Datos personales' }
 
 export default async function PerfilPage() {
-  const { user, profile, identityVerified } = await loadCustomer()
+  const { user, profile, identityVerified } = await loadCustomerBase()
   const progress = profileProgress(profile)
 
   return (

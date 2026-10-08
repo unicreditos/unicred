@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import '../../uc.css'
 import { UcShell, type BottomItem, type MenuItem } from '@/components/uc/shell'
-import { loadCustomer } from '@/lib/customer/load'
+import { loadCustomerShell } from '@/lib/customer/load'
 import { longDate } from '@/lib/uc/format'
 
 export const metadata: Metadata = {
@@ -58,19 +59,17 @@ const BOTTOM: BottomItem[] = [
 ]
 
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await loadCustomer()
+  const { user } = await loadCustomerShell()
   return (
-    <>
-      <UcShell
-        menu={MENU}
-        bottomNav={BOTTOM}
-        area="Mi cuenta"
-        today={longDate()}
-        user={{ name: user.name, detail: 'Cliente', email: user.email }}
-        homeHref="/dashboard"
-      >
-        {children}
-      </UcShell>
-    </>
+    <UcShell
+      menu={MENU}
+      bottomNav={BOTTOM}
+      area="Mi cuenta"
+      today={longDate()}
+      user={{ name: user.name, detail: 'Cliente', email: user.email }}
+      homeHref="/dashboard"
+    >
+      <Suspense fallback={<p className="uc-muted">Cargando…</p>}>{children}</Suspense>
+    </UcShell>
   )
 }
