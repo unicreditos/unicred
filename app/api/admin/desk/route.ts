@@ -15,7 +15,7 @@ export function OPTIONS(req: Request) {
   return mobileOptions(req)
 }
 
-/** Snapshot completo del backoffice para unicreditos-admin. */
+/** Snapshot completo del backoffice por JWT (app móvil y clientes externos). El panel web usa lib/admin-desk/load.ts. */
 export async function GET(req: Request) {
   try {
     const userId = await requireMobileUserId(req)

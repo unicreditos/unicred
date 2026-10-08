@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { adminAuditLog, user as userTable } from '@/lib/db/schema'
+import { ensureAuditSchema } from '@/lib/db/ensure-audit'
 import { and, desc, eq } from 'drizzle-orm'
 
 export type AuditSeverity = 'info' | 'warning' | 'error'
@@ -22,6 +23,7 @@ export type AuditEntry = {
  */
 export async function recordAudit(entry: AuditEntry): Promise<void> {
   try {
+    await ensureAuditSchema()
     let actorEmail: string | null = null
     if (entry.actorUserId) {
       const [row] = await db

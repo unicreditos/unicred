@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAudit } from '@/lib/audit'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { eq, desc } from 'drizzle-orm'
@@ -209,6 +210,15 @@ export async function syncDiditSession(sessionId?: string) {
   })
 
   if (session?.user?.id) {
+    await recordAudit({
+      actorUserId: session.user.id,
+      action: 'KYC_DECISION_SYNCED',
+      entityType: 'kyc_verification',
+      entityId: id,
+      targetUserId: session.user.id,
+      severity: status === 'Approved' ? 'info' : 'warning',
+      summary: `Resultado de verificación de identidad (Didit): ${status}`,
+    })
     revalidatePath('/dashboard')
     revalidatePath('/merchant')
     revalidatePath('/admin')

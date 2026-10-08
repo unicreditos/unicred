@@ -70,13 +70,23 @@ export const viewport: Viewport = {
   themeColor: '#20BD5A',
 }
 
+/* Tema de los paneles (claro/oscuro): se aplica antes del primer pintado. Va acá, en el layout raíz, y no
+   en los de los paneles: un <script> dentro de un componente que React vuelve a dibujar en el cliente
+   (al navegar entre pantallas) genera un aviso y no se ejecuta. Solo marca <html data-theme>; los
+   estilos viven bajo .uc, así que el sitio público no cambia. */
+const THEME_SCRIPT =
+  "(function(){try{var t=localStorage.getItem('uc-theme');if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','light')}})();"
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-AR" className={`${sans.variable} ${display.variable} ${mono.variable} bg-background`}>
+    <html lang="es-AR" suppressHydrationWarning className={`${sans.variable} ${display.variable} ${mono.variable} bg-background`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="font-sans antialiased">
         <SkipLink />
         <SiteJsonLd />

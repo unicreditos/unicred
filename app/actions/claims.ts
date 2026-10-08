@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
 import { supportCase } from '@/lib/db/schema'
@@ -59,6 +60,15 @@ export async function createClaim(input: { category: string; subject: string; bo
     body,
   })
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'CLAIM_CREATED',
+    entityType: 'support_case',
+    entityId: row.id,
+    targetUserId: userId,
+    summary: 'El cliente presentó un reclamo',
+    changes: { categoria: input.category },
+  })
   void notifySupportClaim({ userId, caseId: row.id, subject: row.subject })
   revalidateCustomer()
   revalidateOps()

@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAudit } from '@/lib/audit'
 import {
   computeScore,
   consultFullBcra,
@@ -42,8 +43,16 @@ export async function consultMyBcra() {
     monthlyIncome: Number(prof.monthlyIncome ?? 0),
   })
   if (result.ok) {
+    await recordAudit({
+      actorUserId: userId,
+      action: 'BCRA_CONSULTED',
+      entityType: 'profile',
+      entityId: userId,
+      targetUserId: userId,
+      summary: 'Se consultó la Central de Deudores del BCRA para el cliente',
+    })
     revalidatePath('/dashboard')
-    revalidatePath('/dashboard?tab=scoring')
+    revalidatePath('/dashboard/perfil/bcra')
   }
   return result
 }

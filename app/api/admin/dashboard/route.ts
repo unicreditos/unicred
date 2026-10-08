@@ -15,7 +15,7 @@ export function OPTIONS(req: Request) {
 export async function GET(req: Request) {
   try {
     const userId = await requireMobileUserId(req)
-    await requireMobileAdmin(userId)
+    await requireMobileAdmin(userId, 'credits.read')
     return mobileJson(req, await mobileAdminDashboard())
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

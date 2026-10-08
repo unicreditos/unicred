@@ -2,6 +2,8 @@ import { auth } from '@/lib/auth'
 import { db, isPlaceholderDbUrl } from '@/lib/db'
 import { profile, user as userTable } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { recordAudit } from '@/lib/audit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
@@ -144,11 +146,55 @@ export async function requireUserId() {
   return session.user.id
 }
 
+/**
+ * Las sesiones de administrador son más estrictas que las de un cliente:
+ *  - Se valida contra la base en cada pedido, sin la caché de cookie de 5 minutos: un cierre de sesión
+ *    o una baja se aplica al instante.
+ *  - Vencen a las ADMIN_SESSION_MAX_HOURS horas (12 por defecto) de iniciadas, aunque se sigan usando.
+ */
+const ADMIN_SESSION_MAX_MS = Math.max(1, Number(process.env.ADMIN_SESSION_MAX_HOURS) || 12) * 3_600_000
+
+async function adminSessionExpired(): Promise<boolean> {
+  if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return false
+  try {
+    const fresh = await auth.api.getSession({ headers: await headers(), query: { disableCookieCache: true } })
+    if (!fresh?.session) return true
+    const started = new Date(fresh.session.createdAt as Date | string).getTime()
+    return Number.isFinite(started) && Date.now() - started > ADMIN_SESSION_MAX_MS
+  } catch {
+    return true
+  }
+}
+
+/** Intento de entrar a un área sin el rol: queda registrado (con tope, para no inundar el registro). */
+async function auditDenied(userId: string, role: Role, area: string, kind: 'ACCESS_DENIED' | 'ACTION_DENIED') {
+  try {
+    const gate = await consumeRateLimit(`denied:${userId}:${area}`, 5, 15 * 60 * 1000)
+    if (!gate.ok) return
+    await recordAudit({
+      actorUserId: userId,
+      action: kind,
+      entityType: area,
+      severity: 'warning',
+      summary: `${kind === 'ACCESS_DENIED' ? 'Intento de ingreso' : 'Intento de acción'} en ${area} con rol "${role}"`,
+      changes: { role },
+    })
+  } catch {
+    /* la denegación igual se aplica */
+  }
+}
+
 export async function requireAdmin() {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   if (role !== 'admin') {
+    await auditDenied(userId, role, 'backoffice', 'ACCESS_DENIED')
     redirect(getDashboardUrlByRole(role))
+  }
+  if (await adminSessionExpired()) {
+    // Se revoca en la base: si solo se redirigiera, /sign-in vería una sesión válida y volvería acá (bucle).
+    await auth.api.signOut({ headers: await headers() }).catch(() => {})
+    redirect('/sign-in?error=session_expired')
   }
   return userId
 }
@@ -157,7 +203,11 @@ export async function requireAdmin() {
 export async function assertAdmin() {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
-  if (role !== 'admin') throw new Error('No autorizado')
+  if (role !== 'admin') {
+    await auditDenied(userId, role, 'backoffice', 'ACTION_DENIED')
+    throw new Error('No autorizado')
+  }
+  if (await adminSessionExpired()) throw new Error('No autorizado: la sesión venció, ingresá de nuevo.')
   return userId
 }
 

@@ -1,6 +1,7 @@
 import { CANONICAL_HOST, shouldRedirectHost } from '@/lib/site'
 import { loggedInSignupBouncePath } from '@/lib/loan-intent'
 import { customerDashboardDocUrl, parsePrintDocumentPath } from '@/lib/documents/customer-view'
+import { isPanelRoute, legacyDashboardRoute } from '@/lib/dashboard-routes'
 import {
   installmentPosPath,
   legacyPedirRedirect,
@@ -10,39 +11,6 @@ import {
 } from '@/lib/workspace-gate'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-
-const DASHBOARD_TABS = new Set([
-  'overview',
-  'perfil',
-  'kyc_biometrico',
-  'notificaciones',
-  'solicitar',
-  'mis_solicitudes',
-  'scoring',
-  'cuotas',
-  'cuotas_vigentes',
-  'cuotas_historial',
-  'pagos',
-  'historial_pagos',
-  'billetera',
-  'servicios',
-  'comprobantes',
-  'bancos',
-  'documentos',
-  'documentos_arca',
-  'documentos_bcra',
-  'documentos_contrato',
-  'documentos_pagare',
-  'documentos_talonario',
-  'documentos_certificados',
-  'ayuda',
-  'cuenta',
-  'reclamos',
-])
-
-const DASHBOARD_TAB_ALIASES: Record<string, string> = {
-  banca: 'bancos',
-}
 
 const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/merchant']
 
@@ -92,13 +60,22 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  const dashboardLeaf = pathname.match(/^\/dashboard\/([^/]+)\/?$/)
-  if (dashboardLeaf) {
-    const leaf = DASHBOARD_TAB_ALIASES[dashboardLeaf[1]] ?? dashboardLeaf[1]
-    if (DASHBOARD_TABS.has(leaf)) {
+  // Pestañas viejas (/dashboard?tab=pagos, /dashboard/cuotas_vigentes…) → pantalla nueva.
+  if (pathname === '/dashboard') {
+    const target = legacyDashboardRoute(request.nextUrl.searchParams.get('tab'))
+    if (target) {
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      url.searchParams.set('tab', leaf)
+      url.pathname = target
+      url.searchParams.delete('tab')
+      return NextResponse.redirect(url)
+    }
+  }
+  const dashboardLeaf = pathname.match(/^\/dashboard\/([^/]+)\/?$/)
+  if (dashboardLeaf && !isPanelRoute(dashboardLeaf[1])) {
+    const target = legacyDashboardRoute(dashboardLeaf[1])
+    if (target && target !== pathname) {
+      const url = request.nextUrl.clone()
+      url.pathname = target
       return NextResponse.redirect(url)
     }
   }

@@ -170,6 +170,16 @@ export async function createBankAccount(input: {
     }
   }
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BANK_ACCOUNT_ADDED',
+    entityType: 'bank_account',
+    entityId: result.id,
+    targetUserId: userId,
+    summary: 'El cliente cargó una cuenta para cobrar',
+    changes: { banco: input.bankName, terminacion: String(result.cbu || result.cvu || result.alias || '').slice(-4) },
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/perfil')
   return { ok: true, id: result.id }
@@ -297,6 +307,16 @@ export async function lookupAndCreateBankAccount(input: {
     source: 'unicred_lookup_create',
   })
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BANK_ACCOUNT_ADDED',
+    entityType: 'bank_account',
+    entityId: id,
+    targetUserId: userId,
+    summary: 'El cliente cargó y validó una cuenta para cobrar',
+    changes: { banco: bankName, terminacion: String(cbu || cvu || alias || '').slice(-4) },
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/perfil')
 
@@ -388,6 +408,16 @@ export async function updateBankAccount(
     .set(next as any)
     .where(and(eq(bankAccount.id, id), eq(bankAccount.userId, userId)))
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BANK_ACCOUNT_UPDATED',
+    entityType: 'bank_account',
+    entityId: id,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente modificó una cuenta para cobrar',
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/perfil')
   revalidatePath('/admin')
@@ -414,6 +444,16 @@ export async function setPrimaryBankAccount(id: string) {
       .update(bankAccount)
       .set({ isPrimary: true, updatedAt: new Date() })
       .where(and(eq(bankAccount.id, id), eq(bankAccount.userId, userId)))
+  })
+
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BANK_ACCOUNT_PRIMARY_CHANGED',
+    entityType: 'bank_account',
+    entityId: id,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente cambió su cuenta principal para cobrar',
   })
 
   revalidatePath('/dashboard')
@@ -460,6 +500,16 @@ export async function deleteBankAccount(id: string) {
       .update(bankAccount)
       .set({ isActive: false, isPrimary: false, updatedAt: new Date() })
       .where(and(eq(bankAccount.id, id), eq(bankAccount.userId, userId)))
+  })
+
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BANK_ACCOUNT_REMOVED',
+    entityType: 'bank_account',
+    entityId: id,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente eliminó una cuenta para cobrar',
   })
 
   revalidatePath('/dashboard')

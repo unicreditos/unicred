@@ -107,7 +107,11 @@ export function KYCProfileForm({
     initialProfile?.bcraConsentAt ? String(initialProfile.bcraConsentAt) : '',
   ].join('|')
 
-  useEffect(() => {
+  // Si la ficha guardada cambia (por ej. tras verificar identidad), el formulario se
+  // vuelve a sembrar durante el render: con un efecto se vería un cuadro con datos viejos.
+  const [syncedStamp, setSyncedStamp] = useState(profileStamp)
+  if (syncedStamp !== profileStamp) {
+    setSyncedStamp(profileStamp)
     setCuil(formatCuil(initialProfile?.cuil ?? ''))
     setDni(digits(initialProfile?.dni ?? '').slice(0, 8))
     setBirthDate(initialProfile?.birthDate ?? '')
@@ -121,9 +125,7 @@ export function KYCProfileForm({
       postalCode: initialProfile?.postalCode ?? '',
     })
     setEmploymentStatus(initialProfile?.employmentStatus ?? '')
-    // Solo cuando cambia la ficha guardada. profileStamp ya resume esos campos.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileStamp])
+  }
 
   const [formState, action, isPending] = useActionState(
     async (_prev: { ok?: boolean; error?: string; message?: string } | null, formData: FormData) => {

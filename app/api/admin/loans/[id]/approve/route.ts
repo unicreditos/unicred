@@ -15,7 +15,7 @@ export function OPTIONS(req: Request) {
 export async function POST(req: Request,{ params }: { params: Promise<Record<string, string>> }) {
   try {
     const userId = await requireMobileUserId(req)
-    await requireMobileAdmin(userId)
+    await requireMobileAdmin(userId, 'credits.approve')
     const id = String((await params).id); return mobileJson(req, await mobileAdminApproveLoan(userId, id))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'

@@ -14,7 +14,6 @@ export async function GET() {
     ok: true,
     webhook: 'active',
     time: new Date().toISOString(),
-    mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
   })
 }
 

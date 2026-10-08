@@ -46,21 +46,33 @@ async function toAuthUser(row: {
   }
 }
 
+// Mismo mensaje y mismo trabajo en todos los fallos: no se puede saber si un email existe
+// ni si la cuenta está suspendida mirando el texto o el tiempo de respuesta.
+const INVALID_CREDENTIALS = 'Credenciales inválidas'
+let dummyHash: Promise<string> | null = null
+
 export async function mobileLogin(email: string, password: string) {
   const emailNorm = email.toLowerCase().trim()
   const [usr] = await db.select().from(userTable).where(eq(userTable.email, emailNorm)).limit(1)
-  if (!usr) throw new Error('Credenciales inválidas')
-  if (usr.banned) throw new Error('Cuenta suspendida')
+  if (!usr) {
+    dummyHash ??= hashPassword('dummy-password-for-timing')
+    await verifyPassword({ hash: await dummyHash, password })
+    throw new Error(INVALID_CREDENTIALS)
+  }
+  if (usr.banned) {
+    await verifyPassword({ hash: await (dummyHash ??= hashPassword('dummy-password-for-timing')), password })
+    throw new Error(INVALID_CREDENTIALS)
+  }
 
   const [acc] = await db
     .select()
     .from(account)
     .where(and(eq(account.userId, usr.id), eq(account.providerId, 'credential')))
     .limit(1)
-  if (!acc?.password) throw new Error('Credenciales inválidas')
+  if (!acc?.password) throw new Error(INVALID_CREDENTIALS)
 
   const ok = await verifyPassword({ hash: acc.password, password })
-  if (!ok) throw new Error('Credenciales inválidas')
+  if (!ok) throw new Error(INVALID_CREDENTIALS)
 
   const role = await getRoleForUser(usr.id)
   const token = signMobileToken({ userId: usr.id, email: usr.email })

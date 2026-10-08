@@ -4,6 +4,7 @@
  */
 
 import { db } from '@/lib/db'
+import { recordAudit } from '@/lib/audit'
 import { installment, loan, payment as paymentTable, paymentReceipt } from '@/lib/db/schema'
 import { receiptBranding } from '@/lib/brand'
 import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state'
@@ -460,6 +461,19 @@ export async function settleMercadoPagoPayment(input: {
       localStatus: 'paid',
     }
   })
+
+  if (result.credited > 0 && result.localPaymentId) {
+    // Entrada de dinero: la acredita el sistema (webhook / conciliación), sin operador. Queda registrada.
+    await recordAudit({
+      actorUserId: '',
+      action: 'PAYMENT_SETTLED_MP',
+      entityType: 'payment',
+      entityId: result.localPaymentId,
+      targetUserId: result.userId ?? null,
+      summary: 'Pago acreditado automáticamente por Mercado Pago',
+      changes: { mpPaymentId: input.mpPaymentId, monto: result.amount ?? null, cuotas: result.credited },
+    })
+  }
 
   if (result.credited > 0 && result.localPaymentId) {
     const { enqueueInvoicesForPayment } = await import('@/lib/arca/invoice')

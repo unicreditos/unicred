@@ -28,7 +28,6 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     webhook: 'didit',
-    configured: isDiditConfigured(),
     time: new Date().toISOString(),
   })
 }

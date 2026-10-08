@@ -1,20 +1,9 @@
 import { betterAuth } from 'better-auth'
+import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { recordAudit } from '@/lib/audit'
 import { trustedOrigins } from '@/lib/site'
-import { isPlaceholderDbUrl } from '@/lib/db'
+import { cleanConnectionUrl, isLocalPostgres, isPlaceholderDbUrl } from '@/lib/db'
 import { Pool } from 'pg'
-
-function cleanConnectionUrl(url: string | undefined): string | undefined {
-  if (!url) return url
-  try {
-    const u = new URL(url)
-    u.searchParams.delete('channel_binding')
-    u.searchParams.delete('sslmode')
-    u.searchParams.set('uselibpqcompat', 'true')
-    return u.toString()
-  } catch {
-    return url
-  }
-}
 
 function getBaseURL() {
   if (process.env.NODE_ENV === 'development') return 'http://localhost:3000'
@@ -81,6 +70,14 @@ const cleanedDatabaseUrl = cleanConnectionUrl(rawDatabaseUrl)
 const isNeonAuth = cleanedDatabaseUrl?.includes('neon.tech') ||
   process.env.POSTGRES_HOST?.includes('neon.tech')
 
+function authHostIsLocal() {
+  try {
+    return rawDatabaseUrl ? isLocalPostgres(new URL(rawDatabaseUrl).hostname) : false
+  } catch {
+    return false
+  }
+}
+
 const authDbPool = new Pool({
   connectionString: isPlaceholderDbUrl(cleanedDatabaseUrl) ? undefined : cleanedDatabaseUrl,
   max: 20,
@@ -103,7 +100,10 @@ const authDbPool = new Pool({
           minVersion: 'TLSv1.2',
         },
       }
-    : {}),
+    : {
+        // Base en la misma máquina: sin TLS.
+        ssl: authHostIsLocal() ? false : undefined,
+      }),
 })
 
 authDbPool.on('error', (err) => {
@@ -113,8 +113,74 @@ authDbPool.on('error', (err) => {
   }
 })
 
+/** Eventos de autenticación que quedan en la auditoría (ingresos, fallos, cierres, claves). */
+const AUTH_AUDIT: Record<string, { action: string; okSeverity?: 'info' | 'warning'; label: string }> = {
+  '/sign-in/email': { action: 'AUTH_LOGIN', label: 'Ingreso' },
+  '/sign-up/email': { action: 'AUTH_SIGNUP', label: 'Alta de cuenta' },
+  '/change-password': { action: 'AUTH_PASSWORD_CHANGED', okSeverity: 'warning', label: 'Cambio de contraseña' },
+  '/reset-password': { action: 'AUTH_PASSWORD_RESET', okSeverity: 'warning', label: 'Restablecimiento de contraseña' },
+  '/request-password-reset': { action: 'AUTH_RESET_REQUESTED', label: 'Pedido de restablecimiento de contraseña' },
+  '/forget-password': { action: 'AUTH_RESET_REQUESTED', label: 'Pedido de restablecimiento de contraseña' },
+}
+
+const auditAuthEvents = createAuthMiddleware(async (ctx) => {
+  try {
+    const meta = AUTH_AUDIT[ctx.path]
+    if (!meta) return
+    const c = ctx.context as any
+    const returned = c.returned
+    const failed =
+      returned instanceof Error || (returned && typeof returned === 'object' && Number((returned as any).statusCode ?? 0) >= 400)
+    const user = c.newSession?.user ?? c.session?.user ?? null
+    const body = (ctx.body ?? {}) as { email?: string }
+    const email = String(user?.email ?? body.email ?? '').toLowerCase().trim().slice(0, 200)
+    const headers = ctx.request?.headers
+    const ip = headers?.get('x-forwarded-for')?.split(',')[0]?.trim() || headers?.get('x-real-ip') || null
+    const ua = headers?.get('user-agent')?.slice(0, 200) ?? null
+    await recordAudit({
+      actorUserId: user?.id ?? '',
+      action: failed ? `${meta.action}_FAILED` : meta.action,
+      entityType: 'session',
+      entityId: user?.id ?? null,
+      targetUserId: user?.id ?? null,
+      severity: failed ? 'warning' : (meta.okSeverity ?? 'info'),
+      summary: `${meta.label}${failed ? ' fallido' : ''}: ${email || 'sin email'}`,
+      changes: { email, ip, ua },
+    })
+  } catch (err) {
+    console.warn('[audit] hook de autenticación:', (err as Error).message)
+  }
+})
+
+/** El cierre de sesión se registra ANTES de borrar la sesión: después ya no se sabe quién era. */
+const auditLogout = createAuthMiddleware(async (ctx) => {
+  try {
+    if (ctx.path !== '/sign-out') return
+    const session = await getSessionFromCtx(ctx)
+    const user = session?.user
+    if (!user) return
+    const headers = ctx.request?.headers
+    await recordAudit({
+      actorUserId: user.id,
+      action: 'AUTH_LOGOUT',
+      entityType: 'session',
+      entityId: user.id,
+      targetUserId: user.id,
+      summary: `Cierre de sesión: ${user.email}`,
+      changes: {
+        email: user.email,
+        ip: headers?.get('x-forwarded-for')?.split(',')[0]?.trim() || headers?.get('x-real-ip') || null,
+        ua: headers?.get('user-agent')?.slice(0, 200) ?? null,
+      },
+    })
+  } catch (err) {
+    console.warn('[audit] cierre de sesión:', (err as Error).message)
+  }
+})
+
 export const auth = betterAuth({
   baseURL: getBaseURL(),
+  hooks: { before: auditLogout, after: auditAuthEvents },
   trustedOrigins: getTrustedOrigins(),
   database: authDbPool,
   emailAndPassword: {

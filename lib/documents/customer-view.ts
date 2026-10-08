@@ -87,9 +87,9 @@ export function customerTabForKind(kind: CustomerDocKind) {
 }
 
 export function customerDashboardDocUrl(kind: CustomerDocKind, id?: string) {
-  const q = new URLSearchParams({ tab: customerTabForKind(kind), doc: kind })
+  const q = new URLSearchParams({ doc: kind })
   if (id) q.set('docId', id)
-  return `/dashboard?${q.toString()}`
+  return `/dashboard/documentos?${q.toString()}`
 }
 
 const PRINT_PATHS: Array<{ prefix: string; kind: CustomerDocKind }> = [

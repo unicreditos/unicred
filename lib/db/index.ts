@@ -2,13 +2,20 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import * as schema from './schema'
 
-function cleanConnectionUrl(url: string | undefined): string | undefined {
+/** Base en la misma máquina (desarrollo o VPS): la conexión no sale de la red local, no lleva TLS. */
+export function isLocalPostgres(hostname: string) {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]'
+}
+
+export function cleanConnectionUrl(url: string | undefined): string | undefined {
   if (!url) return url
   try {
     const u = new URL(url)
     u.searchParams.delete('channel_binding')
     u.searchParams.delete('sslmode')
     u.searchParams.set('uselibpqcompat', 'true')
+    // Postgres propio (local o en el mismo VPS): sin TLS, para que libpq no lo exija.
+    if (isLocalPostgres(u.hostname)) u.searchParams.set('sslmode', 'disable')
     return u.toString()
   } catch {
     return url
@@ -26,6 +33,14 @@ export function isPlaceholderDbUrl(url: string | undefined): boolean {
 
 const rawDatabaseUrl = process.env.DATABASE_URL
 const cleanedDatabaseUrl = cleanConnectionUrl(rawDatabaseUrl)
+
+function rawHostIsLocal() {
+  try {
+    return rawDatabaseUrl ? isLocalPostgres(new URL(rawDatabaseUrl).hostname) : false
+  } catch {
+    return false
+  }
+}
 
 const isNeon =
   cleanedDatabaseUrl?.includes('neon.tech') ||
@@ -51,7 +66,10 @@ export const pool = new Pool({
           rejectUnauthorized: true,
         },
       }
-    : {}),
+    : {
+        // Hosts remotos que no son Neon exigen TLS salvo que sea una base local.
+        ssl: rawHostIsLocal() ? false : undefined,
+      }),
 })
 
 pool.on('error', (err) => {

@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
@@ -292,6 +293,15 @@ export async function updateProfile(input: {
       updatedAt: new Date(),
     })
     .where(eq(profile.userId, userId))
+  await recordAudit({
+    actorUserId: userId,
+    action: 'PROFILE_UPDATED',
+    entityType: 'profile',
+    entityId: userId,
+    targetUserId: userId,
+    summary: 'El cliente actualizó sus datos personales',
+    changes: { campos: ['cuil', 'dni', 'phone', 'birthDate', 'province', 'city', 'address', 'monthlyIncome', 'employmentStatus'] },
+  })
   revalidateCustomer()
   return { ok: true }
 }
@@ -305,6 +315,15 @@ export async function grantBcraConsent() {
     .update(profile)
     .set({ bcraConsentAt: new Date(), bcraConsentIp: ip, updatedAt: new Date() })
     .where(eq(profile.userId, userId))
+  await recordAudit({
+    actorUserId: userId,
+    action: 'BCRA_CONSENT_GRANTED',
+    entityType: 'profile',
+    entityId: userId,
+    targetUserId: userId,
+    summary: 'El cliente autorizó la consulta a la Central de Deudores del BCRA',
+    changes: { ip },
+  })
   revalidateCustomer()
   return { ok: true as const }
 }
@@ -400,6 +419,15 @@ export async function requestLoan(input: {
       createdAt: now,
       updatedAt: now,
     })
+    await recordAudit({
+      actorUserId: userId,
+      action: 'LOAN_AUTO_REJECTED',
+      entityType: 'loan',
+      entityId: loanId,
+      targetUserId: userId,
+      summary: 'Solicitud rechazada automáticamente por la política de crédito',
+      changes: { score: score.score, motivo: offer.reason },
+    })
     revalidateCustomer()
     return {
       ok: true as const,
@@ -492,6 +520,20 @@ export async function requestLoan(input: {
     })
   }
 
+  await recordAudit({
+    actorUserId: userId,
+    action: status === 'approved' ? 'LOAN_AUTO_QUALIFIED' : status === 'rejected' ? 'LOAN_AUTO_REJECTED' : 'LOAN_SENT_TO_REVIEW',
+    entityType: 'loan',
+    entityId: loanId,
+    targetUserId: userId,
+    summary:
+      status === 'approved'
+        ? 'Solicitud calificada automáticamente por scoring (se emitió el contrato)'
+        : status === 'rejected'
+          ? 'Solicitud rechazada automáticamente por scoring'
+          : 'Solicitud enviada a revisión manual',
+    changes: { monto: amount, cuotas: term, score: score.score, decision: decision.outcome, motivo: decision.reason },
+  })
   revalidateCustomer()
   return {
     ok: true as const,

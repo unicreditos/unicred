@@ -21,8 +21,46 @@ const csp = [
   "media-src 'self' https://service-didit-verification-production-a1c5f9b8.s3.amazonaws.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
+  // Nadie puede incrustar el sitio salvo él mismo (los documentos del panel se muestran en un iframe propio).
+  "frame-ancestors 'self'",
   'upgrade-insecure-requests',
 ].join('; ')
+
+const isProd = process.env.NODE_ENV === 'production'
+
+/**
+ * Backoffice: nada de terceros. Sin Mercado Pago, sin Didit, sin frames externos y sin conexiones
+ * salientes desde el navegador: si un XSS lograra ejecutar código, no tendría adónde mandar los datos.
+ * ('unsafe-eval' solo en desarrollo: lo necesita el recargado en caliente.)
+ */
+const adminCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isProd ? '' : " 'unsafe-eval'"}`,
+  "connect-src 'self'",
+  "frame-src 'self'",
+  "media-src 'self'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "frame-ancestors 'self'",
+  'upgrade-insecure-requests',
+].join('; ')
+
+/** Paneles autenticados (/admin y /dashboard): aislados del resto del sitio y del navegador. */
+const panelIsolation = [
+  // No se filtra la URL del panel a ningún otro sitio ni en enlaces ni en recursos.
+  { key: 'Referrer-Policy', value: 'no-referrer' },
+  // Lo autenticado no se guarda en cachés compartidas ni en el historial offline.
+  { key: 'Cache-Control', value: 'private, no-store, max-age=0, must-revalidate' },
+  { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive, nosnippet' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+]
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -50,6 +88,23 @@ const nextConfig = {
   generateEtags: true,
   async redirects() {
     return [
+      // Backoffice: cada sección tiene su propia página (rutas del rediseño).
+      { source: '/admin/solicitudes', destination: '/admin/originacion/solicitudes', permanent: false },
+      { source: '/admin/solicitudes/:id', destination: '/admin/originacion/solicitudes/:id', permanent: false },
+      { source: '/admin/kyc', destination: '/admin/originacion/kyc', permanent: false },
+      { source: '/admin/clientes', destination: '/admin/clientes/planilla', permanent: false },
+      { source: '/admin/creditos', destination: '/admin/creditos/otorgados', permanent: false },
+      { source: '/admin/creditos/:id(loan_.*)', destination: '/admin/creditos/otorgados/:id', permanent: false },
+      { source: '/admin/pagos', destination: '/admin/cobranzas/pagos', permanent: false },
+      { source: '/admin/desembolsos', destination: '/admin/creditos/desembolso', permanent: false },
+      { source: '/admin/auditoria', destination: '/admin/sistema/auditoria', permanent: false },
+      { source: '/admin/cobranzas', destination: '/admin/cobranzas/mora', permanent: false },
+      { source: '/admin/originacion', destination: '/admin/originacion/solicitudes', permanent: false },
+      { source: '/admin/finanzas', destination: '/admin/finanzas/resumen', permanent: false },
+      { source: '/admin/sistema', destination: '/admin/sistema/productos', permanent: false },
+      // Panel del cliente
+      { source: '/dashboard/cuotas', destination: '/dashboard/pagos', permanent: false },
+      { source: '/dashboard/cuenta', destination: '/dashboard/perfil', permanent: false },
       { source: '/mercado', destination: '/datos-bcra', permanent: false },
       { source: '/directo', destination: '/', permanent: true },
       { source: '/directo/:path*', destination: '/prestamos', permanent: true },
@@ -100,6 +155,19 @@ const nextConfig = {
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      },
+      { source: '/dashboard/:path*', headers: panelIsolation },
+      {
+        source: '/admin/:path*',
+        headers: [
+          ...panelIsolation,
+          { key: 'Content-Security-Policy', value: adminCsp },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()',
           },
         ],
       },

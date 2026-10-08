@@ -4,11 +4,7 @@ import unusedImports from 'eslint-plugin-unused-imports'
 
 const config = [
   {
-    // unicreditos-admin/ es un proyecto Next.js aparte (su propio
-    // package.json, node_modules y config de ESLint) que vive anidado en
-    // este repo; sin excluirlo acá, `npm run lint` lo recorre como si fuera
-    // parte de esta app y ahoga las 5 reglas propias con miles de avisos.
-    ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'scripts/**', 'emitia/**', 'unicreditos-admin/**'],
+    ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'scripts/**', 'emitia/**'],
   },
   ...nextCoreWebVitals,
   ...nextTypescript,

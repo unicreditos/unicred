@@ -1,3 +1,4 @@
+import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { disbursement, installment, loan, loanContract } from '@/lib/db/schema'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
@@ -68,6 +69,15 @@ export async function applyLoanWithdrawal(loanId: string, userId: string) {
     .set({ status: 'cancelled', failureReason: 'Arrepentimiento Ley 24.240', updatedAt: now })
     .where(and(eq(disbursement.loanId, loanId), ne(disbursement.status, 'credited')))
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'LOAN_WITHDRAWN',
+    entityType: 'loan',
+    entityId: loanId,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente ejerció el arrepentimiento (Ley 24.240 art. 34)',
+  })
   revalidateCustomer()
   revalidateOps()
   return { ok: true as const }

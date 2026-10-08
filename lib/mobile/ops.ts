@@ -1,4 +1,6 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { recordAudit } from '@/lib/audit'
+import { hasPermission, type PermissionKey } from '@/lib/rbac'
 import { db } from '@/lib/db'
 import {
   bankAccount,
@@ -148,9 +150,24 @@ async function getMobileMeta(userId: string): Promise<OcrBag> {
   return ((ocr.mobile as OcrBag) || {}) as OcrBag
 }
 
-export async function requireMobileAdmin(userId: string) {
+/**
+ * Admin por JWT. Además del rol, exige el permiso RBAC de la operación: ser "admin" no alcanza
+ * (un operador de Soporte no debe poder aprobar créditos ni desembolsar por API).
+ */
+export async function requireMobileAdmin(userId: string, permission?: PermissionKey) {
   const role = await getRoleForUser(userId)
   if (role !== 'admin') throw new Error('No autorizado')
+  if (permission && !(await hasPermission(userId, permission))) {
+    await recordAudit({
+      actorUserId: userId,
+      action: 'ACTION_DENIED',
+      entityType: 'api_admin',
+      severity: 'warning',
+      summary: `Intento sin permiso "${permission}" por la API de administración`,
+      changes: { permission },
+    })
+    throw new Error(`No autorizado: falta permiso "${permission}"`)
+  }
   return role
 }
 

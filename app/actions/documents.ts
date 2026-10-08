@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import {
   bcraReport,
@@ -11,7 +12,6 @@ import {
   bankAccount,
   user as userTable,
 } from '@/lib/db/schema'
-import { recordAudit } from '@/lib/audit'
 import {
   CONTRACT_VERSION,
   ensureLoanContract,
@@ -125,6 +125,15 @@ export async function generateLoanContract(loanId: string) {
     })
   }
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'CONTRACT_GENERATED',
+    entityType: 'loan_contract',
+    entityId: contractId,
+    targetUserId: userId,
+    summary: 'Se generó el contrato del crédito',
+    changes: { loanId },
+  })
   revalidateCustomer()
   return { ok: true, contractId }
 }
@@ -229,6 +238,16 @@ export async function acceptLoanContract(
     }
   })
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'CONTRACT_SIGNED',
+    entityType: 'loan_contract',
+    entityId: contractId,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente aceptó el contrato y el pagaré (firma electrónica)',
+    changes: { ua: String(opts?.ua ?? '').slice(0, 200) },
+  })
   revalidateCustomer()
   return { ok: true }
 }
@@ -279,6 +298,16 @@ export async function rejectLoanContract(contractId: string, reason: string) {
     }
   })
 
+  await recordAudit({
+    actorUserId: userId,
+    action: 'CONTRACT_REJECTED',
+    entityType: 'loan_contract',
+    entityId: contractId,
+    targetUserId: userId,
+    severity: 'warning',
+    summary: 'El cliente rechazó el contrato',
+    changes: { motivo: reason.trim().slice(0, 200) },
+  })
   revalidateCustomer()
   return { ok: true }
 }
