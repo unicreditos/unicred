@@ -9,6 +9,7 @@ import {
   safeInternalPath,
   shouldBounceLoggedInToWorkspace,
 } from '@/lib/workspace-gate'
+import { isOpenDuringMaintenance, maintenanceEnabled } from '@/lib/maintenance'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -78,6 +79,16 @@ export function proxy(request: NextRequest) {
       url.pathname = target
       return NextResponse.redirect(url)
     }
+  }
+
+  if (maintenanceEnabled() && !isOpenDuringMaintenance(pathname)) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/mantenimiento'
+    url.search = ''
+    return NextResponse.rewrite(url, {
+      status: 503,
+      headers: { 'Retry-After': '86400' },
+    })
   }
 
   const authed = hasSessionCookie(request)
