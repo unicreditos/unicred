@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
+import { maintenanceEnabled } from '@/lib/maintenance'
 import './globals.css'
 
 const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
@@ -27,6 +28,9 @@ const mono = JetBrains_Mono({
   preload: false,
 })
 
+// Con el sitio cerrado no se publican datos de la empresa: ni autor en el <head> ni JSON-LD.
+const closed = maintenanceEnabled()
+
 const siteTitle = 'UNICRÉDITOS'
 const siteDescription =
   'Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.'
@@ -39,8 +43,7 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: 'UNICRÉDITOS',
-  authors: [{ name: 'RM International Group S.A.S.' }],
-  creator: 'RM International Group S.A.S.',
+  ...(closed ? {} : { authors: [{ name: 'RM International Group S.A.S.' }], creator: 'RM International Group S.A.S.' }),
   openGraph: {
     type: 'website',
     siteName: 'UNICRÉDITOS',
@@ -91,7 +94,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <SkipLink />
-        <SiteJsonLd />
+        {closed ? null : <SiteJsonLd />}
         {children}
         <CookieConsent />
         <Toaster richColors closeButton position="top-right" />
