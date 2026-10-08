@@ -413,8 +413,6 @@ export async function buildAdminDeskSnapshot(): Promise<AdminDeskSnapshot> {
   }
 
   try {
-    const { ensureAuditSchema } = await import('@/lib/db/ensure-audit')
-    await ensureAuditSchema()
     const state = await buildFromDb()
     return { state, degraded: false }
   } catch (err) {
@@ -507,11 +505,68 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .limit(300),
       [],
     ),
-    safeQuery(() => db.select().from(kycVerification).orderBy(desc(kycVerification.updatedAt)).limit(300), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: kycVerification.id,
+            userId: kycVerification.userId,
+            status: kycVerification.status,
+            providerReferenceId: kycVerification.providerReferenceId,
+            cuilVerified: kycVerification.cuilVerified,
+            faceMatchScore: kycVerification.faceMatchScore,
+            createdAt: kycVerification.createdAt,
+            reviewedAt: kycVerification.reviewedAt,
+            rejectionReason: kycVerification.rejectionReason,
+            reviewedBy: kycVerification.reviewedBy,
+          })
+          .from(kycVerification)
+          .orderBy(desc(kycVerification.updatedAt))
+          .limit(300),
+      [],
+    ),
     safeQuery(() => db.select().from(loan).orderBy(desc(loan.createdAt)).limit(400), []),
-    safeQuery(() => db.select().from(payment).orderBy(desc(payment.createdAt)).limit(400), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: payment.id,
+            loanId: payment.loanId,
+            userId: payment.userId,
+            method: payment.method,
+            status: payment.status,
+            amount: payment.amount,
+            paidAt: payment.paidAt,
+            createdAt: payment.createdAt,
+            externalId: payment.externalId,
+            referenceNumber: payment.referenceNumber,
+            processedBy: payment.processedBy,
+            notes: payment.notes,
+            failureReason: payment.failureReason,
+          })
+          .from(payment)
+          .orderBy(desc(payment.createdAt))
+          .limit(400),
+      [],
+    ),
     safeQuery(() => db.select().from(disbursement).orderBy(desc(disbursement.createdAt)).limit(200), []),
-    safeQuery(() => db.select().from(paymentReceipt).orderBy(desc(paymentReceipt.issuedAt)).limit(200), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: paymentReceipt.id,
+            paymentId: paymentReceipt.paymentId,
+            disbursementId: paymentReceipt.disbursementId,
+            userId: paymentReceipt.userId,
+            receiptNumber: paymentReceipt.receiptNumber,
+            amount: paymentReceipt.amount,
+            issuedAt: paymentReceipt.issuedAt,
+          })
+          .from(paymentReceipt)
+          .orderBy(desc(paymentReceipt.issuedAt))
+          .limit(200),
+      [],
+    ),
     safeQuery(
       () =>
         db
@@ -521,9 +576,40 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .limit(500),
       [],
     ),
-    safeQuery(() => db.select().from(bcraCheck).orderBy(desc(bcraCheck.createdAt)).limit(400), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: bcraCheck.id,
+            userId: bcraCheck.userId,
+            worstSituation: bcraCheck.worstSituation,
+            entitiesCount: bcraCheck.entitiesCount,
+            computedScore: bcraCheck.computedScore,
+            consultedAt: bcraCheck.consultedAt,
+            createdAt: bcraCheck.createdAt,
+          })
+          .from(bcraCheck)
+          .orderBy(desc(bcraCheck.createdAt))
+          .limit(400),
+      [],
+    ),
     safeQuery(() => db.select().from(bcraVariable).limit(100), []),
-    safeQuery(() => db.select().from(loanContract).orderBy(desc(loanContract.updatedAt)).limit(100), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: loanContract.id,
+            loanId: loanContract.loanId,
+            templateName: loanContract.templateName,
+            version: loanContract.version,
+            status: loanContract.status,
+            updatedAt: loanContract.updatedAt,
+          })
+          .from(loanContract)
+          .orderBy(desc(loanContract.updatedAt))
+          .limit(100),
+      [],
+    ),
     safeQuery(() => db.select().from(supportCase).orderBy(desc(supportCase.updatedAt)).limit(100), []),
     safeQuery(() => db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(200), [], 'adminAuditLog'),
   ])

@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { DataGrid } from '@/components/uc/data-grid'
 import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
-import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
+import { auditAdminView, loadDeskChrome } from '@/lib/admin-desk/load'
 import { db } from '@/lib/db'
 import { bankAccount, user } from '@/lib/db/schema'
 import { badge } from '@/lib/uc/admin'
@@ -10,7 +10,7 @@ import { badge } from '@/lib/uc/admin'
 export const metadata = { title: 'Cuentas CBU' }
 
 export default async function CbuPage() {
-  const { perms, userId } = await loadDesk()
+  const { perms, userId } = await loadDeskChrome()
   const head = (
     <PageHead title="Cuentas CBU" description="Cuentas de destino para desembolsos. La titularidad se valida contra el CUIL del cliente." />
   )

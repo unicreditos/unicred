@@ -59,6 +59,18 @@ let ensured = false
 /** Alta one-shot: no hay carpeta de migraciones Drizzle en este repo. */
 export async function ensureRbacSchema() {
   if (ensured) return
+  // El catálogo ya está en producción. Sembrar de nuevo (decenas de inserts) en cada
+  // instancia fría dejaba el backoffice esperando antes de pintar el menú.
+  try {
+    const [perms] = await db.select({ n: sql<number>`count(*)::int` }).from(adminPermission)
+    const [roles] = await db.select({ n: sql<number>`count(*)::int` }).from(adminRole)
+    if (Number(perms?.n ?? 0) >= PERMISSIONS.length && Number(roles?.n ?? 0) >= DEFAULT_ROLES.length) {
+      ensured = true
+      return
+    }
+  } catch {
+    /* las tablas todavía no existen: sigue el alta */
+  }
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS admin_role (
       id text PRIMARY KEY,

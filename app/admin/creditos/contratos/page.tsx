@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { DataGrid } from '@/components/uc/data-grid'
 import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
-import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
+import { auditAdminView, loadDeskChrome } from '@/lib/admin-desk/load'
 import { db } from '@/lib/db'
 import { loan, loanContract, user } from '@/lib/db/schema'
 import { badge } from '@/lib/uc/admin'
@@ -11,13 +11,14 @@ export const metadata = { title: 'Contratos' }
 
 const STATE: Record<string, [string, 'success' | 'warning' | 'danger' | 'neutral']> = {
   accepted: ['Firmado', 'success'],
+  pending_acceptance: ['Pendiente de firma', 'warning'],
   generated: ['Pendiente de firma', 'warning'],
   rejected: ['Rechazado', 'danger'],
 }
 const METHOD: Record<string, string> = { clickwrap: 'Aceptación electrónica', firma_digital: 'Firma digital' }
 
 export default async function ContratosPage() {
-  const { perms, userId } = await loadDesk()
+  const { perms, userId } = await loadDeskChrome()
   const head = <PageHead title="Contratos" description="Contratos de mutuo y pagarés: emisión y firma electrónica." />
   if (!perms.has('credits.read')) return <>{head}<NoAccess what="los contratos" /></>
   await auditAdminView(userId, 'contratos')

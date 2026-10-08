@@ -2,7 +2,7 @@ import { desc, eq, sql } from 'drizzle-orm'
 import { DataGrid } from '@/components/uc/data-grid'
 import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
-import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
+import { auditAdminView, loadDeskChrome } from '@/lib/admin-desk/load'
 import { db } from '@/lib/db'
 import { kycVerification, user } from '@/lib/db/schema'
 import { badge } from '@/lib/uc/admin'
@@ -17,7 +17,7 @@ const DOCS: Array<{ key: 'dniFrontImageUrl' | 'dniBackImageUrl' | 'selfieImageUr
 ]
 
 export default async function DocumentacionPage() {
-  const { perms, userId } = await loadDesk()
+  const { perms, userId } = await loadDeskChrome()
   const head = <PageHead title="Documentación" description="Documentos de identidad que suben los solicitantes durante la validación." />
   if (!perms.has('kyc.review')) return <>{head}<NoAccess what="la documentación de los clientes" /></>
   await auditAdminView(userId, 'documentacion_kyc')
