@@ -36,3 +36,8 @@ tsconfig.tsbuildinfo
 *.log
 next-env.d.ts
 .vercel
+
+# Configuracion local de herramientas (launch.json de preview, MCP, planes del agente)
+.claude/
+.cursor/
+.agents/
