@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Rosette, Waves } from '@/components/mantenimiento/guilloche'
-import { BRAND, groupOperatorLine } from '@/lib/brand'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
   title: 'Mantenimiento extraordinario',
@@ -205,15 +205,9 @@ export default function MantenimientoPage() {
       </section>
 
       <footer className="bg-[var(--ink)] text-[var(--paper)]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-xl space-y-2 text-sm leading-relaxed text-[var(--paper)]/65">
-            <p className="font-semibold text-[var(--paper)]">
-              {BRAND.legalName} · CUIT {BRAND.cuit}
-            </p>
-            <p>{BRAND.address}</p>
-            <p>{groupOperatorLine()}</p>
-          </div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--paper)]/45">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 sm:px-8">
+          <p className="font-display text-lg font-extrabold tracking-[-0.03em]">UNICRÉDITOS</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--paper)]/55">
             Volvemos con la plataforma completa
           </p>
         </div>
