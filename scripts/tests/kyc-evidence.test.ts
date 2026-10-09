@@ -100,7 +100,7 @@ describe('OTP por correo de operadores', () => {
     const o = src('lib/admin-otp.ts')
     assert.match(o, /sendEmail\(/)
     assert.match(o, /brandedEmailHtml\(/)
-    assert.match(o, /OTP_MAX_SENDS_PER_HOUR/)
+    assert.match(src('lib/otp-service.ts'), /OTP_MAX_SENDS_PER_HOUR/)
     assert.doesNotMatch(o, /console\.(log|info)\([^)]*code/)
   })
 })
