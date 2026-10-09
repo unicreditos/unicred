@@ -50,6 +50,22 @@ export type OtpDeps = {
   newId: (prefix: string) => string
 }
 
+export type OtpAuditEvent = Parameters<OtpDeps['audit']>[0]
+
+/** Fila de auditoria (la misma que graba recordAudit) para un evento del OTP. */
+export function otpAuditEntry(e: OtpAuditEvent) {
+  return {
+    actorUserId: e.userId,
+    action: e.action,
+    entityType: 'session',
+    entityId: e.userId,
+    targetUserId: e.userId,
+    severity: e.severity ?? 'info',
+    summary: e.summary,
+    changes: e.changes,
+  }
+}
+
 export class OtpError extends Error {
   constructor(
     public code: 'rate_limited' | 'cooldown' | 'mail_failed' | 'config',

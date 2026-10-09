@@ -129,7 +129,7 @@ describe('2FA por correo: validacion, vencimiento e intentos', () => {
     assert.deepEqual(await verifyOtp(h.deps, { ...U, code, sessionId: 's1' }), { ok: true })
   })
   it('el descuento de intentos es atomico en la base', () => {
-    const o = src('lib/admin-otp.ts')
+    const o = src('lib/otp-pg-store.ts')
     assert.match(o, /SET attempts = attempts \+ 1[\s\S]*"usedAt" IS NULL AND attempts < 5[\s\S]*RETURNING/)
     assert.equal(OTP_MAX_ATTEMPTS, 5)
   })
@@ -172,7 +172,7 @@ describe('2FA por correo: ligado a la sesion y gate', () => {
     assert.deepEqual(await verifyOtp(h.deps, { ...U, code, sessionId: null }), { ok: false, reason: 'no_session' })
     assert.deepEqual(await verifyOtp(h.deps, { ...U, code, sessionId: 'sesion-A' }), { ok: true })
     assert.deepEqual(h.factors, [{ userId: 'u1', sessionId: 'sesion-A' }])
-    assert.match(src('lib/second-factor.ts'), /"sessionId" = \$\{sessionId\}/)
+    assert.match(src('lib/otp-pg-store.ts'), /"sessionId" = \$\{sessionId\}/)
   })
   it('flags apagados por defecto y decision del gate', () => {
     assert.equal(secondFactorRequiredFor('admin', {}), false)

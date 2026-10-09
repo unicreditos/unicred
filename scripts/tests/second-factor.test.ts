@@ -29,7 +29,7 @@ describe('Segundo factor al iniciar sesion, ligado a la sesion', () => {
     assert.match(src('app/api/admin/2fa/send/route.ts'), /skipSecondFactor: true/)
     assert.match(src('app/api/admin/2fa/verify/route.ts'), /skipSecondFactor: true/)
     assert.match(src('lib/second-factor-api.ts'), /sessionId: who\.sessionId/)
-    assert.match(src('lib/admin-otp.ts'), /"sessionId"/)
+    assert.match(src('lib/otp-pg-store.ts'), /"sessionId"/)
     assert.match(src('scripts/sql/2026-10-09_02_kyc_evidence_and_admin_otp.sql'), /"sessionId"/)
   })
   it('la vista de documentos exige el factor de la misma sesion', () => {
