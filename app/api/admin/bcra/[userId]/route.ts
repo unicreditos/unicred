@@ -1,4 +1,4 @@
-import { adminJson, authErrorStatus } from '@/lib/admin-api'
+import { adminJson, authFailure, rejectCrossOrigin } from '@/lib/admin-api'
 import { bcraHistory, refreshBcra } from '@/lib/admin-external'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { requirePermission } from '@/lib/rbac'
@@ -11,19 +11,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ userId:
   try {
     await requirePermission('risk.read')
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
+    return authFailure(err)
   }
   const { userId } = await params
   return adminJson({ ok: true, items: await bcraHistory(userId) })
 }
 
 /** Nueva consulta BCRA (máximo 5 por hora y cliente). */
-export async function POST(_req: Request, { params }: { params: Promise<{ userId: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ userId: string }> }) {
+  const cross = rejectCrossOrigin(req)
+  if (cross) return cross
   let actor: string
   try {
-    actor = await requirePermission('risk.read')
+    actor = await requirePermission('risk.score.write')
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
+    return authFailure(err)
   }
   const { userId } = await params
   const gate = await consumeRateLimit(`bcra-refresh:${userId}`, 5, 60 * 60_000)

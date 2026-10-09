@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { OtpError, issueAdminOtp, verifyAdminOtp } from '@/lib/admin-otp'
-import { adminJson, requestMeta } from '@/lib/admin-api'
+import { adminJson, authFailure, rejectCrossOrigin, requestMeta } from '@/lib/admin-api'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
@@ -23,13 +23,15 @@ async function sessionUser() {
 }
 
 export async function handleSendCode(req: Request, resolveUserId?: () => Promise<string>) {
+  const cross = rejectCrossOrigin(req)
+  if (cross) return cross
   const who = await sessionUser()
   if (!who) return adminJson({ ok: false, message: 'No autorizado' }, 401)
   if (resolveUserId) {
     try {
       if ((await resolveUserId()) !== who.userId) return adminJson({ ok: false, message: 'No autorizado' }, 403)
     } catch (err) {
-      return adminJson({ ok: false, message: (err as Error).message }, 403)
+      return authFailure(err)
     }
   }
   try {
@@ -46,13 +48,15 @@ export async function handleSendCode(req: Request, resolveUserId?: () => Promise
 }
 
 export async function handleVerifyCode(req: Request, resolveUserId?: () => Promise<string>) {
+  const cross = rejectCrossOrigin(req)
+  if (cross) return cross
   const who = await sessionUser()
   if (!who) return adminJson({ ok: false, message: 'No autorizado' }, 401)
   if (resolveUserId) {
     try {
       if ((await resolveUserId()) !== who.userId) return adminJson({ ok: false, message: 'No autorizado' }, 403)
     } catch (err) {
-      return adminJson({ ok: false, message: (err as Error).message }, 403)
+      return authFailure(err)
     }
   }
   const body = (await req.json().catch(() => ({}))) as { code?: unknown }

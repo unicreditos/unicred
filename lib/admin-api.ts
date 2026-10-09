@@ -13,8 +13,35 @@ export function adminJson(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
 }
 
-export function authErrorStatus(err: unknown): number {
+/**
+ * Error de autenticacion/permisos: 401 si no hay sesion (redirect() de Next se captura aqui, no se filtra
+ * como "NEXT_REDIRECT"), 403 si falta permiso o el segundo factor.
+ */
+export function authFailure(err: unknown) {
+  const digest = (err as { digest?: unknown } | null)?.digest
+  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) {
+    return adminJson({ ok: false, message: 'No autenticado' }, 401)
+  }
   const msg = err instanceof Error ? err.message : ''
-  if (/venci|ingres/i.test(msg)) return 401
-  return 403
+  const status = /venci|ingres/i.test(msg) ? 401 : 403
+  return adminJson({ ok: false, message: msg || 'No autorizado' }, status)
+}
+
+/** Fallo inesperado: el detalle queda en el log del servidor y el cliente recibe un mensaje generico. */
+export function serverError(err: unknown, context: string) {
+  console.error(`[${context}]`, err instanceof Error ? err.message : 'error')
+  return adminJson({ ok: false, message: 'Error interno. Intentá de nuevo en unos minutos.' }, 500)
+}
+
+/** Defensa extra contra CSRF en POST con cookie: si el navegador manda Origin, debe ser este mismo sitio. */
+export function rejectCrossOrigin(req: Request) {
+  const origin = req.headers.get('origin')
+  if (!origin) return null
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host')
+  try {
+    if (host && new URL(origin).host === host) return null
+  } catch {
+    /* origen ilegible: se rechaza */
+  }
+  return adminJson({ ok: false, message: 'Origen no permitido' }, 403)
 }

@@ -1,6 +1,6 @@
 import { hasFreshSecondFactor } from '@/lib/admin-otp'
 import { requireSecondFactorForEvidence } from '@/lib/admin-otp-core'
-import { adminJson, authErrorStatus, requestMeta } from '@/lib/admin-api'
+import { adminJson, authFailure, requestMeta, serverError } from '@/lib/admin-api'
 import { recordAudit } from '@/lib/audit'
 import { backfillLegacyEvidence, logEvidenceAccess, readEvidenceVerified } from '@/lib/evidence'
 import { EVIDENCE_LABEL, evidenceResponseHeaders, isEvidenceKind } from '@/lib/evidence-core'
@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
   try {
     actorId = await requirePermission('kyc.review')
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
+    return authFailure(err)
   }
   const { userId, kind } = await params
   if (!isEvidenceKind(kind)) return adminJson({ ok: false, message: 'Tipo de documento inválido.' }, 400)
@@ -100,6 +100,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
       }),
     })
   } catch (err) {
-    return adminJson({ ok: false, message: 'No se pudo leer la evidencia: ' + (err as Error).message }, 500)
+    return serverError(err, 'kyc-evidence-serve')
   }
 }

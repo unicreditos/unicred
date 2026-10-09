@@ -1,4 +1,4 @@
-import { adminJson, authErrorStatus } from '@/lib/admin-api'
+import { adminJson, authFailure, serverError } from '@/lib/admin-api'
 import { backfillLegacyEvidence, listEvidence, listEvidenceAccess } from '@/lib/evidence'
 import { requirePermission } from '@/lib/rbac'
 
@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ userId:
   try {
     await requirePermission('kyc.review')
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
+    return authFailure(err)
   }
   const { userId } = await params
   try {
@@ -23,6 +23,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ userId:
     const access = await listEvidenceAccess(userId, 50)
     return adminJson({ ok: true, items, access })
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, 500)
+    return serverError(err, 'kyc-evidence-list')
   }
 }

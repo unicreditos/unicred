@@ -1,4 +1,4 @@
-import { adminJson, authErrorStatus } from '@/lib/admin-api'
+import { adminJson, authFailure, serverError } from '@/lib/admin-api'
 import { listDiditWebhooks } from '@/lib/admin-external'
 import { requirePermission } from '@/lib/rbac'
 
@@ -10,12 +10,12 @@ export async function GET(req: Request) {
   try {
     await requirePermission('kyc.review')
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
+    return authFailure(err)
   }
   const failed = new URL(req.url).searchParams.get('failed') === '1'
   try {
     return adminJson({ ok: true, items: await listDiditWebhooks({ onlyFailed: failed }) })
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, 500)
+    return serverError(err, 'didit-webhooks')
   }
 }

@@ -42,3 +42,22 @@ describe('Panel admin sin depender de paneles externos', () => {
     assert.ok(v.crons?.some((c) => c.path === '/api/cron/reconcile-kyc' && c.schedule))
   })
 })
+describe('Revision: rutas nuevas del panel', () => {
+  it('toda ruta nueva exige permiso o sesion y responde 401/403 sin filtrar NEXT_REDIRECT', () => {
+    const fs = ['app/api/admin/didit-webhooks/route.ts', 'app/api/admin/didit-webhooks/[id]/resend/route.ts', 'app/api/admin/bcra/[userId]/route.ts', 'app/api/admin/arca/[userId]/route.ts', 'app/api/admin/kyc-evidence/[userId]/route.ts', 'app/api/admin/kyc-evidence/[userId]/[kind]/route.ts']
+    for (const f of fs) { const s = src(f); assert.match(s, /requirePermission\(/, f); assert.match(s, /authFailure\(err\)/, f) }
+    assert.match(src('lib/admin-api.ts'), /NEXT_REDIRECT/)
+  })
+  it('los POST rechazan otro origen y las rutas 2FA tambien', () => {
+    for (const f of ['app/api/admin/didit-webhooks/[id]/resend/route.ts', 'app/api/admin/bcra/[userId]/route.ts', 'app/api/admin/arca/[userId]/route.ts']) assert.match(src(f), /rejectCrossOrigin\(req\)/, f)
+    const s = src('lib/second-factor-api.ts')
+    assert.equal((s.match(/rejectCrossOrigin\(req\)/g) ?? []).length, 2)
+  })
+  it('actualizar BCRA exige permiso de escritura de riesgo', () => {
+    const s = src('app/api/admin/bcra/[userId]/route.ts')
+    assert.match(s, /requirePermission\('risk\.score\.write'\)/)
+  })
+  it('los 500 no devuelven el mensaje interno', () => {
+    for (const f of ['app/api/admin/didit-webhooks/route.ts', 'app/api/admin/kyc-evidence/[userId]/route.ts', 'app/api/admin/kyc-evidence/[userId]/[kind]/route.ts']) assert.match(src(f), /serverError\(err/, f)
+  })
+})

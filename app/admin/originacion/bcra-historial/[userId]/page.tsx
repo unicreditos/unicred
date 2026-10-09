@@ -20,7 +20,7 @@ export default async function BcraClientePage({ params }: { params: Promise<{ us
       <BackLink href="/admin/originacion/bcra-historial">Volver al historial</BackLink>
       {head}
       <Card>
-        <CardHead title={`Consultas (${items.length})`} aside={<ActionButton url={`/api/admin/bcra/${userId}`} label="Actualizar consulta" confirm="Se consulta al BCRA con el CUIL del cliente. ¿Continuar?" />} />
+        <CardHead title={`Consultas (${items.length})`} aside={perms.has('risk.score.write') ? <ActionButton url={`/api/admin/bcra/${userId}`} label="Actualizar consulta" confirm="Se consulta al BCRA con el CUIL del cliente. ¿Continuar?" /> : undefined} />
         <div style={{ overflowX: 'auto' }}>
           <table className="uc-dt">
             <thead><tr><th>Fecha</th><th>CUIL</th><th>Peor situación</th><th>Deuda total</th><th>Entidades</th><th>Cheques rechazados</th><th>Score</th><th>Fuente</th></tr></thead>
