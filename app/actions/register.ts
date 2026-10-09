@@ -1,6 +1,8 @@
 'use server'
 
 import { persistBcraReportForUser } from '@/lib/bcra-report'
+import { runRegistrationPreflight } from '@/lib/registration-preflight'
+import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import { snapshotFromIdentity, snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
@@ -188,6 +190,12 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     }
   }
 
+  // BCRA y ARCA se consultan ANTES de escribir nada (3 reintentos con espera creciente en cada una).
+  const preflight = await runRegistrationPreflight({ cuil, declaredName: input.name })
+  if (!preflight.allow) {
+    return { ok: false as const, error: preflight.blockers[0] }
+  }
+
   const userId = session.user.id
   await ensureOriginacionSchema()
   await getOrCreateProfile()
@@ -239,6 +247,12 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       sources: input.identity?.sources ?? [],
       nameConfirmed: input.name.trim(),
       ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
+      // Padrón ARCA oficial del titular (también para clientes): prevalece sobre el dato declarado.
+      ...(preflight.persona
+        ? { arcaPadron: snapshotFromPersona(preflight.persona), arcaLookedUpAt: now.toISOString() }
+        : {}),
+      // Nombre distinto al de ARCA: no se rechaza, queda para revisión manual de un analista.
+      ...(preflight.manualReview ? { manualReview: { ...preflight.manualReview, flaggedAt: now.toISOString() } } : {}),
     },
     updatedAt: now,
   }
@@ -311,6 +325,19 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
         ...merchantValues,
       })
     }
+  }
+
+  if (preflight.manualReview) {
+    await recordAudit({
+      actorUserId: userId,
+      action: 'KYC_MANUAL_REVIEW_FLAGGED',
+      entityType: 'kyc_verification',
+      entityId: existingKyc?.id ?? null,
+      targetUserId: userId,
+      severity: 'warning',
+      summary: 'El nombre declarado no coincide con el padrón ARCA: queda en revisión manual',
+      changes: { arca: preflight.manualReview.arcaName, declarado: preflight.manualReview.declaredName },
+    }).catch(() => undefined)
   }
 
   await attachDiditSessionToUser(diditSessionId, userId)
