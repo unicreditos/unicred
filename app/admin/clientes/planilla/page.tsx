@@ -4,6 +4,7 @@ import type { GridRow } from '@/components/uc/grid-types'
 import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { badge, fmtDni, fullName, KYC_LABEL, kycBadge } from '@/lib/uc/admin'
 import { ExportClientsButton } from '@/components/admin/clients/export-clients-button'
+import { PrintButton } from '@/components/uc/print-button'
 
 export const metadata = { title: 'Clientes · Planilla y Exportación Excel' }
 
@@ -45,7 +46,12 @@ export default async function ClientesPage() {
     <PageHead
       title="Clientes"
       description="Planilla de clientes. Filtrá por situación, identidad o provincia; se ven 15 por página."
-      actions={<ExportClientsButton rows={rows} />}
+      actions={
+        <div className="flex items-center gap-2">
+          <PrintButton label="Print" title="Imprimir reporte de clientes" variant="secondary" />
+          <ExportClientsButton rows={rows} />
+        </div>
+      }
     />
   )
 
@@ -61,6 +67,10 @@ export default async function ClientesPage() {
             filename: 'Planilla_Clientes_Unicred.xlsx',
             label: 'Export to Excel',
             sheetName: 'Clientes',
+          },
+          printable: {
+            label: 'Print',
+            title: 'Imprimir listado filtrado de clientes',
           },
           pageSize: 15,
           sort: { key: 'nombre', dir: 1 },

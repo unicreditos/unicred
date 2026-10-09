@@ -20,6 +20,7 @@ const MENU: MenuItem[] = [
     icon: 'wallet',
     children: [
       { label: 'Pagar una cuota', route: '/dashboard/pagos' },
+      { label: 'Calculadora pago parcial', route: '/dashboard/pagos/pago-parcial' },
       { label: 'Historial de pagos', route: '/dashboard/pagos/historial' },
     ],
   },

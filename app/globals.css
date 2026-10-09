@@ -193,6 +193,31 @@
 
 @media print {
   .no-print { display: none !important; }
+  .uc-sidebar,
+  .uc-topbar,
+  .uc-bottom-nav,
+  .uc-toolbar,
+  .uc-pg {
+    display: none !important;
+  }
+  .uc-app {
+    padding-left: 0 !important;
+  }
+  .uc main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .uc-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .uc-table-scroll {
+    overflow: visible !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }
 
 .document-preview-root {

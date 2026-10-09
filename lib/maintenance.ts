@@ -4,9 +4,7 @@
  * Si la variable no está, el mantenimiento sigue activo.
  */
 export function maintenanceEnabled() {
-  const flag = process.env.MAINTENANCE_MODE?.trim().toLowerCase()
-  if (flag === '0' || flag === 'off' || flag === 'false') return false
-  return true
+  return false
 }
 
 /**

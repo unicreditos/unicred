@@ -44,7 +44,12 @@ export default async function PerfilPage() {
         </Pad>
       </Grid>
       <SectionTitle title="Editar mis datos" aside="Completá o corregí tu información" />
-      <KYCProfileForm initialProfile={profile} user={{ name: user.name, email: user.email }} diditApproved={identityVerified} />
+      <KYCProfileForm
+        key={profile?.updatedAt ? String(profile.updatedAt) : 'profile'}
+        initialProfile={profile}
+        user={{ name: user.name, email: user.email }}
+        diditApproved={identityVerified}
+      />
     </>
   )
 }

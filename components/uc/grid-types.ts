@@ -79,4 +79,6 @@ export type GridConfig = {
   empty?: string
   /** Habilita botón para exportar registros a Excel (.xlsx). */
   exportExcel?: boolean | { filename?: string; label?: string; sheetName?: string }
+  /** Habilita botón para imprimir el reporte actual con window.print(). */
+  printable?: boolean | { label?: string; title?: string }
 }

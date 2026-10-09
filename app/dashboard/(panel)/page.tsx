@@ -122,9 +122,15 @@ export default async function CustomerHome() {
                   <Icon name="wallet" size="sm" />
                   Pagar cuota ahora
                 </ButtonLink>
-                <ButtonLink large href={`/dashboard/creditos/${next.loanId}`}>
-                  Ver plan de cuotas
-                </ButtonLink>
+                {next.status === 'overdue' ? (
+                  <ButtonLink large href={`/dashboard/pagos/pago-parcial?loan=${next.loanId}`}>
+                    Calculadora pago parcial
+                  </ButtonLink>
+                ) : (
+                  <ButtonLink large href={`/dashboard/creditos/${next.loanId}`}>
+                    Ver plan de cuotas
+                  </ButtonLink>
+                )}
               </div>
             </>
           ) : (
@@ -172,6 +178,7 @@ export default async function CustomerHome() {
         {[
           { label: 'Mis créditos', sub: `${loans.length} registrados`, href: '/dashboard/creditos', icon: 'credit' as const },
           { label: 'Pagar una cuota', sub: 'Mercado Pago o Transf.', href: '/dashboard/pagos', icon: 'wallet' as const },
+          { label: 'Pago parcial', sub: 'Calculá impacto en saldo', href: '/dashboard/pagos/pago-parcial', icon: 'wallet' as const },
           { label: 'Historial de pagos', sub: 'Comprobantes y recibos', href: '/dashboard/pagos/historial', icon: 'check' as const },
           { label: 'Documentos', sub: 'Contratos y pagarés', href: '/dashboard/documentos', icon: 'file' as const },
           { label: 'Cuentas para cobrar', sub: 'CBU / CVU titular', href: '/dashboard/perfil/cuentas', icon: 'clip' as const },

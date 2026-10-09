@@ -26,7 +26,7 @@ interface DocumentGalleryManagerProps {
 export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [activeFilter, setActiveFilter] = useState<'all' | 'Pendiente' | 'Aprobado' | 'Observado'>('all')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [typeFilter, _setTypeFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPreview, setSelectedPreview] = useState<DocumentItem | null>(null)
   const [itemStatuses, setItemStatuses] = useState<Record<string, 'Pendiente' | 'Aprobado' | 'Observado'>>({})

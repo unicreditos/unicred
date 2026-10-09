@@ -57,11 +57,17 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
         title="Préstamo personal"
         description={`${solRef(l.id)} · pedido el ${fdate(l.createdAt as Date)}`}
         actions={
-          <>
+          <div className="uc-cta-row" style={{ gap: 8 }}>
             {next ? (
               <ButtonLink primary href={`/dashboard/pagos?pay=${next.id}`}>
                 <Icon name="wallet" size="sm" />
                 Pagar cuota {next.number}/{l.term}
+              </ButtonLink>
+            ) : null}
+            {l.status === 'active' ? (
+              <ButtonLink href={`/dashboard/pagos/pago-parcial?loan=${l.id}`}>
+                <Icon name="wallet" size="sm" />
+                Simular pago parcial
               </ButtonLink>
             ) : null}
             {contract ? (
@@ -70,7 +76,7 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
                 Contrato
               </a>
             ) : null}
-          </>
+          </div>
         }
       />
 

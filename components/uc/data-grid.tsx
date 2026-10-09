@@ -322,6 +322,28 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                   </span>
                 </button>
               ) : null}
+              {cfg.printable ? (
+                <button
+                  type="button"
+                  className="no-print inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') window.print()
+                  }}
+                  disabled={rows.length === 0}
+                  title={
+                    typeof cfg.printable === 'object' && cfg.printable.title
+                      ? cfg.printable.title
+                      : 'Imprimir reporte actual (abre cuadro de diálogo de impresión)'
+                  }
+                >
+                  <Icon name="print" size="xs" />
+                  <span>
+                    {typeof cfg.printable === 'object' && cfg.printable.label
+                      ? cfg.printable.label
+                      : 'Print'}
+                  </span>
+                </button>
+              ) : null}
               {active ? (
                 <button
                   type="button"
