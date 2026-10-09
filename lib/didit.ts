@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { preserveLegacyEvidence, saveVersionedEvidence } from '@/lib/evidence'
 import { isKycFresh } from '@/lib/kyc-validity'
 import { db } from '@/lib/db'
 import { diditSession, diditWebhookLog, kycVerification, merchant, profile } from '@/lib/db/schema'
@@ -490,6 +491,9 @@ export async function applyDiditDecision(input: {
   // Tolerante a fallos: un error de descarga no debe romper la aprobación.
   if (kycStatus === 'approved' && decision) {
     try {
+      const sameSession = existing?.providerReferenceId === input.sessionId
+      // Una verificación nueva NO pisa la evidencia anterior: se conserva como versión antes de reemplazar.
+      if (!sameSession) await preserveLegacyEvidence(userId)
       const capture = parseDiditCapture(decision, { sessionId: input.sessionId, status: input.status })
       const bundle = kycMediaBundle(capture)
       const liveVideo = capture.liveness
@@ -497,13 +501,16 @@ export async function applyDiditDecision(input: {
         .find((m) => m.kind === 'video')?.url
       const persisted = await persistKycMedia(
         { front: bundle.front, back: bundle.back, selfie: bundle.selfie, video: liveVideo },
-        {
-          dniFrontImageUrl: existing?.dniFrontImageUrl ?? null,
-          dniBackImageUrl: existing?.dniBackImageUrl ?? null,
-          selfieImageUrl: existing?.selfieImageUrl ?? null,
-          videoUrl: existing?.videoUrl ?? null,
-        },
+        sameSession
+          ? {
+              dniFrontImageUrl: existing?.dniFrontImageUrl ?? null,
+              dniBackImageUrl: existing?.dniBackImageUrl ?? null,
+              selfieImageUrl: existing?.selfieImageUrl ?? null,
+              videoUrl: existing?.videoUrl ?? null,
+            }
+          : null,
       )
+      await saveVersionedEvidence({ userId, sessionId: input.sessionId, kycVerificationId: existing?.id ?? null, media: persisted })
       if (
         persisted.dniFrontImageUrl ||
         persisted.dniBackImageUrl ||

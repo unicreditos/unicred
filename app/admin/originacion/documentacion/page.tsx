@@ -26,6 +26,7 @@ export default async function DocumentacionPage() {
   const found = await db
     .select({
       id: kycVerification.id,
+      ownerId: kycVerification.userId,
       status: kycVerification.status,
       updatedAt: kycVerification.updatedAt,
       reviewedAt: kycVerification.reviewedAt,
@@ -56,6 +57,7 @@ export default async function DocumentacionPage() {
         estado: approved ? badge('Aprobado', 'success') : rejected ? badge('Rechazado', 'danger') : badge('Pendiente', 'neutral'),
         subido: k.updatedAt ? new Date(k.updatedAt).toISOString() : null,
         reviso: k.reviewedAt ? new Date(k.reviewedAt).toISOString() : null,
+        acciones: [{ kind: 'link' as const, label: 'Ver documento', href: `/admin/originacion/documentacion/${k.ownerId}` }],
       }
     }),
   )
@@ -90,6 +92,7 @@ export default async function DocumentacionPage() {
             { key: 'estado', label: 'Estado', kind: 'badge', order: ['Pendiente', 'Aprobado', 'Rechazado'] },
             { key: 'subido', label: 'Subido', kind: 'date' },
             { key: 'reviso', label: 'Revisado', kind: 'date' },
+            { key: 'acciones', label: 'Acciones', kind: 'actions' },
           ],
           summary: { noun: 'documentos' },
         }}
