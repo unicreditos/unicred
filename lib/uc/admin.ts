@@ -10,6 +10,7 @@ type Group = { id: string; label: string; icon: MenuItem['icon']; route?: string
 
 const GROUPS: Group[] = [
   { id: 'inicio', label: 'Inicio', icon: 'home', route: '/admin' },
+  { id: 'panel-control', label: 'Panel de Control', icon: 'chart', route: '/admin/panel-control', perm: 'finance.read' },
   {
     id: 'originacion',
     label: 'Originación',
@@ -58,6 +59,7 @@ const GROUPS: Group[] = [
     label: 'Finanzas',
     icon: 'chart',
     children: [
+      { label: 'Panel Ejecutivo (Recharts)', route: '/admin/panel-control', perm: 'finance.read' },
       { label: 'Finanzas', route: '/admin/finanzas/resumen', perm: 'finance.read' },
       { label: 'Analíticas', route: '/admin/finanzas/analiticas', perm: 'finance.read' },
     ],

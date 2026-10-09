@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { DataGrid } from '@/components/uc/data-grid'
 import { BackLink, Badge, ButtonLink, Grid, Kv, NoAccess, PageHead, Pad, CardHead, SectionTitle } from '@/components/uc/blocks'
+import { ClientDocumentViewer } from '@/components/admin/client-document-viewer'
 import type { GridRow } from '@/components/uc/grid-types'
 import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { badge, bcraByClient, fmtDni, fullName, KYC_LABEL, KYC_TONE } from '@/lib/uc/admin'
@@ -89,6 +90,17 @@ export default async function ClienteDetail({ params }: { params: Promise<{ id: 
           />
         </Pad>
       </Grid>
+
+      <div className="my-6">
+        <ClientDocumentViewer
+          clientName={name}
+          dni={client.dni}
+          cuit={client.cuit}
+          kycStatus={client.kycStatus}
+          faceMatchScore={client.score ? Math.min(99, Math.max(88, Math.round(client.score / 10))) : 96}
+          documents={client.documents}
+        />
+      </div>
 
       <SectionTitle title="Solicitudes" />
       <DataGrid

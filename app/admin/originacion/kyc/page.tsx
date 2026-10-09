@@ -58,6 +58,16 @@ export default async function KycPage() {
           },
         ] satisfies DeskRowAction[])
       : []
+
+    const rowActions: RowAction[] = [
+      {
+        kind: 'link',
+        label: 'Ver legajo',
+        href: `/admin/clientes/${encodeURIComponent(k.clientId)}`,
+      },
+      ...actions,
+    ]
+
     return {
       id: k.id,
       sesion: `…${(k.sessionId || k.id).slice(-8)}`,
@@ -69,7 +79,7 @@ export default async function KycPage() {
       resultadoKey: r.k,
       resultado: badge(r.l, r.t),
       fecha: k.startedAt,
-      acc: actions,
+      acc: rowActions,
     }
   })
 

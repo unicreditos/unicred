@@ -118,6 +118,17 @@ export interface Client {
   occupation: string
   employer: string
   declaredIncome: number
+  documents?: {
+    dniFrontUrl?: string | null
+    dniBackUrl?: string | null
+    selfieUrl?: string | null
+    salaryProofUrl?: string | null
+    ocrDniNumber?: string | null
+    ocrFullName?: string | null
+    ocrBirthDate?: string | null
+    ocrGender?: string | null
+    ocrAddress?: string | null
+  }
 }
 
 export interface KycCase {
@@ -134,6 +145,17 @@ export interface KycCase {
   completedAt: string | null
   notes: string
   operatorId: string | null
+  dniFrontUrl?: string | null
+  dniBackUrl?: string | null
+  selfieUrl?: string | null
+  videoUrl?: string | null
+  ocrData?: {
+    dni?: string | null
+    name?: string | null
+    birthDate?: string | null
+    expiryDate?: string | null
+    gender?: string | null
+  } | null
 }
 
 export interface LoanApplication {

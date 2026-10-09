@@ -37,6 +37,7 @@ export default async function ClientesPage() {
       kyc: kycBadge(c.kycStatus),
       kycTxt: KYC_LABEL[c.kycStatus] ?? c.kycStatus,
       alta: c.createdAt,
+      ver: [{ kind: 'link', label: 'Ver legajo', href: `/admin/clientes/${encodeURIComponent(c.id)}` }],
     }
   })
 
@@ -77,6 +78,7 @@ export default async function ClientesPage() {
             { key: 'situ', label: 'Situación', kind: 'badge', order: ['Sin créditos', 'Al día', 'Con mora'] },
             { key: 'kyc', label: 'Identidad', kind: 'badge', order: ['Verificado', 'Pendiente', 'En revisión', 'Rechazado'] },
             { key: 'alta', label: 'Alta', kind: 'date' },
+            { key: 'ver', label: 'Acción', kind: 'actions', align: 'r' },
           ],
           summary: { noun: 'clientes' },
         }}

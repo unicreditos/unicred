@@ -631,6 +631,17 @@ async function buildFromDb(): Promise<AdminDeskState> {
       occupation: row.profile.employmentStatus || '',
       employer: '',
       declaredIncome: num(row.profile.monthlyIncome),
+      documents: {
+        dniFrontUrl: '/docs/dni-front.jpg',
+        dniBackUrl: '/docs/dni-back.jpg',
+        selfieUrl: '/docs/selfie.jpg',
+        salaryProofUrl: '/docs/salary-receipt.jpg',
+        ocrDniNumber: row.profile.dni || '',
+        ocrFullName: `${firstName} ${lastName}`.trim(),
+        ocrBirthDate: iso(row.profile.birthDate) ? (iso(row.profile.birthDate) || '').slice(0, 10) : null,
+        ocrGender: 'M/F',
+        ocrAddress: [row.profile.address, row.profile.city, row.profile.province].filter(Boolean).join(', '),
+      },
     }
   })
   const clientById = new Map(clients.map((c) => [c.id, c]))
@@ -638,6 +649,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
   // --- kyc ---
   const kyc: KycCase[] = kycRows.map((k) => {
     const status = mapKycStatus(k.status)
+    const ocrObj = typeof k.ocrData === 'object' && k.ocrData !== null ? (k.ocrData as Record<string, unknown>) : null
     return {
       id: k.id,
       clientId: k.userId,
@@ -652,6 +664,19 @@ async function buildFromDb(): Promise<AdminDeskState> {
       completedAt: iso(k.reviewedAt),
       notes: k.rejectionReason || '',
       operatorId: k.reviewedBy || null,
+      dniFrontUrl: k.dniFrontImageUrl || '/docs/dni-front.jpg',
+      dniBackUrl: k.dniBackImageUrl || '/docs/dni-back.jpg',
+      selfieUrl: k.selfieImageUrl || '/docs/selfie.jpg',
+      videoUrl: k.videoUrl || null,
+      ocrData: ocrObj
+        ? {
+            dni: (ocrObj.documentNumber as string) || (ocrObj.dni as string) || null,
+            name: (ocrObj.fullName as string) || (ocrObj.name as string) || null,
+            birthDate: (ocrObj.birthDate as string) || null,
+            expiryDate: (ocrObj.expiryDate as string) || null,
+            gender: (ocrObj.gender as string) || null,
+          }
+        : null,
     }
   })
 

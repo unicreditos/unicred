@@ -27,6 +27,7 @@ export default async function PagosPage() {
     fecha: p.paidAt,
     estadoKey: p.status === 'matched' ? 'reconciled' : p.status,
     estado: badge(LABEL[p.status] ?? p.status, TONE[p.status] ?? 'neutral'),
+    ver: [{ kind: 'link', label: 'Ver legajo', href: `/admin/clientes/${encodeURIComponent(p.clientId)}` }],
   }))
 
   return (
@@ -62,6 +63,7 @@ export default async function PagosPage() {
             { key: 'ref', label: 'Referencia', muted: true },
             { key: 'fecha', label: 'Fecha', kind: 'datetime' },
             { key: 'estado', label: 'Estado', kind: 'badge', order: ['Pendiente', 'Acreditado', 'Rechazado'] },
+            { key: 'ver', label: 'Acción', kind: 'actions', align: 'r' },
           ],
           summary: { noun: 'pagos', sumKey: 'importe', sumLabel: 'en total' },
         }}

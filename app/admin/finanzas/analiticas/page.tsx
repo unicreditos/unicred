@@ -1,4 +1,4 @@
-import { Bars, NoAccess, PageHead, Pad, CardHead, Grid, SectionTitle } from '@/components/uc/blocks'
+import { Bars, ButtonLink, NoAccess, PageHead, Pad, CardHead, Grid, SectionTitle } from '@/components/uc/blocks'
 import { DataGrid } from '@/components/uc/data-grid'
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDesk } from '@/lib/admin-desk/load'
@@ -18,7 +18,19 @@ function monthKey(iso: string | null | undefined) {
 
 export default async function AnaliticasPage() {
   const { state, perms } = await loadDesk()
-  const head = <PageHead title="Analíticas" description="Evolución de la colocación y de las cobranzas en los últimos 12 meses." />
+  const head = (
+    <PageHead
+      title="Analíticas"
+      description="Evolución de la colocación y de las cobranzas en los últimos 12 meses."
+      actions={
+        <div className="uc-cta-row" style={{ gap: 10 }}>
+          <ButtonLink primary href="/admin/panel-control">
+            Ver Panel Ejecutivo Recharts
+          </ButtonLink>
+        </div>
+      }
+    />
+  )
   if (!perms.has('finance.read')) return <>{head}<NoAccess what="las analíticas" /></>
 
   const nowMs = new Date().getTime()
