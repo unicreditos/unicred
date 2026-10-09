@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { isKycFresh } from '@/lib/kyc-validity'
 import { db } from '@/lib/db'
 import { diditSession, diditWebhookLog, kycVerification, merchant, profile } from '@/lib/db/schema'
 import { newId } from '@/lib/session'
@@ -73,11 +74,19 @@ export function isDiditConfigured() {
 export async function diditApprovedForUser(userId: string) {
   if (!userId) return false
   const [kyc] = await db
-    .select({ status: kycVerification.status, provider: kycVerification.provider })
+    .select({
+      status: kycVerification.status,
+      provider: kycVerification.provider,
+      expiresAt: kycVerification.expiresAt,
+      reviewedAt: kycVerification.reviewedAt,
+      updatedAt: kycVerification.updatedAt,
+    })
     .from(kycVerification)
     .where(eq(kycVerification.userId, userId))
     .limit(1)
   if (kyc?.provider !== 'didit' || kyc.status !== 'approved') return false
+  // Vigencia: la verificación vence a los 12 meses (KYC_MAX_AGE_MONTHS) y exige reverificar.
+  if (!isKycFresh({ expiresAt: kyc.expiresAt, reviewedAt: kyc.reviewedAt, updatedAt: kyc.updatedAt })) return false
   const [prof] = await db
     .select({ kycStatus: profile.kycStatus })
     .from(profile)

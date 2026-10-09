@@ -23,6 +23,7 @@ import { isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { persistBankLookup, toExtractedProfile } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { parseWalletDestination } from '@/lib/payments/cvu'
+import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 
 type AccountType = 'cbu' | 'cvu' | 'alias' | 'cci'
 
@@ -70,6 +71,7 @@ export async function createBankAccount(input: {
   setAsPrimary?: boolean
 }) {
   const userId = await assertRole('customer')
+  await assertVerifiedCustomer(userId, 'bank')
   const id = crypto.randomUUID()
 
   if (!input.holderName?.trim()) {
