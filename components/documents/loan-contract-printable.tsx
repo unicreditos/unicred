@@ -374,7 +374,7 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
 
       <DocumentSection number="13" title="Firma electrónica y aceptación">
         <p className="mb-3 text-[13px] leading-relaxed text-slate-700">
-          La aceptación en la plataforma (clickwrap o firma digital) tiene los efectos de la
+          La aceptación en la plataforma (clickwrap o firma electrónica) tiene los efectos de la
           Ley 25.506. El Prestatario acepta en un solo acto: (i) este contrato de préstamo
           (mutuo); (ii) el pagaré {pagareNro}; (iii) el cronograma; y (iv) las liquidaciones de
           cuota que se emitan. Quedan registrados fecha, hora, identidad, CUIL y, cuando exista,
@@ -389,6 +389,11 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
               {contract.acceptedIp ? ` · IP ${contract.acceptedIp}` : ''} ·{' '}
               {(contract.signatureType ?? 'clickwrap').toUpperCase()}
             </p>
+            {contract.contentHash ? (
+              <p className="mt-1 break-all font-mono text-[10px] text-emerald-900">
+                Huella SHA-256 del contenido: {contract.contentHash}
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-950">

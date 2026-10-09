@@ -1,6 +1,7 @@
 'use server'
 
 import { recordAudit } from '@/lib/audit'
+import { contractContentHash, signatureRecordHash } from '@/lib/legal/contract-hash'
 import { db } from '@/lib/db'
 import {
   bcraReport,
@@ -157,7 +158,7 @@ export async function acceptLoanContract(
   }
 
   const [loanRow] = await db
-    .select({ status: loan.status })
+    .select()
     .from(loan)
     .where(and(eq(loan.id, c.loanId), eq(loan.userId, userId)))
     .limit(1)
@@ -192,15 +193,38 @@ export async function acceptLoanContract(
     .limit(1)
   const ident = identRows[0] ?? { cuil: null, fullName: null }
 
+  // Huella SHA-256 del contenido congelado + registro de firma (IP, agente de usuario y CUIL).
+  const acceptedAt = new Date()
+  const signatureType = opts?.signatureType ?? 'clickwrap'
+  const contentHash = contractContentHash({
+    contractId,
+    loanId: c.loanId,
+    userId,
+    version: CONTRACT_VERSION,
+    templateName: c.templateName,
+    loan: loanRow,
+    signer: { name: ident.fullName ?? null, cuil: ident.cuil ?? null },
+  })
+  const signatureHash = signatureRecordHash({
+    contentHash,
+    acceptedAt,
+    ip: opts?.ip,
+    userAgent: opts?.ua,
+    cuil: ident.cuil,
+    userId,
+    signatureType,
+  })
+
   await db.transaction(async (tx) => {
     await tx
       .update(loanContract)
       .set({
         status: 'accepted',
-        acceptedAt: new Date(),
+        contentHash,
+        acceptedAt,
         acceptedIp: opts?.ip,
         acceptedUserAgent: opts?.ua,
-        signatureType: opts?.signatureType ?? 'clickwrap',
+        signatureType,
         signerName: ident.fullName ?? null,
         signerCuil: ident.cuil ?? null,
         signatureData: {
@@ -208,6 +232,12 @@ export async function acceptLoanContract(
           instruments: ['contrato_mutuo', 'pagare', 'cronograma', 'liquidaciones'],
           version: CONTRACT_VERSION,
           acceptedAs: 'deudor_y_librador',
+          hashAlgorithm: 'SHA-256',
+          contentHash,
+          signatureHash,
+          signedIp: opts?.ip ?? null,
+          signedUserAgent: String(opts?.ua ?? '').slice(0, 300) || null,
+          signerCuil: ident.cuil ?? null,
         },
         updatedAt: new Date(),
       })
@@ -246,7 +276,7 @@ export async function acceptLoanContract(
     targetUserId: userId,
     severity: 'warning',
     summary: 'El cliente aceptó el contrato y el pagaré (firma electrónica)',
-    changes: { ua: String(opts?.ua ?? '').slice(0, 200) },
+    changes: { ua: String(opts?.ua ?? '').slice(0, 200), contentHash, signatureHash },
   })
   revalidateCustomer()
   return { ok: true }

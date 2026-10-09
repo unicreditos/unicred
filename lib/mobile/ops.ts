@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { contractContentHash, signatureRecordHash } from '@/lib/legal/contract-hash'
 import { recordAudit } from '@/lib/audit'
 import { hasPermission, type PermissionKey } from '@/lib/rbac'
 import { db } from '@/lib/db'
@@ -297,17 +298,46 @@ export async function mobileSignLoan(userId: string, loanId: string, opts?: { ip
     .limit(1)
 
   const now = new Date()
+  const [loanForHash] = await db.select().from(loan).where(and(eq(loan.id, loanId), eq(loan.userId, userId))).limit(1)
+  const contentHash = contractContentHash({
+    contractId: contract.id,
+    loanId,
+    userId,
+    version: contract.version,
+    templateName: contract.templateName,
+    loan: loanForHash,
+    signer: { name: ident?.fullName ?? null, cuil: ident?.cuil ?? null },
+  })
+  const signatureHash = signatureRecordHash({
+    contentHash,
+    acceptedAt: now,
+    ip: opts?.ip,
+    userAgent: opts?.ua,
+    cuil: ident?.cuil,
+    userId,
+    signatureType: 'clickwrap',
+  })
   await db.transaction(async (tx) => {
     await tx
       .update(loanContract)
       .set({
         status: 'accepted',
+        contentHash,
         acceptedAt: now,
         acceptedIp: opts?.ip ?? null,
         acceptedUserAgent: opts?.ua ?? null,
         signatureType: 'clickwrap',
         signerName: ident?.fullName ?? null,
         signerCuil: ident?.cuil ?? null,
+        signatureData: {
+          ...((contract.signatureData as Record<string, unknown> | null) ?? {}),
+          hashAlgorithm: 'SHA-256',
+          contentHash,
+          signatureHash,
+          signedIp: opts?.ip ?? null,
+          signedUserAgent: String(opts?.ua ?? '').slice(0, 300) || null,
+          signerCuil: ident?.cuil ?? null,
+        },
         updatedAt: now,
       })
       .where(eq(loanContract.id, contract.id))
