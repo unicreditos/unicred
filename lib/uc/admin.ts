@@ -75,6 +75,7 @@ const GROUPS: Group[] = [
       { label: 'Auditoría', route: '/admin/sistema/auditoria', perm: 'audit.read' },
       { label: 'Configuración', route: '/admin/sistema/configuracion', perm: 'users.manage' },
       { label: 'Soporte', route: '/admin/sistema/soporte', perm: 'clients.read' },
+      { label: 'Mi seguridad (2FA y sesiones)', route: '/cuenta/seguridad', perm: 'clients.read' },
     ],
   },
 ]

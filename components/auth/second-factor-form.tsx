@@ -1,12 +1,13 @@
 'use client'
 
+import { TotpPanel } from '@/components/auth/totp-panel'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 
 type Phase = 'idle' | 'sent' | 'expired' | 'locked'
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-export function SecondFactorForm({ endpoint, next }: { endpoint: string; next: string }) {
+function EmailPanel({ endpoint, next }: { endpoint: string; next: string }) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -134,5 +135,23 @@ export function SecondFactorForm({ endpoint, next }: { endpoint: string; next: s
       </button>
       <p className="uc-muted" style={{ margin: 0, fontSize: 12 }}>Al pedir un código nuevo, el anterior deja de servir. Máximo 5 envíos por hora.</p>
     </form>
+  )
+}
+/** Elige el metodo: con app autenticadora activada se ofrece primero; el correo siempre queda como alternativa. */
+export function SecondFactorForm({ endpoint, next, totpEnabled = false }: { endpoint: string; next: string; totpEnabled?: boolean }) {
+  const [method, setMethod] = useState<'totp' | 'email'>(totpEnabled ? 'totp' : 'email')
+  if (!totpEnabled) return <EmailPanel endpoint={endpoint} next={next} />
+  return (
+    <div style={{ display: 'grid', gap: 12, width: '100%' }}>
+      <div role="group" aria-label="Método de verificación" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className={method === 'totp' ? 'uc-btn uc-primary' : 'uc-btn'} style={{ minHeight: 44, flex: '1 1 150px' }} aria-pressed={method === 'totp'} onClick={() => setMethod('totp')}>
+          App autenticadora
+        </button>
+        <button type="button" className={method === 'email' ? 'uc-btn uc-primary' : 'uc-btn'} style={{ minHeight: 44, flex: '1 1 150px' }} aria-pressed={method === 'email'} onClick={() => setMethod('email')}>
+          Código por correo
+        </button>
+      </div>
+      {method === 'totp' ? <TotpPanel next={next} /> : <EmailPanel endpoint={endpoint} next={next} />}
+    </div>
   )
 }

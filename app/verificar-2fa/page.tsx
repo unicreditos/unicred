@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { SecondFactorForm } from '@/components/auth/second-factor-form'
 import { getRoleForUser, requireUserId } from '@/lib/session'
+import { userHasTotp } from '@/lib/totp'
 import { safeNextPath } from '@/lib/second-factor-core'
 
 export const metadata = { title: 'Verificación en dos pasos', robots: { index: false } }
@@ -14,9 +15,10 @@ export default async function Verificar2faPage({ searchParams }: { searchParams:
   const target = safeNextPath(next, fallback)
   if (!target) redirect(fallback)
   const endpoint = role === 'admin' ? '/api/admin/2fa' : '/api/2fa'
+  const totpEnabled = await userHasTotp(userId)
   return (
     <main style={{ maxWidth: 420, margin: '10vh auto', padding: 16 }}>
-      <SecondFactorForm endpoint={endpoint} next={target} />
+      <SecondFactorForm endpoint={endpoint} next={target} totpEnabled={totpEnabled} />
     </main>
   )
 }

@@ -12,7 +12,8 @@ Nada de esto se aplico ni se desplego. Todo lo de abajo lo ejecuta una persona, 
 1. `scripts/sql/2026-10-09_01_auto_approval_revert_backup.sql` (tabla de respaldo de la reversion; no cambia datos).
 2. `scripts/sql/2026-10-09_02_kyc_evidence_and_admin_otp.sql` (evidencia versionada inmutable, registro de accesos de solo agregar, OTP, segundo factor).
 3. `scripts/sql/2026-10-09_03_profile_cuil_unique.sql` (indice unico de CUIL). Si hay CUIL repetidos NO crea el indice y avisa con WARNING: depurar y volver a correrlo.
-Verificar luego: `\dt kyc_evidence*`, `\dt admin_*otp*`, `\di profile_cuil_unique_idx`.
+4. `scripts/sql/2026-10-09_04_totp_backup_codes.sql` (TOTP cifrado + codigos de respaldo; requiere el 02). Sin este SQL las pantallas de seguridad no funcionan, pero el login no se rompe (el gate trata la tabla ausente como 'sin TOTP').
+Verificar luego: `\dt user_totp user_backup_code`, `\dt kyc_evidence*`, `\dt admin_*otp*`, `\di profile_cuil_unique_idx`.
 
 ## 2. Variables de entorno (Vercel)
 | Variable | Valor | Nota |
@@ -56,3 +57,12 @@ No cargar ninguna de estas en el repo ni en archivos .env versionados.
 
 ## 6. Tests contra Postgres real (solo local)
 `TEST_DATABASE_URL=postgres://...@127.0.0.1:PUERTO/algo_test` y `npx tsx --test scripts/tests/*.test.ts`. Se niegan a correr si el host no es local o la base no termina en _test; sin la variable se omiten.
+## 7. TOTP, codigos de respaldo, sesiones activas y 2FA dentro del login
+- Pagina: `/cuenta/seguridad` (activar/desactivar app autenticadora, regenerar codigos, ver y cerrar sesiones). Enlace en el menu Sistema del admin.
+- Activar exige clave actual; desactivar/regenerar exigen clave actual + un codigo vigente (app o respaldo). Todo queda en la auditoria (TOTP_*, BACKUP_CODE_*, SESSION_REVOKED*).
+- Quien activa la app autenticadora es desafiado SIEMPRE (aunque ADMIN_2FA_LOGIN/CUSTOMER_2FA_LOGIN sigan en `no`); el correo sigue sirviendo como alternativa. Si pierde el celular y los codigos, un admin con acceso a la base debe borrar su fila de `user_totp` (decision de soporte, queda pendiente un flujo de recuperacion asistida).
+- Usa `TWOFA_PEPPER` tambien para cifrar los secretos TOTP: **cambiarla invalida los secretos TOTP ya guardados** (los usuarios tendrian que reactivar). Fijarla una vez y no rotarla sin plan.
+- El paso de codigo aparece dentro del formulario de ingreso cuando el servidor lo exige; igual se hace cumplir en cada pantalla/API protegida.
+- Cierre remoto de sesiones: inmediato para admin; en clientes puede tardar hasta 5 min por la cache de cookie de better-auth.
+- Orden de activacion: aplicar SQL 04, desplegar, probar con un admin (activar TOTP, cerrar sesion, volver a entrar con app y con correo, usar un codigo de respaldo), recien despues encender ADMIN_2FA_LOGIN / CUSTOMER_2FA_LOGIN.
+- Rollback: no hace falta tocar variables; `DROP TABLE user_totp, user_backup_code` deja a todos sin TOTP (el gate lo tolera si la tabla no existe).
