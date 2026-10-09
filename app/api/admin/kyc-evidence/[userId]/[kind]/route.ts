@@ -5,6 +5,11 @@ import { recordAudit } from '@/lib/audit'
 import { backfillLegacyEvidence, logEvidenceAccess, readEvidenceVerified } from '@/lib/evidence'
 import { EVIDENCE_LABEL, evidenceResponseHeaders, isEvidenceKind } from '@/lib/evidence-core'
 import { requirePermission } from '@/lib/rbac'
+import { getSession } from '@/lib/session'
+
+async function currentSessionId() {
+  return (await getSession())?.session?.id ?? null
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
   const { ip, userAgent } = requestMeta(req)
 
   try {
-    if (requireSecondFactorForEvidence() && !(await hasFreshSecondFactor(actorId))) {
+    if (requireSecondFactorForEvidence() && !(await hasFreshSecondFactor(actorId, await currentSessionId()))) {
       await logEvidenceAccess({ ownerUserId: userId, kind, version, actorUserId: actorId, outcome: 'denied_2fa', ip, userAgent })
       return adminJson({ ok: false, code: '2FA_REQUIRED', message: 'Verificá el código que te enviamos por correo para ver documentos de identidad.' }, 403)
     }

@@ -41,7 +41,7 @@ export async function issueAdminOtp(input: { userId: string; email: string; ip?:
     subject: 'Tu código de verificación de UNICRÉDITOS',
     html: brandedEmailHtml({
       title: 'Código de verificación',
-      bodyHtml: `<p style="font-size:15px;line-height:1.6;margin:0 0 16px">Para ver documentación de identidad de clientes ingresá este código:</p><p style="font-size:30px;letter-spacing:6px;font-weight:700;margin:0 0 16px">${code}</p><p style="font-size:13px;color:#555;margin:0">Vence en ${minutes} minutos y se puede usar una sola vez. Si no lo pediste, avisá a seguridad.</p>`,
+      bodyHtml: `<p style="font-size:15px;line-height:1.6;margin:0 0 16px">Ingresá este código para continuar:</p><p style="font-size:30px;letter-spacing:6px;font-weight:700;margin:0 0 16px">${code}</p><p style="font-size:13px;color:#555;margin:0">Vence en ${minutes} minutos y se puede usar una sola vez. Si no lo pediste, avisá a seguridad.</p>`,
       footerNote: 'Nunca compartas este código.',
     }),
     text: `Tu código de verificación es ${code}. Vence en ${minutes} minutos y se usa una sola vez.`,
@@ -57,6 +57,7 @@ export async function verifyAdminOtp(input: {
   userId: string
   code: string
   ip?: string | null
+  sessionId?: string | null
 }): Promise<{ ok: true } | { ok: false; reason: 'none' | 'expired' | 'locked' | 'invalid' }> {
   const res = await db.execute(
     sql`SELECT id, "codeHash", "expiresAt", attempts, "usedAt" FROM admin_email_otp WHERE "userId" = ${input.userId} ORDER BY "createdAt" DESC LIMIT 1`,
@@ -77,12 +78,16 @@ export async function verifyAdminOtp(input: {
     return { ok: false, reason: Number(row.attempts) + 1 >= OTP_MAX_ATTEMPTS ? 'locked' : 'invalid' }
   }
   await db.execute(sql`UPDATE admin_email_otp SET "usedAt" = now() WHERE id = ${row.id as string}`)
-  await db.execute(sql`INSERT INTO admin_second_factor (id, "userId", ip) VALUES (${`sf_${randomUUID()}`}, ${input.userId}, ${input.ip ?? null})`)
+  await db.execute(sql`INSERT INTO admin_second_factor (id, "userId", "sessionId", ip) VALUES (${`sf_${randomUUID()}`}, ${input.userId}, ${input.sessionId ?? null}, ${input.ip ?? null})`)
   return { ok: true }
 }
 
-export async function hasFreshSecondFactor(userId: string): Promise<boolean> {
-  const res = await db.execute(sql`SELECT max("verifiedAt") AS v FROM admin_second_factor WHERE "userId" = ${userId}`)
+export async function hasFreshSecondFactor(userId: string, sessionId?: string | null): Promise<boolean> {
+  const res = await db.execute(
+    sessionId
+      ? sql`SELECT max("verifiedAt") AS v FROM admin_second_factor WHERE "userId" = ${userId} AND "sessionId" = ${sessionId}`
+      : sql`SELECT max("verifiedAt") AS v FROM admin_second_factor WHERE "userId" = ${userId}`,
+  )
   const v = (res.rows[0] as Row | undefined)?.v
   return secondFactorFresh(v ? new Date(v as string) : null)
 }

@@ -7,6 +7,8 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import { secondFactorRequiredFor, type FactorRole } from '@/lib/second-factor-core'
+import { sessionPassedSecondFactor } from '@/lib/second-factor'
 
 export type Role = 'customer' | 'merchant' | 'admin'
 
@@ -184,6 +186,14 @@ async function auditDenied(userId: string, role: Role, area: string, kind: 'ACCE
   }
 }
 
+/** Segundo factor por correo ligado a ESTA sesion (se enciende con ADMIN_2FA_LOGIN / CUSTOMER_2FA_LOGIN). */
+async function secondFactorSatisfied(userId: string, role: FactorRole): Promise<boolean> {
+  if (!secondFactorRequiredFor(role)) return true
+  if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return true
+  const session = await getSession()
+  return sessionPassedSecondFactor(userId, session?.session?.id)
+}
+
 export async function requireAdmin() {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
@@ -196,11 +206,12 @@ export async function requireAdmin() {
     await auth.api.signOut({ headers: await headers() }).catch(() => {})
     redirect('/sign-in?error=session_expired')
   }
+  if (!(await secondFactorSatisfied(userId, 'admin'))) redirect('/verificar-2fa?next=/admin')
   return userId
 }
 
 /** Para server actions y APIs: lanza error en vez de redirigir. */
-export async function assertAdmin() {
+export async function assertAdmin(opts: { skipSecondFactor?: boolean } = {}) {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   if (role !== 'admin') {
@@ -208,6 +219,9 @@ export async function assertAdmin() {
     throw new Error('No autorizado')
   }
   if (await adminSessionExpired()) throw new Error('No autorizado: la sesión venció, ingresá de nuevo.')
+  if (!opts.skipSecondFactor && !(await secondFactorSatisfied(userId, 'admin'))) {
+    throw new Error('No autorizado: falta la verificación en dos pasos.')
+  }
   return userId
 }
 
@@ -217,6 +231,7 @@ export async function requireCustomer() {
   const role = await getRoleForUser(userId)
   if (role === 'admin') redirect('/admin')
   if (role === 'merchant') redirect('/merchant')
+  if (!(await secondFactorSatisfied(userId, 'customer'))) redirect('/verificar-2fa?next=/dashboard')
   return userId
 }
 
@@ -228,6 +243,7 @@ export async function requireMerchant() {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   if (role === 'admin') redirect('/admin')
+  if (!(await secondFactorSatisfied(userId, 'merchant'))) redirect('/verificar-2fa?next=/merchant')
   return userId
 }
 

@@ -74,8 +74,11 @@ CREATE INDEX IF NOT EXISTS admin_email_otp_user_idx ON admin_email_otp ("userId"
 CREATE TABLE IF NOT EXISTS admin_second_factor (
   id           text PRIMARY KEY,
   "userId"     text NOT NULL,
+  "sessionId"  text,                       -- sesion (better-auth) a la que queda ligado el segundo factor
   method       text NOT NULL DEFAULT 'email_otp',
   ip           text,
   "verifiedAt" timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS admin_second_factor_user_idx ON admin_second_factor ("userId", "verifiedAt" DESC);
+ALTER TABLE admin_second_factor ADD COLUMN IF NOT EXISTS "sessionId" text;
+CREATE INDEX IF NOT EXISTS admin_second_factor_session_idx ON admin_second_factor ("userId", "sessionId");
