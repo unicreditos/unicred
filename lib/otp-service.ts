@@ -25,11 +25,15 @@ export type OtpRecord = {
 }
 
 export interface OtpStore {
-  countSendsSince(userId: string, since: Date): Promise<number>
-  latestCreatedAt(userId: string): Promise<Date | null>
+  /**
+   * ATOMICO por usuario (serializa envios simultaneos): verifica la espera entre envios y el tope por hora,
+   * invalida los codigos abiertos y guarda el nuevo. Sin esto, pedidos en paralelo saltan los limites.
+   */
+  reserveSend(input: { rec: OtpRecord; cooldownMs: number; maxPerHour: number }): Promise<
+    { ok: true } | { ok: false; reason: 'cooldown'; retryAfterSec: number } | { ok: false; reason: 'rate_limited' }
+  >
   /** Invalida todo codigo abierto del usuario (usedAt = ahora). */
   invalidateOpen(userId: string, now: Date): Promise<void>
-  insert(rec: OtpRecord): Promise<void>
   latest(userId: string): Promise<OtpRecord | null>
   /** Atomico: suma 1 intento solo si sigue abierto, sin vencer y con intentos disponibles. */
   consumeAttempt(id: string, now: Date): Promise<OtpRecord | null>
@@ -80,19 +84,6 @@ export type VerifyFailure = 'none' | 'expired' | 'locked' | 'invalid' | 'no_sess
 
 export async function issueOtp(deps: OtpDeps, input: { userId: string; email: string; ip?: string | null }) {
   const now = deps.now()
-  const last = await deps.store.latestCreatedAt(input.userId)
-  if (last) {
-    const wait = OTP_RESEND_COOLDOWN_MS - (now.getTime() - last.getTime())
-    if (wait > 0) {
-      throw new OtpError('cooldown', 'Esperá unos segundos antes de pedir otro código.', Math.ceil(wait / 1000))
-    }
-  }
-  const sends = await deps.store.countSendsSince(input.userId, new Date(now.getTime() - 3_600_000))
-  if (sends >= OTP_MAX_SENDS_PER_HOUR) {
-    await deps.audit({ action: 'AUTH_2FA_SEND_LIMIT', userId: input.userId, severity: 'warning', summary: 'Límite de envíos de código por hora alcanzado' })
-    throw new OtpError('rate_limited', 'Pediste demasiados códigos. Probá de nuevo en una hora.', 3600)
-  }
-
   let pepper: string
   try {
     pepper = deps.pepper()
@@ -103,18 +94,27 @@ export async function issueOtp(deps: OtpDeps, input: { userId: string; email: st
 
   const code = generateOtpCode()
   const expiresAt = new Date(now.getTime() + OTP_TTL_MS)
-  // El codigo anterior queda invalido en cuanto se emite uno nuevo.
-  await deps.store.invalidateOpen(input.userId, now)
-  await deps.store.insert({
-    id: deps.newId('otp'),
-    userId: input.userId,
-    codeHash: hashOtp(code, input.userId, pepper),
-    expiresAt,
-    attempts: 0,
-    usedAt: null,
-    createdAt: now,
-    ip: input.ip ?? null,
+  const reservation = await deps.store.reserveSend({
+    rec: {
+      id: deps.newId('otp'),
+      userId: input.userId,
+      codeHash: hashOtp(code, input.userId, pepper),
+      expiresAt,
+      attempts: 0,
+      usedAt: null,
+      createdAt: now,
+      ip: input.ip ?? null,
+    },
+    cooldownMs: OTP_RESEND_COOLDOWN_MS,
+    maxPerHour: OTP_MAX_SENDS_PER_HOUR,
   })
+  if (!reservation.ok) {
+    if (reservation.reason === 'cooldown') {
+      throw new OtpError('cooldown', 'Esperá unos segundos antes de pedir otro código.', reservation.retryAfterSec)
+    }
+    await deps.audit({ action: 'AUTH_2FA_SEND_LIMIT', userId: input.userId, severity: 'warning', summary: 'Límite de envíos de código por hora alcanzado' })
+    throw new OtpError('rate_limited', 'Pediste demasiados códigos. Probá de nuevo en una hora.', 3600)
+  }
 
   let result: MailResult
   try {

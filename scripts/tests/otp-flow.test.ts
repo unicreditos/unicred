@@ -17,10 +17,16 @@ function harness(opts: { mail?: (code: string) => MailResult; production?: boole
   const mails: Array<{ to: string; code: string }> = []
   let n = 0
   const store: OtpStore = {
-    async countSendsSince(userId, since) { return rows.filter((r) => r.userId === userId && r.createdAt > since).length },
-    async latestCreatedAt(userId) { const x = rows.filter((r) => r.userId === userId).map((r) => r.createdAt.getTime()); return x.length ? new Date(Math.max(...x)) : null },
+    async reserveSend({ rec, cooldownMs, maxPerHour }) {
+      const mine = rows.filter((r) => r.userId === rec.userId)
+      const last = mine.length ? Math.max(...mine.map((r) => r.createdAt.getTime())) : null
+      if (last !== null && cooldownMs - (rec.createdAt.getTime() - last) > 0) return { ok: false, reason: 'cooldown', retryAfterSec: Math.ceil((cooldownMs - (rec.createdAt.getTime() - last)) / 1000) }
+      if (mine.filter((r) => r.createdAt.getTime() > rec.createdAt.getTime() - 3_600_000).length >= maxPerHour) return { ok: false, reason: 'rate_limited' }
+      rows.filter((r) => r.userId === rec.userId && !r.usedAt).forEach((r) => { r.usedAt = rec.createdAt })
+      rows.push({ ...rec })
+      return { ok: true }
+    },
     async invalidateOpen(userId, now) { rows.filter((r) => r.userId === userId && !r.usedAt).forEach((r) => { r.usedAt = now }) },
-    async insert(rec) { rows.push({ ...rec }) },
     async latest(userId) { const m = rows.filter((r) => r.userId === userId); return m.length ? { ...m[m.length - 1] } : null },
     async consumeAttempt(id, now) {
       const r = rows.find((x) => x.id === id)

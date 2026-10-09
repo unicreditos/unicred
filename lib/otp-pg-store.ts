@@ -6,7 +6,8 @@ import { sql, type SQL } from 'drizzle-orm'
 import { secondFactorFresh } from '@/lib/admin-otp-core'
 import type { OtpRecord, OtpStore } from '@/lib/otp-service'
 
-export type SqlExecutor = { execute: (query: SQL) => Promise<{ rows: unknown[] }> }
+type Exec = { execute: (query: SQL) => Promise<{ rows: unknown[] }> }
+export type SqlExecutor = Exec & { transaction: <T>(fn: (tx: Exec) => Promise<T>) => Promise<T> }
 type Row = Record<string, unknown>
 
 function toRecord(r: Row): OtpRecord {
@@ -24,22 +25,29 @@ function toRecord(r: Row): OtpRecord {
 
 export function createPgOtpStore(db: SqlExecutor): OtpStore {
   return {
-    async countSendsSince(userId, since) {
-      const r = await db.execute(sql`SELECT count(*)::int AS n FROM admin_email_otp WHERE "userId" = ${userId} AND "createdAt" > ${since.toISOString()}`)
-      return Number((r.rows[0] as Row).n)
-    },
-    async latestCreatedAt(userId) {
-      const r = await db.execute(sql`SELECT max("createdAt") AS v FROM admin_email_otp WHERE "userId" = ${userId}`)
-      const v = (r.rows[0] as Row | undefined)?.v
-      return v ? new Date(v as string) : null
+    async reserveSend({ rec, cooldownMs, maxPerHour }) {
+      return db.transaction(async (tx) => {
+        // Serializa los envios del mismo usuario: el segundo espera a que el primero termine.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`otp_send:${rec.userId}`}))`)
+        const now = rec.createdAt
+        const last = await tx.execute(sql`SELECT max("createdAt") AS v FROM admin_email_otp WHERE "userId" = ${rec.userId}`)
+        const lastAt = (last.rows[0] as Row | undefined)?.v ? new Date((last.rows[0] as Row).v as string) : null
+        if (lastAt) {
+          const wait = cooldownMs - (now.getTime() - lastAt.getTime())
+          if (wait > 0) return { ok: false as const, reason: 'cooldown' as const, retryAfterSec: Math.ceil(wait / 1000) }
+        }
+        const since = new Date(now.getTime() - 3_600_000)
+        const sent = await tx.execute(sql`SELECT count(*)::int AS n FROM admin_email_otp WHERE "userId" = ${rec.userId} AND "createdAt" > ${since.toISOString()}`)
+        if (Number((sent.rows[0] as Row).n) >= maxPerHour) return { ok: false as const, reason: 'rate_limited' as const }
+        await tx.execute(sql`UPDATE admin_email_otp SET "usedAt" = ${now.toISOString()} WHERE "userId" = ${rec.userId} AND "usedAt" IS NULL`)
+        await tx.execute(sql`
+          INSERT INTO admin_email_otp (id, "userId", "codeHash", "expiresAt", ip, "createdAt")
+          VALUES (${rec.id}, ${rec.userId}, ${rec.codeHash}, ${rec.expiresAt.toISOString()}, ${rec.ip}, ${rec.createdAt.toISOString()})`)
+        return { ok: true as const }
+      })
     },
     async invalidateOpen(userId, now) {
       await db.execute(sql`UPDATE admin_email_otp SET "usedAt" = ${now.toISOString()} WHERE "userId" = ${userId} AND "usedAt" IS NULL`)
-    },
-    async insert(rec) {
-      await db.execute(sql`
-        INSERT INTO admin_email_otp (id, "userId", "codeHash", "expiresAt", ip, "createdAt")
-        VALUES (${rec.id}, ${rec.userId}, ${rec.codeHash}, ${rec.expiresAt.toISOString()}, ${rec.ip}, ${rec.createdAt.toISOString()})`)
     },
     async latest(userId) {
       const r = await db.execute(sql`SELECT * FROM admin_email_otp WHERE "userId" = ${userId} ORDER BY "createdAt" DESC LIMIT 1`)
