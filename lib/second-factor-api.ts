@@ -14,7 +14,7 @@ const MESSAGE = {
 } as const
 
 /** Usuario de la sesión actual (sin exigir el segundo factor: es el paso que lo concede). */
-async function sessionUser() {
+export async function sessionUser() {
   const s = await getSession()
   if (!s?.user?.id || !s.session?.id) return null
   const [u] = await db.select({ email: user.email, banned: user.banned }).from(user).where(eq(user.id, s.user.id)).limit(1)

@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { gateDecision, secondFactorRequiredFor, type FactorRole } from '@/lib/second-factor-core'
 import { sessionPassedSecondFactor } from '@/lib/second-factor'
+import { userHasTotp } from '@/lib/totp'
 
 export type Role = 'customer' | 'merchant' | 'admin'
 
@@ -188,11 +189,18 @@ async function auditDenied(userId: string, role: Role, area: string, kind: 'ACCE
 
 /** Segundo factor por correo ligado a ESTA sesion (se enciende con ADMIN_2FA_LOGIN / CUSTOMER_2FA_LOGIN). */
 async function secondFactorSatisfied(userId: string, role: FactorRole): Promise<boolean> {
-  if (!secondFactorRequiredFor(role)) return true
   if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return true
+  // Obligatorio por flag de rol, o voluntario: quien activo la app autenticadora siempre es desafiado.
+  if (!secondFactorRequiredFor(role) && !(await userHasTotp(userId))) return true
   const session = await getSession()
   const passed = await sessionPassedSecondFactor(userId, session?.session?.id)
   return gateDecision(true, passed) === 'allow'
+}
+
+/** Para APIs de cuenta (sesiones, 2FA): la sesion actual ya paso el segundo factor que le corresponde. */
+export async function sessionSecondFactorOk(userId: string): Promise<boolean> {
+  const role = await getRoleForUser(userId)
+  return secondFactorSatisfied(userId, role === 'admin' ? 'admin' : role === 'merchant' ? 'merchant' : 'customer')
 }
 
 export async function requireAdmin() {
