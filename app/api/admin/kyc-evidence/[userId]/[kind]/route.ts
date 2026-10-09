@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
     return adminJson({ ok: false, message: (err as Error).message }, authErrorStatus(err))
   }
   const { userId, kind } = await params
-  if (!isEvidenceKind(kind)) return adminJson({ ok: false, message: 'Tipo de documento inv\u00e1lido.' }, 400)
+  if (!isEvidenceKind(kind)) return adminJson({ ok: false, message: 'Tipo de documento inválido.' }, 400)
   const url = new URL(req.url)
   const versionParam = Number(url.searchParams.get('v'))
   const version = Number.isInteger(versionParam) && versionParam > 0 ? versionParam : null
@@ -31,7 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
   try {
     if (requireSecondFactorForEvidence() && !(await hasFreshSecondFactor(actorId))) {
       await logEvidenceAccess({ ownerUserId: userId, kind, version, actorUserId: actorId, outcome: 'denied_2fa', ip, userAgent })
-      return adminJson({ ok: false, code: '2FA_REQUIRED', message: 'Verific\u00e1 el c\u00f3digo que te enviamos por correo para ver documentos de identidad.' }, 403)
+      return adminJson({ ok: false, code: '2FA_REQUIRED', message: 'Verificá el código que te enviamos por correo para ver documentos de identidad.' }, 403)
     }
 
     let result = await readEvidenceVerified(userId, kind, version)
@@ -58,7 +58,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
           entityId: result.meta?.id ?? null,
           targetUserId: userId,
           severity: 'error',
-          summary: `Fall\u00f3 la verificaci\u00f3n de integridad de ${EVIDENCE_LABEL[kind]}`,
+          summary: `Falló la verificación de integridad de ${EVIDENCE_LABEL[kind]}`,
         })
         return adminJson({ ok: false, code: 'INTEGRITY_FAILED', message: 'El archivo no coincide con su huella SHA-256. No se entrega.' }, 409)
       }

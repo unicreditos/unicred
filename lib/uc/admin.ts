@@ -20,6 +20,9 @@ const GROUPS: Group[] = [
       { label: 'Documentación', route: '/admin/originacion/documentacion', perm: 'kyc.review' },
       { label: 'Aprobaciones', route: '/admin/originacion/aprobaciones', perm: 'credits.read' },
       { label: 'BCRA / Riesgo', route: '/admin/originacion/riesgo', perm: 'risk.read' },
+      { label: 'Historial BCRA', route: '/admin/originacion/bcra-historial', perm: 'risk.read' },
+      { label: 'Padrón ARCA', route: '/admin/originacion/padron-arca', perm: 'kyc.review' },
+      { label: 'Webhooks Didit', route: '/admin/originacion/webhooks-didit', perm: 'kyc.review' },
     ],
   },
   {

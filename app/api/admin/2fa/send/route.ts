@@ -8,7 +8,7 @@ import { requirePermission } from '@/lib/rbac'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-/** Env\u00eda al correo del operador un c\u00f3digo de 6 d\u00edgitos (10 min, 5 env\u00edos por hora). */
+/** Envía al correo del operador un código de 6 dígitos (10 min, 5 envíos por hora). */
 export async function POST(req: Request) {
   let userId: string
   try {

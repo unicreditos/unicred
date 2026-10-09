@@ -6,10 +6,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const MESSAGE = {
-  none: 'No hay un c\u00f3digo vigente. Ped\u00ed uno nuevo.',
-  expired: 'El c\u00f3digo venci\u00f3. Ped\u00ed uno nuevo.',
-  locked: 'Demasiados intentos. Ped\u00ed un c\u00f3digo nuevo.',
-  invalid: 'C\u00f3digo incorrecto.',
+  none: 'No hay un código vigente. Pedí uno nuevo.',
+  expired: 'El código venció. Pedí uno nuevo.',
+  locked: 'Demasiados intentos. Pedí un código nuevo.',
+  invalid: 'Código incorrecto.',
 } as const
 
 export async function POST(req: Request) {
