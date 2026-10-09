@@ -1,5 +1,12 @@
 import { betterAuth } from 'better-auth'
-import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import {
+  RESET_MAIL_UNAVAILABLE_MESSAGE,
+  padToMinDuration,
+  recordResetMailResult,
+  resetMailLooksDown,
+  resetMailSucceeded,
+} from '@/lib/reset-mail-health'
 import { recordAudit } from '@/lib/audit'
 import { trustedOrigins } from '@/lib/site'
 import { cleanConnectionUrl, isLocalPostgres, isPlaceholderDbUrl } from '@/lib/db'
@@ -133,6 +140,10 @@ const AUTH_AUDIT: Record<string, { action: string; okSeverity?: 'info' | 'warnin
 }
 
 const auditAuthEvents = createAuthMiddleware(async (ctx) => {
+  if (RESET_PATHS.has(ctx.path)) {
+    // Tiempo de respuesta mínimo uniforme: existente o no, tarda parecido.
+    await padToMinDuration((ctx.context as any).__resetStartedAt ?? Date.now())
+  }
   try {
     const meta = AUTH_AUDIT[ctx.path]
     if (!meta) return
@@ -162,7 +173,18 @@ const auditAuthEvents = createAuthMiddleware(async (ctx) => {
 })
 
 /** El cierre de sesión se registra ANTES de borrar la sesión: después ya no se sabe quién era. */
+const RESET_PATHS = new Set(['/request-password-reset', '/forget-password'])
+
 const auditLogout = createAuthMiddleware(async (ctx) => {
+  if (RESET_PATHS.has(ctx.path)) {
+    ;(ctx.context as any).__resetStartedAt = Date.now()
+    const { isEmailConfigured } = await import('@/lib/email')
+    if (resetMailLooksDown({ configured: isEmailConfigured(), production: process.env.NODE_ENV === 'production' })) {
+      // Mismo error para cualquier email (existente o no): no filtra qué cuentas existen.
+      await padToMinDuration((ctx.context as any).__resetStartedAt)
+      throw new APIError('SERVICE_UNAVAILABLE', { message: RESET_MAIL_UNAVAILABLE_MESSAGE })
+    }
+  }
   try {
     if (ctx.path !== '/sign-out') return
     const session = await getSessionFromCtx(ctx)
@@ -201,7 +223,29 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 60 * 60,
     sendResetPassword: async ({ user, url }) => {
       const { sendEmail, passwordResetEmail } = await import('@/lib/email')
-      await sendEmail({ to: user.email, ...passwordResetEmail(url) })
+      const production = process.env.NODE_ENV === 'production'
+      let result = await sendEmail({ to: user.email, ...passwordResetEmail(url) })
+      if (!resetMailSucceeded(result, production)) {
+        // Un reintento corto antes de dar el correo por perdido.
+        await new Promise((r) => setTimeout(r, 400))
+        result = await sendEmail({ to: user.email, ...passwordResetEmail(url) })
+      }
+      const ok = resetMailSucceeded(result, production)
+      recordResetMailResult(ok)
+      if (!ok) {
+        // No se lanza ni se responde distinto: eso revelaría que la cuenta existe. Queda en log y auditoría.
+        console.error('[auth] fallo el envío del correo de recuperación:', result?.error ?? 'desconocido')
+        await recordAudit({
+          actorUserId: '',
+          action: 'AUTH_RESET_EMAIL_FAILED',
+          entityType: 'session',
+          entityId: user.id,
+          targetUserId: user.id,
+          severity: 'error',
+          summary: 'No se pudo enviar el correo de recuperación de contraseña',
+          changes: { error: result?.error ?? 'desconocido' },
+        }).catch(() => undefined)
+      }
     },
   },
   emailVerification: {
