@@ -6,6 +6,7 @@ import { Icon } from '@/components/uc/icons'
 import { DeskActionButton } from '@/components/uc/desk-action'
 import type { Cell, Col, GridConfig, GridRow, RowAction, Tone } from '@/components/uc/grid-types'
 import { fdate, fdatetime, fmtInt, fmtPct, money, norm, parseDMY } from '@/lib/uc/format'
+import { toast } from 'sonner'
 
 const isObj = (c: Cell): c is Exclude<Cell, string | number | null | undefined | RowAction[]> =>
   typeof c === 'object' && c !== null && !Array.isArray(c)
@@ -189,6 +190,28 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
     return d.slice(0, 2) + (d.length > 2 ? '/' + d.slice(2, 4) : '') + (d.length > 4 ? '/' + d.slice(4) : '')
   }
 
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportExcel = async () => {
+    if (exporting) return
+    try {
+      setExporting(true)
+      const { exportGridRowsToExcel } = await import('@/lib/uc/excel-export')
+      const opt = typeof cfg.exportExcel === 'object' ? cfg.exportExcel : {}
+      const res = exportGridRowsToExcel(rows, cfg.columns, {
+        filename: opt.filename || `Reporte_${cfg.id || 'planilla'}.xlsx`,
+        sheetName: opt.sheetName || 'Datos',
+        includeTimestamp: true,
+      })
+      toast.success(`Excel generado: ${res.rowCount} filas descargadas en ${res.filename}`)
+    } catch (e) {
+      console.error('Error al exportar a Excel:', e)
+      toast.error('No se pudo generar el archivo Excel.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className={`uc-card ${cfg.sheet ? 'uc-sheet' : ''}`}>
       {hasToolbar ? (
@@ -280,15 +303,35 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                 </>
               ) : null}
             </span>
-            {active ? (
-              <button
-                type="button"
-                className="uc-link-btn"
-                onClick={() => setSt((s) => ({ ...s, chip: 'all', q: '', from: '', to: '', sel: {}, page: 1 }))}
-              >
-                Limpiar filtros
-              </button>
-            ) : null}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {cfg.exportExcel ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-emerald-600/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/50 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                  onClick={handleExportExcel}
+                  disabled={exporting || rows.length === 0}
+                  title="Exportar registros filtrados a formato Microsoft Excel (.xlsx)"
+                >
+                  <Icon name="download" size="xs" />
+                  <span>
+                    {exporting
+                      ? 'Exportando...'
+                      : typeof cfg.exportExcel === 'object' && cfg.exportExcel.label
+                        ? cfg.exportExcel.label
+                        : 'Export to Excel'}
+                  </span>
+                </button>
+              ) : null}
+              {active ? (
+                <button
+                  type="button"
+                  className="uc-link-btn"
+                  onClick={() => setSt((s) => ({ ...s, chip: 'all', q: '', from: '', to: '', sel: {}, page: 1 }))}
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
+            </div>
           </div>
         </>
       ) : null}

@@ -191,7 +191,7 @@ export default async function AdminHome({
             Visualización avanzada de métricas clave en tiempo real
           </h3>
           <p className="text-xs text-slate-300 max-w-2xl">
-            Gráficos interactivos de volumen de préstamos colocados por mes, tasa de morosidad en tiempo real y distribución de cartera por tipo de comercio.
+            Gráficos interactivos de volumen de préstamos colocados por mes, tasa de morosidad en tiempo real, distribución de cartera por comercio y sección de Alertas Críticas (&gt;15% mora) con mapa de calor.
           </p>
         </div>
         <Link

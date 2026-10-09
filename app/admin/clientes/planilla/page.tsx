@@ -3,13 +3,13 @@ import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
 import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { badge, fmtDni, fullName, KYC_LABEL, kycBadge } from '@/lib/uc/admin'
+import { ExportClientsButton } from '@/components/admin/clients/export-clients-button'
 
-export const metadata = { title: 'Clientes' }
+export const metadata = { title: 'Clientes · Planilla y Exportación Excel' }
 
 export default async function ClientesPage() {
   const { state, perms, userId } = await loadDesk()
-  const head = <PageHead title="Clientes" description="Planilla de clientes. Filtrá por situación, identidad o provincia; se ven 15 por página." />
-  if (!perms.has('clients.read')) return <>{head}<NoAccess what="los clientes" /></>
+  if (!perms.has('clients.read')) return <><PageHead title="Clientes" description="Planilla de clientes." /><NoAccess what="los clientes" /></>
   await auditAdminView(userId, 'listado_clientes')
 
   const active = new Map<string, number>()
@@ -41,6 +41,14 @@ export default async function ClientesPage() {
     }
   })
 
+  const head = (
+    <PageHead
+      title="Clientes"
+      description="Planilla de clientes. Filtrá por situación, identidad o provincia; se ven 15 por página."
+      actions={<ExportClientsButton rows={rows} />}
+    />
+  )
+
   return (
     <>
       {head}
@@ -49,6 +57,11 @@ export default async function ClientesPage() {
           id: 'clientes',
           rows,
           sheet: true,
+          exportExcel: {
+            filename: 'Planilla_Clientes_Unicred.xlsx',
+            label: 'Export to Excel',
+            sheetName: 'Clientes',
+          },
           pageSize: 15,
           sort: { key: 'nombre', dir: 1 },
           dateKey: 'alta',

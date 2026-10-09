@@ -5,6 +5,8 @@ import {
   calculateRealtimeDelinquency,
   calculateMerchantPortfolioDistribution,
   calculateExecutiveKpiSummary,
+  calculateCriticalDelinquencyAlerts,
+  getThermalHeatStyle,
   normalizeMerchantCategory,
   toMonthKey,
 } from '../../lib/admin-desk/recharts-metrics'
@@ -257,4 +259,101 @@ test('calculateMerchantPortfolioDistribution segments by category and computes s
   assert.ok(electroCategory)
   assert.equal(electroCategory.activePortfolioVolume, 100_000)
   assert.equal(electroCategory.shareOfTotalPortfolioPct, 25)
+})
+
+test('getThermalHeatStyle assigns correct levels and colors by threshold', () => {
+  const opt = getThermalHeatStyle(2.5, 15)
+  assert.equal(opt.level, 'optimal')
+  assert.equal(opt.hex, '#059669')
+
+  const mod = getThermalHeatStyle(7.5, 15)
+  assert.equal(mod.level, 'moderate')
+
+  const ele = getThermalHeatStyle(12.0, 15)
+  assert.equal(ele.level, 'elevated')
+
+  const crit = getThermalHeatStyle(18.5, 15)
+  assert.equal(crit.level, 'critical')
+  assert.equal(crit.hex, '#dc2626')
+
+  const severe = getThermalHeatStyle(35.0, 15)
+  assert.equal(severe.level, 'critical')
+  assert.equal(severe.hex, '#b91c1c')
+})
+
+test('calculateCriticalDelinquencyAlerts flags categories exceeding 15% threshold', () => {
+  const dummyCategories = [
+    {
+      category: 'Construcción y Ferretería',
+      categorySlug: 'construccion-y-ferreteria',
+      merchantsCount: 3,
+      activeLoansCount: 8,
+      totalPlacedVolume: 5_000_000,
+      activePortfolioVolume: 3_800_000,
+      shareOfTotalPortfolioPct: 35,
+      delinquentVolume: 950_000,
+      delinquencyRatePct: 25.0, // > 15% -> CRITICAL!
+      avgTicket: 625_000,
+      color: '#2563eb',
+    },
+    {
+      category: 'Tecnología y Celulares',
+      categorySlug: 'tecnologia-y-celulares',
+      merchantsCount: 2,
+      activeLoansCount: 5,
+      totalPlacedVolume: 2_000_000,
+      activePortfolioVolume: 1_500_000,
+      shareOfTotalPortfolioPct: 20,
+      delinquentVolume: 300_000,
+      delinquencyRatePct: 20.0, // > 15% -> CRITICAL!
+      avgTicket: 400_000,
+      color: '#7c3aed',
+    },
+    {
+      category: 'Electro y Hogar',
+      categorySlug: 'electro-y-hogar',
+      merchantsCount: 4,
+      activeLoansCount: 12,
+      totalPlacedVolume: 6_000_000,
+      activePortfolioVolume: 4_500_000,
+      shareOfTotalPortfolioPct: 40,
+      delinquentVolume: 180_000,
+      delinquencyRatePct: 4.0, // < 15% -> OPTIMAL
+      avgTicket: 500_000,
+      color: '#059669',
+    },
+    {
+      category: 'Indumentaria',
+      categorySlug: 'indumentaria',
+      merchantsCount: 2,
+      activeLoansCount: 4,
+      totalPlacedVolume: 800_000,
+      activePortfolioVolume: 600_000,
+      shareOfTotalPortfolioPct: 5,
+      delinquentVolume: 72_000,
+      delinquencyRatePct: 12.0, // 10-15% -> ELEVATED (not critical)
+      avgTicket: 200_000,
+      color: '#d97706',
+    },
+  ]
+
+  const alerts = calculateCriticalDelinquencyAlerts(dummyCategories, 15)
+
+  assert.equal(alerts.thresholdPct, 15)
+  assert.equal(alerts.totalCategoriesEvaluated, 4)
+  assert.equal(alerts.criticalCategoriesCount, 2)
+  assert.equal(alerts.hasCriticalAlerts, true)
+  assert.equal(alerts.totalPortfolioAtCriticalRisk, 3_800_000 + 1_500_000)
+  assert.equal(alerts.totalDelinquentInCriticalSectors, 950_000 + 300_000)
+
+  // Critical categories list
+  assert.equal(alerts.criticalCategories.length, 2)
+  assert.equal(alerts.criticalCategories[0].category, 'Construcción y Ferretería')
+  assert.equal(alerts.criticalCategories[0].isCritical, true)
+  assert.equal(alerts.criticalCategories[0].heatLevel, 'critical')
+  assert.equal(alerts.criticalCategories[1].category, 'Tecnología y Celulares')
+  assert.equal(alerts.criticalCategories[1].isCritical, true)
+
+  // Max and avg
+  assert.equal(alerts.maxMoraPct, 25.0)
 })

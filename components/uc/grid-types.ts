@@ -77,4 +77,6 @@ export type GridConfig = {
   toolbar?: boolean
   summary?: { noun: string; sumKey?: string; sumLabel?: string }
   empty?: string
+  /** Habilita botón para exportar registros a Excel (.xlsx). */
+  exportExcel?: boolean | { filename?: string; label?: string; sheetName?: string }
 }

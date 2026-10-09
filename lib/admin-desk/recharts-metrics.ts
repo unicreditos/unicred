@@ -1,4 +1,4 @@
-import type { Credit, LoanApplication, Disbursement, Merchant, CollectionCase, Payment } from './types'
+import type { Credit, Disbursement, Merchant } from './types'
 
 export interface MonthlyPlacementPoint {
   key: string // '2025-11'
@@ -69,6 +69,60 @@ export interface ExecutiveKpiSummary {
   bestMonthLabel: string
   bestMonthVolume: number
   avgMonthlyGrowthPct: number
+}
+
+export type HeatLevel = 'optimal' | 'moderate' | 'elevated' | 'critical'
+
+export interface ThermalHeatStyle {
+  level: HeatLevel
+  hex: string
+  bgClass: string
+  textClass: string
+  borderClass: string
+  ringClass: string
+  badgeBgClass: string
+  badgeTextClass: string
+  badgeLabel: string
+  riskLabel: string
+}
+
+export interface CriticalAlertRubro {
+  category: string
+  categorySlug: string
+  delinquencyRatePct: number
+  isCritical: boolean // Tasa de mora > threshold (por defecto 15%)
+  heatLevel: HeatLevel
+  heatHex: string
+  heatBgClass: string
+  heatTextClass: string
+  heatBorderClass: string
+  heatRingClass: string
+  badgeBgClass: string
+  badgeTextClass: string
+  badgeLabel: string
+  activePortfolioVolume: number
+  delinquentVolume: number
+  totalPlacedVolume: number
+  merchantsCount: number
+  activeLoansCount: number
+  shareOfTotalPortfolioPct: number
+  riskLevelText: string
+  mitigationProtocol: string
+  urgencyLevel: 'alta' | 'media' | 'baja' | 'ninguna'
+}
+
+export interface CriticalAlertsSummary {
+  thresholdPct: number // 15%
+  totalCategoriesEvaluated: number
+  criticalCategoriesCount: number
+  hasCriticalAlerts: boolean
+  totalPortfolioAtCriticalRisk: number
+  totalDelinquentInCriticalSectors: number
+  percentOfDelinquencyInCriticalSectors: number
+  categories: CriticalAlertRubro[]
+  criticalCategories: CriticalAlertRubro[]
+  maxMoraPct: number
+  avgMoraPct: number
 }
 
 const MONTH_NAMES_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -536,5 +590,163 @@ export function calculateExecutiveKpiSummary(
     bestMonthLabel,
     bestMonthVolume,
     avgMonthlyGrowthPct,
+  }
+}
+
+/**
+ * Determina el estilo térmico (paleta de calor) y clasificación de riesgo para un nivel de mora dado.
+ */
+export function getThermalHeatStyle(ratePct: number, thresholdPct = 15): ThermalHeatStyle {
+  if (ratePct >= thresholdPct) {
+    const isSevere = ratePct >= 25
+    return {
+      level: 'critical',
+      hex: isSevere ? '#b91c1c' : '#dc2626',
+      bgClass: 'bg-red-50/90',
+      textClass: 'text-red-700',
+      borderClass: isSevere ? 'border-red-500' : 'border-red-400',
+      ringClass: 'ring-2 ring-red-500/30',
+      badgeBgClass: 'bg-red-100',
+      badgeTextClass: 'text-red-800',
+      badgeLabel: `Crítico (>${thresholdPct}%)`,
+      riskLabel: 'Riesgo Crítico de Mora',
+    }
+  }
+  if (ratePct >= 10) {
+    return {
+      level: 'elevated',
+      hex: '#ea580c',
+      bgClass: 'bg-orange-50/80',
+      textClass: 'text-orange-700',
+      borderClass: 'border-orange-300',
+      ringClass: 'ring-1 ring-orange-300/40',
+      badgeBgClass: 'bg-orange-100',
+      badgeTextClass: 'text-orange-800',
+      badgeLabel: 'Vigilancia (10-15%)',
+      riskLabel: 'Riesgo Elevado',
+    }
+  }
+  if (ratePct >= 5) {
+    return {
+      level: 'moderate',
+      hex: '#ca8a04',
+      bgClass: 'bg-amber-50/70',
+      textClass: 'text-amber-700',
+      borderClass: 'border-amber-300',
+      ringClass: '',
+      badgeBgClass: 'bg-amber-100',
+      badgeTextClass: 'text-amber-800',
+      badgeLabel: 'Precaución (5-10%)',
+      riskLabel: 'Riesgo Moderado',
+    }
+  }
+  return {
+    level: 'optimal',
+    hex: '#059669',
+    bgClass: 'bg-emerald-50/70',
+    textClass: 'text-emerald-700',
+    borderClass: 'border-emerald-200',
+    ringClass: '',
+    badgeBgClass: 'bg-emerald-100',
+    badgeTextClass: 'text-emerald-800',
+    badgeLabel: 'Saludable (<5%)',
+    riskLabel: 'Riesgo Controlado',
+  }
+}
+
+/**
+ * 5. Calcula la sección de Alertas Críticas y Mapa de Calor para rubros comerciales.
+ * Identifica y resalta aquellos rubros donde la tasa de morosidad supera el umbral (15% por defecto).
+ */
+export function calculateCriticalDelinquencyAlerts(
+  categories: MerchantCategoryMetric[],
+  thresholdPct = 15,
+): CriticalAlertsSummary {
+  const evaluatedCategories: CriticalAlertRubro[] = categories.map((c) => {
+    const isCritical = c.delinquencyRatePct >= thresholdPct
+    const style = getThermalHeatStyle(c.delinquencyRatePct, thresholdPct)
+
+    let mitigationProtocol = 'Continuar flujo habitual de originación y monitoreo de saldos en liquidación mensual.'
+    let urgencyLevel: CriticalAlertRubro['urgencyLevel'] = 'ninguna'
+
+    if (isCritical) {
+      urgencyLevel = 'alta'
+      if (c.delinquencyRatePct >= 30) {
+        mitigationProtocol =
+          'SUSPENSIÓN INMEDIATA: Pausar aprobación automática en comercios del rubro. Bloqueo de líneas rotativas y derivación directa a cobranza prejudicial y prejudicial externa.'
+      } else {
+        mitigationProtocol =
+          'ALERTA OPERATIVA: Exigir 25% de anticipo mínimo al originar en este rubro. Reforzar avisos preventivos y contactar a los titulares con mora > 15 días.'
+      }
+    } else if (c.delinquencyRatePct >= 10) {
+      urgencyLevel = 'media'
+      mitigationProtocol =
+        'VIGILANCIA PREVENTIVA: Reducir cupos crediticios máximos en un 20% y realizar control de scoring crediticio más estricto.'
+    } else if (c.delinquencyRatePct >= 5) {
+      urgencyLevel = 'baja'
+      mitigationProtocol =
+        'CONTROL DE MORA TEMPRANA: Notificaciones automáticas de vencimiento vía SMS/WhatsApp 48 horas antes de cada cuota.'
+    }
+
+    return {
+      category: c.category,
+      categorySlug: c.categorySlug,
+      delinquencyRatePct: c.delinquencyRatePct,
+      isCritical,
+      heatLevel: style.level,
+      heatHex: style.hex,
+      heatBgClass: style.bgClass,
+      heatTextClass: style.textClass,
+      heatBorderClass: style.borderClass,
+      heatRingClass: style.ringClass,
+      badgeBgClass: style.badgeBgClass,
+      badgeTextClass: style.badgeTextClass,
+      badgeLabel: style.badgeLabel,
+      activePortfolioVolume: c.activePortfolioVolume,
+      delinquentVolume: c.delinquentVolume,
+      totalPlacedVolume: c.totalPlacedVolume,
+      merchantsCount: c.merchantsCount,
+      activeLoansCount: c.activeLoansCount,
+      shareOfTotalPortfolioPct: c.shareOfTotalPortfolioPct,
+      riskLevelText: style.riskLabel,
+      mitigationProtocol,
+      urgencyLevel,
+    }
+  })
+
+  // Ordenar: primero los críticos (mayor a menor mora), luego los demás por mayor tasa de mora
+  evaluatedCategories.sort((a, b) => {
+    if (a.isCritical && !b.isCritical) return -1
+    if (!a.isCritical && b.isCritical) return 1
+    return b.delinquencyRatePct - a.delinquencyRatePct || b.delinquentVolume - a.delinquentVolume
+  })
+
+  const criticalCategories = evaluatedCategories.filter((c) => c.isCritical)
+  const totalPortfolioAtCriticalRisk = criticalCategories.reduce((s, c) => s + c.activePortfolioVolume, 0)
+  const totalDelinquentInCriticalSectors = criticalCategories.reduce((s, c) => s + c.delinquentVolume, 0)
+
+  const totalDelinquentAll = evaluatedCategories.reduce((s, c) => s + c.delinquentVolume, 0)
+  const percentOfDelinquencyInCriticalSectors = totalDelinquentAll > 0
+    ? Math.round((totalDelinquentInCriticalSectors / totalDelinquentAll) * 1000) / 10
+    : 0
+
+  const rates = evaluatedCategories.map((c) => c.delinquencyRatePct)
+  const maxMoraPct = rates.length > 0 ? Math.max(...rates) : 0
+  const avgMoraPct = rates.length > 0
+    ? Math.round((rates.reduce((s, r) => s + r, 0) / rates.length) * 10) / 10
+    : 0
+
+  return {
+    thresholdPct,
+    totalCategoriesEvaluated: evaluatedCategories.length,
+    criticalCategoriesCount: criticalCategories.length,
+    hasCriticalAlerts: criticalCategories.length > 0,
+    totalPortfolioAtCriticalRisk,
+    totalDelinquentInCriticalSectors,
+    percentOfDelinquencyInCriticalSectors,
+    categories: evaluatedCategories,
+    criticalCategories,
+    maxMoraPct,
+    avgMoraPct,
   }
 }
