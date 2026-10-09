@@ -75,7 +75,7 @@ describe('2FA por correo contra Postgres real', { skip: URL_ENV ? false : 'TEST_
   const auditOf = async (userId: string) => (await pool.query(`SELECT action, summary, changes FROM admin_audit_log WHERE "targetUserId" = $1 ORDER BY "createdAt", id`, [userId])).rows
 
   it('el SQL se aplica dos veces sin errores (idempotente) y crea las tablas', async () => {
-    const r = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_name IN ('admin_email_otp','admin_second_factor','kyc_evidence','kyc_evidence_access_log')`)
+    const r = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ('admin_email_otp','admin_second_factor','kyc_evidence','kyc_evidence_access_log')`)
     assert.equal(r.rows.length, 4)
   })
 

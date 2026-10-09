@@ -6,6 +6,8 @@ import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { db } from '@/lib/db'
 import { bcraCheck, diditWebhookLog, kycVerification, profile, user } from '@/lib/db/schema'
 import { markDiditWebhookProcessed, processDiditWebhook } from '@/lib/didit'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
+import { releaseWebhookReplay, claimWebhookReplay } from '@/lib/webhook-replay-store'
 import { namesMatch } from '@/lib/registration-preflight-core'
 
 /** Un webhook sin procesar pasados estos minutos se considera fallido. */
@@ -41,6 +43,8 @@ export async function resendDiditWebhook(id: string, actorUserId: string) {
   if (!row) throw new Error('Webhook no encontrado')
   const payload = (row.payload ?? null) as Record<string, unknown> | null
   if (!payload) throw new Error('El webhook no tiene payload guardado')
+  // Un solo reproceso a la vez (aunque dos operadores hagan clic juntos) y nunca sobre uno ya procesado.
+  if (!(await claimWebhookReplay(db, id))) throw new Error('El webhook ya se procesó o se está reprocesando')
   try {
     const result = await processDiditWebhook(payload)
     await markDiditWebhookProcessed(row.eventId)
@@ -54,6 +58,7 @@ export async function resendDiditWebhook(id: string, actorUserId: string) {
     }).catch(() => undefined)
     return { ok: true as const, result }
   } catch (err) {
+    await releaseWebhookReplay(db, id).catch(() => undefined)
     await recordAudit({
       actorUserId,
       action: 'DIDIT_WEBHOOK_REPLAY_FAILED',
@@ -163,19 +168,18 @@ export async function refreshArca(userId: string, actorUserId: string) {
   const [k] = await db.select().from(kycVerification).where(eq(kycVerification.userId, userId)).limit(1)
   if (!k) throw new Error('El cliente no tiene verificación de identidad')
   const now = new Date()
-  const prev = (k.ocrData as Record<string, unknown> | null) ?? {}
   const mismatch = namesMatch(persona.name, u?.name) === 'mismatch'
   await db
     .update(kycVerification)
     .set({
-      ocrData: {
-        ...prev,
+      // Fusion atomica: no pisa lo que un webhook de Didit escriba a la vez en ocrData.
+      ocrData: ocrMergeSql({
         arcaPadron: snapshotFromPersona(persona, now.toISOString()),
         arcaLookedUpAt: now.toISOString(),
         ...(mismatch
           ? { manualReview: { reason: 'arca_name_mismatch', arcaName: persona.name, declaredName: u?.name ?? '', flaggedAt: now.toISOString() } }
           : {}),
-      },
+      }),
       updatedAt: now,
     })
     .where(eq(kycVerification.id, k.id))

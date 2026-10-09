@@ -1,6 +1,8 @@
 'use server'
 
 import { persistBcraReportForUser } from '@/lib/bcra-report'
+import { isUniqueViolation } from '@/lib/pg-errors'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
 import { runRegistrationPreflight } from '@/lib/registration-preflight'
 import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
@@ -204,27 +206,35 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   const accountRole = input.accountType === 'comercio' ? 'merchant' : 'customer'
   const consentIp = await clientKey()
 
-  await db
-    .update(profile)
-    .set({
-      role: accountRole,
-      cuil,
-      dni,
-      phone: input.phone.trim(),
-      birthDate: input.birthDate,
-      province,
-      department: department || null,
-      city,
-      postalCode: postalCode || null,
-      address,
-      monthlyIncome: String(income),
-      employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : 'A completar'),
-      kycStatus: 'pending',
-      bcraConsentAt: now,
-      bcraConsentIp: consentIp,
-      updatedAt: now,
-    })
-    .where(eq(profile.userId, userId))
+  try {
+    await db
+      .update(profile)
+      .set({
+        role: accountRole,
+        cuil,
+        dni,
+        phone: input.phone.trim(),
+        birthDate: input.birthDate,
+        province,
+        department: department || null,
+        city,
+        postalCode: postalCode || null,
+        address,
+        monthlyIncome: String(income),
+        employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : 'A completar'),
+        kycStatus: 'pending',
+        bcraConsentAt: now,
+        bcraConsentIp: consentIp,
+        updatedAt: now,
+      })
+      .where(eq(profile.userId, userId))
+  } catch (err) {
+    // Dos altas simultáneas con el mismo CUIL: gana una, la otra recibe el mismo mensaje que la comprobación previa.
+    if (isUniqueViolation(err)) {
+      return { ok: false as const, error: 'Ese CUIT/CUIL ya tiene una cuenta UNICRÉDITOS. Ingresá con tu email.' }
+    }
+    throw err
+  }
 
   await db.update(user).set({ role: accountRole, updatedAt: now }).where(eq(user.id, userId))
 
@@ -234,6 +244,16 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       ? snapshotFromIdentity(input.identity)
       : null
   const prevOcr = (existingKyc?.ocrData as Record<string, unknown> | null) ?? {}
+  const ocrPatch = {
+    accountType: input.accountType,
+    sources: input.identity?.sources ?? [],
+    nameConfirmed: input.name.trim(),
+    ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
+    ...(preflight.persona
+      ? { arcaPadron: snapshotFromPersona(preflight.persona), arcaLookedUpAt: now.toISOString() }
+      : {}),
+    ...(preflight.manualReview ? { manualReview: { ...preflight.manualReview, flaggedAt: now.toISOString() } } : {}),
+  }
   const kycValues = {
     dniNumber: dni,
     cuilVerified: true,
@@ -241,23 +261,14 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     verificationLevel: 'biometric' as const,
     provider: 'didit',
     providerReferenceId: diditSessionId,
-    ocrData: {
-      ...prevOcr,
-      accountType: input.accountType,
-      sources: input.identity?.sources ?? [],
-      nameConfirmed: input.name.trim(),
-      ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
-      // Padrón ARCA oficial del titular (también para clientes): prevalece sobre el dato declarado.
-      ...(preflight.persona
-        ? { arcaPadron: snapshotFromPersona(preflight.persona), arcaLookedUpAt: now.toISOString() }
-        : {}),
-      // Nombre distinto al de ARCA: no se rechaza, queda para revisión manual de un analista.
-      ...(preflight.manualReview ? { manualReview: { ...preflight.manualReview, flaggedAt: now.toISOString() } } : {}),
-    },
+    ocrData: { ...prevOcr, ...ocrPatch },
     updatedAt: now,
   }
   if (existingKyc) {
-    await db.update(kycVerification).set(kycValues).where(eq(kycVerification.id, existingKyc.id))
+    await db
+      .update(kycVerification)
+      .set({ ...kycValues, ocrData: ocrMergeSql(ocrPatch) })
+      .where(eq(kycVerification.id, existingKyc.id))
   } else {
     await db.insert(kycVerification).values({
       id: newId('kyc'),

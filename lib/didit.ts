@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
 import { preserveLegacyEvidence, saveVersionedEvidence } from '@/lib/evidence'
 import { isKycFresh } from '@/lib/kyc-validity'
 import { db } from '@/lib/db'
@@ -471,7 +472,11 @@ export async function applyDiditDecision(input: {
   }
 
   if (existing) {
-    await db.update(kycVerification).set(values).where(eq(kycVerification.id, existing.id))
+    // ocrData se fusiona en la base (solo la clave didit): no pisa claves que otro proceso escriba a la vez (p. ej. arcaPadron).
+    await db
+      .update(kycVerification)
+      .set({ ...values, ocrData: ocrMergeSql({ didit: values.ocrData.didit }) })
+      .where(eq(kycVerification.id, existing.id))
   } else {
     await db.insert(kycVerification).values({
       id: newId('kyc'),

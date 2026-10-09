@@ -61,3 +61,22 @@ describe('Revision: rutas nuevas del panel', () => {
     for (const f of ['app/api/admin/didit-webhooks/route.ts', 'app/api/admin/kyc-evidence/[userId]/route.ts', 'app/api/admin/kyc-evidence/[userId]/[kind]/route.ts']) assert.match(src(f), /serverError\(err/, f)
   })
 })
+describe('Revision: atomicidad cableada en el codigo', () => {
+  it('reproceso de webhook toma el reclamo atomico y lo libera si falla', () => {
+    const s = src('lib/admin-external.ts')
+    assert.match(s, /claimWebhookReplay\(db, id\)/)
+    assert.match(s, /releaseWebhookReplay\(db, id\)/)
+  })
+  it('ocrData se fusiona en la base (Didit, ARCA, registro), no se reescribe entero', () => {
+    assert.match(src('lib/didit.ts'), /ocrMergeSql\(/)
+    assert.match(src('lib/admin-external.ts'), /ocrMergeSql\(/)
+    assert.match(src('app/actions/register.ts'), /ocrMergeSql\(ocrPatch\)/)
+  })
+  it('el alta traduce la violacion de CUIL unico a un mensaje, y el SQL 03 existe', () => {
+    assert.match(src('app/actions/register.ts'), /isUniqueViolation\(err\)/)
+    assert.match(src('scripts/sql/2026-10-09_03_profile_cuil_unique.sql'), /profile_cuil_unique_idx/)
+  })
+  it('el registro de accesos a evidencia es de solo agregar en la base', () => {
+    assert.match(src('scripts/sql/2026-10-09_02_kyc_evidence_and_admin_otp.sql'), /kyc_evidence_access_log_append_only_trg/)
+  })
+})

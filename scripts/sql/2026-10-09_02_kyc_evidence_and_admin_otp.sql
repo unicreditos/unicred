@@ -82,3 +82,13 @@ CREATE TABLE IF NOT EXISTS admin_second_factor (
 CREATE INDEX IF NOT EXISTS admin_second_factor_user_idx ON admin_second_factor ("userId", "verifiedAt" DESC);
 ALTER TABLE admin_second_factor ADD COLUMN IF NOT EXISTS "sessionId" text;
 CREATE INDEX IF NOT EXISTS admin_second_factor_session_idx ON admin_second_factor ("userId", "sessionId");
+
+-- 5) El registro de accesos es de SOLO AGREGAR: ni editar ni borrar (hallado por la prueba contra Postgres real) ---
+CREATE OR REPLACE FUNCTION kyc_evidence_access_log_append_only() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'kyc_evidence_access_log es de solo agregar: no se edita ni se borra';
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS kyc_evidence_access_log_append_only_trg ON kyc_evidence_access_log;
+CREATE TRIGGER kyc_evidence_access_log_append_only_trg BEFORE UPDATE OR DELETE ON kyc_evidence_access_log
+  FOR EACH ROW EXECUTE FUNCTION kyc_evidence_access_log_append_only();

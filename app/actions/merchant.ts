@@ -14,7 +14,6 @@ import {
   computeCreditOffer,
   decideUnderwriting,
   statusForDecision,
-  manualDecisionOnly,
   OPEN_LOAN_STATUSES,
   type AppRepaymentHistory,
 } from '@/lib/loan-underwriting'

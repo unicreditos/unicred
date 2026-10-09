@@ -44,9 +44,7 @@ describe('Alta: BCRA y ARCA antes de crear la cuenta', () => {
   it('completeRegistration corre el control antes de la primera escritura', () => {
     const s = src('app/actions/register.ts')
     const pre = s.indexOf('runRegistrationPreflight({')
-    const firstWrite = s.indexOf('await db\n    .update(profile)')
-    const firstWriteCrlf = s.indexOf('await db\r\n    .update(profile)')
-    const w = firstWrite >= 0 ? firstWrite : firstWriteCrlf
+    const w = s.search(/\.update\(profile\)/)
     assert.ok(pre > 0 && w > pre)
     assert.match(s, /KYC_MANUAL_REVIEW_FLAGGED/)
   })
