@@ -329,8 +329,11 @@ export function validateWebhookSignature(opts: {
   queryDataId?: string | null
   body?: any
   toleranceSeconds?: number
+  /** Solo para tests; en runtime se usa MERCADO_PAGO_WEBHOOK_SECRET. */
+  secretOverride?: string
 }): boolean {
-  if (!webhookSecret) return false
+  const secret = opts.secretOverride ?? webhookSecret
+  if (!secret) return false
   const xSig = opts.headers['x-signature']
   // Sin firma HMAC no validamos con data.id (eso no es el secret).
   if (!xSig) return false
@@ -343,7 +346,9 @@ export function validateWebhookSignature(opts: {
   const ts = parts.get('ts')
   const v1 = parts.get('v1')
   if (!ts || !v1) return false
-  const dataId = opts.queryDataId ?? (opts.body?.data?.id ?? opts.body?.id)
+  const rawDataId = opts.queryDataId ?? (opts.body?.data?.id ?? opts.body?.id)
+  // Mercado Pago firma con el data.id en MINUSCULAS cuando es alfanumerico (ej. ORD...).
+  const dataId = rawDataId === undefined || rawDataId === null || rawDataId === '' ? '' : String(rawDataId).toLowerCase()
   const requestId = opts.headers['x-request-id'] ?? ''
   if (!dataId) return false
 
@@ -354,7 +359,7 @@ export function validateWebhookSignature(opts: {
 
   const manifest = `id:${dataId};request-id:${requestId};ts:${ts}`
   try {
-    const expected = createHmac('sha256', webhookSecret).update(manifest).digest('hex')
+    const expected = createHmac('sha256', secret).update(manifest).digest('hex')
     const a = Buffer.from(expected)
     const b = Buffer.from(v1)
     if (a.length !== b.length) return false
