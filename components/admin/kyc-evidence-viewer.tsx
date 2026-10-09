@@ -40,6 +40,8 @@ export function KycEvidenceViewer({ userId }: { userId: string }) {
   }, [userId])
 
   useEffect(() => {
+    // Carga inicial desde la API (estado externo); el setState ocurre despu\u00e9s del await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 
