@@ -32,6 +32,9 @@ import { loanPricingFields } from '@/lib/loan-rates'
 import {
   computeCreditOffer,
   decideUnderwriting,
+  statusForDecision,
+  manualDecisionOnly,
+  assertHumanDecision,
   OPEN_LOAN_STATUSES,
   type AppRepaymentHistory,
 } from '@/lib/loan-underwriting'
@@ -422,14 +425,14 @@ export async function mobileApplyLoan(
       term,
       monthlyRate: String(monthlyRate),
       ...loanPricingFields(amort),
-      status: 'rejected',
+      status: manualDecisionOnly() ? 'pending' : 'rejected',
       purpose,
       scoreAtApproval: score.score,
-      rejectionReason: offer.reason || 'Fuera de oferta',
+      rejectionReason: manualDecisionOnly() ? null : offer.reason || 'Fuera de oferta',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
-    return { id: loanId, status: 'REJECTED', applicationDate: new Date().toISOString() }
+    return { id: loanId, status: manualDecisionOnly() ? 'PENDING' : 'REJECTED', applicationDate: new Date().toISOString() }
   }
 
   const amort = computeFrenchAmortization(amount, term, monthlyRate)
@@ -441,8 +444,7 @@ export async function mobileApplyLoan(
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
     rules,
   })
-  const status =
-    decision.outcome === 'rejected' ? 'rejected' : decision.outcome === 'pending_review' ? 'pending' : 'approved'
+  const status = statusForDecision(decision)
   const loanId = newId('loan')
   const now = new Date()
 
@@ -1247,9 +1249,10 @@ export async function mobileAdminLoans(status?: string, page = 1, limit = 50) {
   }
 }
 
-export async function mobileAdminApproveLoan(adminId: string, id: string) {
+export async function mobileAdminApproveLoan(adminId: string, id: string, note?: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
+  assertHumanDecision({ action: 'approve', note, scoreAtApproval: existing.scoreAtApproval })
   assertAdminTransition(existing.status, 'approved')
   const now = new Date()
   await db.transaction(async (tx) => {
@@ -1257,6 +1260,15 @@ export async function mobileAdminApproveLoan(adminId: string, id: string) {
       .update(loan)
       .set({ status: 'approved', rejectionReason: null, updatedAt: now })
       .where(eq(loan.id, id))
+    await recordAudit({
+      actorUserId: adminId,
+      action: 'LOAN_APPROVED',
+      entityType: 'loan',
+      entityId: id,
+      targetUserId: existing.userId,
+      summary: `Aprobado por analista: ${String(note).trim()}`,
+      changes: { nota: String(note).trim(), score: existing.scoreAtApproval },
+    })
     await ensureLoanContract(
       tx,
       { id, userId: existing.userId, type: existing.type, status: 'approved' },
@@ -1269,6 +1281,7 @@ export async function mobileAdminApproveLoan(adminId: string, id: string) {
 export async function mobileAdminRejectLoan(_adminId: string, id: string, reason: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
+  assertHumanDecision({ action: 'reject', note: reason })
   assertAdminTransition(existing.status, 'rejected')
   await db.transaction(async (tx) => {
     await tx

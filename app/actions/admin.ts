@@ -18,6 +18,7 @@ import {
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
 import { requirePermission } from '@/lib/rbac'
+import { assertHumanDecision } from '@/lib/loan-underwriting'
 import { desc, eq, sql, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
@@ -420,6 +421,8 @@ export async function approveLoan(
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'approved')
+  // Decisión humana: nota obligatoria y recomendación (score/BCRA) previa.
+  const decisionNote = assertHumanDecision({ action: 'approve', note: opts?.notes, scoreAtApproval: opts?.score ?? existing.scoreAtApproval })
   // La solicitud puede llevar días en cola: si el KYC/Didit del titular cambió
   // o se invalidó mientras tanto (p. ej. cambió DNI/CUIL), no se aprueba a
   // ciegas sobre una identidad que ya no está verificada.
@@ -496,6 +499,7 @@ export async function approveLoan(
     summary: `Crédito aprobado por ${principal.toFixed(2)} ARS en ${term} cuotas`,
     changes: diffFields(existing as any, {
       status: 'approved',
+      nota: decisionNote,
       principal: principal.toFixed(2),
       term,
       monthlyRate: String(monthlyRate),
@@ -518,6 +522,7 @@ export async function rejectLoan(id: string, reason: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'rejected')
+  assertHumanDecision({ action: 'reject', note: reason })
 
   await db.transaction(async (tx) => {
     await tx

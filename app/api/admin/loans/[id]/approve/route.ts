@@ -16,7 +16,8 @@ export async function POST(req: Request,{ params }: { params: Promise<Record<str
   try {
     const userId = await requireMobileUserId(req)
     await requireMobileAdmin(userId, 'credits.approve')
-    const id = String((await params).id); return mobileJson(req, await mobileAdminApproveLoan(userId, id))
+    const body = await req.json().catch(() => ({})) as { note?: string; comment?: string }
+    const id = String((await params).id); return mobileJson(req, await mobileAdminApproveLoan(userId, id, String(body.note || body.comment || '')))
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error'
     const status = /unauthor/i.test(message) || message === 'unauthorized' ? 401 : /No autorizado/i.test(message) ? 403 : 400

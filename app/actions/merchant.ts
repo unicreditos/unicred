@@ -13,6 +13,8 @@ import { catalogByType } from '@/lib/loan-catalog'
 import {
   computeCreditOffer,
   decideUnderwriting,
+  statusForDecision,
+  manualDecisionOnly,
   OPEN_LOAN_STATUSES,
   type AppRepaymentHistory,
 } from '@/lib/loan-underwriting'
@@ -372,17 +374,10 @@ export async function createMerchantSale(input: {
     rejectedChecksCount: Number(consulted.snapshot.chequesRechazados?.count ?? 0),
   })
 
-  let status: 'pending' | 'approved' | 'rejected' = 'pending'
-  let rejectionReason: string | null = null
-  if (decision.outcome === 'rejected') {
-    status = 'rejected'
-    rejectionReason = decision.reason
-  } else if (decision.outcome === 'pending_review') {
-    status = 'pending'
-    rejectionReason = decision.reason
-  } else {
-    status = 'approved'
-  }
+  // El score solo recomienda: en modo manual la solicitud siempre queda 'pending' (decide Finanzas).
+  const status = statusForDecision(decision)
+  const rejectionReason: string | null =
+    status === 'rejected' || decision.outcome !== 'qualified' ? decision.reason : null
 
   const loanId = newId('loan')
   const now = new Date()
@@ -540,17 +535,10 @@ export async function requestConsumoAtMerchant(input: {
     rejectedChecksCount: Number(consulted.snapshot.chequesRechazados?.count ?? 0),
   })
 
-  let status: 'pending' | 'approved' | 'rejected' = 'pending'
-  let rejectionReason: string | null = null
-  if (decision.outcome === 'rejected') {
-    status = 'rejected'
-    rejectionReason = decision.reason
-  } else if (decision.outcome === 'pending_review') {
-    status = 'pending'
-    rejectionReason = decision.reason
-  } else {
-    status = 'approved'
-  }
+  // El score solo recomienda: en modo manual la solicitud siempre queda 'pending' (decide Finanzas).
+  const status = statusForDecision(decision)
+  const rejectionReason: string | null =
+    status === 'rejected' || decision.outcome !== 'qualified' ? decision.reason : null
 
   const loanId = newId('loan')
   const now = new Date()

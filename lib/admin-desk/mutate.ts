@@ -120,14 +120,14 @@ export async function deskMutate(
     switch (action) {
       case 'approveApplication': {
         const applicationId = String(payload.applicationId || '')
-        const comment = String(payload.comment || 'Calificado desde mesa admin')
+        const comment = String(payload.comment || payload.note || '').trim()
         if (!applicationId) return fail('Solicitud requerida')
         const [row] = await db.select().from(loan).where(eq(loan.id, applicationId)).limit(1)
         if (!row) return fail('Solicitud no encontrada')
         if (!(await diditApprovedForUser(row.userId))) {
           return fail('No se puede calificar: KYC Didit no verificado')
         }
-        await mobileAdminApproveLoan(adminUserId, applicationId)
+        await mobileAdminApproveLoan(adminUserId, applicationId, comment)
         await db.transaction(async (tx) => {
           await ensurePendingDisbursement(tx, {
             loanId: applicationId,
@@ -149,7 +149,7 @@ export async function deskMutate(
 
       case 'rejectApplication': {
         const applicationId = String(payload.applicationId || '')
-        const comment = String(payload.comment || 'Rechazado')
+        const comment = String(payload.comment || payload.note || payload.reason || '').trim()
         if (!applicationId) return fail('Solicitud requerida')
         await mobileAdminRejectLoan(adminUserId, applicationId, comment)
         return ok()

@@ -6,7 +6,7 @@ import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
-import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
+import { decideUnderwriting, recommendationOf, statusForDecision, manualDecisionOnly, MANUAL_DECISION_NOTICE, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
 import { getActiveRiskRules } from '@/lib/risk-rules'
 import { loanPricingFields } from '@/lib/loan-rates'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
@@ -411,33 +411,33 @@ export async function requestLoan(input: {
       term,
       monthlyRate: String(monthlyRate),
       ...loanPricingFields(stub),
-      status: 'rejected',
+      status: manualDecisionOnly() ? 'pending' : 'rejected',
       purpose: input.purpose.trim(),
       scoreAtApproval: score.score,
-      rejectionReason: offer.reason,
+      rejectionReason: manualDecisionOnly() ? null : offer.reason,
       disbursedAt: null,
       createdAt: now,
       updatedAt: now,
     })
     await recordAudit({
       actorUserId: userId,
-      action: 'LOAN_AUTO_REJECTED',
+      action: manualDecisionOnly() ? 'LOAN_SENT_TO_REVIEW' : 'LOAN_AUTO_REJECTED',
       entityType: 'loan',
       entityId: loanId,
       targetUserId: userId,
-      summary: 'Solicitud rechazada automáticamente por la política de crédito',
-      changes: { score: score.score, motivo: offer.reason },
+      summary: manualDecisionOnly() ? 'Solicitud enviada a revisi\u00f3n manual (recomendaci\u00f3n: rechazar, fuera de oferta)' : 'Solicitud rechazada automáticamente por la política de crédito',
+      changes: { score: score.score, motivo: offer.reason, recomendacion: 'reject' },
     })
     revalidateCustomer()
     return {
       ok: true as const,
-      status: 'rejected' as const,
+      status: (manualDecisionOnly() ? 'pending' : 'rejected') as 'pending' | 'rejected',
       score: score.score,
       band: score.band,
       reasons: score.reasons,
-      decision: 'rejected' as const,
-      decisionReason: offer.reason,
-      rejectionReason: offer.reason,
+      decision: (manualDecisionOnly() ? 'pending_review' : 'rejected') as 'pending_review' | 'rejected',
+      decisionReason: manualDecisionOnly() ? MANUAL_DECISION_NOTICE : offer.reason,
+      rejectionReason: manualDecisionOnly() ? null : offer.reason,
       loanId,
       contractId: null,
       offerMaxAmount: 0,
@@ -464,18 +464,9 @@ export async function requestLoan(input: {
     rules,
   })
 
-  let status: 'pending' | 'approved' | 'rejected'
-  let rejectionReason: string | null = null
-  if (decision.outcome === 'rejected') {
-    status = 'rejected'
-    rejectionReason = decision.reason
-  } else if (decision.outcome === 'pending_review') {
-    status = 'pending'
-    rejectionReason = null
-  } else {
-    status = 'approved'
-    rejectionReason = null
-  }
+  const recommendation = recommendationOf(decision)
+  const status = statusForDecision(decision)
+  const rejectionReason: string | null = status === 'rejected' ? decision.reason : null
 
   const loanId = newId('loan')
   const now = new Date()
@@ -531,8 +522,8 @@ export async function requestLoan(input: {
         ? 'Solicitud calificada automáticamente por scoring (se emitió el contrato)'
         : status === 'rejected'
           ? 'Solicitud rechazada automáticamente por scoring'
-          : 'Solicitud enviada a revisión manual',
-    changes: { monto: amount, cuotas: term, score: score.score, decision: decision.outcome, motivo: decision.reason },
+          : `Solicitud enviada a revisi\u00f3n manual (recomendaci\u00f3n del sistema: ${recommendation})`,
+    changes: { monto: amount, cuotas: term, score: score.score, recomendacion: recommendation, decision: decision.outcome, motivo: decision.reason },
   })
   revalidateCustomer()
   return {
@@ -541,8 +532,8 @@ export async function requestLoan(input: {
     score: score.score,
     band: score.band,
     reasons: score.reasons,
-    decision: decision.outcome,
-    decisionReason: decision.reason,
+    decision: manualDecisionOnly() ? ('pending_review' as const) : decision.outcome,
+    decisionReason: manualDecisionOnly() ? MANUAL_DECISION_NOTICE : decision.reason,
     rejectionReason,
     loanId,
     contractId,
