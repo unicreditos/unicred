@@ -41,3 +41,6 @@ next-env.d.ts
 .claude/
 .cursor/
 .agents/
+
+# Credenciales QA generadas localmente
+.qa-seed-credentials.local
