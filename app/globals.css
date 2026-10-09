@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -105,8 +105,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   --font-display: var(--font-display-face), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --color-paper: #EDF1EE;
-  --color-ink: #08170F;
+  --color-paper: var(--paper, #EDF1EE);
+  --color-ink: var(--ink, #08170F);
   --color-signal-amber: #F5B83D;
 
   --spacing-4\.5: 1.125rem;
@@ -115,6 +115,8 @@
 
 :root {
   color-scheme: light;
+  --paper: #EDF1EE;
+  --ink: #08170F;
   --background: #F7F8F6;
   --foreground: #0C1612;
   --card: #FFFFFF;
@@ -156,9 +158,11 @@
 
 .dark {
   color-scheme: dark;
+  --paper: #091510;
+  --ink: #050E0A;
   --background: #07100C;
   --foreground: #E2E8E4;
-  --card: #0C1612;
+  --card: #0D1C15;
   --card-foreground: #E2E8E4;
   --popover: #0C1612;
   --popover-foreground: #E2E8E4;

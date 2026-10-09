@@ -70,12 +70,11 @@ export const viewport: Viewport = {
   themeColor: '#20BD5A',
 }
 
-/* Tema de los paneles (claro/oscuro): se aplica antes del primer pintado. Va acá, en el layout raíz, y no
-   en los de los paneles: un <script> dentro de un componente que React vuelve a dibujar en el cliente
-   (al navegar entre pantallas) genera un aviso y no se ejecuta. Solo marca <html data-theme>; los
-   estilos viven bajo .uc, así que el sitio público no cambia. */
+import { ThemeProvider } from '@/components/theme-provider'
+
+/* Tema (claro/oscuro): se aplica antes del primer pintado sin parpadeo. */
 const THEME_SCRIPT =
-  "(function(){try{var t=localStorage.getItem('uc-theme');if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','light')}})();"
+  "(function(){try{var t=localStorage.getItem('theme')||localStorage.getItem('uc-theme');if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}if(t==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();"
 
 export default function RootLayout({
   children,
@@ -87,13 +86,15 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="font-sans antialiased">
-        <SkipLink />
-        <SiteJsonLd />
-        {children}
-        <CookieConsent />
-        <Toaster richColors closeButton position="top-right" />
-        <AnalyticsGate />
+      <body className="font-sans antialiased text-foreground bg-background">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <SkipLink />
+          <SiteJsonLd />
+          {children}
+          <CookieConsent />
+          <Toaster richColors closeButton position="top-right" />
+          <AnalyticsGate />
+        </ThemeProvider>
       </body>
     </html>
   )
