@@ -16,3 +16,7 @@ export function safeNextPath(next: string | null | undefined, fallback = '/'): s
   if (!next || !next.startsWith('/') || next.startsWith('//') || next.includes('\\') || /[\r\n]/.test(next)) return fallback
   return next
 }
+/** Decision del gate: con el requisito encendido y sin factor en ESTA sesion, se desafia. */
+export function gateDecision(required: boolean, passedInSession: boolean): 'allow' | 'challenge' {
+  return !required || passedInSession ? 'allow' : 'challenge'
+}

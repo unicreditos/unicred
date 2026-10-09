@@ -5,6 +5,8 @@ export const OTP_DIGITS = 6
 export const OTP_TTL_MS = 10 * 60_000
 export const OTP_MAX_ATTEMPTS = 5
 export const OTP_MAX_SENDS_PER_HOUR = 5
+/** Espera minima entre dos envíos al mismo usuario. */
+export const OTP_RESEND_COOLDOWN_MS = 60_000
 export const SECOND_FACTOR_TTL_MS = 30 * 60_000
 
 export function generateOtpCode(): string {

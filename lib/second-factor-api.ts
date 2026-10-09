@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { issueAdminOtp, verifyAdminOtp } from '@/lib/admin-otp'
+import { OtpError, issueAdminOtp, verifyAdminOtp } from '@/lib/admin-otp'
 import { adminJson, requestMeta } from '@/lib/admin-api'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
@@ -10,6 +10,7 @@ const MESSAGE = {
   expired: 'El código venció. Pedí uno nuevo.',
   locked: 'Demasiados intentos. Pedí un código nuevo.',
   invalid: 'Código incorrecto.',
+  no_session: 'Tu sesión no es válida. Ingresá de nuevo.',
 } as const
 
 /** Usuario de la sesión actual (sin exigir el segundo factor: es el paso que lo concede). */
@@ -33,10 +34,14 @@ export async function handleSendCode(req: Request, resolveUserId?: () => Promise
   }
   try {
     const { ip } = requestMeta(req)
-    const { expiresAt } = await issueAdminOtp({ userId: who.userId, email: who.email, ip })
-    return adminJson({ ok: true, expiresAt: expiresAt.toISOString() })
+    const { expiresAt, resendAfterSec } = await issueAdminOtp({ userId: who.userId, email: who.email, ip })
+    return adminJson({ ok: true, expiresAt: expiresAt.toISOString(), resendAfterSec })
   } catch (err) {
-    return adminJson({ ok: false, message: (err as Error).message }, 400)
+    if (err instanceof OtpError) {
+      const status = err.code === 'cooldown' || err.code === 'rate_limited' ? 429 : 503
+      return adminJson({ ok: false, code: err.code, message: err.message, retryAfterSec: err.retryAfterSec ?? null }, status)
+    }
+    return adminJson({ ok: false, message: 'No pudimos enviar el código.' }, 503)
   }
 }
 

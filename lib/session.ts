@@ -7,7 +7,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
-import { secondFactorRequiredFor, type FactorRole } from '@/lib/second-factor-core'
+import { gateDecision, secondFactorRequiredFor, type FactorRole } from '@/lib/second-factor-core'
 import { sessionPassedSecondFactor } from '@/lib/second-factor'
 
 export type Role = 'customer' | 'merchant' | 'admin'
@@ -191,7 +191,8 @@ async function secondFactorSatisfied(userId: string, role: FactorRole): Promise<
   if (!secondFactorRequiredFor(role)) return true
   if (_sessionOverride && ALLOW_SESSION_OVERRIDE) return true
   const session = await getSession()
-  return sessionPassedSecondFactor(userId, session?.session?.id)
+  const passed = await sessionPassedSecondFactor(userId, session?.session?.id)
+  return gateDecision(true, passed) === 'allow'
 }
 
 export async function requireAdmin() {
@@ -252,6 +253,9 @@ export async function assertRole(...allowed: Role[]) {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   if (!allowed.includes(role)) throw new Error('No autorizado')
+  if (!(await secondFactorSatisfied(userId, role === 'admin' ? 'admin' : role === 'merchant' ? 'merchant' : 'customer'))) {
+    throw new Error('No autorizado: falta la verificación en dos pasos.')
+  }
   return userId
 }
 
