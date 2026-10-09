@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Credenciales QA generadas localmente
 .qa-seed-credentials.local
+
+# Reportes de simulacion (contienen ids de usuarios)
+/reports/
