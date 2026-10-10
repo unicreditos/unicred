@@ -1,3 +1,4 @@
+import { addDaysAR, formatDMY, startOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
 import {
@@ -44,10 +45,8 @@ function sortItems(items: InboxItem[]) {
 }
 
 async function customerInbox(userId: string): Promise<InboxItem[]> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const week = new Date(today)
-  week.setDate(week.getDate() + 7)
+  const today = startOfDayAR()
+  const week = addDaysAR(today, 7)
 
   const [dues, pays, loans, kycs, disbs] = await Promise.all([
     db
@@ -115,7 +114,7 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
     items.push({
       id: `inst-${row.id}`,
       title: overdue ? `Cuota #${row.number} vencida` : `Cuota #${row.number} próxima`,
-      detail: `${formatARS(row.amount)} · vence ${due.toLocaleDateString('es-AR')}`,
+      detail: `${formatARS(row.amount)} · vence ${formatDMY(due)}`,
       at: iso(row.dueDate),
       href: '/dashboard?tab=pagos',
       tone: overdue ? 'critical' : due <= week ? 'warn' : 'info',
@@ -260,8 +259,7 @@ async function merchantInbox(userId: string): Promise<InboxItem[]> {
 }
 
 async function adminInbox(): Promise<InboxItem[]> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = startOfDayAR()
 
   const [pendingLoans, pendingKyc, pendingMerchants, pendingDisb, overdue] = await Promise.all([
     db

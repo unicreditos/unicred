@@ -8,7 +8,7 @@ type Mode = 'idle' | 'begin' | 'scan' | 'codes' | 'disable' | 'regen'
 
 const post = (url: string, body: unknown) =>
   fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
-const when = (iso: string) => new Date(iso).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })
+const when = (iso: string) => new Date(iso).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Argentina/Buenos_Aires' })
 const field = { minHeight: 44, width: '100%' } as const
 
 export function SecuritySettings() {

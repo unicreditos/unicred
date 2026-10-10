@@ -1,3 +1,4 @@
+import { daysPastDueAR } from '@/lib/date-ar'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
@@ -90,7 +91,7 @@ export async function mobileDashboard(userId: string) {
       const nextInst = pending[0]
       const remaining = pending.reduce((s, i) => s + Number(i.amount), 0)
       const daysUntilDue = nextInst
-        ? Math.ceil((new Date(nextInst.dueDate as Date).getTime() - Date.now()) / 86400000)
+        ? -daysPastDueAR(nextInst.dueDate as Date)
         : null
       const prod = row.productId ? productMap.get(row.productId) : null
       return {
@@ -126,7 +127,7 @@ export async function mobileDashboard(userId: string) {
     const [prod] = loanRow?.productId
       ? await db.select().from(loanProduct).where(eq(loanProduct.id, loanRow.productId)).limit(1)
       : [null]
-    const daysUntilDue = Math.ceil((new Date(nextInstallment.dueDate as Date).getTime() - Date.now()) / 86400000)
+    const daysUntilDue = -daysPastDueAR(nextInstallment.dueDate as Date)
     nextPayment = {
       installmentId: nextInstallment.id,
       loanId: nextInstallment.loanId,
@@ -255,7 +256,7 @@ export async function mobilePaymentsUpcoming(userId: string) {
       const loanRow = loanMap.get(i.loanId)
       const prod = loanRow?.productId ? productMap.get(loanRow.productId) : null
       const due = i.dueDate ? new Date(i.dueDate as Date) : new Date()
-      const daysUntilDue = Math.ceil((due.getTime() - Date.now()) / 86400000)
+      const daysUntilDue = -daysPastDueAR(due)
       return {
         installmentId: i.id,
         loanId: i.loanId,

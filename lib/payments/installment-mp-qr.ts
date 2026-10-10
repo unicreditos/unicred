@@ -1,3 +1,4 @@
+import { addDaysAR, endOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { installment, loan, payment } from '@/lib/db/schema'
 import { installmentPayUrl } from '@/lib/coupon'
@@ -39,7 +40,7 @@ function qrStillValid(row: { expiresAt?: Date | string | null; gatewayResponse?:
 
 export function qrValidUntil(dueDate: Date | string) {
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
-  const withGrace = new Date(due.getTime() + QR_GRACE_DAYS * 24 * 60 * 60 * 1000)
+  const withGrace = addDaysAR(endOfDayAR(due), QR_GRACE_DAYS)
   const min = new Date(Date.now() + 24 * 60 * 60 * 1000)
   const max = new Date(Date.now() + 3600 * 60 * 60 * 1000)
   const target = withGrace > min ? withGrace : min

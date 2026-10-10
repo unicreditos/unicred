@@ -1,5 +1,6 @@
 'use server'
 
+import { addYearsToDateKey, normalizeDateOnly, todayAR } from '@/lib/date-ar'
 import { persistBcraReportForUser } from '@/lib/bcra-report'
 import { isUniqueViolation } from '@/lib/pg-errors'
 import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
@@ -33,11 +34,9 @@ async function clientKey() {
 }
 
 function isAdult(birthDate: string) {
-  const d = new Date(birthDate)
-  if (Number.isNaN(d.getTime())) return false
-  const limit = new Date()
-  limit.setFullYear(limit.getFullYear() - 18)
-  return d <= limit
+  const key = normalizeDateOnly(birthDate)
+  if (!key) return false
+  return key <= addYearsToDateKey(todayAR(), -18)
 }
 
 async function isIdentifierTaken(cuil: string) {

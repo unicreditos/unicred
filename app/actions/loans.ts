@@ -1,5 +1,7 @@
 'use server'
 
+import { adultBirthDateBounds } from '@/lib/didit-expected'
+import { addDaysAR, isValidYmd, startOfDayAR } from '@/lib/date-ar'
 import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
@@ -195,9 +197,9 @@ function parseProfileBirthDate(value: string) {
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
-  const date = new Date(year, month - 1, day)
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
-  return date
+  if (!isValidYmd(year, month, day)) return null
+  // Fecha civil 'AAAA-MM-DD' (sin huso): se compara como texto contra los limites de edad.
+  return `${match[1]}-${match[2]}-${match[3]}`
 }
 
 export async function updateProfile(input: {
@@ -255,12 +257,9 @@ export async function updateProfile(input: {
   }
   const birth = parseProfileBirthDate(input.birthDate)
   if (!birth) throw new Error('Fecha de nacimiento inválida.')
-  const adultLimit = new Date()
-  adultLimit.setFullYear(adultLimit.getFullYear() - 18)
+  const { min: oldestBirth, max: adultLimit } = adultBirthDateBounds()
   if (birth > adultLimit) throw new Error('Tenés que ser mayor de 18 años.')
-  const oldest = new Date()
-  oldest.setFullYear(oldest.getFullYear() - 100)
-  if (birth < oldest) throw new Error('Fecha de nacimiento inválida.')
+  if (birth < oldestBirth) throw new Error('Fecha de nacimiento inválida.')
   if (!input.province?.trim() || !input.department?.trim() || !input.city?.trim() || !input.address?.trim()) {
     throw new Error('Completá provincia, departamento, localidad y dirección.')
   }
@@ -553,10 +552,8 @@ export async function getMyLoans() {
 export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boolean } = {}) {
   const userId = await assertRole('customer')
   await syncOverdueInstallments({ userId })
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const in60 = new Date(today)
-  in60.setDate(in60.getDate() + 60)
+  const today = startOfDayAR()
+  const in60 = addDaysAR(today, 60)
 
   const rows = await db
     .select({
@@ -586,8 +583,7 @@ export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boole
   if (!upcomingOnly) return rows
   return rows.filter((r) => {
     if (r.status === 'paid' || r.status === 'cancelled') return false
-    const d = new Date(r.dueDate as any)
-    d.setHours(0, 0, 0, 0)
+    const d = startOfDayAR(r.dueDate as any)
     if (r.status === 'overdue' || d < today) return true
     return d <= in60
   })

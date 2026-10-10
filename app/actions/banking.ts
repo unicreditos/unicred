@@ -1,5 +1,6 @@
 'use server'
 
+import { arCompactDate } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import {
   bankAccount,
@@ -733,7 +734,7 @@ export async function markDisbursementAsCredited(
   const now = new Date()
   // Determinístico: si el admin hace doble clic, el segundo intento choca contra
   // el número de comprobante ya emitido en vez de generar uno nuevo.
-  const receiptNumber = `DES-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${d.id.slice(-8).toUpperCase()}`
+  const receiptNumber = `DES-${arCompactDate(now)}-${d.id.slice(-8).toUpperCase()}`
 
   const loan = d.loanId
     ? (

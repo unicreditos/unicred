@@ -1,3 +1,4 @@
+import { addDaysAR, arDateKey, daysPastDueAR, todayAR } from '@/lib/date-ar'
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { BRAND } from '@/lib/brand'
 import { db, isPlaceholderDbUrl } from '@/lib/db'
@@ -72,7 +73,8 @@ function iso(d: Date | string | null | undefined): string | null {
 
 function dayKey(d: Date | string | null | undefined): string | null {
   const s = iso(d)
-  return s ? s.slice(0, 10) : null
+  // Dia calendario en Argentina (no el dia UTC: despues de las 21:00 AR UTC ya es "manana").
+  return s ? arDateKey(s) : null
 }
 
 function splitName(name: string): { firstName: string; lastName: string } {
@@ -202,7 +204,7 @@ function mapInstallmentStatus(
   if (s === 'paid') return 'paid'
   if (s === 'partial') return 'partial'
   if (s === 'overdue') return 'overdue'
-  if (dueDate.getTime() < now.getTime() && s !== 'paid') return 'overdue'
+  if (daysPastDueAR(dueDate, now) > 0 && s !== 'paid') return 'overdue'
   return 'pending'
 }
 
@@ -268,13 +270,10 @@ function mapCendeuResult(worst: number | null | undefined): CendeuResult {
 
 function emptySeries(): DailyPoint[] {
   const out: DailyPoint[] = []
-  const today = new Date()
-  today.setHours(12, 0, 0, 0)
+  const today = todayAR()
   for (let i = 30; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
     out.push({
-      date: d.toISOString().slice(0, 10),
+      date: arDateKey(addDaysAR(today, -i)),
       solicitudes: 0,
       aprobadas: 0,
       rechazadas: 0,
@@ -817,11 +816,8 @@ async function buildFromDb(): Promise<AdminDeskState> {
     let daysPastDue = 0
     let overdueAmount = 0
     for (const s of schedule) {
-      if (s.status === 'overdue' || (s.status === 'pending' && new Date(s.dueDate) < now)) {
-        const days = Math.max(
-          0,
-          Math.floor((now.getTime() - new Date(s.dueDate).getTime()) / 86_400_000),
-        )
+      if (s.status === 'overdue' || (s.status === 'pending' && daysPastDueAR(s.dueDate, now) > 0)) {
+        const days = Math.max(0, daysPastDueAR(s.dueDate, now))
         daysPastDue = Math.max(daysPastDue, days)
         overdueAmount += s.amount - s.paidAmount
       }

@@ -1,3 +1,5 @@
+import { addMonthsDateOnlyAR, daysPastDueAR, parseDateOnly, startOfDayAR } from '@/lib/date-ar'
+
 export const INTIMATION_GRACE_DAYS = 30
 export const MAX_REFINANCES = 2
 
@@ -32,28 +34,23 @@ export type IntimationDecision = {
 }
 
 function startOfDay(value: Date) {
-  const d = new Date(value)
-  d.setHours(0, 0, 0, 0)
-  return d
+  return startOfDayAR(value)
 }
 
 function asDate(value: Date | string) {
-  const d = value instanceof Date ? value : new Date(value)
+  const d = value instanceof Date ? value : (parseDateOnly(value) ?? new Date(value))
   return Number.isNaN(d.getTime()) ? null : d
 }
 
 export function daysPastDue(dueDate: Date | string, now = new Date()) {
   const due = asDate(dueDate)
   if (!due) return 0
-  const ms = startOfDay(now).getTime() - startOfDay(due).getTime()
-  return Math.floor(ms / (1000 * 60 * 60 * 24))
+  // Dias CIVILES en Argentina: 0 el dia del vencimiento, 1 al dia siguiente.
+  return daysPastDueAR(due, now)
 }
 
 export function addMonths(from: Date, count: number) {
-  const d = new Date(from)
-  d.setMonth(d.getMonth() + count)
-  d.setHours(0, 0, 0, 0)
-  return d
+  return addMonthsDateOnlyAR(from, count)
 }
 
 export function money(value: number) {
