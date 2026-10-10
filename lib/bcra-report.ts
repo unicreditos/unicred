@@ -34,6 +34,25 @@ async function lastCheckForUser(userId: string): Promise<RuntimeBCRACheck | null
   }
 }
 
+/** Datos completos del informe a partir de una consulta guardada (la misma forma que lee snapshotFromStored). */
+export function bcraFullReportFromCheck(check: Record<string, unknown> & { cuil?: string | null; consultedAt?: Date | null }) {
+  const raw = check.rawResult ?? check.rawResponse ?? {}
+  const payload = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  return JSON.parse(
+    JSON.stringify({
+      ...check,
+      cuil: check.cuil,
+      consultedAt: check.consultedAt,
+      deudas: payload.deudas,
+      historicas: payload.historicas,
+      chequesRechazados: payload.chequesRechazados,
+      score: payload.score,
+      denominacion: payload.denominacion,
+      unavailable: false,
+    }),
+  ) as Record<string, unknown>
+}
+
 /** Persistencia interna. No exportar desde un archivo `use server`. */
 export async function persistBcraReportForUser(userId: string, checkId?: string | null) {
   let check: RuntimeBCRACheck | null = null
@@ -68,23 +87,7 @@ export async function persistBcraReportForUser(userId: string, checkId?: string 
 
   const id = crypto.randomUUID()
   const reportNumber = `INF-BCRA-${Date.now().toString().slice(-8)}`
-  const raw = (check as { rawResult?: unknown; rawResponse?: unknown }).rawResult
-    ?? (check as { rawResponse?: unknown }).rawResponse
-    ?? {}
-  const payload = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  const fullReportData = JSON.parse(
-    JSON.stringify({
-      ...check,
-      cuil: check.cuil,
-      consultedAt: check.consultedAt,
-      deudas: payload.deudas,
-      historicas: payload.historicas,
-      chequesRechazados: payload.chequesRechazados,
-      score: payload.score,
-      denominacion: payload.denominacion,
-      unavailable: false,
-    }),
-  )
+  const fullReportData = bcraFullReportFromCheck(check)
 
   try {
     const inserted = await db

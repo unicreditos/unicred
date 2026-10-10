@@ -8,7 +8,7 @@ import {
 } from '@/components/documents/document-frame'
 import { BRAND } from '@/lib/brand'
 import { docDate, docShortId, installmentStatusLabel } from '@/lib/document-format'
-import { formatARSDecimal } from '@/lib/finance'
+import { formatARSDecimal, formatPercent } from '@/lib/finance'
 import type { LoanCertificateData } from '@/lib/legal/loan-pack'
 
 const COPY = {
@@ -57,7 +57,7 @@ export function CertificatePrintable({ data }: { data: LoanCertificateData }) {
           <DocumentField label="Contrato" value={data.contractId ? `CTR-${docShortId(data.contractId)}` : '—'} mono />
           <DocumentField label="Capital originado" value={formatARSDecimal(data.loan.principal)} mono />
           <DocumentField label="Plazo" value={`${data.loan.term} cuotas`} />
-          <DocumentField label="TNA" value={data.loan.tna != null ? `${data.loan.tna}%` : '—'} />
+          <DocumentField label="TNA" value={data.loan.tna != null ? formatPercent(data.loan.tna) : '—'} />
           <DocumentField label="Pagado a la fecha" value={formatARSDecimal(paidAmt)} mono />
         </DocumentFieldGrid>
       </DocumentSection>

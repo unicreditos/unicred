@@ -1,117 +1,79 @@
 import QRCode from 'qrcode'
-import { TREASURY_ACCOUNT } from '@/lib/treasury'
+import { addDaysAR, endOfDayAR } from '@/lib/date-ar'
 
 /**
- * Datos de cobro de UNICRÉDITOS que se imprimen en cada cupón de la cuponera.
+ * Medios de cobro que se imprimen en cada talón de la cuponera. Solo Mercado Pago:
+ * - QR por cuota (enlace firmado que abre el checkout de Mercado Pago con el importe exacto).
+ * - Códigos de barras de Pago Fácil y Rapipago que emite Mercado Pago.
  *
- * Fuente ÚNICA: `lib/treasury.ts` (variables de entorno TREASURY_*, leídas solo en el servidor).
- * Este módulo valida, arma el QR de transferencia y calcula qué falta.
- * Regla de seguridad: la cuponera solo se puede imprimir/emitir como definitiva si no falta
- * ningún dato requerido (`final === true`). Si falta algo se muestra el marcador
- * "DATO PENDIENTE DE CONFIRMAR" y la impresión queda bloqueada.
+ * Mercado Pago emite los tickets de Pago Fácil y Rapipago con un vencimiento de 1 a 30 días.
+ * Por eso el código de barras solo se imprime en las cuotas que vencen dentro de la ventana;
+ * las demás muestran desde qué fecha se habilita y el QR, que sirve siempre.
+ * Si falta algo que debería estar, la cuponera queda en borrador y no se imprime.
  */
 
-export type CouponPaymentField = 'bank' | 'holder' | 'cuit' | 'accountNumber' | 'cbu' | 'alias' | 'qr'
+/** 30 días de vigencia máxima del ticket menos 3 de margen para que siga vivo al vencer la cuota. */
+export const BARCODE_WINDOW_DAYS = 27
 
-export const COUPON_PAYMENT_REQUIRED: readonly CouponPaymentField[] = [
-  'bank',
-  'holder',
-  'cuit',
-  'accountNumber',
-  'cbu',
-  'alias',
-  'qr',
-]
+export type CouponNetwork = 'pagofacil' | 'rapipago'
 
-export const COUPON_PAYMENT_FIELD_LABELS: Record<CouponPaymentField, string> = {
-  bank: 'Banco',
-  holder: 'Titular',
-  cuit: 'CUIT',
-  accountNumber: 'N° de cuenta corriente',
-  cbu: 'CBU',
-  alias: 'Alias',
-  qr: 'QR de transferencia',
+export type CouponNetworkCode = {
+  network: CouponNetwork
+  label: 'Pago Fácil' | 'Rapipago'
+  /** Contenido del código de barras que entrega Mercado Pago (solo dígitos). */
+  barcode: string | null
+  /** Número de pago para cargar a mano en la caja. */
+  paymentCode: string | null
+  expiresAt: string
 }
 
-export type CouponPaymentRaw = {
-  bank?: string | null
-  holder?: string | null
-  cuit?: string | null
-  accountType?: string | null
-  accountNumber?: string | null
-  cbu?: string | null
-  alias?: string | null
-  qrPayload?: string | null
-}
-
-export type CouponPaymentData = {
-  bank: string | null
-  holder: string | null
-  cuit: string | null
-  accountType: string
-  accountNumber: string | null
-  cbu: string | null
-  alias: string | null
-  /** SVG del QR de transferencia (ya generado en el servidor) o null si falta. */
+export type CouponTalonPay = {
+  installmentId: string
+  number: number
+  qrUrl: string | null
   qrSvg: string | null
-  missing: CouponPaymentField[]
-  /** true solo si no falta ningún dato requerido y no es un ejemplo. */
+  /** Fecha desde la que Mercado Pago emite los códigos de esta cuota; null = ya están en la ventana. */
+  barcodesFrom: string | null
+  pagoFacil: CouponNetworkCode | null
+  rapipago: CouponNetworkCode | null
+}
+
+export type CouponBookPay = {
+  talons: Record<string, CouponTalonPay>
+  problems: string[]
+  /** true solo si cada talón tiene lo que le corresponde: se puede imprimir. */
   final: boolean
-  /** true = datos ficticios de demostración (nunca emitible). */
-  example: boolean
 }
 
-function clean(value: string | null | undefined) {
-  const text = String(value ?? '').trim()
-  return text || null
+export function isOpenInstallment(status: string) {
+  return status !== 'paid' && status !== 'cancelled'
 }
 
-export function normalizeCuit(value: string | null | undefined) {
-  const digits = String(value ?? '').replace(/\D/g, '')
-  return digits.length === 11 ? digits : null
+/** Pura: fecha desde la que se pueden emitir los códigos de red de una cuota, o null si ya se puede. */
+export function barcodesAvailableFrom(dueDate: Date | string, now = new Date()): Date | null {
+  const opensAt = addDaysAR(endOfDayAR(new Date(dueDate)), -BARCODE_WINDOW_DAYS)
+  return opensAt.getTime() <= now.getTime() ? null : opensAt
 }
 
-export function normalizeCbu(value: string | null | undefined) {
-  const digits = String(value ?? '').replace(/\D/g, '')
-  return digits.length === 22 ? digits : null
-}
-
-export function normalizeAlias(value: string | null | undefined) {
-  const text = String(value ?? '').trim().replace(/^@/, '')
-  return /^[A-Za-z0-9.\-]{6,20}$/.test(text) ? text : null
-}
-
-export function formatCuit(digits: string | null) {
-  if (!digits) return null
-  return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`
-}
-
-/** Pura y testeable: decide qué datos están completos. */
-export function resolveCouponPaymentData(
-  raw: CouponPaymentRaw,
-  qrSvg: string | null,
-  opts: { example?: boolean } = {},
-): CouponPaymentData {
-  const data = {
-    bank: clean(raw.bank),
-    holder: clean(raw.holder),
-    cuit: normalizeCuit(raw.cuit),
-    accountType: clean(raw.accountType) ?? 'Cuenta corriente',
-    accountNumber: clean(raw.accountNumber),
-    cbu: normalizeCbu(raw.cbu),
-    alias: normalizeAlias(raw.alias),
-    qrSvg: qrSvg && clean(raw.qrPayload) ? qrSvg : null,
+/** Pura: decide qué falta en la cuponera. */
+export function resolveCouponBook(talons: CouponTalonPay[], extraProblems: string[] = []): CouponBookPay {
+  const problems = [...extraProblems]
+  for (const t of talons) {
+    if (!t.qrSvg) problems.push(`Cuota ${t.number}: no se pudo generar el QR de Mercado Pago.`)
+    if (!t.barcodesFrom) {
+      if (!t.pagoFacil) problems.push(`Cuota ${t.number}: Mercado Pago no emitió el código de Pago Fácil.`)
+      if (!t.rapipago) problems.push(`Cuota ${t.number}: Mercado Pago no emitió el código de Rapipago.`)
+    }
   }
-  const missing = COUPON_PAYMENT_REQUIRED.filter((field) => {
-    if (field === 'qr') return !data.qrSvg
-    return !data[field]
-  })
-  const example = Boolean(opts.example)
-  return { ...data, missing, final: missing.length === 0 && !example, example }
+  return {
+    talons: Object.fromEntries(talons.map((t) => [t.installmentId, t])),
+    problems,
+    final: problems.length === 0,
+  }
 }
 
 export async function qrSvgFromPayload(payload: string | null | undefined) {
-  const text = clean(payload)
+  const text = String(payload ?? '').trim()
   if (!text) return null
   try {
     return await QRCode.toString(text, { type: 'svg', errorCorrectionLevel: 'M', margin: 1 })
@@ -120,25 +82,12 @@ export async function qrSvgFromPayload(payload: string | null | undefined) {
   }
 }
 
-/** Solo servidor: lee TREASURY_* y genera el QR. */
-export async function loadCouponPaymentData(): Promise<CouponPaymentData> {
-  const qrPayload = TREASURY_ACCOUNT.qrPayload
-  const qrSvg = await qrSvgFromPayload(qrPayload)
-  return resolveCouponPaymentData(
-    {
-      bank: TREASURY_ACCOUNT.bank,
-      holder: TREASURY_ACCOUNT.holder,
-      cuit: TREASURY_ACCOUNT.cuit,
-      accountType: TREASURY_ACCOUNT.accountType,
-      accountNumber: TREASURY_ACCOUNT.accountNumber,
-      cbu: TREASURY_ACCOUNT.cbu,
-      alias: TREASURY_ACCOUNT.alias,
-      qrPayload,
-    },
-    qrSvg,
-  )
-}
+export type CashTicket = { barcode: string | null; operationNumber: string | null; expiresAt: string } | null
 
-export function couponPaymentMissingLabels(data: Pick<CouponPaymentData, 'missing'>) {
-  return data.missing.map((field) => COUPON_PAYMENT_FIELD_LABELS[field])
+export function asNetworkCode(network: CouponNetwork, ticket: CashTicket): CouponNetworkCode | null {
+  if (!ticket) return null
+  const barcode = ticket.barcode && /^\d+$/.test(ticket.barcode) ? ticket.barcode : null
+  const paymentCode = ticket.operationNumber || null
+  if (!barcode && !paymentCode) return null
+  return { network, label: network === 'pagofacil' ? 'Pago Fácil' : 'Rapipago', barcode, paymentCode, expiresAt: ticket.expiresAt }
 }

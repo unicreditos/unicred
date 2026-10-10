@@ -8,7 +8,7 @@ import {
 } from '@/components/documents/document-frame'
 import { BRAND, legalCuitLabel } from '@/lib/brand'
 import { docDate, docDateTime, paymentMethodLabel } from '@/lib/document-format'
-import { formatARSDecimal } from '@/lib/finance'
+import { formatARSDecimal, formatPercent } from '@/lib/finance'
 import { frenchInstallmentSplit } from '@/lib/legal/money-words'
 
 export type LiquidacionData = {
@@ -105,7 +105,7 @@ export function LiquidacionPrintable({ data }: { data: LiquidacionData }) {
 
       <DocumentFooter
         documentId={data.id}
-        extra={`TNA informada ${data.loan.tna ?? '—'}%. La imputación sigue el orden del contrato: costas, punitorios, intereses, capital.`}
+        extra={`TNA informada ${data.loan.tna != null ? formatPercent(data.loan.tna) : '—'}. La imputación sigue el orden del contrato: costas, punitorios, intereses, capital.`}
       />
     </DocumentSheet>
   )

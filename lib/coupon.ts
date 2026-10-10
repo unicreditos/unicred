@@ -130,6 +130,42 @@ export function barcodeSvg(text: string, opts?: BarcodeSvgOpts) {
   return `<svg xmlns="http://www.w3.org/2000/svg" class="doc-barcode${fitClass}" width="${widthAttr}" height="${svgH}" viewBox="0 0 ${width.toFixed(1)} ${svgH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}"${fitStyle}>${rects}${textEl}</svg>`
 }
 
+/** Patrones 2 de 5 intercalado (ITF): 1 = barra/espacio ancho, 0 = angosto. */
+const ITF_DIGITS = ['00110', '10001', '01001', '11000', '00101', '10100', '01100', '00011', '10010', '01010']
+
+/**
+ * Código de barras 2 de 5 intercalado: el formato de las facturas que leen las cajas de
+ * Pago Fácil y Rapipago. Solo dígitos y en cantidad par (es lo que entrega Mercado Pago).
+ */
+export function itfBarcodeSvg(digits: string, opts?: { height?: number; narrow?: number }) {
+  const value = String(digits ?? '').replace(/\s+/g, '')
+  if (!/^\d+$/.test(value) || value.length % 2 !== 0) {
+    throw new Error('El código 2 de 5 intercalado necesita una cantidad par de dígitos.')
+  }
+  const n = opts?.narrow ?? 1
+  const w = n * 3
+  const height = opts?.height ?? 50
+  const quiet = n * 10
+  // Secuencia de anchos alternando barra/espacio, empezando por barra.
+  const widths: number[] = [n, n, n, n]
+  for (let i = 0; i < value.length; i += 2) {
+    const bars = ITF_DIGITS[Number(value[i])]
+    const spaces = ITF_DIGITS[Number(value[i + 1])]
+    for (let k = 0; k < 5; k++) {
+      widths.push(bars[k] === '1' ? w : n, spaces[k] === '1' ? w : n)
+    }
+  }
+  widths.push(w, n, n)
+  const total = widths.reduce((a, b) => a + b, 0) + quiet * 2
+  let x = quiet
+  let rects = ''
+  widths.forEach((width, i) => {
+    if (i % 2 === 0) rects += `<rect x="${x}" y="0" width="${width}" height="${height}" fill="#000"/>`
+    x += width
+  })
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="doc-barcode doc-barcode-fit" width="100%" height="${height}" viewBox="0 0 ${total} ${height}" preserveAspectRatio="none" role="img" aria-label="${xmlEscape(value)}" style="width:100%;max-width:100%;display:block">${rects}</svg>`
+}
+
 export function couponLabel(input: {
   loanId: string
   number: number

@@ -3,6 +3,7 @@ import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { Button } from '@/components/ui/button'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { type CustomerDocKind } from '@/lib/documents/customer-view'
 import { documentBackHref, documentBackHrefForLoan } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
@@ -39,10 +40,12 @@ export async function CertificateDocumentPage({
 }: {
   kind: LoanCertificateKind
   loanId: string
-  searchParams?: Promise<{ embed?: string | string[] }>
+  searchParams?: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const loanId = String(rawId ?? '').trim()
-  await keepCustomerInDashboard(certificateKind(kind), loanId, searchParams)
+  const sp = searchParams ? await searchParams : {}
+  await keepCustomerInDashboard(certificateKind(kind), loanId, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const userId = await requireUserId()
   const data = await loadLoanCertificateForViewer(userId, loanId, kind)
   const backHref = data ? await documentBackHrefForLoan(userId, loanId) : await documentBackHref(userId)
@@ -73,6 +76,8 @@ export async function CertificateDocumentPage({
       meta={`${copy.title} · ${loanId.slice(0, 10)}`}
       fileName={documentPdfBaseName(kindLabel, shortDocCode(loanId, 'LOAN'))}
       extra={<DocumentPackLinks contractId={data.contractId} loanId={data.loanId} />}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <CertificatePrintable data={data} />
     </DocumentPreviewShell>

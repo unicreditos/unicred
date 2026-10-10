@@ -6,25 +6,21 @@ import {
   DocumentSection,
   DocumentSheet,
 } from '@/components/documents/document-frame'
-import { barcodeSvg, couponCode, formatBarcodeHuman } from '@/lib/coupon'
-import { installmentPosPath } from '@/lib/workspace-gate'
+import { barcodeSvg, formatBarcodeHuman, itfBarcodeSvg } from '@/lib/coupon'
 import { BRAND, publicBrandWebsite } from '@/lib/brand'
 import { docDate, docDateShort, docShortId, installmentStatusLabel } from '@/lib/document-format'
 import {
-  couponPaymentMissingLabels,
-  formatCuit,
-  type CouponPaymentData,
+  isOpenInstallment,
+  type CouponBookPay,
+  type CouponNetworkCode,
+  type CouponTalonPay,
 } from '@/lib/documents/coupon-payment-data'
-import { formatARSDecimal, formatCBU, formatPercent } from '@/lib/finance'
+import { formatARSDecimal, formatPercent } from '@/lib/finance'
 import type { ContractDocData, InstallmentDoc } from '@/lib/legal/types'
 
-/** Dos talones por hoja A4: con QR y datos de pago, cuatro no entran sin recortarse. */
+/** Dos talones por hoja A4: con QR y dos códigos de barras, más no entran sin recortarse. */
 const COUPONS_PER_SHEET = 2
 const DASH = '—'
-
-function isOpenCoupon(status: string) {
-  return status !== 'paid' && status !== 'cancelled'
-}
 
 function couponBookCode(loanId: string) {
   return `CUP-${docShortId(String(loanId).replace(/^loan[_-]/i, ''))}`
@@ -48,94 +44,71 @@ function customerAddress(customer: ContractDocData['customer']) {
   return parts.join(', ') || DASH
 }
 
-function fitBarcode(value: string, height = 52) {
+/** Los tickets de Mercado Pago usan 2 de 5 intercalado; si el contenido no es par, se dibuja en Code 128. */
+function networkBarcodeSvg(digits: string) {
   try {
-    return barcodeSvg(value, { height, module: 1, showText: false, fit: true })
+    return digits.length % 2 === 0
+      ? itfBarcodeSvg(digits, { height: 44 })
+      : barcodeSvg(digits, { height: 44, module: 1, showText: false, fit: true })
   } catch {
     return null
   }
 }
 
-function PrintBarcode({ value, height = 52 }: { value: string; height?: number }) {
-  const svg = fitBarcode(value, height)
+function MpQrBlock({ talon }: { talon: CouponTalonPay | undefined }) {
   return (
-    <div className="cuponera-barcode">
-      {svg ? <div dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="cuponera-missing">No se pudo dibujar el código de barras.</p>}
-      <p className="cuponera-barcode-number">{formatBarcodeHuman(value)}</p>
-    </div>
+    <figure className="cp-mpqr">
+      {talon?.qrSvg ? (
+        <div className="cp-qr-img" role="img" aria-label="QR de Mercado Pago para pagar esta cuota" dangerouslySetInnerHTML={{ __html: talon.qrSvg }} />
+      ) : (
+        <div className="cp-qr-img cp-qr-pending">
+          <span>QR NO DISPONIBLE</span>
+        </div>
+      )}
+      <figcaption>
+        <strong>Pagá con Mercado Pago</strong>
+        <span>Escaneá con la cámara: abre esta cuota con el importe exacto (dinero en cuenta, tarjeta o ticket de Pago Fácil / Rapipago).</span>
+      </figcaption>
+    </figure>
   )
 }
 
-function Pending({ children = 'DATO PENDIENTE DE CONFIRMAR' }: { children?: string }) {
-  return <span className="cp-pending">{children}</span>
-}
-
-/** Valor o marcador visible (solo aparece cuando falta el dato = modo borrador). */
-function PayValue({ value, mono = false }: { value: string | null; mono?: boolean }) {
-  if (!value) return <Pending />
-  return <span className={mono ? 'cp-mono' : undefined}>{value}</span>
-}
-
-/** Bloque "Datos para pagar": cuenta corriente, CBU, alias y QR de transferencia de UNICRÉDITOS. */
-function PayDataBlock({ pay, code }: { pay: CouponPaymentData; code: string }) {
+function NetworkBlock({
+  label,
+  code,
+  barcodesFrom,
+}: {
+  label: CouponNetworkCode['label']
+  code: CouponNetworkCode | null
+  barcodesFrom: string | null
+}) {
+  const svg = code?.barcode ? networkBarcodeSvg(code.barcode) : null
   return (
-    <section className="cp-paydata" aria-label="Datos para pagar">
-      <h3 className="cp-paydata-title">Datos para pagar</h3>
-      <div className="cp-paydata-body">
-        <dl className="cp-paydata-list">
-          <div>
-            <dt>Banco</dt>
-            <dd>
-              <PayValue value={pay.bank} />
-              {pay.bank ? ` · ${pay.accountType} $` : null}
-            </dd>
-          </div>
-          <div>
-            <dt>Titular</dt>
-            <dd>
-              <PayValue value={pay.holder} />
-            </dd>
-          </div>
-          <div>
-            <dt>CUIT</dt>
-            <dd>
-              <PayValue value={formatCuit(pay.cuit)} mono />
-            </dd>
-          </div>
-          <div>
-            <dt>Cta. Cte. N°</dt>
-            <dd>
-              <PayValue value={pay.accountNumber} mono />
-            </dd>
-          </div>
-          <div>
-            <dt>CBU</dt>
-            <dd>
-              <PayValue value={pay.cbu ? formatCBU(pay.cbu) : null} mono />
-            </dd>
-          </div>
-          <div>
-            <dt>Alias</dt>
-            <dd>
-              <PayValue value={pay.alias} mono />
-            </dd>
-          </div>
-          <div>
-            <dt>Concepto</dt>
-            <dd className="cp-mono">{code}</dd>
-          </div>
-        </dl>
-        <figure className="cp-qr">
-          {pay.qrSvg ? (
-            <div className="cp-qr-img" role="img" aria-label="QR de transferencia a la cuenta de UNICRÉDITOS" dangerouslySetInnerHTML={{ __html: pay.qrSvg }} />
-          ) : (
-            <div className="cp-qr-img cp-qr-pending">
-              <span>QR PENDIENTE DE CONFIRMAR</span>
-            </div>
-          )}
-          <figcaption>QR transferencia</figcaption>
-        </figure>
-      </div>
+    <section className="cp-net" aria-label={`Pagar en ${label}`}>
+      <p className="cp-net-head">
+        <span className="cp-chip">{label}</span>
+        {code ? <span className="cp-net-exp">Ticket válido hasta {docDateShort(code.expiresAt)}</span> : null}
+      </p>
+      {code ? (
+        <>
+          {svg ? <div className="cp-net-bars" dangerouslySetInnerHTML={{ __html: svg }} /> : null}
+          {code.barcode ? <p className="cp-net-digits">{code.barcode}</p> : null}
+          {code.paymentCode ? (
+            <p className="cp-net-code">
+              Código de pago <span className="cp-mono">{formatBarcodeHuman(code.paymentCode)}</span>
+            </p>
+          ) : null}
+        </>
+      ) : barcodesFrom ? (
+        <p className="cp-net-later">
+          Mercado Pago emite este código desde el <strong>{docDateShort(barcodesFrom)}</strong>. Antes, escaneá el QR o
+          volvé a descargar la cuponera desde esa fecha.
+        </p>
+      ) : (
+        <p className="cp-net-later">
+          <span className="cp-pending">NO EMITIDO POR MERCADO PAGO</span>
+        </p>
+      )}
     </section>
   )
 }
@@ -146,22 +119,19 @@ function CouponTalon({
   bookCode,
   contract,
   row,
-  code,
-  payUrl,
-  pay,
+  talon,
 }: {
   index: number
   total: number
   bookCode: string
   contract: ContractDocData
   row: InstallmentDoc
-  code: string
-  payUrl: string
-  pay: CouponPaymentData
+  talon: CouponTalonPay | undefined
 }) {
   const term = contract.loan.term
   const overdue = row.status === 'overdue'
   const quota = `${String(row.number).padStart(2, '0')}/${String(term).padStart(2, '0')}`
+  const barcodesFrom = talon?.barcodesFrom ?? null
   return (
     <article className={`cp${overdue ? ' is-overdue' : ''}`}>
       <aside className="cp-stub" aria-label="Talón para el cliente">
@@ -215,78 +185,47 @@ function CouponTalon({
             <p className={`cp-value${overdue ? ' cp-overdue' : ''}`}>{installmentStatusLabel(row.status)}</p>
           </div>
         </div>
-        <div className="cp-body">
-          <div className="cp-code-col">
-            <p className="cp-label">Código UNICRÉDITOS</p>
-            <div className="cp-barcode">
-              <PrintBarcode value={code} height={60} />
-            </div>
-            <p className="cp-channels">
-              <span className="cp-chip">Pago Fácil</span>
-              <span className="cp-chip">Rapipago</span>
-              <span className="cp-chip">Mercado Pago</span>
-            </p>
-            <p className="cp-note">
-              Pago Fácil / Rapipago: el cupón de red se emite al elegir ese medio (tiene vencimiento).
-              {payUrl ? ` Pagá online: ${payUrl.replace(/^https?:\/\//, '')}` : ''}
-            </p>
+        <div className="cp-body cp-body-mp">
+          <MpQrBlock talon={talon} />
+          <div className="cp-nets">
+            <NetworkBlock label="Pago Fácil" code={talon?.pagoFacil ?? null} barcodesFrom={barcodesFrom} />
+            <NetworkBlock label="Rapipago" code={talon?.rapipago ?? null} barcodesFrom={barcodesFrom} />
           </div>
-          <PayDataBlock pay={pay} code={code} />
         </div>
       </div>
     </article>
   )
 }
 
-export function CouponBookPrintable({ contract, pay }: { contract: ContractDocData; pay: CouponPaymentData }) {
-  const open = contract.installments.filter((row) => isOpenCoupon(row.status))
+export function CouponBookPrintable({ contract, pay }: { contract: ContractDocData; pay: CouponBookPay }) {
+  const open = contract.installments.filter((row) => isOpenInstallment(row.status))
   const bookCode = couponBookCode(contract.loanId)
   const site = publicSiteHost()
-  const origin = publicBrandWebsite().replace(/\/$/, '')
-  const missingLabels = couponPaymentMissingLabels(pay)
 
-  const coupons = open.map((row) => {
-    const code = couponCode({
-      loanId: contract.loanId,
-      number: row.number,
-      dueDate: row.dueDate,
-      amount: row.amount,
-    })
-    const payUrl = row.id ? `${origin}${installmentPosPath(row.id)}` : ''
-    return { row, code, payUrl }
-  })
-
-  const sheets: (typeof coupons)[] = []
-  for (let i = 0; i < coupons.length; i += COUPONS_PER_SHEET) sheets.push(coupons.slice(i, i + COUPONS_PER_SHEET))
+  const sheets: InstallmentDoc[][] = []
+  for (let i = 0; i < open.length; i += COUPONS_PER_SHEET) sheets.push(open.slice(i, i + COUPONS_PER_SHEET))
+  const problemsText = pay.problems.join(' ')
 
   return (
     <DocumentSheet className="cuponera-book">
     <div className="cp-root" data-final={pay.final ? 'true' : 'false'}>
       {!pay.final ? (
         <div className="cp-draft-banner" role="status">
-          <strong>{pay.example ? 'EJEMPLO — datos ficticios' : 'BORRADOR — NO EMITIBLE COMO DEFINITIVA'}</strong>
-          <span>
-            {pay.example
-              ? 'Estos datos de cuenta son de demostración. No usar para pagar ni para imprimir.'
-              : `Faltan datos de la cuenta de cobro de UNICRÉDITOS por confirmar: ${missingLabels.join(', ')}. La impresión está bloqueada hasta cargarlos.`}
-          </span>
+          <strong>BORRADOR — NO EMITIBLE COMO DEFINITIVA</strong>
+          <span>{problemsText} La impresión está bloqueada hasta que Mercado Pago entregue todos los códigos.</span>
         </div>
       ) : null}
 
       <div className="cp-print-block" role="alert">
         <strong>Cuponera no emitible</strong>
-        <span>
-          {pay.example
-            ? 'Esta vista es un ejemplo con datos ficticios.'
-            : `Faltan datos de la cuenta de cobro por confirmar (${missingLabels.join(', ')}). Cargalos en la configuración del servidor y volvé a imprimir.`}
-        </span>
+        <span>{problemsText} Volvé a descargarla en unos minutos.</span>
       </div>
 
       <div className="cuponera-cover">
         <DocumentLetterhead
-          kind="estado"
+          kind="cuponera"
           title="Cuponera de cuotas"
-          subtitle="Cronograma de cuotas. Pagá desde tu cuenta UNICRÉDITOS. El cupón de Pago Fácil o Rapipago se emite al elegir ese medio, porque vence."
+          subtitle="Cada talón trae el QR de Mercado Pago y los códigos de Pago Fácil y Rapipago que emite Mercado Pago."
           number={bookCode}
           issuedAt={docDate(new Date())}
           status={open.length ? `${open.length} talón${open.length === 1 ? '' : 'es'} pendiente${open.length === 1 ? '' : 's'}` : 'Cancelada'}
@@ -318,21 +257,14 @@ export function CouponBookPrintable({ contract, pay }: { contract: ContractDocDa
           </DocumentFieldGrid>
         </DocumentSection>
 
-        <DocumentSection number="03" title="Cuenta para transferir">
-          <DocumentFieldGrid cols={3}>
-            <DocumentField label="Titular" value={pay.holder ?? 'DATO PENDIENTE DE CONFIRMAR'} />
-            <DocumentField label="CUIT" value={formatCuit(pay.cuit) ?? 'DATO PENDIENTE DE CONFIRMAR'} mono />
-            <DocumentField label="Banco" value={pay.bank ?? 'DATO PENDIENTE DE CONFIRMAR'} />
-            <DocumentField label="CBU" value={pay.cbu ? formatCBU(pay.cbu) : 'DATO PENDIENTE DE CONFIRMAR'} mono />
-            <DocumentField label="N° de cuenta" value={pay.accountNumber ?? 'DATO PENDIENTE DE CONFIRMAR'} mono />
-            <DocumentField label="Alias" value={pay.alias ?? 'DATO PENDIENTE DE CONFIRMAR'} mono />
-          </DocumentFieldGrid>
+        <DocumentSection number="03" title="Cómo pagar">
           <div className="cuponera-howto">
             <p>
-              Este talonario es el cronograma del crédito. Para pagar con tarjeta, Pago Fácil o Rapipago ingresá a tu
-              cuenta UNICRÉDITOS → Créditos → Pagar cuotas. El cupón de red se emite recién cuando elegís ese medio,
-              porque tiene fecha de vencimiento. La transferencia usa los datos de cada talón (CBU, alias o QR) y el
-              código UNICRÉDITOS como concepto. Sitio: {site}.
+              Todos los cobros se procesan por Mercado Pago. Escaneá el QR del talón: abre el pago de esa cuota con el
+              importe exacto y, si la cuota ya está paga, te avisa para que no pagues dos veces. En Pago Fácil o
+              Rapipago mostrá el código de barras del talón. Mercado Pago emite esos códigos con un vencimiento máximo de
+              30 días, por eso solo aparecen en las cuotas próximas a vencer: para las siguientes, volvé a descargar la
+              cuponera o generá el ticket desde el QR. Sitio: {site}.
             </p>
           </div>
         </DocumentSection>
@@ -350,12 +282,12 @@ export function CouponBookPrintable({ contract, pay }: { contract: ContractDocDa
             </thead>
             <tbody>
               {contract.installments.map((row) => (
-                <tr key={row.number} className={!isOpenCoupon(row.status) ? 'is-closed' : undefined}>
+                <tr key={row.number} className={!isOpenInstallment(row.status) ? 'is-closed' : undefined}>
                   <td>{String(row.number).padStart(2, '0')}</td>
                   <td>{docDateShort(row.dueDate)}</td>
                   <td className="num">{formatARSDecimal(row.amount)}</td>
                   <td>{installmentStatusLabel(row.status)}</td>
-                  <td>{row.paidAt ? docDateShort(row.paidAt) : isOpenCoupon(row.status) ? DASH : 'Sin registrar'}</td>
+                  <td>{row.paidAt ? docDateShort(row.paidAt) : isOpenInstallment(row.status) ? DASH : 'Sin registrar'}</td>
                 </tr>
               ))}
             </tbody>
@@ -364,24 +296,22 @@ export function CouponBookPrintable({ contract, pay }: { contract: ContractDocDa
 
         <DocumentFooter
           documentId={bookCode}
-          extra={`${BRAND.legalName}. Pagá desde tu cuenta UNICRÉDITOS. El cupón de Pago Fácil o Rapipago se emite al elegir ese medio. Concepto de transferencia: código UNICRÉDITOS del talón.`}
+          extra={`${BRAND.legalName}. Cobros procesados por Mercado Pago: QR del talón o códigos de Pago Fácil y Rapipago emitidos por Mercado Pago.`}
         />
       </div>
 
       <div className="cuponera-coupons">
         {sheets.map((sheet, sheetIndex) => (
           <section className="cp-sheet" key={sheetIndex} aria-label={`Hoja ${sheetIndex + 1} de ${sheets.length}`}>
-            {sheet.map((item) => (
+            {sheet.map((row) => (
               <CouponTalon
-                key={item.row.number}
-                index={coupons.indexOf(item) + 1}
-                total={coupons.length}
+                key={row.number}
+                index={open.indexOf(row) + 1}
+                total={open.length}
                 bookCode={bookCode}
                 contract={contract}
-                row={item.row}
-                code={item.code}
-                payUrl={item.payUrl}
-                pay={pay}
+                row={row}
+                talon={row.id ? pay.talons[row.id] : undefined}
               />
             ))}
             <p className="cp-sheet-foot">

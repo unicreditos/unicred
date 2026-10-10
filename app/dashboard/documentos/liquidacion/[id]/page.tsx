@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { db } from '@/lib/db'
 import { paymentReceipt, profile, user } from '@/lib/db/schema'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { canViewOwnedRecord, receiptBackHrefForRole } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { getRoleForUser, requireUserId } from '@/lib/session'
@@ -31,13 +32,15 @@ export default async function LiquidacionPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   const backHref = receiptBackHrefForRole(role)
   const id = String((await params).id ?? '').trim()
-  await keepCustomerInDashboard('liquidacion', id, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('liquidacion', id, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const [receiptRaw] = await db
     .select()
     .from(paymentReceipt)
@@ -85,6 +88,8 @@ export default async function LiquidacionPage({
       meta={`Liquidación ${receipt.receiptNumber}`}
       fileName={documentPdfBaseName('Liquidacion', String(receipt.receiptNumber))}
       extra={<DocumentPackLinks receiptId={receipt.id} />}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <LiquidacionPrintable
         data={{

@@ -5,6 +5,7 @@ import { snapshotFromStored } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { bcraReport, profile, user } from '@/lib/db/schema'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { canViewOwnedRecord, documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { requireUserId } from '@/lib/session'
@@ -19,11 +20,13 @@ export default async function BCRAReportPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const { id: rawId } = await params
   const id = String(rawId ?? '').trim()
-  await keepCustomerInDashboard('bcra', id, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('bcra', id, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const userId = await requireUserId()
   const backHref = await documentBackHref(userId)
   if (!id) {
@@ -98,7 +101,7 @@ export default async function BCRAReportPage({
       .select({ profile: profile, user: user })
       .from(profile)
       .innerJoin(user, eq(user.id, profile.userId))
-      .where(eq(profile.userId, userId))
+      .where(eq(profile.userId, report.userId))
       .limit(1)
   } catch (e) {
     console.warn('[informe-bcra page] profile+user select failed:', e instanceof Error ? e.message : String(e))
@@ -134,6 +137,8 @@ export default async function BCRAReportPage({
       backHref={backHref}
       meta={`Informe ${reportNumber}`}
       fileName={documentPdfBaseName('Informe-BCRA', String(reportNumber))}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <BCRAReportPrintable
         report={data}

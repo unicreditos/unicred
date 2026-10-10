@@ -109,6 +109,9 @@ export default async function ClienteDetail({ params }: { params: Promise<{ id: 
               ['Score interno', client.score ? <span key="s" className="uc-num">{client.score}</span> : '—'],
               ['BCRA', bcra ? <Badge key="b" tone={bcra.sit <= 1 ? 'success' : bcra.sit === 2 ? 'warning' : 'danger'}>{bcra.sit ? `Situación ${bcra.sit}` : 'Sin deudas'}</Badge> : 'Sin consultar'],
               ['Última consulta BCRA', bcra ? <span key="u" className="uc-num">{fdate(bcra.at)}</span> : '—'],
+              ...(perms.has('risk.read')
+                ? [['Informes BCRA', <a key="ib" href={`/admin/originacion/bcra-historial/${encodeURIComponent(id)}`}>Ver e imprimir cada consulta</a>] as [string, React.ReactNode]]
+                : []),
               ['Banco', client.bank || '—'],
               ['CBU/CVU', client.cbu ? <span key="n" className="uc-num">···· {client.cbu.slice(-4)}</span> : '—'],
             ]}

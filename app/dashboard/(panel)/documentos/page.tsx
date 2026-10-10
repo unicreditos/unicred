@@ -41,6 +41,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         receiptNumber: paymentReceipt.receiptNumber,
         amount: paymentReceipt.amount,
         loanId: paymentReceipt.loanId,
+        disbursementId: paymentReceipt.disbursementId,
         paidAt: paymentReceipt.paidAt,
         createdAt: paymentReceipt.createdAt,
       })
@@ -131,8 +132,20 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
   for (const r of receipts) {
     push(`recibo-${r.id}`, `Recibo ${r.receiptNumber} · ${money(Number(r.amount))}`, 'Recibo', r.loanId ? solRef(r.loanId) : '—', (r.paidAt ?? r.createdAt) as Date, view('recibo', r.id))
   }
-  for (const d of disbursements.filter((x) => x.status === 'credited')) {
-    push(`liq-${d.id}`, `Liquidación del crédito · ${money(Number(d.amount))}`, 'Otros', solRef(d.loanId), (d.creditedAt ?? d.createdAt) as Date, view('liquidacion', d.id))
+  const disbursementsWithReceipt = new Set(
+    receipts.map((r) => r.disbursementId).filter((id): id is string => !!id),
+  )
+  for (const d of disbursements.filter(
+    (x) => x.status === 'credited' && !disbursementsWithReceipt.has(x.id),
+  )) {
+    push(
+      `disb-${d.id}`,
+      `Comprobante de desembolso · ${money(Number(d.amount))}`,
+      'Recibo',
+      solRef(d.loanId),
+      (d.creditedAt ?? d.createdAt) as Date,
+      view('recibo', d.id),
+    )
   }
   for (const r of reports) {
     push(`bcra-${r.id}`, `Informe de situación BCRA ${r.reportNumber}`, 'Otros', '—', r.createdAt as Date, view('bcra', r.id))

@@ -73,7 +73,7 @@ export function docDateTime(value: Date | string | null | undefined): string {
 }
 
 export function docShortId(id: string | null | undefined, length = 10): string {
-  const raw = String(id ?? '').replace(/-/g, '').toUpperCase()
+  const raw = String(id ?? '').replace(/^[a-z]+_/i, '').replace(/[-_]/g, '').toUpperCase()
   if (!raw) return '—'
   return raw.slice(0, length)
 }

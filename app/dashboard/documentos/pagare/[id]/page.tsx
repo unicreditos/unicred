@@ -3,6 +3,7 @@ import { DocumentPreviewShell } from '@/components/documents/document-preview-sh
 import { PagarePrintable } from '@/components/documents/pagare-printable'
 import { Button } from '@/components/ui/button'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { loadContractPackForViewer } from '@/lib/legal/loan-pack'
@@ -17,11 +18,13 @@ export default async function PagarePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const { id: rawId } = await params
   const id = String(rawId ?? '').trim()
-  await keepCustomerInDashboard('pagare', id, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('pagare', id, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const userId = await requireUserId()
   const data = await loadContractPackForViewer(userId, id)
   const backHref = await documentBackHref(userId)
@@ -47,6 +50,8 @@ export default async function PagarePage({
       meta={`Pagaré PAG-${data.id.slice(0, 8).toUpperCase()}`}
       fileName={documentPdfBaseName('Pagare', shortDocCode(data.id, 'PAG'))}
       extra={<DocumentPackLinks contractId={data.id} />}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <PagarePrintable contract={data} />
     </DocumentPreviewShell>

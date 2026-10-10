@@ -10,4 +10,5 @@ export const SITUACION_BCRA: Record<number, string> = {
   3: 'Riesgo medio',
   4: 'Riesgo alto',
   5: 'Irrecuperable',
+  6: 'Irrecuperable por disposición técnica',
 }

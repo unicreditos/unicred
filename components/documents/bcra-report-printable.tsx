@@ -1,4 +1,4 @@
-import { BcraExtract } from '@/components/unicred/bcra-extract'
+import { BcraExtractDocument } from '@/components/documents/bcra-extract-document'
 import {
   DocumentField,
   DocumentFieldGrid,
@@ -8,10 +8,10 @@ import {
   DocumentSheet,
 } from '@/components/documents/document-frame'
 import type { FullBcraSnapshot } from '@/lib/bcra'
+import { SITUACION_BCRA } from '@/lib/bcra-labels'
 import { BRAND, legalCuitLabel } from '@/lib/brand'
 import { docDate, docDateTime } from '@/lib/document-format'
-import { formatARSDecimal } from '@/lib/finance'
-import { cn } from '@/lib/utils'
+import { formatARS } from '@/lib/finance'
 
 export type BCRAReportData = {
   id: string
@@ -44,25 +44,27 @@ export type BCRAReportData = {
   fullReportData?: Record<string, unknown> | null
 }
 
-function scoreMeta(score: number | null | undefined) {
-  if (!score) return { label: 'Sin score', tone: 'text-slate-500', width: 0 }
-  if (score >= 720) return { label: 'Excelente', tone: 'text-emerald-700', width: Math.min(100, (score / 850) * 100) }
-  if (score >= 640) return { label: 'Bueno', tone: 'text-emerald-800', width: Math.min(100, (score / 850) * 100) }
-  if (score >= 560) return { label: 'Regular', tone: 'text-amber-700', width: Math.min(100, (score / 850) * 100) }
-  return { label: 'Riesgo alto', tone: 'text-red-700', width: Math.min(100, (score / 850) * 100) }
+function scoreLabel(score: number | null | undefined) {
+  if (!score) return 'Sin score'
+  if (score >= 720) return 'Excelente'
+  if (score >= 640) return 'Bueno'
+  if (score >= 560) return 'Regular'
+  return 'Riesgo alto'
 }
 
-function situationMeta(value: number | null | undefined) {
-  const map: Record<number, string> = {
-    1: '1 · Normal',
-    2: '2 · Riesgo bajo',
-    3: '3 · Riesgo medio',
-    4: '4 · Riesgo medio-alto',
-    5: '5 · Irregular',
-    6: '6 · Irrecuperable',
-  }
-  if (!value) return 'No informada'
-  return map[value] ?? String(value)
+function situationText(value: number | null | undefined) {
+  if (!value) return 'Sin deuda'
+  return SITUACION_BCRA[value] ?? 'Informada'
+}
+
+function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: number | null }) {
+  return (
+    <div className={`bcra-kpi${tone ? ` s${Math.min(tone, 6)}` : ''}`}>
+      <p className="bcra-kpi-label">{label}</p>
+      <p className="bcra-kpi-value">{value}</p>
+      {hint ? <p className="bcra-kpi-hint">{hint}</p> : null}
+    </div>
+  )
 }
 
 export function BCRAReportPrintable({
@@ -72,15 +74,19 @@ export function BCRAReportPrintable({
   report: BCRAReportData
   extract?: FullBcraSnapshot | null
 }) {
-  const score = scoreMeta(report.scoreAtGeneration)
   const branding = report.branding ?? {}
+  const periods = extract?.historicas.periodos ?? []
+  const worst24 = periods.reduce((acc, p) => Math.max(acc, p.worstSituation ?? 0), 0)
+  const consulted = (report.fullReportData as { consultedAt?: string } | null)?.consultedAt ?? report.createdAt
+  const place = [report.customer?.city, report.customer?.province].filter(Boolean).join(', ') || '—'
+  const checks = extract ? extract.chequesRechazados.cheques?.length ?? 0 : report.hasRejectedChecks ? 1 : 0
 
   return (
-    <DocumentSheet>
+    <DocumentSheet className="bcra-report">
       <DocumentLetterhead
         kind="informe"
         title={branding.reportType ?? 'Informe de situación crediticia'}
-        subtitle="Consulta a Central de Deudores del BCRA y score UNICRÉDITOS"
+        subtitle="Central de Deudores del BCRA y score UNICRÉDITOS"
         number={report.reportNumber}
         issuedAt={docDateTime(report.createdAt)}
         validUntil={report.expiresAt ? docDate(report.expiresAt) : '30 días desde la emisión'}
@@ -93,88 +99,38 @@ export function BCRAReportPrintable({
           <DocumentField label="Nombre" value={report.customer?.name ?? '—'} />
           <DocumentField label="CUIL" value={report.customer?.cuil ?? '—'} mono />
           <DocumentField label="DNI" value={report.customer?.dni ?? '—'} mono />
-          <DocumentField label="Correo" value={report.customer?.email ?? '—'} />
-          <DocumentField label="Provincia" value={report.customer?.province ?? '—'} />
-          <DocumentField label="Localidad" value={report.customer?.city ?? '—'} />
+          <DocumentField label="Localidad" value={place} />
         </DocumentFieldGrid>
       </DocumentSection>
 
-      <DocumentSection number="02" title="Score UNICRÉDITOS">
-        <div className="border border-slate-200 bg-slate-50 px-5 py-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-                Puntaje al momento de emisión
-              </p>
-              <p className={cn('doc-amount mt-1 font-mono font-semibold tracking-tight', score.tone)}>
-                {report.scoreAtGeneration ?? '—'}
-              </p>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
-                {score.label}
-              </p>
-            </div>
-            <p className="max-w-xs text-[11px] leading-relaxed text-slate-600">
-              El score UNICRÉDITOS es una evaluación interna. No es el “score Veraz” ni reemplaza la
-              situación informada por el BCRA.
-            </p>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden bg-slate-200">
-            <div className="h-full bg-slate-800" style={{ width: `${score.width}%` }} />
-          </div>
-          <div className="mt-1 doc-score-scale font-mono text-[10px] text-slate-500">
-            <span>300</span>
-            <span>560</span>
-            <span>640</span>
-            <span>720</span>
-            <span>850</span>
-          </div>
+      <DocumentSection number="02" title="Resumen">
+        <div className="bcra-kpis">
+          <Kpi label="Score interno" value={report.scoreAtGeneration ? String(report.scoreAtGeneration) : '—'} hint={scoreLabel(report.scoreAtGeneration)} />
+          <Kpi label="Sit. actual" value={report.worstSituation ? String(report.worstSituation) : '—'} hint={situationText(report.worstSituation)} tone={report.worstSituation} />
+          <Kpi label={`Peor ${periods.length || 24} meses`} value={worst24 ? String(worst24) : '—'} hint={situationText(worst24 || null)} tone={worst24 || null} />
+          <Kpi label="Deuda total" value={formatARS(Number(report.totalDebt ?? 0))} />
+          <Kpi label="Entidades" value={String(report.entitiesCount ?? 0)} />
+          <Kpi label="Cheques rech." value={String(checks)} tone={checks ? 5 : null} />
         </div>
-      </DocumentSection>
-
-      <DocumentSection number="03" title="Resumen BCRA">
-        <DocumentFieldGrid cols={3}>
-          <DocumentField label="Peor situación" value={situationMeta(report.worstSituation)} />
-          <DocumentField label="Deuda consolidada" value={formatARSDecimal(report.totalDebt ?? 0)} mono />
-          <DocumentField label="Entidades" value={String(report.entitiesCount ?? 0)} />
-          <DocumentField
-            label="Cheques rechazados"
-            value={report.hasRejectedChecks ? 'Sí' : 'No'}
-          />
-          <DocumentField
-            label="Consulta BCRA"
-            value={docDate((report.fullReportData as { consultedAt?: string } | null)?.consultedAt ?? report.createdAt)}
-          />
-          <DocumentField label="Entidad consultora" value={branding.company ?? BRAND.legalName} />
-        </DocumentFieldGrid>
-      </DocumentSection>
-
-      {extract ? (
-        <DocumentSection number="04" title="Extracto Central de Deudores">
-          <div className="doc-extract">
-            <BcraExtract snapshot={extract} variant="document" />
-          </div>
-        </DocumentSection>
-      ) : (
-        <DocumentSection number="04" title="Extracto Central de Deudores">
-          <p className="text-sm text-slate-600">
-            No hay detalle de entidades almacenado en este informe. El resumen de la cláusula 3
-            refleja los totales al momento de la consulta.
-          </p>
-        </DocumentSection>
-      )}
-
-      <DocumentSection number="05" title="Alcance">
-        <p className="text-[12.5px] leading-relaxed text-slate-600">
-          Informe confidencial para evaluación crediticia de {BRAND.legalName} (CUIT{' '}
-          {branding.cuit ?? legalCuitLabel()}). La información proviene de la Central de Deudores
-          del BCRA y de procesos internos de UNICRÉDITOS. El titular puede ejercer derechos de acceso
-          y rectificación ante el BCRA y ante {BRAND.privacyEmail}.
+        <p className="bcra-note">
+          Consulta al BCRA del {docDate(consulted)}. Score interno de UNICRÉDITOS: no es Veraz ni Nosis ni reemplaza lo
+          informado por el BCRA.
         </p>
+      </DocumentSection>
+
+      <DocumentSection number="03" title="Central de Deudores del BCRA">
+        {extract ? (
+          <BcraExtractDocument snapshot={extract} />
+        ) : (
+          <p className="bcra-doc-empty">
+            No hay detalle de entidades guardado en esta consulta. El resumen refleja los totales al momento de consultar.
+          </p>
+        )}
       </DocumentSection>
 
       <DocumentFooter
         documentId={report.id}
-        extra="Uso exclusivo del titular y de UNICRÉDITOS. Queda prohibida su cesión a terceros no autorizados."
+        extra={`Informe confidencial para evaluación crediticia de ${BRAND.legalName} (CUIT ${branding.cuit ?? legalCuitLabel()}). Fuente: Central de Deudores del BCRA y procesos internos de UNICRÉDITOS. El titular puede ejercer sus derechos de acceso y rectificación ante el BCRA y ante ${BRAND.privacyEmail}. Prohibida su cesión a terceros no autorizados.`}
       />
     </DocumentSheet>
   )

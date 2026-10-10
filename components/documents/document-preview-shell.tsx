@@ -5,31 +5,17 @@ import { DocumentPrintTitle, PrintButton } from '@/components/documents/print-bu
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { ReactNode, Suspense, useEffect } from 'react'
+import { ReactNode, useEffect } from 'react'
 
-export function DocumentPreviewShell(props: {
-  backHref: string
-  meta: string
-  fileName: string
-  extra?: ReactNode
-  hint?: string
-  children: ReactNode
-}) {
-  return (
-    <Suspense fallback={<div className="document-preview-root">{props.children}</div>}>
-      <DocumentPreviewShellInner {...props} />
-    </Suspense>
-  )
-}
-
-function DocumentPreviewShellInner({
+export function DocumentPreviewShell({
   backHref,
   meta,
   fileName,
   extra,
   hint,
   children,
+  embed = false,
+  autoPrint = false,
 }: {
   backHref: string
   meta: string
@@ -37,16 +23,16 @@ function DocumentPreviewShellInner({
   extra?: ReactNode
   hint?: string
   children: ReactNode
+  /** Resuelto en el servidor desde ?embed=1 */
+  embed?: boolean
+  /** Resuelto en el servidor desde ?print=1 */
+  autoPrint?: boolean
 }) {
-  const params = useSearchParams()
-  const embed = params.get('embed') === '1'
-  const printNow = params.get('print') === '1'
-
   useEffect(() => {
-    if (!printNow || embed) return
+    if (!autoPrint || embed) return
     const timer = window.setTimeout(() => window.print(), 350)
     return () => window.clearTimeout(timer)
-  }, [printNow, embed])
+  }, [autoPrint, embed])
 
   return (
     <div className={embed ? 'document-preview-root is-embed' : 'document-preview-root'}>
@@ -54,13 +40,13 @@ function DocumentPreviewShellInner({
       {embed ? null : (
         <div className="no-print document-preview-toolbar">
           <Button asChild variant="outline" size="sm" className="gap-1.5" id="btn-back-document">
-            <Link href={backHref}>
+            <Link href={backHref} prefetch={false}>
               <ArrowLeft className="h-4 w-4" /> Volver
             </Link>
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-800">{meta}</p>
-            <p className="hidden text-[11px] text-slate-500 sm:block">
+            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{meta}</p>
+            <p className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:block">
               {hint ??
                 'Vista previa A4. Podés exportar el documento directamente como archivo PDF o imprimirlo según tu preferencia.'}
             </p>

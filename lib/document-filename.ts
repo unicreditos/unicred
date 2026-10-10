@@ -20,7 +20,8 @@ export function documentPdfBaseName(kind: string, code: string): string {
 
 export function shortDocCode(id: string | null | undefined, prefix: string, length = 8): string {
   const raw = String(id ?? '')
-    .replace(/-/g, '')
+    .replace(/^[a-z]+_/i, '')
+    .replace(/[-_]/g, '')
     .toUpperCase()
     .slice(0, length)
   return raw ? `${prefix}-${raw}` : prefix

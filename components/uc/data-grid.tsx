@@ -430,7 +430,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                   <th
                     key={c.key}
                     scope="col"
-                    className={`${c.align ? `uc-${c.align}` : ''} ${sortable ? 'uc-sortable' : ''}`}
+                    className={`${c.align ? `uc-${c.align}` : ''} ${sortable ? 'uc-sortable' : ''} ${c.kind === 'actions' ? 'uc-col-actions' : ''}`}
                     aria-sort={on ? (st.dir === 1 ? 'ascending' : 'descending') : sortable ? 'none' : undefined}
                     tabIndex={sortable ? 0 : undefined}
                     onClick={sortable ? () => sortBy(c.key) : undefined}
@@ -467,7 +467,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                       <td
                         key={c.key}
                         data-label={c.kind === 'actions' ? '' : c.label}
-                        className={[c.align ? `uc-${c.align}` : '', numeric ? 'uc-num' : '', c.amount ? 'uc-amount' : '', c.muted ? 'uc-muted' : '']
+                        className={[c.align ? `uc-${c.align}` : '', numeric ? 'uc-num' : '', c.amount ? 'uc-amount' : '', c.muted ? 'uc-muted' : '', c.kind === 'actions' ? 'uc-col-actions' : '']
                           .filter(Boolean)
                           .join(' ')}
                       >

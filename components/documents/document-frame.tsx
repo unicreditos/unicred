@@ -1,4 +1,4 @@
-import { Logo } from '@/components/brand'
+import { BrandMark } from '@/components/brand-mark'
 import { BRAND, legalCuitLabel, publicBrandWebsite } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 import { ReactNode } from 'react'
@@ -15,6 +15,7 @@ export type DocumentKind =
   | 'libre_deuda'
   | 'cancelacion'
   | 'constancia'
+  | 'cuponera'
 
 const KIND_LABEL: Record<DocumentKind, string> = {
   contrato: 'Contrato',
@@ -28,6 +29,7 @@ const KIND_LABEL: Record<DocumentKind, string> = {
   libre_deuda: 'Libre deuda',
   cancelacion: 'Cancelación',
   constancia: 'Constancia',
+  cuponera: 'Cuponera',
 }
 
 export function DocumentSheet({
@@ -88,7 +90,7 @@ export function DocumentLetterhead({
       <div className="doc-letterhead-body">
         <div className="doc-letterhead-brand">
           <div className="doc-logo-box">
-            <Logo showText={false} />
+            <BrandMark className="h-9 w-9" />
           </div>
           <div className="doc-letterhead-copy">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">

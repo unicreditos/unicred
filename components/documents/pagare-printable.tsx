@@ -32,11 +32,11 @@ export function PagarePrintable({ contract }: { contract: ContractDocData }) {
       />
 
       <DocumentSection number="01" title="Promesa incondicional de pago">
-        <div className="border-2 border-slate-900 px-5 py-6">
+        <div className="border-2 border-slate-900 px-5 py-4">
           <p className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900">
             Pagaré
           </p>
-          <p className="mt-4 text-[14px] leading-relaxed text-slate-800">
+          <p className="mt-3 text-[13.5px] leading-relaxed text-slate-800">
             El {docDate(contract.acceptedAt ?? contract.createdAt)}, en {BRAND.city},{' '}
             <strong>{contract.customer?.name ?? '—'}</strong>, DNI {contract.customer?.dni ?? '—'},
             CUIL {contract.customer?.cuil ?? '—'}, en adelante el Librador, pagará{' '}
@@ -46,7 +46,7 @@ export function PagarePrintable({ contract }: { contract: ContractDocData }) {
             {amountInWords(total)}), en {BRAND.city}, el día <strong>{docDate(lastDue)}</strong>,
             por igual valor recibido en préstamo (mutuo).
           </p>
-          <p className="mt-3 text-[13px] leading-relaxed text-slate-700">
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-700">
             Lugar de pago: {BRAND.address}. Moneda: pesos argentinos de curso legal. Este pagaré
             se emite en garantía del contrato CTR-{docShortId(contract.id)}, préstamo{' '}
             <span className="font-mono">{contract.loanId}</span>, sin que ello importe

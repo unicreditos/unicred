@@ -5,6 +5,7 @@ import { loadConstanciaForUser } from '@/lib/arca/constancia-store'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { canViewOwnedRecord, documentBackHref } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { requireUserId } from '@/lib/session'
@@ -19,11 +20,13 @@ export default async function ArcaConstanciaPage({
   searchParams,
 }: {
   params: Promise<{ userId: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const { userId: rawId } = await params
   const ownerId = String(rawId ?? '').trim()
-  await keepCustomerInDashboard('arca', ownerId, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('arca', ownerId, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const viewerId = await requireUserId()
   const backHref = await documentBackHref(viewerId, ownerId)
 
@@ -68,6 +71,8 @@ export default async function ArcaConstanciaPage({
       backHref={backHref}
       meta={`Constancia ARCA ${snapshot.cuil}`}
       fileName={documentPdfBaseName('Constancia-ARCA', snapshot.cuil)}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <ArcaConstanciaPrintable snapshot={snapshot} holderName={holder?.name} />
     </DocumentPreviewShell>

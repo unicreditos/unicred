@@ -3,6 +3,7 @@ import { DocumentPreviewShell } from '@/components/documents/document-preview-sh
 import { IntimacionPrintable } from '@/components/documents/intimacion-printable'
 import { Button } from '@/components/ui/button'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { documentBackHref, documentBackHrefForLoan } from '@/lib/legal/access'
 import { documentPdfBaseName, shortDocCode } from '@/lib/document-filename'
 import { asMoraRows, evaluateIntimation } from '@/lib/legal/mora'
@@ -18,10 +19,12 @@ export default async function IntimacionPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const id = String((await params).id ?? '').trim()
-  await keepCustomerInDashboard('intimacion', id, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('intimacion', id, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const userId = await requireUserId()
   const data = await loadContractPackForViewer(userId, id)
   const backHref = data
@@ -72,6 +75,8 @@ export default async function IntimacionPage({
         snapshot?.number || shortDocCode(data.id, 'INT'),
       )}
       extra={<DocumentPackLinks contractId={data.id} loanId={data.loanId} intimable />}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       <IntimacionPrintable
         contract={data}

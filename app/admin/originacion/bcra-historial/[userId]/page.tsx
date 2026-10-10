@@ -2,6 +2,7 @@ import { ActionButton } from '@/components/admin/action-button'
 import { BackLink, Card, CardHead, NoAccess, PageHead } from '@/components/uc/blocks'
 import { auditAdminView, loadDeskChrome } from '@/lib/admin-desk/load'
 import { bcraHistory } from '@/lib/admin-external'
+import Link from 'next/link'
 
 export const metadata = { title: 'Historial BCRA del cliente' }
 export const dynamic = 'force-dynamic'
@@ -23,9 +24,9 @@ export default async function BcraClientePage({ params }: { params: Promise<{ us
         <CardHead title={`Consultas (${items.length})`} aside={perms.has('risk.score.write') ? <ActionButton url={`/api/admin/bcra/${userId}`} label="Actualizar consulta" confirm="Se consulta al BCRA con el CUIL del cliente. ¿Continuar?" /> : undefined} />
         <div style={{ overflowX: 'auto' }}>
           <table className="uc-dt">
-            <thead><tr><th>Fecha</th><th>CUIL</th><th>Peor situación</th><th>Deuda total</th><th>Entidades</th><th>Cheques rechazados</th><th>Score</th><th>Fuente</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>CUIL</th><th>Peor situación</th><th>Deuda total</th><th>Entidades</th><th>Cheques rechazados</th><th>Score</th><th>Fuente</th><th>Informe</th></tr></thead>
             <tbody>
-              {items.length === 0 ? <tr><td colSpan={8}>Sin consultas.</td></tr> : null}
+              {items.length === 0 ? <tr><td colSpan={9}>Sin consultas.</td></tr> : null}
               {items.map((c) => (
                 <tr key={c.id}>
                   <td data-label="Fecha">{fmt(c.consultedAt ?? c.createdAt)}</td>
@@ -36,6 +37,9 @@ export default async function BcraClientePage({ params }: { params: Promise<{ us
                   <td data-label="Cheques rechazados">{c.hasRejectedChecks ? 'Sí' : 'No'}</td>
                   <td data-label="Score">{c.computedScore ?? '—'}</td>
                   <td data-label="Fuente">{c.source ?? '—'}</td>
+                  <td data-label="Informe">
+                    <Link href={`/admin/originacion/bcra-historial/${encodeURIComponent(userId)}/informe/${encodeURIComponent(c.id)}`}>Ver e imprimir</Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

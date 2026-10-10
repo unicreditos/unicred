@@ -10,6 +10,7 @@ import { receiptBranding } from '@/lib/brand'
 import { db } from '@/lib/db'
 import { paymentReceipt, disbursement, profile, user, bankAccount } from '@/lib/db/schema'
 import { keepCustomerInDashboard } from '@/lib/documents/keep-customer-in-dashboard'
+import { documentPreviewFlags } from '@/lib/documents/preview-flags'
 import { canViewOwnedRecord, receiptBackHrefForRole } from '@/lib/legal/access'
 import { documentPdfBaseName } from '@/lib/document-filename'
 import { getRoleForUser, requireUserId } from '@/lib/session'
@@ -48,11 +49,13 @@ export default async function ReceiptPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ embed?: string | string[] }>
+  searchParams: Promise<{ embed?: string | string[]; print?: string | string[] }>
 }) {
   const { id: rawId } = await params
   const id = String(rawId ?? '').trim()
-  await keepCustomerInDashboard('recibo', id, searchParams)
+  const sp = await searchParams
+  await keepCustomerInDashboard('recibo', id, sp)
+  const { embed, autoPrint } = documentPreviewFlags(sp)
   const userId = await requireUserId()
   const role = await getRoleForUser(userId)
   const backHref = receiptBackHrefForRole(role)
@@ -199,6 +202,8 @@ export default async function ReceiptPage({
           : undefined
       }
       extra={<DocumentPackLinks receiptId={data.id} />}
+      embed={embed}
+      autoPrint={autoPrint}
     >
       {data.receiptType === 'service_payment' ? (
         <ServicePaymentTicketPrintable receipt={data} />

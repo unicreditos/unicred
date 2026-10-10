@@ -95,7 +95,7 @@ export function proxy(request: NextRequest) {
 
   if (authed) {
     const payId = publicPayInstallmentId(pathname)
-    if (payId) {
+    if (payId && !request.nextUrl.searchParams.has('t')) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       url.search = ''

@@ -278,7 +278,11 @@ async function ensureInstallmentNetworkTicket(opts: {
   return asCashTicket(opts.network, ticket, expiresAt)
 }
 
-export async function ensureLoanCouponTickets(loanId: string, ownerUserId: string) {
+export async function ensureLoanCouponTickets(
+  loanId: string,
+  ownerUserId: string,
+  opts: { onlyInstallmentIds?: ReadonlySet<string> } = {},
+) {
   const [loanRow] = await db
     .select({ id: loan.id, userId: loan.userId })
     .from(loan)
@@ -306,6 +310,7 @@ export async function ensureLoanCouponTickets(loanId: string, ownerUserId: strin
   const rows = await db.select().from(installment).where(eq(installment.loanId, loanId))
   const open = rows
     .filter((row) => row.status !== 'paid' && row.status !== 'cancelled')
+    .filter((row) => !opts.onlyInstallmentIds || opts.onlyInstallmentIds.has(row.id))
     .sort((a, b) => a.number - b.number)
   const payerFirst = payer.name?.split(' ')[0]
   const payerLast = payer.name?.split(' ').slice(1).join(' ') || undefined

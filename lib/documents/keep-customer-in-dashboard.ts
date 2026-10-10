@@ -7,12 +7,14 @@ import { redirect } from 'next/navigation'
 export async function keepCustomerInDashboard(
   kind: CustomerDocKind,
   id: string,
-  searchParams?: Promise<{ embed?: string | string[]; print?: string | string[] }> | { embed?: string; print?: string },
+  searchParams?:
+    | Promise<{ embed?: string | string[]; print?: string | string[] }>
+    | { embed?: string | string[]; print?: string | string[] },
 ) {
   const sp =
     searchParams && typeof (searchParams as Promise<{ embed?: string }>).then === 'function'
-      ? await (searchParams as Promise<{ embed?: string; print?: string }>)
-      : ((searchParams as { embed?: string; print?: string } | undefined) ?? {})
+      ? await (searchParams as Promise<{ embed?: string | string[]; print?: string | string[] }>)
+      : ((searchParams as { embed?: string | string[]; print?: string | string[] } | undefined) ?? {})
   const flag = (value: string | string[] | undefined) =>
     String(Array.isArray(value) ? value[0] : value ?? '') === '1'
   if (flag(sp.embed) || flag(sp.print)) return

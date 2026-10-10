@@ -570,7 +570,9 @@ input[type=range]{width:100%;accent-color:var(--uc-accent)}
 .uc-sidebar:not(.uc-is-open) .uc-sb-foot-note{opacity:0}
 
 /* Tabla: acciones por fila y celdas con estado */
-.uc-row-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.uc-row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap;min-width:0}
+.uc-dt .uc-col-actions{min-width:11.75rem;width:11.75rem;white-space:nowrap;vertical-align:middle}
+.uc-dt .uc-col-actions .uc-row-action{padding:5px 8px;font-size:12px;flex-shrink:0}
 a.uc-row-action{text-decoration:none}
 .uc-cell-stack .uc-sub{display:block}
 .uc-note{margin:0;color:var(--uc-text-muted);font-size:12.5px}
