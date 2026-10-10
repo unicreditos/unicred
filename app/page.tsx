@@ -5,6 +5,7 @@ import { formatARS } from '@/lib/finance'
 import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import { INCOME_DTI_RATIO } from '@/lib/loan-underwriting'
 import { pageMetadata } from '@/lib/seo'
+import { getSetting } from '@/lib/site-config/read'
 import {
   ArrowRight,
   Check,
@@ -135,7 +136,9 @@ const FAQ = [
   },
 ] as const
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Texto editable desde el backoffice (Configuración y contenido). Sin versión publicada, rige el del código.
+  const hero = await getSetting<{ text: string }>('home.hero_subtitle')
   return (
     <div className="min-h-screen bg-paper text-brand-navy-900">
       <PublicHeader />
@@ -156,8 +159,7 @@ export default function HomePage() {
                 Sabé cuánto devolvés. <span className="text-brand-primary-700">Antes de pedir.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-navy-600">
-                Elegí monto y plazo, mirá la cuota, la TNA y el CFT reales y recién después creá tu cuenta. Te
-                mostramos el costo completo, incluso cuando es alto.
+                {hero.value.text}
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg" className="h-12 rounded-full px-6 text-base font-semibold">
