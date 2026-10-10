@@ -102,7 +102,8 @@ function DocumentBody({
     case 'pagare':
       return <PagarePrintable contract={payload.contract} />
     case 'talonario':
-      return <CouponBookPrintable contract={payload.contract} />
+      if (!payload.pay) return null
+      return <CouponBookPrintable contract={payload.contract} pay={payload.pay} />
     case 'estado-deuda':
       return <EstadoDeudaPrintable contract={payload.contract} />
     case 'intimacion':

@@ -23,6 +23,8 @@ export const TREASURY_ACCOUNT = {
   accountNumber: readEnv('TREASURY_ACCOUNT_NUMBER') || '2503981510001',
   cbu: readEnv('TREASURY_CBU') || '1430001725039815100019',
   alias: readEnv('TREASURY_ALIAS', 'NEXT_PUBLIC_TREASURY_ALIAS') || null,
+  /** Contenido del QR de transferencia de la cuenta (texto EMVCo / URL que entrega el banco). Solo servidor. */
+  qrPayload: readEnv('TREASURY_QR_PAYLOAD') || null,
   address: BRAND.address,
 } as const
 
