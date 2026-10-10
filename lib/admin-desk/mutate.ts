@@ -25,6 +25,9 @@ import {
   mobileAdminRejectLoan,
 } from '@/lib/mobile/ops'
 import { newId } from '@/lib/session'
+import { assertKey6 } from '@/lib/key6-store'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
+import { key6Record, evaluateKey6 } from '@/lib/key6'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { requireAcceptedContract } from '@/lib/legal/expediente'
 
@@ -189,10 +192,16 @@ export async function deskMutate(
         if (!kycId) return fail('KYC requerido')
         const [acc] = await db.select().from(kycVerification).where(eq(kycVerification.id, kycId)).limit(1)
         if (!acc) return fail('KYC no encontrado')
+        // Key 6: un admin NO puede marcar verificado a un cliente sin DNI frente, dorso y selfie en archivo
+        // (con prueba de vida y sesion Didit aprobadas). Rechazar siempre se puede. Personal: exento.
+        if (status === 'approved') await assertKey6(acc.userId, 'admin_decideKyc', adminUserId)
         const now = new Date()
         await db
           .update(kycVerification)
           .set({
+            ...(status === 'approved'
+              ? { ocrData: ocrMergeSql({ key6: key6Record(evaluateKey6({ hasFront: true, hasBack: true, hasSelfie: true, livenessPassed: true, sessionApproved: true }), 'admin_decideKyc', now) }) }
+              : {}),
             status,
             rejectionReason: status === 'rejected' ? notes || 'Rechazado' : null,
             reviewedBy: adminUserId,
@@ -523,6 +532,8 @@ export async function deskMutate(
 
       case 'createApplication': {
         const clientId = String(payload.clientId || '')
+        // Key 6 para clientes (personal exento): sin identidad completa no se da de alta una solicitud.
+        if (clientId) await assertKey6(clientId, 'admin_createApplication', adminUserId, { grandfatherLegacy: true })
         const productId = String(payload.productId || '')
         const amount = Number(payload.amount)
         const installmentsCount = Number(payload.installments)

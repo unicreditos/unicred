@@ -28,6 +28,7 @@ import { listServicePayments, payServiceFromWallet } from '@/lib/payments/servic
 import { SERVICE_CATEGORIES, SERVICE_PROVIDERS } from '@/lib/services/catalog'
 import { getRoleForUser, newId } from '@/lib/session'
 import { createDiditSession, diditApprovedForUser, isDiditConfigured } from '@/lib/didit'
+import { assertKey6 } from '@/lib/key6-store'
 import { computeFrenchAmortization, frenchAmortizationSchedule } from '@/lib/finance'
 import { loanPricingFields } from '@/lib/loan-rates'
 import {
@@ -1408,7 +1409,9 @@ export async function mobileAdminSetScore(_adminId: string, customerId: string, 
   return { success: true, message: 'Score actualizado' }
 }
 
-export async function mobileAdminKycApprove(_adminId: string, customerId: string) {
+export async function mobileAdminKycApprove(adminId: string, customerId: string) {
+  // Key 6: sin DNI frente, dorso y selfie en archivo (prueba de vida y sesion aprobadas) no se aprueba a un cliente.
+  await assertKey6(customerId, 'mobile_admin_kyc_approve', adminId)
   await upsertKycApproved(customerId, 'mobile_admin')
   return { success: true, message: 'KYC aprobado' }
 }
