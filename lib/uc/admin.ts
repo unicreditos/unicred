@@ -5,8 +5,10 @@ import type { PermissionKey } from '@/lib/rbac'
 
 /* ------------------------------ Menú ------------------------------ */
 
-type Leaf = { label: string; route: string; perm?: PermissionKey }
+type Leaf = { label: string; route: string; perm?: PermissionKey; anyOf?: PermissionKey[] }
 type Group = { id: string; label: string; icon: MenuItem['icon']; route?: string; perm?: PermissionKey; children?: Leaf[] }
+
+const CONTENT_PERMS: PermissionKey[] = ['content.edit', 'content.publish', 'pricing.publish']
 
 const GROUPS: Group[] = [
   { id: 'inicio', label: 'Inicio', icon: 'home', route: '/admin' },
@@ -69,6 +71,18 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    id: 'contenido',
+    label: 'Configuración y contenido',
+    icon: 'pen',
+    children: [
+      { label: 'Comisiones y tasas', route: '/admin/contenido/comisiones', anyOf: CONTENT_PERMS },
+      { label: 'Textos de la web', route: '/admin/contenido/textos', anyOf: CONTENT_PERMS },
+      { label: 'Documentación legal', route: '/admin/contenido/legal', anyOf: CONTENT_PERMS },
+      { label: 'Parámetros', route: '/admin/contenido/parametros', anyOf: CONTENT_PERMS },
+      { label: 'Historial', route: '/admin/contenido/historial', anyOf: CONTENT_PERMS },
+    ],
+  },
+  {
     id: 'sistema',
     label: 'Sistema',
     icon: 'sliders',
@@ -88,7 +102,7 @@ export function adminMenu(perms: Set<PermissionKey>): MenuItem[] {
   const out: MenuItem[] = []
   for (const g of GROUPS) {
     if (g.children) {
-      const children = g.children.filter((c) => !c.perm || perms.has(c.perm)).map(({ label, route }) => ({ label, route }))
+      const children = g.children.filter((c) => (!c.perm || perms.has(c.perm)) && (!c.anyOf || c.anyOf.some((p) => perms.has(p)))).map(({ label, route }) => ({ label, route }))
       if (children.length) out.push({ id: g.id, label: g.label, icon: g.icon, children })
     } else if (!g.perm || perms.has(g.perm)) {
       out.push({ id: g.id, label: g.label, icon: g.icon, route: g.route })

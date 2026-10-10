@@ -28,6 +28,10 @@ export const PERMISSIONS = [
   { key: 'users.manage', label: 'Gestionar operadores y roles', category: 'Sistema' },
   { key: 'config.write', label: 'Editar productos y configuración', category: 'Sistema' },
   { key: 'audit.read', label: 'Ver auditoría', category: 'Sistema' },
+  // Configuración y contenido editables (prototipo). Publicar precios/CFT exige su propio permiso.
+  { key: 'content.edit', label: 'Editar contenido y configuración de la web (borradores)', category: 'Contenido' },
+  { key: 'content.publish', label: 'Aprobar y publicar textos y documentación legal', category: 'Contenido' },
+  { key: 'pricing.publish', label: 'Aprobar y publicar comisiones, tasas y método de CFT', category: 'Contenido' },
 ] as const
 
 export type PermissionKey = (typeof PERMISSIONS)[number]['key']
@@ -44,7 +48,7 @@ const READ_ONLY_KEYS = PERMISSIONS.filter((p) => p.key.endsWith('.read')).map((p
 export const DEFAULT_ROLES: Array<{ key: string; label: string; description: string; permissions: readonly string[] }> = [
   { key: 'super_admin', label: 'Super Admin', description: 'Acceso total. Reservado para dirección técnica.', permissions: ALL_KEYS },
   { key: 'director', label: 'Director', description: 'Visión completa y autoridad de aprobación.', permissions: [...ALL_KEYS.filter((k) => k !== 'users.manage')] },
-  { key: 'gerente', label: 'Gerente', description: 'Operación diaria sin gestión de usuarios ni configuración.', permissions: ALL_KEYS.filter((k) => !['users.manage', 'config.write'].includes(k)) },
+  { key: 'gerente', label: 'Gerente', description: 'Operación diaria sin gestión de usuarios ni configuración.', permissions: ALL_KEYS.filter((k) => !['users.manage', 'config.write', 'content.publish', 'pricing.publish'].includes(k)) },
   { key: 'creditos', label: 'Mesa de Créditos', description: 'Evalúa y decide solicitudes.', permissions: ['clients.read', 'credits.read', 'credits.approve', 'credits.reject', 'credits.edit', 'kyc.review', 'risk.read'] },
   { key: 'riesgo', label: 'Riesgo', description: 'Score, KYC y variables de riesgo.', permissions: ['clients.read', 'credits.read', 'risk.read', 'risk.score.write', 'risk.rules.write', 'kyc.review'] },
   { key: 'finanzas', label: 'Finanzas', description: 'Tesorería, desembolsos y conciliación.', permissions: ['finance.read', 'payments.read', 'payments.reconcile', 'disbursements.credit', 'reports.export'] },
