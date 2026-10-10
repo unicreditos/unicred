@@ -1,5 +1,6 @@
 'use server'
 
+import { enforceActionLimit } from '@/lib/action-rate-limit'
 import { markItemsRead } from '@/lib/inbox-read'
 import { getInbox } from '@/lib/notifications'
 import { revalidateOps } from '@/lib/revalidate'
@@ -59,6 +60,7 @@ export async function openMySupportChat(input?: { category?: string; relatedLoan
 
 export async function sendSupportMessage(caseId: string, body: string) {
   const userId = await assertRole('customer', 'merchant', 'admin')
+  await enforceActionLimit('claim', userId)
   const role = await getRoleForUser(userId)
   const row = await assertCanAccessCase(caseId, userId, role)
   if (row.status === 'resolved' || row.status === 'closed') {

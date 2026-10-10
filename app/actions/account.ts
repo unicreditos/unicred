@@ -1,5 +1,6 @@
 'use server'
 
+import { checkActionLimit } from '@/lib/action-rate-limit'
 import { createClaim } from '@/app/actions/claims'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
@@ -74,6 +75,8 @@ export async function updateMyAvatar(formData: FormData) {
  */
 export async function requestProfileChange(input: { reason: string; fields?: string }) {
   const userId = await assertRole('customer')
+  const gate = await checkActionLimit('credit-request', userId)
+  if (!gate.ok) return { ok: false as const, error: gate.message }
   await ensureSupportCaseTable()
 
   const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
