@@ -61,7 +61,9 @@ export function LoanAdminActions(p: Props) {
   }
 
   const canReopen = p.status !== 'pending' && !p.locked
-  if (!canReopen && !(p.canEdit && p.status === 'pending')) {
+  const canEditTerms =
+    p.canEdit && !p.locked && !p.contractAccepted && (p.status === 'pending' || p.status === 'approved')
+  if (!canReopen && !canEditTerms) {
     return p.locked && p.lockedReason ? <p className="uc-note">{p.lockedReason}</p> : null
   }
 
@@ -90,7 +92,7 @@ export function LoanAdminActions(p: Props) {
             Volver a pendiente
           </button>
         ) : null}
-        {p.canEdit && p.status === 'pending' ? (
+        {canEditTerms ? (
           <button type="button" className="uc-row-action" onClick={() => { setError(null); editDlg.current?.showModal() }}>
             Editar condiciones
           </button>
@@ -128,6 +130,11 @@ export function LoanAdminActions(p: Props) {
         <header>
           <h2 id={`${uid}-t2`}>Editar condiciones</h2>
           <p>Las cuotas y el costo se recalculan con la tasa del crédito. Rango: {p.minAmount.toLocaleString('es-AR')} a {p.maxAmount.toLocaleString('es-AR')} · {p.minTerm} a {p.maxTerm} cuotas.</p>
+          <p>
+            {p.status === 'approved'
+              ? 'El contrato todavía no está firmado. Al guardar, el cliente recibe un mail para firmar con estas condiciones.'
+              : 'Al guardar, el cliente recibe un mail con el importe y las cuotas actualizados.'}
+          </p>
         </header>
         <div className="uc-body">
           <label className="uc-fl" htmlFor={`${uid}-a`}>

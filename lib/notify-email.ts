@@ -10,7 +10,10 @@ import {
   emailOrigin,
   kycStatusEmail,
   infoRequestEmail,
+  loanCancelledEmail,
+  loanConditionsEmail,
   loanRejectedEmail,
+  loanReopenedEmail,
   paymentReceivedEmail,
   paymentRejectedEmail,
   claimReceivedEmail,
@@ -120,6 +123,52 @@ export async function notifyInfoRequest(input: { userId: string; loanId: string;
       to: u.email,
       name: u.name,
       message: input.message,
+      panelUrl: `${emailOrigin()}/dashboard/creditos/${input.loanId}`,
+    }),
+  )
+}
+
+export async function notifyLoanConditions(input: {
+  userId: string
+  loanId: string
+  principal: string | number
+  term: number
+  note?: string
+}) {
+  const u = await userMail(input.userId)
+  if (!u) return
+  await deliver(
+    loanConditionsEmail({
+      to: u.email,
+      name: u.name,
+      principal: input.principal,
+      term: input.term,
+      note: input.note,
+      panelUrl: `${emailOrigin()}/dashboard/creditos/${input.loanId}`,
+    }),
+  )
+}
+
+export async function notifyLoanCancelled(input: { userId: string; loanId: string; reason?: string }) {
+  const u = await userMail(input.userId)
+  if (!u) return
+  await deliver(
+    loanCancelledEmail({
+      to: u.email,
+      name: u.name,
+      reason: input.reason,
+      panelUrl: `${emailOrigin()}/dashboard/creditos/${input.loanId}`,
+    }),
+  )
+}
+
+export async function notifyLoanReopened(input: { userId: string; loanId: string }) {
+  const u = await userMail(input.userId)
+  if (!u) return
+  await deliver(
+    loanReopenedEmail({
+      to: u.email,
+      name: u.name,
       panelUrl: `${emailOrigin()}/dashboard/creditos/${input.loanId}`,
     }),
   )

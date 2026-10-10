@@ -1,5 +1,5 @@
 import { arCompactDate } from '@/lib/date-ar'
-import { and, desc, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, ne, or } from 'drizzle-orm'
 import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import {
@@ -8,6 +8,7 @@ import {
   installment,
   kycVerification,
   loan,
+  loanContract,
   loanProduct,
   merchant,
   payment,
@@ -25,13 +26,21 @@ import {
   mobileAdminApproveLoan,
   mobileAdminRejectLoan,
 } from '@/lib/mobile/ops'
-import { notifyInfoRequest } from '@/lib/notify-email'
+import {
+  notifyDisbursementCredited,
+  notifyInfoRequest,
+  notifyLoanCancelled,
+  notifyLoanConditions,
+  notifyLoanReopened,
+  notifyPaymentReceived,
+  notifyPaymentRejected,
+} from '@/lib/notify-email'
 import { newId } from '@/lib/session'
 import { assertKey6 } from '@/lib/key6-store'
 import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
 import { key6Record, evaluateKey6 } from '@/lib/key6'
 import { computeFrenchAmortization } from '@/lib/finance'
-import { requireAcceptedContract } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady, requireAcceptedContract } from '@/lib/legal/expediente'
 import { loadKycFacts, loadReopenFacts } from '@/lib/loan-admin-facts'
 import {
   CONFLICT_MESSAGE,
@@ -221,6 +230,7 @@ export async function deskMutate(
           targetUserId: row.userId,
           summary: reason,
         })
+        await notifyLoanCancelled({ userId: row.userId, loanId: id, reason })
         return ok()
       }
 
@@ -337,6 +347,7 @@ export async function deskMutate(
           targetUserId: d.userId,
           summary: `Acreditado ${reference || receiptNumber}`,
         })
+        await notifyDisbursementCredited({ userId: d.userId, amount: d.amount })
         return ok()
       }
 
@@ -420,6 +431,11 @@ export async function deskMutate(
         })
         if (!isTransfer) {
           await deskApplyToInstallment(paymentId, next.id, amount, adminUserId)
+          await notifyPaymentReceived({
+            userId: loanRow.userId,
+            amount,
+            installmentNumber: next.number,
+          })
         }
         await recordAudit({
           actorUserId: adminUserId,
@@ -474,6 +490,14 @@ export async function deskMutate(
           targetUserId: row.userId,
           summary: 'Transferencia conciliada',
         })
+        const [paidInst] = ids.length
+          ? await db.select({ number: installment.number }).from(installment).where(eq(installment.id, ids[0])).limit(1)
+          : []
+        await notifyPaymentReceived({
+          userId: row.userId,
+          amount: row.amount,
+          installmentNumber: paidInst?.number,
+        })
         return ok()
       }
 
@@ -481,6 +505,8 @@ export async function deskMutate(
         const paymentId = String(payload.paymentId || '')
         const reason = String(payload.reason || 'Rechazado')
         if (!paymentId) return fail('Pago requerido')
+        const [rejectedPay] = await db.select().from(payment).where(eq(payment.id, paymentId)).limit(1)
+        if (!rejectedPay) return fail('Pago no encontrado')
         await db
           .update(payment)
           .set({
@@ -490,6 +516,7 @@ export async function deskMutate(
             updatedAt: new Date(),
           })
           .where(eq(payment.id, paymentId))
+        await notifyPaymentRejected({ userId: rejectedPay.userId, amount: rejectedPay.amount, reason })
         await recordAudit({
           actorUserId: adminUserId,
           action: 'TRANSFER_REJECTED',
@@ -660,6 +687,7 @@ export async function deskMutate(
           summary: `Vuelta a pendiente desde ${row.status}: ${reason}`,
           changes: { estado: { antes: row.status, despues: 'pending' }, motivo: reason, firmaConfirmada: facts.contractAccepted },
         })
+        await notifyLoanReopened({ userId: row.userId, loanId: id })
         return ok(id)
       }
 
@@ -674,8 +702,18 @@ export async function deskMutate(
         const installments = payload.installments === undefined || payload.installments === '' ? null : Number(payload.installments)
         const [prod] = row.productId ? await db.select().from(loanProduct).where(eq(loanProduct.id, row.productId)).limit(1) : []
         if (!prod) return fail('El crédito no tiene un producto asociado: no se puede validar el rango.')
+        const [contractRow] = await db
+          .select({ id: loanContract.id, status: loanContract.status })
+          .from(loanContract)
+          .where(eq(loanContract.loanId, id))
+          .limit(1)
         const verdict = validateLoanEdit(
-          { status: row.status, principal: Number(row.principal), term: row.term },
+          {
+            status: row.status,
+            principal: Number(row.principal),
+            term: row.term,
+            contractAccepted: contractRow?.status === 'accepted',
+          },
           { amount, installments },
           { minAmount: Number(prod.minAmount), maxAmount: Number(prod.maxAmount), minTerm: prod.minTerm, maxTerm: prod.maxTerm },
           reason,
@@ -694,11 +732,32 @@ export async function deskMutate(
         }
         const now = new Date()
         const done = await db.transaction(async (tx) => {
-          if (!(await lockedFresh(tx, id, payload.expectedUpdatedAt))) return false
-          await tx.update(loan).set({ ...patch, updatedAt: now }).where(and(eq(loan.id, id), eq(loan.status, 'pending')))
-          return true
+          if (!(await lockedFresh(tx, id, payload.expectedUpdatedAt))) return 'stale' as const
+          const [freshContract] = await tx
+            .select({ status: loanContract.status })
+            .from(loanContract)
+            .where(eq(loanContract.loanId, id))
+            .limit(1)
+          if (freshContract?.status === 'accepted') return 'signed' as const
+          const updated = await tx
+            .update(loan)
+            .set({ ...patch, updatedAt: now })
+            .where(and(eq(loan.id, id), or(eq(loan.status, 'pending'), eq(loan.status, 'approved'))))
+            .returning({ id: loan.id })
+          if (!updated.length) return 'stale' as const
+          if (row.status === 'approved') {
+            await ensureLoanContract(
+              tx,
+              { id, userId: row.userId, type: row.type, status: 'approved' },
+              { generatedBy: adminUserId, now },
+            )
+          }
+          return 'ok' as const
         })
-        if (!done) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        if (done === 'signed') {
+          return fail('El cliente ya firmó el contrato. Para cambiar las condiciones hay que reabrir la solicitud.')
+        }
+        if (done !== 'ok') return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
         await recordAudit({
           actorUserId: adminUserId,
           action: 'LOAN_EDITED_ADMIN',
@@ -709,6 +768,29 @@ export async function deskMutate(
           summary: `Edición de condiciones: ${reason}`,
           changes: { motivo: reason, diff: diffFields(row as unknown as Record<string, unknown>, patch) },
         })
+        if (row.status === 'approved') {
+          const [ready] = await db
+            .select({ id: loanContract.id, status: loanContract.status })
+            .from(loanContract)
+            .where(eq(loanContract.loanId, id))
+            .limit(1)
+          if (ready && ready.status !== 'accepted') {
+            await notifyContractReady({
+              userId: row.userId,
+              contractId: ready.id,
+              principal: nextAmount,
+              term: nextTerm,
+            })
+          }
+        } else {
+          await notifyLoanConditions({
+            userId: row.userId,
+            loanId: id,
+            principal: nextAmount,
+            term: nextTerm,
+            note: reason,
+          })
+        }
         return ok(id)
       }
 

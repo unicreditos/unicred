@@ -34,9 +34,11 @@ describe('reabrir a pendiente', () => {
 describe('editar condiciones', () => {
   const lim = { minAmount: 10000, maxAmount: 500000, minTerm: 3, maxTerm: 24 }
   const cur = { status: 'pending', principal: 100000, term: 12 }
-  it('solo pendiente, con motivo y dentro de límites', () => {
+  it('pendiente o calificado sin firma, con motivo y dentro de límites', () => {
     assert.equal(validateLoanEdit(cur, { amount: 150000 }, lim, reason).ok, true)
-    assert.equal(validateLoanEdit({ ...cur, status: 'approved' }, { amount: 150000 }, lim, reason).ok, false)
+    assert.equal(validateLoanEdit({ ...cur, status: 'approved', contractAccepted: false }, { amount: 150000 }, lim, reason).ok, true)
+    assert.equal(validateLoanEdit({ ...cur, status: 'approved', contractAccepted: true }, { amount: 150000 }, lim, reason).ok, false)
+    assert.equal(validateLoanEdit({ ...cur, status: 'active' }, { amount: 150000 }, lim, reason).ok, false)
     assert.equal(validateLoanEdit(cur, { amount: 150000 }, lim, '').ok, false)
     assert.equal(validateLoanEdit(cur, { amount: 900000 }, lim, reason).ok, false)
     assert.equal(validateLoanEdit(cur, { installments: 36 }, lim, reason).ok, false)
@@ -77,6 +79,17 @@ describe('cableado', () => {
     assert.match(src('lib/admin-desk/permissions.ts'), /reopenApplication: 'credits\.edit'/)
     assert.match(src('lib/admin-desk/permissions.ts'), /editApplication: 'credits\.edit'/)
     assert.ok(m.includes('isStale(') && m.includes('reopenDecision(') && m.includes('validateLoanEdit('))
+  })
+  it('los cambios de estado y la edición avisan al mail del cliente', () => {
+    const ops = src('lib/mobile/ops.ts')
+    assert.match(ops, /notifyContractReady/)
+    assert.match(ops, /notifyLoanRejected/)
+    assert.match(m, /notifyLoanCancelled/)
+    assert.match(m, /notifyLoanReopened/)
+    assert.match(m, /notifyLoanConditions/)
+    assert.match(m, /notifyDisbursementCredited/)
+    assert.match(m, /notifyPaymentReceived/)
+    assert.match(m, /notifyPaymentRejected/)
   })
   it('no hay aprobación automática en las acciones nuevas', () => {
     const i = m.indexOf("case 'reopenApplication'")

@@ -41,7 +41,7 @@ import {
   type RepresentativeRole,
 } from '@/lib/merchant-kyb'
 import { syncBcraVariablesFromApi } from '@/app/actions/bcra'
-import { notifyLoanRejected } from '@/lib/notify-email'
+import { notifyLoanCancelled, notifyLoanRejected } from '@/lib/notify-email'
 import { disburseAndActivateLoan } from '@/app/actions/banking'
 
 type ActionFail = { ok: false; error: string }
@@ -632,6 +632,7 @@ export async function updateLoanManual(
   }
 
   let contractId: string | null = null
+  let contractStatus: string | null = null
 
   await db.transaction(async (tx) => {
     await tx.update(loan).set(updates).where(eq(loan.id, id))
@@ -649,16 +650,28 @@ export async function updateLoanManual(
         { generatedBy: adminUserId },
       )
       contractId = contract?.id ?? null
+      contractStatus = contract?.status ?? null
     }
   })
 
-  if (contractId && existing.status !== 'approved') {
+  const becameApproved = existing.status !== 'approved' && nextStatus === 'approved'
+  const unsignedTermsChanged = nextStatus === 'approved' && termsChanged && contractStatus !== 'accepted'
+  if (contractId && (becameApproved || unsignedTermsChanged)) {
     await notifyContractReady({
       userId: existing.userId,
       contractId,
       principal: nextPrincipal,
       term: nextTerm,
     })
+  }
+  if (nextStatus === 'rejected' && existing.status !== 'rejected') {
+    await notifyLoanRejected({
+      userId: existing.userId,
+      reason: String(updates.rejectionReason || 'Rechazado'),
+    })
+  }
+  if (nextStatus === 'cancelled' && existing.status !== 'cancelled') {
+    await notifyLoanCancelled({ userId: existing.userId, loanId: id, reason: 'Anulado desde la mesa' })
   }
 
   await recordAudit({
@@ -758,6 +771,7 @@ export async function ensureLoanExpediente(loanId: string) {
 
   const now = new Date()
   let contractId: string | null = null
+  let contractStatus: string | null = null
   await db.transaction(async (tx) => {
     // Siempre: contrato. Cuotas/desembolso solo si ya firmó (o el crédito ya está vigente).
     const contract = await ensureLoanContract(
@@ -766,6 +780,7 @@ export async function ensureLoanExpediente(loanId: string) {
       { generatedBy: adminUserId, now },
     )
     contractId = contract?.id ?? null
+    contractStatus = contract?.status ?? null
 
     const signed = contract?.status === 'accepted' || existing.status === 'active'
     if (signed) {
@@ -786,7 +801,7 @@ export async function ensureLoanExpediente(loanId: string) {
     }
   })
 
-  if (contractId) {
+  if (contractId && contractStatus !== 'accepted') {
     await notifyContractReady({
       userId: existing.userId,
       contractId,

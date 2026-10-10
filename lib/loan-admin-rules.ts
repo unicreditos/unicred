@@ -50,16 +50,25 @@ export function reopenDecision(f: ReopenFacts, opts: { reason: unknown; confirmS
 
 export type EditLimits = { minAmount: number; maxAmount: number; minTerm: number; maxTerm: number }
 
-/** Editar monto/cuotas: solo con la solicitud pendiente, dentro de los limites del producto y con motivo. */
+/**
+ * Editar monto y cuotas mientras nadie firmó: solicitud pendiente, o calificada
+ * con el contrato todavía sin aceptar. Firmado, vigente o saldado no se toca.
+ */
 export function validateLoanEdit(
-  current: { status: string; principal: number; term: number },
+  current: { status: string; principal: number; term: number; contractAccepted?: boolean },
   patch: { amount?: number | null; installments?: number | null },
   limits: EditLimits,
   reason: unknown,
 ): RuleResult {
   if (!hasReason(reason)) return bad(`Indicá el motivo (mínimo ${MIN_REASON_CHARS} caracteres).`)
-  if (current.status !== 'pending') {
-    return bad('Solo se edita una solicitud pendiente. Reabrila primero (con motivo) si ya fue decidida.', 'blocked')
+  const unsignedApproved = current.status === 'approved' && !current.contractAccepted
+  if (current.status !== 'pending' && !unsignedApproved) {
+    return bad(
+      current.contractAccepted
+        ? 'El cliente ya firmó el contrato. Para cambiar las condiciones hay que reabrir la solicitud, con confirmación.'
+        : 'Solo se edita una solicitud pendiente o calificada que todavía no firmó el contrato.',
+      'blocked',
+    )
   }
   const amount = patch.amount ?? current.principal
   const term = patch.installments ?? current.term

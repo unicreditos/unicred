@@ -464,7 +464,90 @@ export function infoRequestEmail(input: {
     `,
     cta: { href: input.panelUrl, label: 'Abrir mi cuenta' },
   })
-  return { to: input.to, subject, html, text }
+  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
+}
+
+export function loanConditionsEmail(input: {
+  to: string
+  name?: string | null
+  principal: string | number
+  term: number
+  note?: string
+  panelUrl: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const subject = `Actualizamos tu solicitud — ${BRAND.company}`
+  const note = input.note?.trim()
+  const text = brandedText(
+    [
+      `${who},`,
+      '',
+      `Actualizamos tu solicitud: ${moneyLabel(input.principal)} en ${input.term} cuotas.`,
+      note,
+      'Cuando la mesa la califique, te vamos a pedir que firmes el contrato y el pagaré.',
+      '',
+      input.panelUrl,
+    ].filter((line): line is string => line != null),
+  )
+  const html = brandedEmailHtml({
+    title: 'Solicitud actualizada',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, actualizamos tu solicitud a <strong>${escapeHtml(moneyLabel(input.principal))}</strong> en ${input.term} cuotas.</p>
+      ${note ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(note)}</p>` : ''}
+      <p style="font-size:14px;line-height:1.6;margin:0 0 24px">Cuando la mesa la califique, te vamos a pedir que firmes el contrato y el pagaré.</p>
+    `,
+    cta: { href: input.panelUrl, label: 'Ver mi solicitud' },
+  })
+  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
+}
+
+export function loanCancelledEmail(input: {
+  to: string
+  name?: string | null
+  reason?: string
+  panelUrl: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const subject = `Solicitud anulada — ${BRAND.company}`
+  const reason = input.reason?.trim()
+  const text = brandedText(
+    [`${who},`, '', 'Anulamos tu solicitud de crédito.', reason, '', input.panelUrl].filter(
+      (line): line is string => line != null,
+    ),
+  )
+  const html = brandedEmailHtml({
+    title: 'Solicitud anulada',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, anulamos tu solicitud de crédito.</p>
+      ${reason ? `<p style="font-size:14px;line-height:1.6;margin:0 0 24px">${escapeHtml(reason)}</p>` : '<p style="font-size:14px;line-height:1.6;margin:0 0 24px">Si querés retomarla, escribinos desde tu cuenta.</p>'}
+    `,
+    cta: { href: input.panelUrl, label: 'Abrir mi cuenta' },
+  })
+  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
+}
+
+export function loanReopenedEmail(input: {
+  to: string
+  name?: string | null
+  panelUrl: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const subject = `Tu solicitud volvió a evaluación — ${BRAND.company}`
+  const text = brandedText([
+    `${who},`,
+    '',
+    'Volvimos a poner tu solicitud en evaluación. Te avisamos cuando haya una decisión.',
+    '',
+    input.panelUrl,
+  ])
+  const html = brandedEmailHtml({
+    title: 'Solicitud en evaluación',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 24px">${escapeHtml(who)}, volvimos a poner tu solicitud en evaluación. Te avisamos cuando haya una decisión.</p>
+    `,
+    cta: { href: input.panelUrl, label: 'Ver mi solicitud' },
+  })
+  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
 }
 
 export function claimReceivedEmail(input: {

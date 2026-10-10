@@ -15,7 +15,8 @@ import {
   profile,
   user as userTable,
 } from '@/lib/db/schema'
-import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
+import { ensureLoanContract, notifyContractReady, requireAcceptedContract } from '@/lib/legal/expediente'
+import { notifyLoanRejected } from '@/lib/notify-email'
 import { activateLoanAfterDisbursement, ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
 import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
 import { assertAdminTransition } from '@/lib/loan-state'
@@ -1308,6 +1309,19 @@ export async function mobileAdminApproveLoan(adminId: string, id: string, note?:
       { generatedBy: adminId, now },
     )
   })
+  const [contract] = await db
+    .select({ id: loanContract.id, status: loanContract.status })
+    .from(loanContract)
+    .where(eq(loanContract.loanId, id))
+    .limit(1)
+  if (contract && contract.status !== 'accepted') {
+    await notifyContractReady({
+      userId: existing.userId,
+      contractId: contract.id,
+      principal: existing.principal,
+      term: existing.term,
+    })
+  }
   return { success: true, message: 'Préstamo aprobado' }
 }
 
@@ -1323,6 +1337,7 @@ export async function mobileAdminRejectLoan(_adminId: string, id: string, reason
       .where(eq(loan.id, id))
     await tx.delete(installment).where(eq(installment.loanId, id))
   })
+  await notifyLoanRejected({ userId: existing.userId, reason: reason?.trim() || 'Rechazado' })
   return { success: true, message: 'Préstamo rechazado' }
 }
 
