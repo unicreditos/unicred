@@ -16,6 +16,7 @@ import {
 } from '@/lib/db/schema'
 import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
 import { activateLoanAfterDisbursement, ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
+import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
 import { assertAdminTransition } from '@/lib/loan-state'
 import { getInbox } from '@/lib/notifications'
 import {
@@ -1250,6 +1251,7 @@ export async function mobileAdminLoans(status?: string, page = 1, limit = 50) {
 export async function mobileAdminApproveLoan(adminId: string, id: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
+  await assertCanApproveLoan(existing)
   assertAdminTransition(existing.status, 'approved')
   const now = new Date()
   await db.transaction(async (tx) => {

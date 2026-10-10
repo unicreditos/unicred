@@ -18,7 +18,7 @@ export type DeskRowAction = {
   warning?: string
   confirmLabel: string
   success: string
-  field?: { name: string; label: string; required?: boolean; placeholder?: string }
+  field?: { name: string; label: string; required?: boolean; placeholder?: string; minLength?: number }
   choice?: { name: string; label: string; options: Array<{ value: string; label: string }> }
   danger?: boolean
 }

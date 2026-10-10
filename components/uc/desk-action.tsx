@@ -21,7 +21,8 @@ export function DeskActionButton({ spec }: { spec: DeskRowAction }) {
   const [pending, start] = useTransition()
   const uid = useId()
 
-  const missing = Boolean(spec.field?.required) && text.trim().length < 3
+  const minLength = spec.field?.minLength ?? (spec.field?.required ? 3 : 0)
+  const missing = Boolean(spec.field?.required) && text.trim().length < minLength
 
   function open() {
     setError(null)
@@ -109,6 +110,7 @@ export function DeskActionButton({ spec }: { spec: DeskRowAction }) {
                 placeholder={spec.field.placeholder}
                 onChange={(e) => setText(e.target.value)}
               />
+              {minLength > 3 ? <span className="uc-note">Mínimo {minLength} caracteres.</span> : null}
             </label>
           ) : null}
           {error ? (

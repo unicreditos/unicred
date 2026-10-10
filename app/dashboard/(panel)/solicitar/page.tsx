@@ -8,6 +8,7 @@ import { ButtonLink, Callout, Pad, PageHead, SectionTitle } from '@/components/u
 import { Icon } from '@/components/uc/icons'
 import { db } from '@/lib/db'
 import { bcraCheck } from '@/lib/db/schema'
+import { latestLoanInfoRequests } from '@/lib/customer/info-request'
 import { loadCustomer, profileProgress } from '@/lib/customer/load'
 import { parseLoanIntent } from '@/lib/loan-intent'
 
@@ -20,6 +21,7 @@ export default async function SolicitarPage({
 }) {
   const sp = await searchParams
   const { userId, profile, loans, identityVerified } = await loadCustomer()
+  const infoRequests = await latestLoanInfoRequests(userId)
 
   const [products, lastCheck, accounts] = await Promise.all([
     getLoanProducts().catch(() => []),
@@ -50,6 +52,14 @@ export default async function SolicitarPage({
       {active.length > 0 || inFlight.length > 0 ? (
         <Callout icon="credit" title={active.length ? `Tenés ${active.length} crédito${active.length === 1 ? '' : 's'} vigente${active.length === 1 ? '' : 's'}` : 'Ya tenés un pedido en curso'}>
           No se puede pedir otro hasta cancelar o terminar el actual. Seguilo desde <Link href="/dashboard/creditos">Mis créditos</Link>.
+          {inFlight.some((loan) => infoRequests.get(loan.id)) ? (
+            <span style={{ display: 'block', marginTop: 8 }}>
+              {inFlight
+                .map((loan) => infoRequests.get(loan.id))
+                .filter(Boolean)
+                .join(' ')}
+            </span>
+          ) : null}
         </Callout>
       ) : (
         <div style={{ display: 'grid', gap: 20 }}>

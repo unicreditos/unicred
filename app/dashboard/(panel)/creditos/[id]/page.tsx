@@ -8,6 +8,7 @@ import { Icon } from '@/components/uc/icons'
 import { db } from '@/lib/db'
 import { loanContract } from '@/lib/db/schema'
 import { badge } from '@/lib/uc/admin'
+import { latestLoanInfoRequests } from '@/lib/customer/info-request'
 import { loadCustomer } from '@/lib/customer/load'
 import { creditState, INSTALLMENT_LABEL, INSTALLMENT_TONE, solRef } from '@/lib/customer/view'
 import { fdate, fmtPct, money } from '@/lib/uc/format'
@@ -22,6 +23,7 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
   const { userId, loans, installments } = await loadCustomer()
   const l = loans.find((x) => x.id === id)
   if (!l) notFound()
+  const infoRequest = l.status === 'pending' ? (await latestLoanInfoRequests(userId)).get(id) : null
 
   const [contract] = await db
     .select()
@@ -80,6 +82,13 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
         }
       />
 
+      {infoRequest ? (
+        <div style={{ marginBottom: 20 }}>
+          <Callout icon="alert" title="Necesitamos un dato para seguir" tone="warning">
+            {infoRequest}
+          </Callout>
+        </div>
+      ) : null}
       {st.key === 'Firma pendiente' ? (
         <div style={{ marginBottom: 20 }}>
           <Callout icon="pen" title="Falta firmar el contrato">

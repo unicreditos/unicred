@@ -439,6 +439,34 @@ export function kycStatusEmail(input: {
   return { to: input.to, subject, html, text }
 }
 
+export function infoRequestEmail(input: {
+  to: string
+  name?: string | null
+  message: string
+  panelUrl: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const subject = `Necesitamos un dato para tu solicitud — ${BRAND.company}`
+  const text = brandedText([
+    `${who},`,
+    '',
+    'Para seguir con tu solicitud de crédito necesitamos esta información:',
+    '',
+    input.message,
+    '',
+    input.panelUrl,
+  ])
+  const html = brandedEmailHtml({
+    title: 'Información pendiente',
+    bodyHtml: `
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, para seguir con tu solicitud de crédito necesitamos esta información:</p>
+      <p style="font-size:14px;line-height:1.6;margin:0 0 24px">${escapeHtml(input.message)}</p>
+    `,
+    cta: { href: input.panelUrl, label: 'Abrir mi cuenta' },
+  })
+  return { to: input.to, subject, html, text }
+}
+
 export function claimReceivedEmail(input: {
   to: string
   name?: string | null

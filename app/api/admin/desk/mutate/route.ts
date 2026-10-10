@@ -16,6 +16,7 @@ export function OPTIONS(req: Request) {
 const ACTIONS = new Set<DeskMutateAction>([
   'approveApplication',
   'rejectApplication',
+  'requestInformation',
   'cancelApplication',
   'decideKyc',
   'markDisbursed',

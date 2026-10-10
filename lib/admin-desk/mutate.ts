@@ -14,7 +14,7 @@ import {
   profile,
   supportCase,
 } from '@/lib/db/schema'
-import { diditApprovedForUser } from '@/lib/didit'
+import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
 import { assertAdminTransition, canSettleOnCollection } from '@/lib/loan-state'
 import {
   activateLoanAfterDisbursement,
@@ -24,6 +24,7 @@ import {
   mobileAdminApproveLoan,
   mobileAdminRejectLoan,
 } from '@/lib/mobile/ops'
+import { notifyInfoRequest } from '@/lib/notify-email'
 import { newId } from '@/lib/session'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { requireAcceptedContract } from '@/lib/legal/expediente'
@@ -31,6 +32,7 @@ import { requireAcceptedContract } from '@/lib/legal/expediente'
 export type DeskMutateAction =
   | 'approveApplication'
   | 'rejectApplication'
+  | 'requestInformation'
   | 'cancelApplication'
   | 'decideKyc'
   | 'markDisbursed'
@@ -124,9 +126,7 @@ export async function deskMutate(
         if (!applicationId) return fail('Solicitud requerida')
         const [row] = await db.select().from(loan).where(eq(loan.id, applicationId)).limit(1)
         if (!row) return fail('Solicitud no encontrada')
-        if (!(await diditApprovedForUser(row.userId))) {
-          return fail('No se puede calificar: KYC Didit no verificado')
-        }
+        await assertCanApproveLoan(row)
         await mobileAdminApproveLoan(adminUserId, applicationId)
         await db.transaction(async (tx) => {
           await ensurePendingDisbursement(tx, {
@@ -152,6 +152,26 @@ export async function deskMutate(
         const comment = String(payload.comment || 'Rechazado')
         if (!applicationId) return fail('Solicitud requerida')
         await mobileAdminRejectLoan(adminUserId, applicationId, comment)
+        return ok()
+      }
+
+      case 'requestInformation': {
+        const applicationId = String(payload.applicationId || '')
+        const message = String(payload.message || payload.comment || '').trim()
+        if (!applicationId) return fail('Solicitud requerida')
+        if (message.length < 8) return fail('Escribí qué información falta (mínimo 8 caracteres)')
+        const [row] = await db.select().from(loan).where(eq(loan.id, applicationId)).limit(1)
+        if (!row) return fail('Solicitud no encontrada')
+        if (row.status !== 'pending') return fail('Solo se puede pedir información con la solicitud pendiente')
+        await recordAudit({
+          actorUserId: adminUserId,
+          action: 'LOAN_INFO_REQUESTED',
+          entityType: 'loan',
+          entityId: applicationId,
+          targetUserId: row.userId,
+          summary: message,
+        })
+        await notifyInfoRequest({ userId: row.userId, loanId: applicationId, message })
         return ok()
       }
 

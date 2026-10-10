@@ -7,6 +7,7 @@ import type { AdminDeskState } from '@/lib/admin-desk/types'
 export const DESK_ACTION_PERMISSION: Record<DeskMutateAction, PermissionKey> = {
   approveApplication: 'credits.approve',
   rejectApplication: 'credits.reject',
+  requestInformation: 'credits.approve',
   cancelApplication: 'credits.reject',
   createApplication: 'credits.edit',
   decideKyc: 'kyc.review',

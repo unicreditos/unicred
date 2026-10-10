@@ -20,6 +20,9 @@ import {
   supportCase,
   user,
 } from '@/lib/db/schema'
+import { applicationPolicyFlags, readKycEvidence } from '@/lib/admin-desk/evidence'
+import { getActiveRiskRules } from '@/lib/risk-rules'
+import { DEFAULT_RISK_RULES } from '@/lib/loan-underwriting'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
 import type {
   AdminDeskState,
@@ -96,6 +99,11 @@ function mapProductType(raw: string | null | undefined): ProductType {
   if (t.includes('refinanc')) return 'refinanciacion'
   if (t.includes('consum')) return 'consumo'
   return 'personal'
+}
+
+function deskMediaUrl(url: string | null | undefined) {
+  if (!url || url.startsWith('data:')) return null
+  return url
 }
 
 function mapKycStatus(raw: string | null | undefined): KycStatus {
@@ -303,17 +311,7 @@ function emptyState(): AdminDeskState {
     ledger: [],
     cendeu: [],
     bcra: [],
-    contracts: [
-      {
-        id: 'ct-default',
-        name: 'Mutuo personal ARS',
-        version: '1.0',
-        productId: null,
-        status: 'active',
-        updatedAt: new Date().toISOString(),
-        clauses: 0,
-      },
-    ],
+    contracts: [],
     tickets: [],
     audit: [],
     config: defaultConfig(),
@@ -432,6 +430,7 @@ export async function buildAdminDeskState(): Promise<AdminDeskState> {
 
 async function buildFromDb(): Promise<AdminDeskState> {
   const now = new Date()
+  const riskRules = await getActiveRiskRules().catch(() => DEFAULT_RISK_RULES)
 
   const [
     productRows,
@@ -507,7 +506,29 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .limit(300),
       [],
     ),
-    safeQuery(() => db.select().from(kycVerification).orderBy(desc(kycVerification.updatedAt)).limit(300), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: kycVerification.id,
+            userId: kycVerification.userId,
+            status: kycVerification.status,
+            providerReferenceId: kycVerification.providerReferenceId,
+            createdAt: kycVerification.createdAt,
+            updatedAt: kycVerification.updatedAt,
+            reviewedAt: kycVerification.reviewedAt,
+            rejectionReason: kycVerification.rejectionReason,
+            reviewedBy: kycVerification.reviewedBy,
+            faceMatchScore: kycVerification.faceMatchScore,
+            dniNumber: kycVerification.dniNumber,
+            cuilVerified: kycVerification.cuilVerified,
+            ocrData: kycVerification.ocrData,
+          })
+          .from(kycVerification)
+          .orderBy(desc(kycVerification.updatedAt))
+          .limit(300),
+      [],
+    ),
     safeQuery(() => db.select().from(loan).orderBy(desc(loan.createdAt)).limit(400), []),
     safeQuery(() => db.select().from(payment).orderBy(desc(payment.createdAt)).limit(400), []),
     safeQuery(() => db.select().from(disbursement).orderBy(desc(disbursement.createdAt)).limit(200), []),
@@ -593,22 +614,27 @@ async function buildFromDb(): Promise<AdminDeskState> {
       cuit: m.cuit,
       category: m.category || '',
       status: mapMerchantStatus(m.status),
-      commissionPct: 0,
+      commissionPct: Number(m.commissionRate) || 0,
       city: m.city || '',
       province: m.province || '',
       contact: m.legalName || m.businessName,
       email: row.email || '',
       phone: m.phone || '',
-      originations: 0,
-      volume: 0,
+      originations: loanRows.filter((l) => l.merchantId === m.id).length,
+      volume: loanRows
+        .filter((l) => l.merchantId === m.id)
+        .reduce((sum, l) => sum + num(l.principal), 0),
       onboardedAt: iso(m.createdAt) || new Date().toISOString(),
     }
   })
+
+  const kycRowByUser = new Map(kycRows.map((row) => [row.userId, row]))
 
   // --- clients ---
   const clients: Client[] = clientRows.map((row) => {
     const { firstName, lastName } = splitName(row.name || '')
     const ba = primaryBankByUser.get(row.userId)
+    const evidence = readKycEvidence({ ...kycRowByUser.get(row.userId), profileDni: row.profile.dni })
     return {
       id: row.userId,
       firstName,
@@ -626,21 +652,23 @@ async function buildFromDb(): Promise<AdminDeskState> {
       cbu: ba?.cbu || ba?.cvu || '',
       bank: ba?.bankName || '',
       kycStatus: mapKycStatus(row.profile.kycStatus),
-      score: row.profile.creditScore ?? 500,
+      score: row.profile.creditScore ?? null,
+      faceMatchScore: evidence.faceMatchScore,
       createdAt: iso(row.createdAt) || new Date().toISOString(),
       occupation: row.profile.employmentStatus || '',
       employer: '',
       declaredIncome: num(row.profile.monthlyIncome),
       documents: {
-        dniFrontUrl: '/docs/dni-front.jpg',
-        dniBackUrl: '/docs/dni-back.jpg',
-        selfieUrl: '/docs/selfie.jpg',
-        salaryProofUrl: '/docs/salary-receipt.jpg',
-        ocrDniNumber: row.profile.dni || '',
-        ocrFullName: `${firstName} ${lastName}`.trim(),
-        ocrBirthDate: iso(row.profile.birthDate) ? (iso(row.profile.birthDate) || '').slice(0, 10) : null,
-        ocrGender: 'M/F',
-        ocrAddress: [row.profile.address, row.profile.city, row.profile.province].filter(Boolean).join(', '),
+        dniFrontUrl: deskMediaUrl(evidence.front),
+        dniBackUrl: deskMediaUrl(evidence.back),
+        selfieUrl: deskMediaUrl(evidence.selfie),
+        videoUrl: deskMediaUrl(evidence.video),
+        salaryProofUrl: null,
+        ocrDniNumber: evidence.ocrDni,
+        ocrFullName: evidence.ocrName,
+        ocrBirthDate: evidence.ocrBirthDate,
+        ocrGender: evidence.ocrGender,
+        ocrAddress: evidence.ocrAddress,
       },
     }
   })
@@ -649,7 +677,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
   // --- kyc ---
   const kyc: KycCase[] = kycRows.map((k) => {
     const status = mapKycStatus(k.status)
-    const ocrObj = typeof k.ocrData === 'object' && k.ocrData !== null ? (k.ocrData as Record<string, unknown>) : null
+    const evidence = readKycEvidence({ ...k, profileDni: clientById.get(k.userId)?.dni })
     return {
       id: k.id,
       clientId: k.userId,
@@ -657,32 +685,48 @@ async function buildFromDb(): Promise<AdminDeskState> {
       status,
       sessionId: k.providerReferenceId || k.id,
       documentType: 'dni' as const,
-      liveness: status === 'verified',
-      documentMatch: Boolean(k.cuilVerified) || status === 'verified',
-      faceMatchScore: k.faceMatchScore == null ? null : num(k.faceMatchScore),
+      liveness: evidence.liveness,
+      documentMatch: evidence.documentMatch,
+      faceMatchScore: evidence.faceMatchScore,
       startedAt: iso(k.createdAt) || new Date().toISOString(),
       completedAt: iso(k.reviewedAt),
       notes: k.rejectionReason || '',
       operatorId: k.reviewedBy || null,
-      dniFrontUrl: k.dniFrontImageUrl || '/docs/dni-front.jpg',
-      dniBackUrl: k.dniBackImageUrl || '/docs/dni-back.jpg',
-      selfieUrl: k.selfieImageUrl || '/docs/selfie.jpg',
-      videoUrl: k.videoUrl || null,
-      ocrData: ocrObj
+      dniFrontUrl: deskMediaUrl(evidence.front),
+      dniBackUrl: deskMediaUrl(evidence.back),
+      selfieUrl: deskMediaUrl(evidence.selfie),
+      videoUrl: deskMediaUrl(evidence.video),
+      ocrData: evidence.ocrDni || evidence.ocrName
         ? {
-            dni: (ocrObj.documentNumber as string) || (ocrObj.dni as string) || null,
-            name: (ocrObj.fullName as string) || (ocrObj.name as string) || null,
-            birthDate: (ocrObj.birthDate as string) || null,
-            expiryDate: (ocrObj.expiryDate as string) || null,
-            gender: (ocrObj.gender as string) || null,
+            dni: evidence.ocrDni,
+            name: evidence.ocrName,
+            birthDate: evidence.ocrBirthDate,
+            expiryDate: null,
+            gender: evidence.ocrGender,
           }
         : null,
     }
   })
 
   // --- loans → applications / credits ---
-  const appStatuses = new Set(['pending', 'approved', 'rejected', 'cancelled', 'active', 'paid'])
+  const appStatuses = new Set(['pending', 'approved', 'rejected', 'cancelled'])
   const creditStatuses = new Set(['approved', 'active', 'paid', 'cancelled'])
+
+  const infoRows = await safeQuery(
+    () =>
+      db
+        .select({ entityId: adminAuditLog.entityId, summary: adminAuditLog.summary })
+        .from(adminAuditLog)
+        .where(eq(adminAuditLog.action, 'LOAN_INFO_REQUESTED'))
+        .orderBy(desc(adminAuditLog.createdAt))
+        .limit(400),
+    [],
+  )
+  const infoRequestByLoan = new Map<string, string>()
+  for (const entry of infoRows) {
+    if (!entry.entityId || infoRequestByLoan.has(entry.entityId)) continue
+    infoRequestByLoan.set(entry.entityId, entry.summary || '')
+  }
 
   const applications: LoanApplication[] = loanRows
     .filter((l) => appStatuses.has(l.status))
@@ -708,6 +752,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
         decidedAt: l.status === 'pending' ? null : iso(l.updatedAt) || iso(l.disbursedAt),
         operatorId: null,
         notes: l.rejectionReason || '',
+        infoRequest: infoRequestByLoan.get(l.id) ?? null,
       }
     })
 
@@ -894,15 +939,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
         c.schedule.filter((s) => s.status === 'overdue').reduce((a, s) => a + s.amount, 0),
       daysPastDue: c.daysPastDue,
       lastContactAt,
-      nextAction:
-        nextFromAudit ||
-        (c.daysPastDue > 90
-          ? 'Propuesta de refinanciación'
-          : c.daysPastDue > 60
-            ? 'Escalamiento cobranza'
-            : c.daysPastDue > 30
-              ? 'Llamado de gestión'
-              : 'WhatsApp de recordatorio'),
+      nextAction: nextFromAudit || 'Sin gestión registrada',
       ownerId: defaultOperatorId,
       contacts: [...contacts].sort((a, b) => +new Date(b.at) - +new Date(a.at)),
     })
@@ -915,13 +952,22 @@ async function buildFromDb(): Promise<AdminDeskState> {
     .map((a) => {
       const client = clientById.get(a.clientId)
       const kycCase = kycByUser.get(a.clientId)
-      const score = client?.score ?? 500
+      const score = client?.score ?? null
       const kycStatus = kycCase?.status || client?.kycStatus || 'pending'
-      const policyFlags: string[] = []
-      if (kycStatus !== 'verified') policyFlags.push('kyc_incomplete')
-      if (score < 500) policyFlags.push('low_score')
-      if (score < 400) policyFlags.push('score_reject_zone')
-      if (a.amount > 500_000) policyFlags.push('high_ticket')
+      const paidBefore = loanRows.some(
+        (l) => l.userId === a.clientId && l.id !== a.id && l.status === 'paid',
+      )
+      const bcraRow = bcraCheckRows.find((row) => row.userId === a.clientId)
+      const policyFlags = applicationPolicyFlags({
+        kycVerified: kycStatus === 'verified',
+        score,
+        amount: a.amount,
+        income: client?.declaredIncome ?? 0,
+        installment: num(loanRows.find((l) => l.id === a.id)?.installmentAmount),
+        bcraSituation: bcraRow?.worstSituation ?? null,
+        isFirstCredit: !paidBefore,
+        rules: riskRules,
+      })
       return {
         id: `appr-${a.id}`,
         applicationId: a.id,
@@ -1000,7 +1046,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
       clientId: row.userId,
       consultedAt: iso(row.consultedAt) || iso(row.createdAt) || new Date().toISOString(),
       result,
-      score: row.computedScore ?? clientById.get(row.userId)?.score ?? 500,
+      score: row.computedScore ?? clientById.get(row.userId)?.score ?? 0,
       sit1: sit === 1 ? 1 : 0,
       sit2: sit === 2 ? 1 : 0,
       sit3: sit === 3 ? 1 : 0,
@@ -1038,7 +1084,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
   })
 
   // --- contracts ---
-  let contracts: ContractTemplate[] = contractRows.map((c) => {
+  const contracts: ContractTemplate[] = contractRows.map((c) => {
     const relatedLoan = loanRows.find((l) => l.id === c.loanId)
     return {
       id: c.id,
@@ -1050,19 +1096,6 @@ async function buildFromDb(): Promise<AdminDeskState> {
       clauses: 0,
     }
   })
-  if (contracts.length === 0) {
-    contracts = [
-      {
-        id: 'ct-default',
-        name: 'Mutuo personal ARS',
-        version: '1.0',
-        productId: products[0]?.id || null,
-        status: 'active',
-        updatedAt: new Date().toISOString(),
-        clauses: 0,
-      },
-    ]
-  }
 
   // --- tickets ---
   const tickets: SupportTicket[] = ticketRows.map((t) => ({

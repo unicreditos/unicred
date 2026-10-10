@@ -5,14 +5,20 @@ import { BackLink, Badge, ButtonLink, Callout, Grid, Kv, NoAccess, PageHead, Pad
 import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { bcraByClient, fmtDni, fullName, KYC_LABEL, KYC_TONE } from '@/lib/uc/admin'
 import { cuotaFrancesa, fdate, fmtPct, money } from '@/lib/uc/format'
+import { DEFAULT_RISK_RULES } from '@/lib/loan-underwriting'
 
 export const metadata = { title: 'Solicitud' }
 
+const RULES = DEFAULT_RISK_RULES
 const FLAGS: Record<string, string> = {
   kyc_incomplete: 'La identidad del cliente no está verificada',
-  low_score: 'Score interno bajo (menor a 500)',
-  score_reject_zone: 'Score en zona de rechazo (menor a 400)',
-  high_ticket: 'Monto alto: más de $ 500.000',
+  score_missing: 'No hay score: falta la consulta BCRA o el score interno',
+  low_score: `Score por debajo del umbral de calificación automática (${RULES.scoreAutoQualifyAt})`,
+  score_reject_zone: `Score en zona de rechazo (menor a ${RULES.scoreRejectBelow})`,
+  income_missing: 'No hay ingresos declarados para calcular la cuota',
+  dti_high: `La cuota supera el ${Math.round(RULES.incomeDtiRatio * 100)}% de los ingresos`,
+  high_ticket: `Primer crédito por encima de ${RULES.firstCreditHardCap.toLocaleString('es-AR')} ARS`,
+  bcra_irregular: `Situación BCRA ${RULES.bcraWorstSituationRejectAt} o peor`,
 }
 const STATUS = {
   pending: ['En revisión', 'warning'],
@@ -103,7 +109,7 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
                   ['Situación', bcra.sit ? <Badge key="b" tone={bcra.sit === 1 ? 'success' : bcra.sit === 2 ? 'warning' : 'danger'}>Situación {bcra.sit}</Badge> : 'Sin deudas informadas'],
                   ['Entidades', <span key="e" className="uc-num">{bcra.entities}</span>],
                   ['Score', <span key="s" className="uc-num">{bcra.score}</span>],
-                  ['Cuota / ingreso', rci != null ? <span key="r" className="uc-num" style={{ color: rci > 30 ? 'var(--uc-danger)' : undefined }}>{fmtPct(rci)}</span> : '—'],
+                  ['Cuota / ingreso', rci != null ? <span key="r" className="uc-num" style={{ color: rci > RULES.incomeDtiRatio * 100 ? 'var(--uc-danger)' : undefined }}>{fmtPct(rci)}</span> : '—'],
                 ]}
               />
             ) : (
@@ -129,6 +135,11 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
                 ))}
               </ul>
             ) : null}
+            {app.infoRequest ? (
+              <div className="uc-req" style={{ marginBottom: 14 }}>
+                Información pedida: {app.infoRequest}
+              </div>
+            ) : null}
             {pending ? (
               <>
                 {!kycOk ? (
@@ -151,6 +162,22 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
                         confirmLabel: 'Aprobar',
                         success: 'Crédito aprobado.',
                         field: { name: 'comment', label: 'Comentario del analista', placeholder: 'Motivo de la decisión' },
+                      }}
+                    />
+                  ) : null}
+                  {perms.has('credits.approve') ? (
+                    <DeskActionButton
+                      spec={{
+                        kind: 'desk',
+                        label: 'Pedir información',
+                        action: 'requestInformation',
+                        payload: { applicationId: app.id },
+                        title: 'Pedir información',
+                        sub: name,
+                        summary,
+                        confirmLabel: 'Enviar pedido',
+                        success: 'Pedido registrado. La solicitud sigue en revisión.',
+                        field: { name: 'message', label: 'Qué falta', required: true, minLength: 8, placeholder: 'Ej.: recibo de sueldo de los últimos 3 meses' },
                       }}
                     />
                   ) : null}

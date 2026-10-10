@@ -9,6 +9,7 @@ import {
   disbursementEmail,
   emailOrigin,
   kycStatusEmail,
+  infoRequestEmail,
   loanRejectedEmail,
   paymentReceivedEmail,
   paymentRejectedEmail,
@@ -107,6 +108,19 @@ export async function notifyDisbursementCredited(input: {
       name: u.name,
       amount: input.amount,
       receiptUrl,
+    }),
+  )
+}
+
+export async function notifyInfoRequest(input: { userId: string; loanId: string; message: string }) {
+  const u = await userMail(input.userId)
+  if (!u) return
+  await deliver(
+    infoRequestEmail({
+      to: u.email,
+      name: u.name,
+      message: input.message,
+      panelUrl: `${emailOrigin()}/dashboard/creditos/${input.loanId}`,
     }),
   )
 }

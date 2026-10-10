@@ -23,6 +23,7 @@ import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { computeFrenchAmortization, isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
+import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
 import { assertAdminTransition, assertTransition } from '@/lib/loan-state'
 import { ensureLoanContract, notifyContractReady } from '@/lib/legal/expediente'
 import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-schedule'
@@ -447,6 +448,11 @@ export async function approveLoan(
   }
 
   const amort = computeFrenchAmortization(principal, term, monthlyRate)
+  await assertCanApproveLoan({
+    ...existing,
+    principal: principal.toFixed(2),
+    installmentAmount: amort.installmentAmount.toFixed(2),
+  })
   const now = new Date()
   let contractId: string | null = null
 

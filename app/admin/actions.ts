@@ -10,6 +10,7 @@ import { assertAdmin } from '@/lib/session'
 const ALLOWED = new Set<DeskMutateAction>([
   'approveApplication',
   'rejectApplication',
+  'requestInformation',
   'decideKyc',
   'markDisbursed',
   'failDisbursement',

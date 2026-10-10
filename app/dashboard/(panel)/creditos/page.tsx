@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Badge, ButtonLink, Grid, PageHead, ProgressBar, Card } from '@/components/uc/blocks'
 import { Icon } from '@/components/uc/icons'
 import { loadCustomer, loadCustomerContracts } from '@/lib/customer/load'
+import { latestLoanInfoRequests } from '@/lib/customer/info-request'
 import { creditState, solRef } from '@/lib/customer/view'
 import { fdate, money } from '@/lib/uc/format'
 
@@ -11,7 +12,10 @@ const n = (v: unknown) => Number(v) || 0
 
 export default async function CreditosPage() {
   const { userId, loans, installments } = await loadCustomer()
-  const contracts = await loadCustomerContracts(userId)
+  const [contracts, infoRequests] = await Promise.all([
+    loadCustomerContracts(userId),
+    latestLoanInfoRequests(userId),
+  ])
   const accepted = new Set(contracts.filter((c) => c.status === 'accepted').map((c) => c.loanId))
 
   return (
@@ -59,7 +63,9 @@ export default async function CreditosPage() {
                 <div className="uc-row uc-small uc-muted">
                   <span className="uc-num">{paid}/{l.term} cuotas pagadas</span>
                   <span className="uc-num">
-                    {next
+                    {l.status === 'pending' && infoRequests.get(l.id)
+                      ? 'Te pedimos un dato para seguir'
+                      : next
                       ? `Próx. vto. ${fdate(next.dueDate as Date)}`
                       : st.key === 'Cancelado'
                         ? 'Cancelado'

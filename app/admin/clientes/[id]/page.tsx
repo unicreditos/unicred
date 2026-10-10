@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { eq } from 'drizzle-orm'
 import { DataGrid } from '@/components/uc/data-grid'
 import { BackLink, Badge, ButtonLink, Grid, Kv, NoAccess, PageHead, Pad, CardHead, SectionTitle } from '@/components/uc/blocks'
 import { ClientDocumentViewer } from '@/components/admin/client-document-viewer'
@@ -6,6 +7,8 @@ import type { GridRow } from '@/components/uc/grid-types'
 import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { badge, bcraByClient, fmtDni, fullName, KYC_LABEL, KYC_TONE } from '@/lib/uc/admin'
 import { fdate, money } from '@/lib/uc/format'
+import { db } from '@/lib/db'
+import { kycVerification } from '@/lib/db/schema'
 
 export const metadata = { title: 'Cliente' }
 
@@ -20,6 +23,28 @@ export default async function ClienteDetail({ params }: { params: Promise<{ id: 
 
   const client = state.clients.find((c) => c.id === id)
   if (!client) notFound()
+
+  const [media] = await db
+    .select({
+      dniFrontImageUrl: kycVerification.dniFrontImageUrl,
+      dniBackImageUrl: kycVerification.dniBackImageUrl,
+      selfieImageUrl: kycVerification.selfieImageUrl,
+      videoUrl: kycVerification.videoUrl,
+      faceMatchScore: kycVerification.faceMatchScore,
+    })
+    .from(kycVerification)
+    .where(eq(kycVerification.userId, id))
+    .limit(1)
+  const mediaHref = (kind: 'front' | 'back' | 'selfie' | 'video', stored: string | null | undefined) =>
+    stored ? `/api/admin/kyc-media/${encodeURIComponent(id)}/${kind}` : null
+  const documents = {
+    ...client.documents,
+    dniFrontUrl: mediaHref('front', media?.dniFrontImageUrl),
+    dniBackUrl: mediaHref('back', media?.dniBackImageUrl),
+    selfieUrl: mediaHref('selfie', media?.selfieImageUrl),
+    videoUrl: mediaHref('video', media?.videoUrl),
+  }
+  const faceMatch = media?.faceMatchScore == null ? client.faceMatchScore : Number(media.faceMatchScore)
 
   const name = fullName(client)
   const bcra = bcraByClient(state).get(id)
@@ -97,8 +122,8 @@ export default async function ClienteDetail({ params }: { params: Promise<{ id: 
           dni={client.dni}
           cuit={client.cuit}
           kycStatus={client.kycStatus}
-          faceMatchScore={client.score ? Math.min(99, Math.max(88, Math.round(client.score / 10))) : 96}
-          documents={client.documents}
+          faceMatchScore={Number.isFinite(faceMatch) ? faceMatch : null}
+          documents={documents}
         />
       </div>
 

@@ -113,7 +113,8 @@ export interface Client {
   cbu: string
   bank: string
   kycStatus: KycStatus
-  score: number
+  score: number | null
+  faceMatchScore: number | null
   createdAt: string
   occupation: string
   employer: string
@@ -123,6 +124,7 @@ export interface Client {
     dniBackUrl?: string | null
     selfieUrl?: string | null
     salaryProofUrl?: string | null
+    videoUrl?: string | null
     ocrDniNumber?: string | null
     ocrFullName?: string | null
     ocrBirthDate?: string | null
@@ -138,8 +140,8 @@ export interface KycCase {
   status: KycStatus
   sessionId: string
   documentType: 'dni' | 'pasaporte'
-  liveness: boolean
-  documentMatch: boolean
+  liveness: boolean | null
+  documentMatch: boolean | null
   faceMatchScore: number | null
   startedAt: string
   completedAt: string | null
@@ -171,6 +173,7 @@ export interface LoanApplication {
   decidedAt: string | null
   operatorId: string | null
   notes: string
+  infoRequest: string | null
 }
 
 export interface Installment {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/uc/blocks'
 import { Icon } from '@/components/uc/icons'
@@ -23,16 +22,23 @@ interface DocumentGalleryManagerProps {
   documents: DocumentItem[]
 }
 
+function CaptureMedia({ src, alt, video, cover }: { src: string; alt: string; video?: boolean; cover?: boolean }) {
+  const fit = cover ? 'object-cover' : 'object-contain'
+  if (video) {
+    return <video src={src} className={`absolute inset-0 h-full w-full ${fit}`} muted playsInline controls={!cover} />
+  }
+  return <img src={src} alt={alt} className={`absolute inset-0 h-full w-full ${fit}`} referrerPolicy="no-referrer" />
+}
+
 export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [activeFilter, setActiveFilter] = useState<'all' | 'Pendiente' | 'Aprobado' | 'Observado'>('all')
   const [typeFilter, _setTypeFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPreview, setSelectedPreview] = useState<DocumentItem | null>(null)
-  const [itemStatuses, setItemStatuses] = useState<Record<string, 'Pendiente' | 'Aprobado' | 'Observado'>>({})
 
   const filtered = documents.filter((doc) => {
-    const currentStatus = itemStatuses[doc.id] || doc.status
+    const currentStatus = doc.status
     if (activeFilter !== 'all' && currentStatus !== activeFilter) return false
     if (typeFilter !== 'all' && doc.docType !== typeFilter) return false
     if (searchQuery.trim()) {
@@ -46,18 +52,11 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
     return true
   })
 
-  const setStatus = (id: string, newStatus: 'Pendiente' | 'Aprobado' | 'Observado') => {
-    setItemStatuses((prev) => ({
-      ...prev,
-      [id]: newStatus,
-    }))
-  }
-
   const counts = {
     all: documents.length,
-    Pendiente: documents.filter((d) => (itemStatuses[d.id] || d.status) === 'Pendiente').length,
-    Aprobado: documents.filter((d) => (itemStatuses[d.id] || d.status) === 'Aprobado').length,
-    Observado: documents.filter((d) => (itemStatuses[d.id] || d.status) === 'Observado').length,
+    Pendiente: documents.filter((d) => d.status === 'Pendiente').length,
+    Aprobado: documents.filter((d) => d.status === 'Aprobado').length,
+    Observado: documents.filter((d) => d.status === 'Observado').length,
   }
 
   return (
@@ -147,7 +146,7 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((doc) => {
-            const currentStatus = itemStatuses[doc.id] || doc.status
+            const currentStatus = doc.status
             return (
               <div
                 key={doc.id}
@@ -181,14 +180,7 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
                   className="relative h-44 bg-neutral-950 overflow-hidden cursor-pointer flex items-center justify-center group-hover:opacity-95 transition-opacity"
                   onClick={() => setSelectedPreview(doc)}
                 >
-                  <Image
-                    src={doc.imageUrl}
-                    alt={doc.docType}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 300px"
-                    referrerPolicy="no-referrer"
-                  />
+                  <CaptureMedia src={doc.imageUrl} alt={doc.docType} video={doc.docType.startsWith('Video')} cover />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
 
                   <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white text-[11px]">
@@ -214,32 +206,13 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
                     <span className="text-[11px] text-muted-foreground">Digitalizado</span>
                   )}
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      title="Observar documento"
-                      onClick={() => setStatus(doc.id, 'Observado')}
-                      className={`p-1.5 rounded-md border text-xs transition-colors ${
-                        currentStatus === 'Observado'
-                          ? 'bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
-                          : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <Icon name="x" size="xs" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Aprobar documento"
-                      onClick={() => setStatus(doc.id, 'Aprobado')}
-                      className={`p-1.5 rounded-md border text-xs transition-colors ${
-                        currentStatus === 'Aprobado'
-                          ? 'bg-emerald-600 border-emerald-600 text-white'
-                          : 'border-emerald-600/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                      }`}
-                    >
-                      <Icon name="check" size="xs" />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPreview(doc)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Inspeccionar
+                  </button>
                 </div>
               </div>
             )
@@ -262,7 +235,7 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
               </thead>
               <tbody className="divide-y divide-border/60">
                 {filtered.map((doc) => {
-                  const currentStatus = itemStatuses[doc.id] || doc.status
+                  const currentStatus = doc.status
                   return (
                     <tr key={doc.id} className="hover:bg-muted/20 transition-colors">
                       <td className="py-2.5 px-4">
@@ -271,14 +244,7 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
                           onClick={() => setSelectedPreview(doc)}
                           className="w-12 h-10 rounded-md overflow-hidden bg-muted relative block border border-border hover:ring-2 hover:ring-primary/40"
                         >
-                          <Image
-                            src={doc.imageUrl}
-                            alt={doc.docType}
-                            fill
-                            className="object-cover"
-                            sizes="48px"
-                            referrerPolicy="no-referrer"
-                          />
+                          <CaptureMedia src={doc.imageUrl} alt={doc.docType} video={doc.docType.startsWith('Video')} cover />
                         </button>
                       </td>
                       <td className="py-2.5 px-4">
@@ -310,13 +276,6 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
                             className="px-2 py-1 text-xs rounded border border-border bg-card hover:bg-muted text-foreground"
                           >
                             Inspeccionar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStatus(doc.id, 'Aprobado')}
-                            className="px-2 py-1 text-xs rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-600/30 hover:bg-emerald-100"
-                          >
-                            Aprobar
                           </button>
                         </div>
                       </td>
@@ -356,14 +315,10 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
             </div>
 
             <div className="relative h-96 w-full bg-neutral-950 flex items-center justify-center p-2">
-              <Image
+              <CaptureMedia
                 src={selectedPreview.imageUrl}
                 alt={selectedPreview.docType}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, 700px"
-                priority
-                referrerPolicy="no-referrer"
+                video={selectedPreview.docType.startsWith('Video')}
               />
             </div>
 
@@ -378,29 +333,14 @@ export function DocumentGalleryManager({ documents }: DocumentGalleryManagerProp
                 <Icon name="download" size="xs" />
                 Descargar original
               </a>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatus(selectedPreview.id, 'Observado')
-                    setSelectedPreview(null)
-                  }}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300 font-medium"
+              {selectedPreview.clientId ? (
+                <Link
+                  href={`/admin/clientes/${encodeURIComponent(selectedPreview.clientId)}`}
+                  className="text-xs text-primary font-medium hover:underline"
                 >
-                  Observar / Rechazar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatus(selectedPreview.id, 'Aprobado')
-                    setSelectedPreview(null)
-                  }}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                >
-                  Aprobar documento
-                </button>
-              </div>
+                  Ver ficha del cliente
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>

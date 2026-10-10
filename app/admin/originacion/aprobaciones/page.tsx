@@ -49,6 +49,22 @@ export default async function AprobacionesPage() {
                   },
                 ] as RowAction[])
               : []),
+            ...(perms.has('credits.approve')
+              ? ([
+                  {
+                    kind: 'desk',
+                    label: 'Pedir información',
+                    action: 'requestInformation',
+                    payload: { applicationId: a.id },
+                    title: 'Pedir información',
+                    sub: name,
+                    summary,
+                    confirmLabel: 'Enviar pedido',
+                    success: 'Pedido registrado. La solicitud sigue pendiente.',
+                    field: { name: 'message', label: 'Qué falta', required: true, minLength: 8, placeholder: 'Ej.: recibo de sueldo de los últimos 3 meses' },
+                  },
+                ] as RowAction[])
+              : []),
             ...(perms.has('credits.reject')
               ? ([
                   {
