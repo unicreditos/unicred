@@ -93,6 +93,7 @@ export function UcShell({ menu, area, user, today, bottomNav, homeHref, children
 
   useEffect(() => {
     // Al navegar: se cierra el menú y se abre el grupo de la pantalla nueva (evita setState en render → hydration).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrawer(false)
     setUserMenu(false)
     let best = 0

@@ -16,6 +16,8 @@ export function ThemeSwitcher({ className, showLabel = false, variant = 'icon' }
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // La bandera evita renderizar el tema del cliente durante la hidratación.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
   }, [])
 
