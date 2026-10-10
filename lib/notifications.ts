@@ -14,6 +14,7 @@ import {
 } from '@/lib/db/schema'
 import { formatARS } from '@/lib/finance'
 import { loadReadItemIds } from '@/lib/inbox-read'
+import { identityInboxNotice } from '@/lib/identity-notice'
 import type { Role } from '@/lib/session'
 import { and, desc, eq, inArray, lt } from 'drizzle-orm'
 
@@ -171,6 +172,11 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
       tone: kyc.status === 'rejected' ? 'warn' : 'info',
     })
   }
+
+  // Aviso de identidad: solicitud abierta sin verificacion Didit aprobada (se arma solo, sin escribir en la base).
+  const hasOpenLoan = loans.some((l) => l.status === 'pending' || l.status === 'approved')
+  const identityNotice = identityInboxNotice(kyc?.status === 'approved' || kyc?.status === 'verified' ? 'ok' : 'not_approved', hasOpenLoan)
+  if (identityNotice) items.push({ ...identityNotice, at: new Date().toISOString() })
 
   for (const row of disbs) {
     if (row.status !== 'credited') continue

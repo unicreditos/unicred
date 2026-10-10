@@ -69,6 +69,11 @@ export type GridConfig = {
     key: string
     options: Array<{ v: string; l: string; in?: string[] }>
   }
+  /** Filtro por rango de importe (minimo/maximo) sobre este campo numerico de la fila. */
+  amountKey?: string
+  amountLabel?: string
+  /** Muestra "Exportar CSV" (filas filtradas) y fija el nombre del archivo. */
+  exportName?: string
   dateKey?: string
   dateLabel?: string
   selects?: Array<{ key: string; label: string; all: string; options?: string[] }>

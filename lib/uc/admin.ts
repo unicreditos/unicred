@@ -31,6 +31,7 @@ const GROUPS: Group[] = [
     icon: 'credit',
     children: [
       { label: 'Otorgados', route: '/admin/creditos/otorgados', perm: 'credits.read' },
+      { label: 'Todos los cr\u00e9ditos', route: '/admin/creditos/todos', perm: 'credits.read' },
       { label: 'En revisión', route: '/admin/creditos/revision', perm: 'credits.read' },
       { label: 'Pendientes de desembolso', route: '/admin/creditos/desembolso', perm: 'payments.read' },
       { label: 'Contratos', route: '/admin/creditos/contratos', perm: 'credits.read' },
