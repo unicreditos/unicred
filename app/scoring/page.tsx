@@ -14,8 +14,8 @@ export default function ScoringPage() {
   const escalas = [
     { nivel: '1', nombre: 'Normal', score: '720 – 850', consejo: 'Mejor perfil interno. La tasa de la oferta sigue siendo la del producto, confirmada en contrato.', tono: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
     { nivel: '2', nombre: 'Riesgo bajo', score: '640 – 719', consejo: 'Perfil aceptable. La solicitud se evalúa con BCRA, ingresos y KYC.', tono: 'bg-lime-500/10 text-lime-700 border-lime-500/20' },
-    { nivel: '3', nombre: 'Riesgo medio', score: '560 – 639', consejo: 'El motor puede aprobar si la cuota no supera el 35% de los ingresos y la situación BCRA lo permite.', tono: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
-    { nivel: '4', nombre: 'Insuficiente', score: '300 – 559', consejo: 'Rechazo automático por score interno. Situación BCRA 4 o 5 también rechaza.', tono: 'bg-orange-500/10 text-orange-700 border-orange-500/20' },
+    { nivel: '3', nombre: 'Riesgo medio', score: '560 – 639', consejo: 'El sistema puede recomendar aprobar si la cuota no supera el 35% de los ingresos y la situación BCRA lo permite; decide un analista.', tono: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
+    { nivel: '4', nombre: 'Insuficiente', score: '300 – 559', consejo: 'Recomendación: rechazar. Situación BCRA 4 o 5 también lo recomienda. La decisión final la toma un analista.', tono: 'bg-orange-500/10 text-orange-700 border-orange-500/20' },
   ]
 
   return (
@@ -31,7 +31,7 @@ export default function ScoringPage() {
         <PageSection
           eyebrow="Score UNICRÉDITOS · no es score BCRA"
           title="Bandas del motor actual"
-          subtitle="Heurística de reglas, no un modelo de 40 variables. Umbral de aprobación automática: 560."
+          subtitle="Heurística de reglas, no un modelo de 40 variables. Umbral de recomendación de aprobar: 560. El score es una recomendación: la decisión final es siempre de un analista, con nota."
         >
           <div className="space-y-3">
             {escalas.map((n) => (

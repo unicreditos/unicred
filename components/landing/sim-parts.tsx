@@ -102,7 +102,7 @@ export function AmortizationTable({ rows, tone = 'dark' }: { rows: TableRow[]; t
   const th = cn('px-3 py-2 text-right font-medium', dark ? 'text-white/55' : 'text-muted-foreground')
   const td = 'px-3 py-1.5 text-right'
   return (
-    <details className={cn('group rounded-lg border', dark ? 'border-white/10' : 'border-border')}>
+    <details className={cn('group min-w-0 max-w-full rounded-lg border', dark ? 'border-white/10' : 'border-border')}>
       <summary
         className={cn(
           'flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary [&::-webkit-details-marker]:hidden',

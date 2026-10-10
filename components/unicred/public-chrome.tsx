@@ -207,7 +207,7 @@ export function PublicFooter() {
             © {year} {BRAND.company} · {BRAND.domain}
           </p>
           <p className="max-w-xl md:text-right">
-            La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en el contrato.
+            La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en el contrato, que se firma de forma electrónica.
           </p>
         </div>
       </div>

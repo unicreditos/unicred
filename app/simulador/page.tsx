@@ -22,7 +22,7 @@ export default function SimuladorPage() {
       secondaryAction={{ href: '/prestamos', label: 'Ver el préstamo' }}
     >
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+        <div className="min-w-0 lg:col-span-3">
           <PageSection eyebrow="Calculadora TNA · TEA · CFT" title="Simulá en 3 pasos">
             <LoanSimulator />
             <div className="mt-6 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -32,7 +32,7 @@ export default function SimuladorPage() {
             </div>
           </PageSection>
         </div>
-        <aside className="space-y-6 lg:col-span-2">
+        <aside className="min-w-0 space-y-6 lg:col-span-2">
           <PageSection eyebrow="Por qué usar el simulador" title="Tomá decisiones informadas">
             <ul className="space-y-3 text-sm leading-relaxed text-slate-700">
               {[
