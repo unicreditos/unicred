@@ -16,7 +16,7 @@ describe('panel autenticado', () => {
     assert.equal(publicPayInstallmentId('/pedir/pagar/inst_abc'), null)
     assert.equal(
       installmentPosPath('inst_f9289afb-394f-4681-9169-161a4bfd9513', 'tarjeta_credito'),
-      '/dashboard?tab=pagos&pay=inst_f9289afb-394f-4681-9169-161a4bfd9513&method=tarjeta_credito',
+      '/dashboard/pagos?pay=inst_f9289afb-394f-4681-9169-161a4bfd9513&method=tarjeta_credito',
     )
   })
 

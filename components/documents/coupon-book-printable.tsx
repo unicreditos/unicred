@@ -18,7 +18,8 @@ import {
 import { formatARSDecimal, formatCBU, formatPercent } from '@/lib/finance'
 import type { ContractDocData, InstallmentDoc } from '@/lib/legal/types'
 
-const COUPONS_PER_SHEET = 4
+/** Dos talones por hoja A4: con QR y datos de pago, cuatro no entran sin recortarse. */
+const COUPONS_PER_SHEET = 2
 const DASH = '—'
 
 function isOpenCoupon(status: string) {

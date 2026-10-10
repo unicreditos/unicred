@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ReactNode, Suspense } from 'react'
+import { ReactNode, Suspense, useEffect } from 'react'
 
 export function DocumentPreviewShell(props: {
   backHref: string
@@ -38,7 +38,15 @@ function DocumentPreviewShellInner({
   hint?: string
   children: ReactNode
 }) {
-  const embed = useSearchParams().get('embed') === '1'
+  const params = useSearchParams()
+  const embed = params.get('embed') === '1'
+  const printNow = params.get('print') === '1'
+
+  useEffect(() => {
+    if (!printNow || embed) return
+    const timer = window.setTimeout(() => window.print(), 350)
+    return () => window.clearTimeout(timer)
+  }, [printNow, embed])
 
   return (
     <div className={embed ? 'document-preview-root is-embed' : 'document-preview-root'}>

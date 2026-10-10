@@ -19,9 +19,9 @@ export function isAuthEntryPath(pathname: string) {
 }
 
 export function installmentPosPath(installmentId: string, method?: string | null) {
-  const q = new URLSearchParams({ tab: 'pagos', pay: installmentId })
+  const q = new URLSearchParams({ pay: installmentId })
   if (method) q.set('method', method)
-  return `/dashboard?${q.toString()}`
+  return `/dashboard/pagos?${q.toString()}`
 }
 
 export function publicPayInstallmentId(pathname: string) {

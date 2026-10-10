@@ -63,7 +63,7 @@ export function AcceptContractBar({ contractId }: { contractId: string }) {
   const { pending, run } = useRun()
   const [agree, setAgree] = useState(false)
   return (
-    <div className="uc-card uc-pad" style={{ borderLeft: '4px solid var(--uc-accent)' }}>
+    <div className="uc-card uc-pad no-print" style={{ borderLeft: '4px solid var(--uc-accent)' }}>
       <div className="uc-card-h">
         <h2>Firmar contrato y pagaré</h2>
       </div>

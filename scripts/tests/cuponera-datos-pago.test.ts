@@ -66,10 +66,10 @@ test('resolveCouponPaymentData: CUIT/alias inválidos cuentan como faltantes; ej
   assert.equal(COUPON_PAYMENT_REQUIRED.length, 7)
 })
 
-test('cuponera: 4 cupones por hoja y bloque Datos para pagar con marcador pendiente en borrador', () => {
+test('cuponera: 2 cupones por hoja y bloque Datos para pagar con marcador pendiente en borrador', () => {
   const pay = resolveCouponPaymentData({ ...SAMPLE, alias: null, qrPayload: null }, null)
   const html = renderToStaticMarkup(createElement(CouponBookPrintable, { contract: sampleContract(6), pay }))
-  assert.equal((html.match(/class="cp-sheet"/g) ?? []).length, 2) // 6 cuotas = 4 + 2
+  assert.equal((html.match(/class="cp-sheet"/g) ?? []).length, 3) // 6 cuotas = 2 + 2 + 2
   assert.equal((html.match(/<article class="cp/g) ?? []).length, 6)
   assert.equal((html.match(/Datos para pagar<\/h3>/g) ?? []).length, 6)
   assert.ok(html.includes('data-final="false"'))

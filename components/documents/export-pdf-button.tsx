@@ -50,7 +50,7 @@ export function ExportPdfButton({
           format: 'a4',
           orientation: 'portrait' as const,
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        pagebreak: { mode: ['css', 'legacy'] },
       }
 
       // @ts-expect-error html2pdf is a callable function returning chainable worker
