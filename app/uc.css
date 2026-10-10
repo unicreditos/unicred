@@ -136,6 +136,9 @@ svg.uc-i.uc-xs{width:14px;height:14px}
   color:var(--uc-sb-text);text-align:left;font-size:14px;font-weight:500;
 }
 .uc-sb-link:hover{background:var(--uc-sb-hover);color:var(--uc-sb-text)}
+/* Los enlaces del menu heredaban el color de acento de ".uc a" (texto apagado sobre el fondo oscuro). */
+.uc a.uc-sb-link,.uc a.uc-sb-link:hover{color:var(--uc-sb-text)}
+.uc .uc-sb-item.uc-is-active > a.uc-sb-link{color:var(--uc-sb-active-fg)}
 .uc-sb-link .uc-chev{margin-left:auto;transition:transform .15s ease;opacity:0}
 .uc-sidebar.uc-is-open .uc-sb-link .uc-chev{opacity:.75}
 .uc-sb-link[aria-expanded="true"] .uc-chev{transform:rotate(90deg)}
@@ -465,29 +468,28 @@ input[type=range]{width:100%;accent-color:var(--uc-accent)}
 /* ========================================================= RESPONSIVE */
 @media (max-width:1180px){
   .uc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-.uc-flow{grid-template-columns:repeat(2,1fr);row-gap:24px}
-.uc-topbar,main{padding-left:24px;padding-right:24px}
-.uc-today{display:none}
-.uc-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .uc-flow{grid-template-columns:repeat(2,1fr);row-gap:24px}
+  .uc-topbar{padding-left:24px;padding-right:24px}
+  .uc main{padding-left:24px;padding-right:24px}
+  .uc-today{display:none}
+  .uc-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-/* Tablet y mobile: sidebar como drawer off-canvas con botón ☰ */
+/* Tablet y celular: el menu lateral pasa a drawer fuera de pantalla, con boton de menu en la barra superior. */
 @media (max-width:1024px){
   .uc-app{padding-left:0}
-.uc-menu-btn{display:grid}
-.uc-sidebar{width:min(300px,86vw);transform:translateX(-100%);transition:transform .22s ease, box-shadow .22s ease;box-shadow:none}
-.uc-sidebar.is-open{width:min(300px,86vw);box-shadow:none}
-.uc-sidebar.drawer-open{transform:none;box-shadow:var(--uc-shadow-lg)}
-.uc-sidebar .uc-sb-link .uc-chev{opacity:.75}
-.uc-table-scroll{max-height:70vh}
-.uc-sheet .uc-table-scroll{max-height:70vh}
-.uc-toolbar{align-items:stretch}
-.uc-search{flex:1 1 260px}
-.uc-search .uc-field{width:100%}
-.uc-cols-21,.uc-cols-12{grid-template-columns:1fr}
+  .uc-menu-btn{display:grid}
+  .uc-sidebar,.uc-sidebar.uc-is-open{width:min(300px,86vw);transform:translateX(-100%);transition:transform .22s ease, box-shadow .22s ease;box-shadow:none}
+  .uc-sidebar.uc-drawer-open{transform:none;box-shadow:var(--uc-shadow-lg)}
+  .uc-sidebar .uc-sb-link .uc-chev{opacity:.75}
+  .uc-table-scroll,.uc-sheet .uc-table-scroll{max-height:70vh}
+  .uc-toolbar{align-items:stretch}
+  .uc-search{flex:1 1 260px}
+  .uc-search .uc-field{width:100%}
+  .uc-cols-21,.uc-cols-12{grid-template-columns:1fr}
 }
 @media (max-width:767px){
-  .uc-uc{font-size:14px}
-  main{padding:20px 16px 40px}
+  .uc{font-size:14px}
+  .uc main{padding:20px 16px 40px}
 .uc-topbar{padding:0 12px;gap:10px;height:56px}
 .uc-proto-tag{display:none}
 .uc-crumbs > :not(b){display:none}
@@ -620,3 +622,15 @@ a.uc-row-action{text-decoration:none}
   --border:#dce2ea;--input:#dce2ea;
 }
 [data-theme="dark"] .uc main [data-slot="card"]{color:#0f1b2d}
+
+/* Pantallas de cuenta fuera del panel (seguridad, 2FA, retorno de identidad) */
+.uc-standalone{min-height:100vh;min-height:100svh;background:var(--uc-bg);color:var(--uc-text)}
+.uc-standalone-bar{display:flex;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--uc-border);background:var(--uc-surface)}
+.uc-standalone-bar .uc-wordmark{color:var(--uc-text)}
+.uc-standalone .uc-muted{color:var(--uc-text-muted)}
+.uc-standalone main{max-width:none}
+.uc-standalone main:focus{outline:none}
+@media (max-width:767px){.uc-standalone-bar{padding:0 16px;height:56px}}
+/* Botones del sistema anterior usados como enlace: ".uc a" les pintaba el texto con el color de acento. */
+.uc a[data-slot="button"].bg-primary{color:var(--uc-accent-fg)}
+.uc a[data-slot="button"].bg-background,.uc a[data-slot="button"].bg-secondary{color:var(--uc-text)}

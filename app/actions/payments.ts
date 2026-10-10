@@ -1,5 +1,7 @@
 'use server'
 
+import { enforceActionLimit } from '@/lib/action-rate-limit'
+import { headers } from 'next/headers'
 import { db } from '@/lib/db'
 import {
   payment,
@@ -16,6 +18,7 @@ import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state
 import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
 import { couponCode } from '@/lib/coupon'
+import { assertCanViewCouponInstallment, COUPON_FORBIDDEN_MESSAGE } from '@/lib/payments/coupon-access'
 import { treasuryForClient } from '@/lib/treasury'
 import { recordAudit } from '@/lib/audit'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
@@ -101,6 +104,7 @@ export async function createPaymentLink(
   opts?: { returnPath?: string },
 ) {
   const userId = await assertRole('customer')
+  await enforceActionLimit('payment', userId)
   if (!installmentIds.length) throw new Error('Elegí al menos una cuota')
 
   const session = await getSession()
@@ -359,8 +363,10 @@ export async function createPaymentLink(
 }
 
 export async function getCouponInstallment(installmentId: string) {
+  const userId = await requireUserId()
+  await enforceActionLimit('coupon-lookup', userId)
   const id = String(installmentId ?? '').trim()
-  if (!id) return null
+  if (!id) throw new Error('Cuota inválida.')
   const [row] = await db
     .select({
       id: installment.id,
@@ -375,7 +381,8 @@ export async function getCouponInstallment(installmentId: string) {
     .from(installment)
     .where(eq(installment.id, id))
     .limit(1)
-  if (!row) return null
+  await assertCanViewCouponInstallment(userId, row?.userId, canViewOwnedRecord)
+  if (!row) throw new Error(COUPON_FORBIDDEN_MESSAGE)
   const due = new Date(row.dueDate)
   const [loanRow] = await db
     .select({ status: loan.status, principal: loan.principal, term: loan.term })
@@ -415,6 +422,14 @@ export async function getCouponInstallment(installmentId: string) {
   }
 }
 
+/** Quien paga un cupon puede no tener sesion: el tope va por usuario si la hay y, si no, por IP. */
+async function couponActionSubject() {
+  const session = await getSession()
+  if (session?.user?.id) return `u:${session.user.id}`
+  const h = await headers()
+  return `ip:${h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'}`
+}
+
 export async function createCouponCheckout(
   installmentId: string,
   method: PaymentMethod = 'mercado_pago',
@@ -429,6 +444,7 @@ export async function createCouponCheckout(
     throw new Error('Elegí Mercado Pago, tarjeta, Pago Fácil o Rapipago. La billetera se paga desde el panel.')
   }
 
+  await enforceActionLimit('coupon-action', await couponActionSubject())
   const [inst] = await db.select().from(installment).where(eq(installment.id, installmentId)).limit(1)
   if (!inst) throw new Error('Cuota no encontrada.')
   if (inst.status === 'paid' || inst.status === 'cancelled') {
@@ -626,6 +642,7 @@ export async function createCouponCheckout(
 
 export async function getLoanCouponQrs(loanId: string) {
   const userId = await requireUserId()
+  await enforceActionLimit('coupon-lookup', userId)
   const id = String(loanId ?? '').trim()
   if (!id) throw new Error('Crédito inválido.')
   const [loanRow] = await db.select({ userId: loan.userId }).from(loan).where(eq(loan.id, id)).limit(1)
@@ -677,6 +694,7 @@ export async function quoteEarlySettlement(loanId: string) {
 
 export async function createEarlySettlementCheckout(loanId: string) {
   const userId = await assertRole('customer')
+  await enforceActionLimit('payment', userId)
   const session = await getSession()
   const quote = await quoteEarlySettlement(loanId)
   if (quote.loanStatus !== 'active') {
@@ -1098,6 +1116,7 @@ export async function reportBankTransfer(installmentIds: string[], formData: For
   // el dueño de la cuota SI había sesión, dejando pasar la acción entera para
   // un caller anónimo (subía comprobante y quedaba auditado a nombre ajeno).
   const userId = await requireUserId()
+  await enforceActionLimit('payment', userId)
   const [first] = await db
     .select()
     .from(installment)
@@ -1371,6 +1390,7 @@ export async function adminCreditWallet(destination: string, amount: number, ref
 
 export async function getInstallmentCoupons(loanId: string) {
   const userId = await assertRole('customer', 'admin')
+  await enforceActionLimit('coupon-lookup', userId)
   const role = await getRoleForUser(userId)
   const [loanRow] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
   if (!loanRow) throw new Error('Crédito no encontrado.')

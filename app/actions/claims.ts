@@ -1,5 +1,6 @@
 'use server'
 
+import { enforceActionLimit } from '@/lib/action-rate-limit'
 import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
@@ -25,6 +26,7 @@ export async function listMyClaims() {
 
 export async function createClaim(input: { category: string; subject: string; body: string }) {
   const userId = await assertRole('customer', 'merchant')
+  await enforceActionLimit('claim', userId)
   const role = await getRoleForUser(userId)
   await ensureSupportCaseTable()
 

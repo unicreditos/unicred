@@ -1,5 +1,6 @@
 'use server'
 
+import { checkActionLimit } from '@/lib/action-rate-limit'
 import { recordAudit } from '@/lib/audit'
 import {
   computeScore,
@@ -33,6 +34,8 @@ import { revalidatePath } from 'next/cache'
 
 export async function consultMyBcra() {
   const userId = await assertRole('customer')
+  const gate = await checkActionLimit('bcra', userId)
+  if (!gate.ok) return { ok: false as const, error: gate.message }
   const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
   if (!prof?.cuil) {
     return { ok: false as const, error: 'Completá tu CUIL en Mis datos antes de consultar el BCRA.' }

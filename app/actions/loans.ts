@@ -2,6 +2,7 @@
 
 import { adultBirthDateBounds } from '@/lib/didit-expected'
 import { addDaysAR, isValidYmd, startOfDayAR } from '@/lib/date-ar'
+import { checkActionLimit } from '@/lib/action-rate-limit'
 import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
@@ -133,6 +134,8 @@ async function requireCustomerReadyForCredit(userId: string) {
  */
 export async function evaluateLoanOffer(input: { productId: string; term: number }) {
   const userId = await assertRole('customer')
+  const gate = await checkActionLimit('credit-quote', userId)
+  if (!gate.ok) return { ok: false as const, error: gate.message }
   const ready = await requireCustomerReadyForCredit(userId)
   if (!ready.ok) return ready
 
@@ -342,6 +345,8 @@ export async function requestLoan(input: {
   purpose: string
 }) {
   const userId = await assertRole('customer')
+  const gate = await checkActionLimit('credit-request', userId)
+  if (!gate.ok) return { ok: false as const, error: gate.message }
   const ready = await requireCustomerReadyForCredit(userId)
   if (!ready.ok) return ready
   const prof = ready.prof

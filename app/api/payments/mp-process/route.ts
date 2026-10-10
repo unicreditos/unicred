@@ -1,3 +1,4 @@
+import { checkActionLimit } from '@/lib/action-rate-limit'
 import { createPaymentFromBrick, saveMercadoPagoCustomerCard } from '@/lib/mercadopago'
 import { db } from '@/lib/db'
 import { payment } from '@/lib/db/schema'
@@ -13,6 +14,10 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   const userId = await requireUserId()
+  const gate = await checkActionLimit('payment', userId)
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.message }, { status: 429, headers: { 'Retry-After': String(gate.retryAfterSec) } })
+  }
   const body = await req.json().catch(() => null)
   const localPaymentId = String(body?.localPaymentId ?? '').trim()
   const formData = body?.formData
