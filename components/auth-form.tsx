@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Lock, Mail, Loader2, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react'
 import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,12 +70,6 @@ export function AuthForm() {
     }
     router.push(target as string)
     router.refresh()
-  }
-
-  const fillDemoAccount = () => {
-    setEmail('qa-persona-audit@unicreditos.com')
-    setPassword('QaAudit#2026!')
-    setError(null)
   }
 
   if (challenge) {
@@ -182,19 +176,6 @@ export function AuthForm() {
             'Ingresar a mi cuenta'
           )}
         </Button>
-
-        {/* Quick demo helper for seamless QA and evaluation */}
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1.5">¿Probando la plataforma?</p>
-          <button
-            type="button"
-            onClick={fillDemoAccount}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
-          >
-            <Sparkles className="h-3 w-3 text-emerald-700" />
-            Cargar credenciales de prueba cliente
-          </button>
-        </div>
 
         <p className="text-center text-sm text-slate-600">
           ¿Todavía no tenés cuenta?{' '}
