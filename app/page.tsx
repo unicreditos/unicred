@@ -115,7 +115,7 @@ export default async function HomePage() {
       <PublicHeader isLoggedIn={isLoggedIn} accountHref={accountHref} />
       <main id="contenido-principal">
         {/* Hero: calculadora al frente, no una promesa vacía */}
-        <section className="relative overflow-hidden border-b border-border">
+        <section className="relative overflow-hidden border-b border-border/70 bg-background">
           <Image
             src="/hero-alt.png"
             alt=""
@@ -125,14 +125,14 @@ export default async function HomePage() {
             className="object-cover object-right"
             aria-hidden
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/10" aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/15" aria-hidden />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
             <div className="lg:col-span-6">
               <p className="inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
                 Préstamos personales online
               </p>
-              <h1 className="mt-6 max-w-xl text-[38px] font-bold leading-[1.08] tracking-tight text-brand-navy sm:text-[46px] lg:text-[52px]">
+              <h1 className="mt-6 max-w-xl text-[40px] font-semibold leading-[1.03] tracking-[-0.04em] text-foreground sm:text-[50px] lg:text-[60px]">
                 Un crédito que se entiende antes de pedirlo.
               </h1>
               <p className="mt-5 max-w-lg text-lg leading-snug text-foreground/85">
@@ -206,7 +206,7 @@ export default async function HomePage() {
         <TrustBar />
 
         {/* Cómo funciona */}
-        <section id="como-funciona" className="scroll-mt-24 bg-white">
+        <section id="como-funciona" className="scroll-mt-24 bg-card">
           <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary ring-1 ring-brand-primary/10">
@@ -231,7 +231,7 @@ export default async function HomePage() {
                         className="absolute left-full top-7 hidden h-px w-6 bg-gradient-to-r from-brand-primary/40 to-transparent lg:block"
                       />
                     ) : null}
-                    <div className="flex flex-col items-center rounded-2xl border border-border/70 bg-card p-6 text-center shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div className="flex flex-col items-center rounded-3xl border border-border/70 bg-card p-6 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
                       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-700 text-white shadow-md shadow-brand-primary/25">
                         <Icon className="h-6 w-6" />
                       </span>
@@ -249,7 +249,7 @@ export default async function HomePage() {
         </section>
 
         {/* Por qué elegirnos */}
-        <section className="scroll-mt-24 border-y border-border/60 bg-slate-50/60">
+        <section className="scroll-mt-24 border-y border-border/60 bg-muted/35">
           <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-3xl font-black tracking-tight text-brand-navy sm:text-4xl">¿Por qué elegirnos?</h2>

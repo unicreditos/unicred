@@ -384,12 +384,13 @@ export function DashboardTabsWrapper({
 
   return (
     <DashboardShell activeTab={activeTab} onTabChange={setActiveTab} user={resolvedUser}>
-      <div key={activeTab} className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div key={activeTab} className="mx-auto flex w-full max-w-7xl flex-col gap-8">
         {activeTab === 'overview' && (
           <>
             {/* Una sola jerarquía: saludo corto → próxima acción → 2 métricas → crédito → 4 atajos */}
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-brand-navy-900 sm:text-2xl">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Resumen financiero</span>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 {firstName ? `Hola, ${firstName}` : 'Hola'}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground">
@@ -487,7 +488,7 @@ export function DashboardTabsWrapper({
               />
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <MetricTile
                 label="Próxima cuota"
                 value={nextInstallment ? formatARS(nextInstallment.amount) : '—'}
@@ -523,7 +524,7 @@ export function DashboardTabsWrapper({
               />
             </div>
 
-            <section className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+            <section className="overflow-hidden rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -615,7 +616,7 @@ export function DashboardTabsWrapper({
             </section>
 
             <div className="grid items-start gap-4 lg:grid-cols-5">
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-3">
+              <section className="rounded-2xl border border-border/70 bg-card shadow-sm lg:col-span-3">
                 <header className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
                     <h2 className="text-sm font-semibold text-brand-navy-900">Créditos vigentes</h2>
@@ -671,7 +672,7 @@ export function DashboardTabsWrapper({
                 </div>
               </section>
 
-              <section className="rounded-xl border border-border bg-card shadow-xs lg:col-span-2">
+              <section className="rounded-2xl border border-border/70 bg-card shadow-sm lg:col-span-2">
                 <header className="border-b border-border px-4 py-3">
                   <h2 className="text-sm font-semibold text-brand-navy-900">Accesos rápidos</h2>
                   <p className="text-xs text-muted-foreground">Lo que más usás</p>
@@ -691,7 +692,7 @@ export function DashboardTabsWrapper({
                         key={a.tab}
                         type="button"
                         onClick={() => setActiveTab(a.tab)}
-                        className="group flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/60"
+                        className="group flex items-center justify-between rounded-xl border border-border/70 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-brand-primary/10 group-hover:text-brand-primary transition">
@@ -710,7 +711,9 @@ export function DashboardTabsWrapper({
               </section>
             </div>
 
-            <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
+            <div className="rounded-2xl border border-border/70 bg-card p-1 shadow-sm">
+              <DueCalendar installments={installmentsAll.length ? installmentsAll : upcomingInstallments} />
+            </div>
 
             {recentMoves.length > 0 ? (
               <section className="rounded-xl border border-border bg-card shadow-sm">
