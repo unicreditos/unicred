@@ -2,7 +2,7 @@ import { DataGrid } from '@/components/uc/data-grid'
 import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDesk } from '@/lib/admin-desk/load'
-import { badge, clientCell, clientIndex, clientSearch } from '@/lib/uc/admin'
+import { badge, clientCell, clientIndex, clientSearch, kycBadge } from '@/lib/uc/admin'
 
 export const metadata = { title: 'Solicitudes' }
 
@@ -23,6 +23,7 @@ export default async function SolicitudesPage() {
     importe: a.amount,
     cuotas: a.installments,
     canal: a.merchantId ? 'Comercio' : 'Directo',
+    kyc: kycBadge(idx.get(a.clientId)?.kycStatus ?? 'pending'),
     estadoKey: a.status,
     estado: badge(LABEL[a.status] ?? a.status, TONE[a.status] ?? 'neutral'),
     ingreso: a.createdAt,
@@ -59,6 +60,7 @@ export default async function SolicitudesPage() {
             { key: 'importe', label: 'Importe', kind: 'money', align: 'r', amount: true },
             { key: 'cuotas', label: 'Cuotas', kind: 'num', align: 'c' },
             { key: 'canal', label: 'Canal' },
+            { key: 'kyc', label: 'Identidad (KYC)', kind: 'badge', order: ['Verificado', 'En revisión', 'Pendiente', 'Rechazado', 'Vencido'] },
             { key: 'estado', label: 'Estado', kind: 'badge', order: ['En revisión', 'Aprobada', 'Rechazada', 'Anulada'] },
             { key: 'ingreso', label: 'Ingreso', kind: 'date' },
             { key: 'ver', label: 'Acción', kind: 'actions', align: 'r' },
