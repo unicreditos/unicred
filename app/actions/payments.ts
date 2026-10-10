@@ -16,6 +16,7 @@ import { canActivateOnCollection, canSettleOnCollection } from '@/lib/loan-state
 import { canViewOwnedRecord } from '@/lib/legal/access'
 import { receiptBranding } from '@/lib/brand'
 import { couponCode } from '@/lib/coupon'
+import { assertCanViewCouponInstallment, COUPON_FORBIDDEN_MESSAGE } from '@/lib/payments/coupon-access'
 import { treasuryForClient } from '@/lib/treasury'
 import { recordAudit } from '@/lib/audit'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
@@ -359,8 +360,9 @@ export async function createPaymentLink(
 }
 
 export async function getCouponInstallment(installmentId: string) {
+  const userId = await requireUserId()
   const id = String(installmentId ?? '').trim()
-  if (!id) return null
+  if (!id) throw new Error('Cuota inválida.')
   const [row] = await db
     .select({
       id: installment.id,
@@ -375,7 +377,8 @@ export async function getCouponInstallment(installmentId: string) {
     .from(installment)
     .where(eq(installment.id, id))
     .limit(1)
-  if (!row) return null
+  await assertCanViewCouponInstallment(userId, row?.userId, canViewOwnedRecord)
+  if (!row) throw new Error(COUPON_FORBIDDEN_MESSAGE)
   const due = new Date(row.dueDate)
   const [loanRow] = await db
     .select({ status: loan.status, principal: loan.principal, term: loan.term })
