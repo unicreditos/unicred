@@ -37,7 +37,8 @@ describe('aislamiento de los paneles', () => {
       lines.forEach((line, i) => {
         for (const m of line.matchAll(target)) {
           const dest = m[2]
-          if (/^\/(dashboard|admin|api)([/?#]|$)/.test(dest)) continue
+          // /cuenta/seguridad: pantalla de cuenta (2FA y sesiones), no es el sitio publico.
+          if (/^\/(dashboard|admin|api|cuenta\/seguridad)([/?#]|$)/.test(dest)) continue
           if (rel === ALLOWED_EXIT.file && line.includes(ALLOWED_EXIT.snippet)) continue
           offenders.push(`${rel}:${i + 1} → ${dest}`)
         }

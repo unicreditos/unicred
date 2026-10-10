@@ -36,6 +36,7 @@ const MENU: MenuItem[] = [
       { label: 'Cuentas para cobrar', route: '/dashboard/perfil/cuentas' },
       { label: 'Informe BCRA', route: '/dashboard/perfil/bcra' },
       { label: 'Seguridad', route: '/dashboard/perfil/seguridad' },
+      { label: 'Verificación en dos pasos', route: '/cuenta/seguridad' },
     ],
   },
   {

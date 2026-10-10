@@ -309,6 +309,10 @@ export function UcShell({ menu, area, user, today, bottomNav, homeHref, children
                   <b>{user.name}</b>
                   <small>{user.email || user.detail}</small>
                 </div>
+                <Link href="/cuenta/seguridad" role="menuitem">
+                  <Icon name="lock" size="sm" />
+                  Seguridad de la cuenta
+                </Link>
                 <button type="button" role="menuitem" className="uc-danger-item" onClick={logout}>
                   <Icon name="x" size="sm" />
                   Cerrar sesión

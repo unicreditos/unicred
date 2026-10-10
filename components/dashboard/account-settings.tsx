@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SectionCard } from '@/components/unicred/dashboard-kit'
 import { KeyRound, Loader2, Shield } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 export function AccountSettings() {
@@ -117,7 +118,13 @@ export function AccountSettings() {
           <li>El débito automático CBU no está habilitado. Pagás cuota a cuota o cancelás el saldo.</li>
           <li>Los recibos no son factura electrónica AFIP. Son comprobantes de cobro de RM International Group S.A.S.</li>
           <li>No hay seguros de vida ni de desempleo asociados al crédito.</li>
-          <li>El segundo factor (2FA) todavía no está publicado en este canal.</li>
+          <li>
+            Podés activar el segundo factor (2FA) con una app autenticadora y ver tus sesiones activas en{' '}
+            <Link href="/cuenta/seguridad" className="font-medium text-brand-primary underline">
+              Verificación en dos pasos
+            </Link>
+            .
+          </li>
         </ul>
       </SectionCard>
     </div>
