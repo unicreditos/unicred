@@ -121,7 +121,7 @@ describe('merchant-admin store (Postgres de prueba)', { skip: URL_ENV ? false : 
 describe('merchant-admin: archivo SQL manual', () => {
   it('2026-10-10_05 contiene cada sentencia del DDL (no se desincroniza)', async () => {
     const { readFileSync } = await import('node:fs')
-    const file = readFileSync(new URL('../../scripts/sql/2026-10-10_05_merchant_admin.sql', import.meta.url), 'utf8')
+    const file = readFileSync(new URL('../../scripts/sql/2026-10-10_05_merchant_admin.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
     for (const s of MERCHANT_ADMIN_DDL) assert.ok(file.includes(s.trim()), `falta en el SQL: ${s.slice(0, 60)}`)
     assert.match(file, /^BEGIN;/m)
     assert.doesNotMatch(file, /\bDROP TABLE|\bTRUNCATE|\bDELETE FROM/i)
