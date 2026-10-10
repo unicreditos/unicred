@@ -18,7 +18,10 @@ confirmDangerousScript(`Otorgar rol ADMIN a ${targetEmail}`)
 async function main() {
   const { db, pool } = await import('@/lib/db')
   const { profile, user } = await import('@/lib/db/schema')
-  const { eq } = await import('drizzle-orm')
+  const { ensureRbacSchema } = await import('@/lib/db/ensure-rbac')
+  const { eq, sql } = await import('drizzle-orm')
+
+  await ensureRbacSchema()
 
   const [u] = await db
     .select({ id: user.id, email: user.email })
@@ -42,6 +45,7 @@ async function main() {
       id: `prof_admin_${u.id.slice(-8)}`,
       userId: u.id,
       role: 'admin',
+      adminRoleId: 'role_super_admin',
       kycStatus: 'approved',
       creditScore: 850,
       createdAt: new Date(),
@@ -49,10 +53,17 @@ async function main() {
     })
     .onConflictDoUpdate({
       target: profile.userId,
-      set: { role: 'admin', updatedAt: new Date(), kycStatus: 'approved' },
+      // Sin rol de operador el backoffice filtra todas las secciones y el panel se ve vacío.
+      // Un rol ya asignado se respeta.
+      set: {
+        role: 'admin',
+        adminRoleId: sql`COALESCE(${profile.adminRoleId}, 'role_super_admin')`,
+        updatedAt: new Date(),
+        kycStatus: 'approved',
+      },
     })
 
-  console.log(`${u.email} ahora es ADMIN`)
+  console.log(`${u.email} ahora es ADMIN con rol de operador asignado`)
   await pool.end()
 }
 

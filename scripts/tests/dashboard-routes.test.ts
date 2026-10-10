@@ -31,10 +31,11 @@ describe('rutas del panel del cliente', () => {
   })
 
   it('todos los enlaces que arma el sistema terminan en una pantalla existente', () => {
-    // El pago desde un mail o QR llega como ?tab=pagos&pay=…; el proxy lo mapea a /dashboard/pagos.
+    // El pago desde un mail o QR va directo a /dashboard/pagos?pay=…
     const pay = new URL(installmentPosPath('inst_1', 'tarjeta_credito'), 'https://x.test')
-    assert.equal(legacyDashboardRoute(pay.searchParams.get('tab')), '/dashboard/pagos')
+    assert.equal(pay.pathname, '/dashboard/pagos')
     assert.equal(pay.searchParams.get('pay'), 'inst_1')
+    assert.equal(pay.searchParams.get('method'), 'tarjeta_credito')
 
     const contrato = new URL(legacyPedirRedirect('/pedir/docs/contrato/c1') ?? '', 'https://x.test')
     assert.equal(legacyDashboardRoute(contrato.searchParams.get('tab')), '/dashboard/documentos')

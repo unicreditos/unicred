@@ -148,7 +148,8 @@ describe('site-config: diff y huella', () => {
 
 describe('site-config: SQL manual', () => {
   it('el archivo SQL coincide con el DDL del código', () => {
-    const file = readFileSync(new URL(`../../${SITE_CONFIG_SQL_FILE}`, import.meta.url), 'utf8')
+    // Git en Windows (core.autocrlf) entrega el archivo con CRLF.
+    const file = readFileSync(new URL(`../../${SITE_CONFIG_SQL_FILE}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n')
     assert.equal(file, renderSiteConfigSql())
   })
   it('es aditivo: no borra ni altera tablas existentes', () => {

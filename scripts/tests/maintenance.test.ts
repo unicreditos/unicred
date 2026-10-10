@@ -36,13 +36,11 @@ describe('mantenimiento', () => {
     }
   })
 
-  it('se apaga solo con MAINTENANCE_MODE=off', () => {
+  it('está apagado y ninguna variable de entorno lo enciende', () => {
     const prev = process.env.MAINTENANCE_MODE
     delete process.env.MAINTENANCE_MODE
-    assert.equal(maintenanceEnabled(), true)
-    process.env.MAINTENANCE_MODE = 'off'
     assert.equal(maintenanceEnabled(), false)
-    process.env.MAINTENANCE_MODE = '0'
+    process.env.MAINTENANCE_MODE = 'on'
     assert.equal(maintenanceEnabled(), false)
     if (prev === undefined) delete process.env.MAINTENANCE_MODE
     else process.env.MAINTENANCE_MODE = prev

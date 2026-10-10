@@ -1,7 +1,6 @@
 /**
- * Todo el sitio queda cerrado hasta el despliegue completo.
- * MAINTENANCE_MODE=off lo vuelve a abrir sin otro cambio de código.
- * Si la variable no está, el mantenimiento sigue activo.
+ * El sitio está abierto. Para cerrarlo hay que cambiar este valor en el código y desplegar:
+ * ninguna variable de entorno lo enciende.
  */
 export function maintenanceEnabled() {
   return false

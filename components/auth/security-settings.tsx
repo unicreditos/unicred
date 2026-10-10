@@ -22,6 +22,8 @@ export function SecuritySettings() {
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [viaEmail, setViaEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   const load = useCallback(async () => {
     const s = await fetch('/api/2fa/status', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)
@@ -39,6 +41,8 @@ export function SecuritySettings() {
     setPassword('')
     setCode('')
     setErr(null)
+    setViaEmail(false)
+    setEmailSent(false)
   }
 
   async function run(fn: () => Promise<void>) {
@@ -77,13 +81,20 @@ export function SecuritySettings() {
   const disable = (e: FormEvent) => {
     e.preventDefault()
     void run(async () => {
-      const r = await post('/api/2fa/totp/disable', { password, code })
+      const r = await post('/api/2fa/totp/disable', viaEmail ? { password, emailCode: code.trim() } : { password, code })
       if (!r.ok) throw new Error(r.data.message || 'No se pudo desactivar.')
       reset()
       setMsg('Desactivaste la app autenticadora. Seguís pudiendo verificar por correo.')
       await load()
     })
   }
+  const sendEmailCode = () =>
+    void run(async () => {
+      const r = await post('/api/2fa/send', {})
+      if (!r.ok && r.data.code !== 'cooldown') throw new Error(r.data.message || 'No se pudo enviar el código.')
+      setEmailSent(true)
+      setMsg('Te enviamos un código de 6 dígitos por correo. Vence a los 10 minutos.')
+    })
   const regen = (e: FormEvent) => {
     e.preventDefault()
     void run(async () => {
@@ -185,11 +196,25 @@ export function SecuritySettings() {
 
         {mode === 'disable' || mode === 'regen' ? (
           <form onSubmit={mode === 'disable' ? disable : regen} style={{ display: 'grid', gap: 10 }}>
-            <p style={{ margin: 0 }}>Por seguridad, confirmá tu contraseña y un código vigente (de la app o de respaldo).</p>
+            <p style={{ margin: 0 }}>
+              {viaEmail
+                ? 'Confirmá tu contraseña y el código de 6 dígitos que te enviamos por correo.'
+                : 'Por seguridad, confirmá tu contraseña y un código vigente (de la app o de respaldo).'}
+            </p>
             <label htmlFor="ss-pw2" style={{ fontWeight: 600 }}>Contraseña</label>
             <input id="ss-pw2" type="password" autoComplete="current-password" className="uc-field" style={field} value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-            <label htmlFor="ss-code2" style={{ fontWeight: 600 }}>Código de la app o de respaldo</label>
-            <input id="ss-code2" className="uc-field" autoComplete="one-time-code" spellCheck={false} maxLength={12} style={field} value={code} onChange={(e) => setCode(e.target.value)} />
+            <label htmlFor="ss-code2" style={{ fontWeight: 600 }}>{viaEmail ? 'Código por correo' : 'Código de la app o de respaldo'}</label>
+            <input id="ss-code2" className="uc-field" inputMode={viaEmail ? 'numeric' : undefined} autoComplete="one-time-code" spellCheck={false} maxLength={viaEmail ? 6 : 12} style={field} value={code} onChange={(e) => setCode(viaEmail ? e.target.value.replace(/\D/g, '') : e.target.value)} />
+            {mode === 'disable' && !viaEmail ? (
+              <button type="button" className="uc-btn" style={{ minHeight: 44, justifySelf: 'start' }} disabled={busy} onClick={() => { setViaEmail(true); setCode(''); sendEmailCode() }}>
+                Perdí el celular y los códigos de respaldo
+              </button>
+            ) : null}
+            {viaEmail ? (
+              <button type="button" className="uc-btn" style={{ minHeight: 44, justifySelf: 'start' }} disabled={busy} onClick={sendEmailCode}>
+                {emailSent ? 'Reenviar código por correo' : 'Enviar código por correo'}
+              </button>
+            ) : null}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="submit" className="uc-btn uc-primary" style={{ minHeight: 44 }} disabled={busy || !password || code.trim().length < 6}>{mode === 'disable' ? 'Desactivar' : 'Regenerar'}</button>
               <button type="button" className="uc-btn" style={{ minHeight: 44 }} onClick={() => reset()}>Cancelar</button>

@@ -41,7 +41,7 @@ export default async function ContenidoTab({ params }: { params: Promise<{ tab: 
       ) : null}
       {tab === 'legal' ? (
         <Callout icon="file" title="Documentación de la web">
-          Cada documento tiene versión y fecha de vigencia. La lista pública está en <Link href="/legal/documentos" style={{ textDecoration: 'underline' }}>/legal/documentos</Link>. Los cambios exigen
+          Cada documento tiene versión y fecha de vigencia. La lista pública está en <code>/legal/documentos</code> del sitio. Los cambios exigen
           doble control: lo aprueba otro administrador y recién después se publica.
         </Callout>
       ) : null}

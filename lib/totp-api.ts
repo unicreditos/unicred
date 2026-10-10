@@ -1,5 +1,6 @@
 import QRCode from 'qrcode'
 import { adminJson, rejectCrossOrigin, requestMeta } from '@/lib/admin-api'
+import { verifyAdminOtp } from '@/lib/admin-otp'
 import { verifyCurrentPassword } from '@/lib/reauth'
 import { sessionUser } from '@/lib/second-factor-api'
 import { getRoleForUser, sessionSecondFactorOk } from '@/lib/session'
@@ -97,11 +98,36 @@ async function reauth(req: Request) {
   return { who }
 }
 
-/** Desactivar y regenerar exigen RE-AUTENTICAR: clave actual + un codigo vigente (app o respaldo). */
+const EMAIL_MSG = {
+  none: 'No hay un c\u00f3digo por correo vigente. Ped\u00ed uno nuevo.',
+  expired: 'El c\u00f3digo por correo venci\u00f3. Ped\u00ed uno nuevo.',
+  locked: 'Demasiados intentos. Ped\u00ed un c\u00f3digo nuevo por correo.',
+  invalid: 'El c\u00f3digo por correo no coincide.',
+  no_session: 'Tu sesi\u00f3n no es v\u00e1lida. Ingres\u00e1 de nuevo.',
+} as const
+
+/**
+ * Celular perdido sin codigos de respaldo: clave actual + codigo por correo. No baja la seguridad,
+ * porque ese mismo par ya alcanza para ingresar a la cuenta.
+ */
+async function reauthWithEmail(req: Request, emailCode: string, password: string) {
+  const who = await sessionUser()
+  if (!who) return { err: adminJson({ ok: false, message: 'No autorizado' }, 401) }
+  if (!(await sessionSecondFactorOk(who.userId))) return { err: adminJson({ ok: false, message: 'Complet\u00e1 primero la verificaci\u00f3n en dos pasos.' }, 403) }
+  const pw = await verifyCurrentPassword(who.userId, password)
+  if (pw !== 'ok') return { err: adminJson({ ok: false, message: pw === 'rate_limited' ? MSG.rate_limited : 'La contrase\u00f1a no coincide.' }, pw === 'rate_limited' ? 429 : 400) }
+  const res = await verifyAdminOtp({ userId: who.userId, code: emailCode, ip: requestMeta(req).ip, sessionId: who.sessionId })
+  if (!res.ok) return { err: adminJson({ ok: false, message: EMAIL_MSG[res.reason] }, 400) }
+  return { who }
+}
+
+/** Desactivar y regenerar exigen RE-AUTENTICAR: clave actual + un codigo vigente (app o respaldo, o correo para desactivar). */
 export async function handleDisable(req: Request) {
   const cross = rejectCrossOrigin(req)
   if (cross) return cross
-  const r = await reauth(req)
+  const b = await body(req.clone())
+  const emailCode = String(b.emailCode ?? '').trim()
+  const r = emailCode ? await reauthWithEmail(req, emailCode, String(b.password ?? '')) : await reauth(req)
   if (r.err) return r.err
   await disableTotp(r.who!.userId)
   return adminJson({ ok: true })
