@@ -97,7 +97,14 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     lastLookup.current = digits
     setError(null)
     setLookupLoading(true)
-    const res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    let res: Awaited<ReturnType<typeof lookupRegistrationIdentity>>
+    try {
+      res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    } catch {
+      setLookupLoading(false)
+      setError('No pudimos validar el documento ahora. Revisá el número e intentá nuevamente.')
+      return
+    }
     setLookupLoading(false)
     if (!res.ok) {
       setError(res.error)
@@ -171,55 +178,58 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     }
     setSaving(true)
     const cleanEmail = email.trim().toLowerCase()
-    const created = await authClient.signUp.email({ email: cleanEmail, password, name: name.trim() || cleanEmail })
-    if (created.error) {
-      setSaving(false)
-      setError('No pudimos crear la cuenta. El email puede estar en uso.')
-      return
-    }
-    const signed = await authClient.signIn.email({ email, password })
-    if (signed.error) {
-      setSaving(false)
-      setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
-      return
-    }
+    try {
+      const created = await authClient.signUp.email({ email: cleanEmail, password, name: name.trim() || cleanEmail })
+      if (created.error) {
+        setError('No pudimos crear la cuenta. El email puede estar en uso.')
+        return
+      }
+      const signed = await authClient.signIn.email({ email: cleanEmail, password })
+      if (signed.error) {
+        setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
+        return
+      }
 
-    const done = await completeRegistration({
-      accountType: 'persona',
-      name,
-      cuil,
-      dni,
-      phone,
-      birthDate,
-      province: geo.province || identity.province || '',
-      department: geo.department || identity.department || '',
-      city: geo.city || identity.city || '',
-      postalCode: geo.postalCode || identity.postalCode || '',
-      address: address || identity.address || '',
-      monthlyIncome: 0,
-      employmentStatus: '',
-      businessName: '',
-      category: '',
-      confirmedIdentity,
-      acceptedTerms,
-      acceptedBcraConsent,
-      identity,
-    })
-    setSaving(false)
-    if (!done.ok) {
-      setError(done.error)
-      return
+      const done = await completeRegistration({
+        accountType: 'persona',
+        name,
+        cuil,
+        dni,
+        phone,
+        birthDate,
+        province: geo.province || identity.province || '',
+        department: geo.department || identity.department || '',
+        city: geo.city || identity.city || '',
+        postalCode: geo.postalCode || identity.postalCode || '',
+        address: address || identity.address || '',
+        monthlyIncome: 0,
+        employmentStatus: '',
+        businessName: '',
+        category: '',
+        confirmedIdentity,
+        acceptedTerms,
+        acceptedBcraConsent,
+        identity,
+      })
+      if (!done.ok) {
+        setError(done.error)
+        return
+      }
+      setResult({
+        score: done.score?.score ?? null,
+        band: done.score?.band,
+        reasons: done.score?.reasons,
+        reportId: done.reportId,
+        dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
+        warning: done.warning,
+        diditConfigured: done.diditConfigured,
+      })
+      go('resultado')
+    } catch {
+      setError('No pudimos completar el registro. Revisá tus datos e intentá nuevamente.')
+    } finally {
+      setSaving(false)
     }
-    setResult({
-      score: done.score?.score ?? null,
-      band: done.score?.band,
-      reasons: done.score?.reasons,
-      reportId: done.reportId,
-      dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
-      warning: done.warning,
-      diditConfigured: done.diditConfigured,
-    })
-    go('resultado')
   }
 
   const contactoReady =
