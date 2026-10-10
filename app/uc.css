@@ -621,3 +621,15 @@ a.uc-row-action{text-decoration:none}
   --border:#dce2ea;--input:#dce2ea;
 }
 [data-theme="dark"] .uc main [data-slot="card"]{color:#0f1b2d}
+
+/* Pantallas de cuenta fuera del panel (seguridad, 2FA, retorno de identidad) */
+.uc-standalone{min-height:100vh;min-height:100svh;background:var(--uc-bg);color:var(--uc-text)}
+.uc-standalone-bar{display:flex;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--uc-border);background:var(--uc-surface)}
+.uc-standalone-bar .uc-wordmark{color:var(--uc-text)}
+.uc-standalone .uc-muted{color:var(--uc-text-muted)}
+.uc-standalone main{max-width:none}
+.uc-standalone main:focus{outline:none}
+@media (max-width:767px){.uc-standalone-bar{padding:0 16px;height:56px}}
+/* Botones del sistema anterior usados como enlace: ".uc a" les pintaba el texto con el color de acento. */
+.uc a[data-slot="button"].bg-primary{color:var(--uc-accent-fg)}
+.uc a[data-slot="button"].bg-background,.uc a[data-slot="button"].bg-secondary{color:var(--uc-text)}
