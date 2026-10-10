@@ -4,7 +4,6 @@ import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
 import { maintenanceEnabled } from '@/lib/maintenance'
-import { PUBLIC_PATH_REGEX_SOURCE } from '@/lib/public-routes'
 import './globals.css'
 
 const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
@@ -74,12 +73,6 @@ export const viewport: Viewport = {
 import { AnalyticsGate } from '@/components/analytics-gate'
 import { ThemeProvider } from '@/components/theme-provider'
 
-/* Tema (claro/oscuro): se aplica antes del primer pintado sin parpadeo. */
-const THEME_SCRIPT =
-  "(function(){try{var t=localStorage.getItem('theme')||localStorage.getItem('uc-theme');if(new RegExp(" +
-  JSON.stringify(PUBLIC_PATH_REGEX_SOURCE) +
-  ").test(location.pathname)){t='light'}else if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}if(t==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();"
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -87,9 +80,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es-AR" suppressHydrationWarning className={`${sans.variable} ${mono.variable} bg-background`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
       <body className="font-sans antialiased text-foreground bg-background">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SkipLink />
