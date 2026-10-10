@@ -215,16 +215,6 @@ export function PublicFooter() {
   )
 }
 
-export function LegalStrip() {
-  return (
-    <p className="text-[11px] leading-relaxed text-muted-foreground">
-      Simulación informativa a tasa de referencia. La cuota, TNA y CFT finales se confirman en la oferta y el
-      contrato, sujetos a evaluación crediticia, verificación de identidad y capacidad de pago. Sistema de
-      amortización francés (cuota fija).
-    </p>
-  )
-}
-
 export function PublicCtaBanner() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
