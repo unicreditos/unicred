@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { mapMpStatus, sameInstallmentSet } from '../../lib/payments/settle-mp'
-import { brickPaymentMethods } from '../../lib/payments/brick-methods'
+import { brickPaymentMethods, cardBrickPaymentMethods } from '../../lib/payments/brick-methods'
 import { isOpenNetworkCoupon, isPostedCollectionStatus, mercadoPagoNumericId } from '../../lib/payments/network-coupon'
 
 describe('conciliación Mercado Pago', () => {
@@ -27,6 +27,17 @@ describe('conciliación Mercado Pago', () => {
     assert.equal(all.creditCard, 'all')
     assert.equal(brickPaymentMethods('ticket').ticket, 'all')
     assert.equal(brickPaymentMethods('credit_card').creditCard, 'all')
+  })
+
+  it('el formulario de tarjeta excluye el otro tipo y no usa included', () => {
+    const credit = cardBrickPaymentMethods('credit_card')
+    const debit = cardBrickPaymentMethods('debit_card')
+    assert.deepEqual(credit.types.excluded, ['debit_card'])
+    assert.deepEqual(debit.types.excluded, ['credit_card'])
+    assert.equal('included' in credit.types, false)
+    assert.equal('included' in debit.types, false)
+    assert.equal(credit.maxInstallments, 12)
+    assert.equal(debit.maxInstallments, 1)
   })
 })
 

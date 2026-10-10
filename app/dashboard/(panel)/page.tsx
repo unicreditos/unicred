@@ -88,9 +88,11 @@ export default async function CustomerHome() {
     {
       done: Boolean(primary?.isVerified),
       t: 'Cuenta bancaria de cobro',
-      s: primary ? `${primary.bankName} ···· ${String(primary.cbu || primary.cvu || '').slice(-4)}` : 'Cargá tu CBU o CVU',
+      s: primary
+        ? `${primary.bankName} ···· ${String(primary.cbu || primary.cvu || '').slice(-4)}${primary.isVerified ? '' : ' · pendiente de verificación'}`
+        : 'Cargá tu CBU o CVU',
       href: '/dashboard/perfil/cuentas',
-      cta: primary ? 'Verificada' : 'Cargar CBU',
+      cta: primary?.isVerified ? 'Verificada' : primary ? 'Completar' : 'Cargar CBU',
     },
     {
       done: !toSign,

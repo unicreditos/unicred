@@ -59,6 +59,9 @@ export function isWorkspaceStayPath(pathname: string) {
   }
   if (isAuthEntryPath(pathname)) return true
   if (WORKSPACE_EXACT.has(pathname) || pathname.startsWith('/restablecer-clave/')) return true
+  // 2FA y sesiones: el menú del panel las abre con la sesión ya iniciada.
+  if (pathname === '/cuenta/seguridad' || pathname.startsWith('/cuenta/seguridad/')) return true
+  if (pathname === '/verificar-2fa' || pathname.startsWith('/verificar-2fa/')) return true
   if (pathname.startsWith('/legal/')) return true
   // Productos y ayuda públicos: se pueden ver con sesión abierta (el header muestra "Mi cuenta").
   if (

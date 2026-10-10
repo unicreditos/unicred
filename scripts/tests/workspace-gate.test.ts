@@ -44,6 +44,8 @@ describe('panel autenticado', () => {
     assert.equal(isWorkspaceStayPath('/dashboard/pagar/inst_1'), true)
     assert.equal(isWorkspaceStayPath('/legal/terminos'), true)
     assert.equal(shouldBounceLoggedInToWorkspace('/pagar/inst_1'), false)
+    assert.equal(shouldBounceLoggedInToWorkspace('/cuenta/seguridad'), false)
+    assert.equal(shouldBounceLoggedInToWorkspace('/verificar-2fa'), false)
   })
 
   it('no acepta un next externo', () => {

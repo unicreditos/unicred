@@ -41,3 +41,19 @@ export function brickPaymentMethods(channel: BrickChannel = 'all') {
     maxInstallments: 12,
   }
 }
+
+/**
+ * Card Payment Brick. Mercado Pago documenta `types.excluded`, no `included`.
+ * Con `included: ['credit_card']` el brick compara todos los medios de la
+ * cuenta y corta al abrir con `payment_method_not_in_allowed_types`.
+ * Crédito excluye débito (hasta 12 cuotas). Débito excluye crédito (1 cuota).
+ * La prepaga no se excluye: varias tarjetas de la cuenta se informan así.
+ */
+export function cardBrickPaymentMethods(channel: 'credit_card' | 'debit_card') {
+  return {
+    maxInstallments: channel === 'debit_card' ? 1 : 12,
+    types: {
+      excluded: [channel === 'debit_card' ? 'credit_card' : 'debit_card'] as Array<'credit_card' | 'debit_card'>,
+    },
+  }
+}

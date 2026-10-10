@@ -1,7 +1,7 @@
 'use client'
 
 import { initMercadoPago, Payment, CardPayment } from '@mercadopago/sdk-react'
-import { brickPaymentMethods, type BrickChannel } from '@/lib/payments/brick-methods'
+import { brickPaymentMethods, cardBrickPaymentMethods, type BrickChannel } from '@/lib/payments/brick-methods'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export type { BrickChannel }
@@ -46,15 +46,9 @@ export function MercadoPagoCheckoutBrick({
     }
   }, [amount, email, customerId, cardIds])
   const customization = useMemo(
-    () =>
-      cardOnly
-        ? {
-            paymentMethods: {
-              maxInstallments: channel === 'debit_card' ? 1 : 12,
-              types: { included: [channel === 'debit_card' ? 'debit_card' : 'credit_card'] },
-            },
-          }
-        : { paymentMethods: methods },
+    () => ({
+      paymentMethods: cardOnly ? cardBrickPaymentMethods(channel === 'debit_card' ? 'debit_card' : 'credit_card') : methods,
+    }),
     [cardOnly, channel, methods],
   )
 
