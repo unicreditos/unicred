@@ -64,11 +64,11 @@ export function OnlineConsumoForm({
     return (
       <p className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
         Ingresá a tu cuenta para financiar una compra online.{' '}
-        <a className="font-semibold text-brand-primary" href="/sign-in">
+        <a className="font-semibold text-brand-primary-700" href="/sign-in">
           Ingresar
         </a>{' '}
         o{' '}
-        <a className="font-semibold text-brand-primary" href="/sign-up">
+        <a className="font-semibold text-brand-primary-700" href="/sign-up">
           crear cuenta
         </a>
         .
@@ -80,7 +80,7 @@ export function OnlineConsumoForm({
     return (
       <p className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
         Todavía no hay comercios activos en la red. Pedile al local que se adhiera en{' '}
-        <a className="font-semibold text-brand-primary" href="/comercios">
+        <a className="font-semibold text-brand-primary-700" href="/comercios">
           UNICRÉDITOS Comercios
         </a>
         .

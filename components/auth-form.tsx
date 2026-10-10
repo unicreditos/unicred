@@ -18,7 +18,7 @@ function safeCallbackUrl(value: string | null): string | null {
 }
 
 const fieldClass =
-  'h-12 rounded-xl border-slate-200 bg-white px-3.5 text-base text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:border-transparent transition'
+  'h-12 rounded-xl border-slate-200 bg-white px-3.5 text-base text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-brand-primary-600 focus-visible:border-transparent transition'
 
 export function AuthForm() {
   const router = useRouter()
@@ -112,7 +112,7 @@ export function AuthForm() {
             </Label>
             <Link
               href="/recuperar-clave"
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+              className="text-xs font-semibold text-brand-primary-700 hover:text-brand-primary-800 hover:underline"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -147,7 +147,7 @@ export function AuthForm() {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 accent-emerald-600"
+              className="h-4 w-4 rounded border-slate-300 accent-brand-primary"
             />
             Mantener la sesión iniciada
           </label>
@@ -166,7 +166,7 @@ export function AuthForm() {
           type="submit"
           disabled={loading}
           size="lg"
-          className="h-12 w-full rounded-xl bg-emerald-600 text-base font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-700/20 transition active:scale-[0.99]"
+          className="h-12 w-full rounded-xl bg-brand-primary text-base font-bold text-white hover:bg-brand-primary-600 shadow-md shadow-brand-primary-700/20 transition active:scale-[0.99]"
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export function AuthForm() {
 
         <p className="text-center text-sm text-slate-600">
           ¿Todavía no tenés cuenta?{' '}
-          <Link href="/sign-up" className="font-bold text-emerald-700 hover:underline">
+          <Link href="/sign-up" className="font-bold text-brand-primary-700 hover:underline">
             Crear mi cuenta gratis
           </Link>
         </p>

@@ -1,3 +1,4 @@
+import { BrandMark, BrandWordmark } from '@/components/brand-mark'
 import { cn } from '@/lib/utils'
 import {
   TrendingUp,
@@ -170,7 +171,7 @@ export function LineChart({
   points,
   labels,
   height = 200,
-  color = '#20BD5A',
+  color = '#0C7C84',
   fill = true,
   yMax,
   yFormatter = (v) => String(Math.round(v)),
@@ -371,30 +372,6 @@ export function StatusChip({
   )
 }
 
-export function BrandMark({
-  className,
-  tone = 'orange',
-}: {
-  className?: string
-  /** orange = marca principal (verde); white/cream = sobre fondos oscuros o verdes */
-  tone?: 'orange' | 'white' | 'cream'
-}) {
-  const onDark = tone !== 'orange'
-  return (
-    <svg viewBox="0 0 48 48" className={cn('h-5 w-5', className)} aria-hidden>
-      <rect width="48" height="48" rx="13" fill={onDark ? '#FFFFFF' : '#20BD5A'} />
-      <path
-        d="M14 11v15a10 10 0 0 0 20 0V11"
-        fill="none"
-        stroke={onDark ? '#08170F' : '#FFFFFF'}
-        strokeWidth="5.2"
-        strokeLinecap="round"
-      />
-      <circle cx="24" cy="26" r="3.4" fill={onDark ? '#20BD5A' : '#08170F'} />
-    </svg>
-  )
-}
-
 export function BrandLogo({
   className,
   showText = true,
@@ -407,28 +384,8 @@ export function BrandLogo({
   href?: string
 }) {
   return (
-    <Link href={href} className={cn('inline-flex items-center gap-2.5 select-none', className)}>
-      <BrandMark className="h-9 w-9" tone={light ? 'white' : 'orange'} />
-      {showText ? (
-        <span className="flex flex-col leading-none">
-          <span
-            className={cn(
-              'font-display text-[19px] font-extrabold tracking-[-0.04em]',
-              light ? 'text-white' : 'text-brand-navy-800',
-            )}
-          >
-            unicréditos
-          </span>
-          <span
-            className={cn(
-              'mt-1 text-[10px] font-medium uppercase tracking-[0.16em]',
-              light ? 'text-white/60' : 'text-brand-navy-400',
-            )}
-          >
-            Préstamos personales
-          </span>
-        </span>
-      ) : null}
+    <Link href={href} className={cn('inline-flex items-center', className)} aria-label="Unicréditos, ir al inicio">
+      {showText ? <BrandWordmark light={light} /> : <BrandMark className="h-9 w-9" tone={light ? 'white' : 'brand'} />}
     </Link>
   )
 }

@@ -3,6 +3,7 @@
 import { getDiditPublicConfig, getMyDiditSession } from '@/app/actions/didit'
 import { completeRegistration, lookupRegistrationIdentity } from '@/app/actions/register'
 import { DiditVerifyButton } from '@/components/didit-verify-button'
+import { IdentityGuide } from '@/components/identity-guide'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
 import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
 import { Button } from '@/components/ui/button'
@@ -517,8 +518,9 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
         <section className="space-y-6">
           <Header
             title="Verificá tu identidad"
-            text="Escaneá el frente y el dorso de tu DNI y completá la prueba facial. Dura un par de minutos."
+            text="Escaneá el frente y el dorso de tu DNI y completá la prueba de vida y la coincidencia facial."
           />
+          <IdentityGuide variant="compact" />
           {diditConfigured === null ? (
             <p className="text-sm text-brand-navy-600">Comprobando disponibilidad de Didit…</p>
           ) : !diditConfigured ? (

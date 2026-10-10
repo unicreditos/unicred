@@ -75,7 +75,7 @@ export function LoanSimulator({
             /mes
           </span>
         </p>
-        <p className={cn('mt-1 text-[11px]', glass ? 'text-brand-navy/70' : 'text-slate-200/80')}>
+        <p className={cn('mt-1 text-xs', glass ? 'text-brand-navy/70' : 'text-slate-200/80')}>
           {formatARS(amount)} en {term} cuotas · sistema francés
         </p>
       </div>
@@ -171,7 +171,7 @@ export function LoanSimulator({
               {formatPercent(result.cft)}
             </dd>
           </div>
-          <p className={cn('pt-1 text-[11px] leading-relaxed', glass ? 'text-brand-navy/65' : 'text-muted-foreground')}>
+          <p className={cn('pt-1 text-xs leading-relaxed', glass ? 'text-brand-navy/65' : 'text-muted-foreground')}>
             CFT = TEA × 1,21. Sin seguros ni gastos de otorgamiento. Simulación informativa: no es oferta ni compromiso. La oferta final depende de tu evaluación.
           </p>
         </dl>

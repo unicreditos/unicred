@@ -23,24 +23,24 @@ export default function DefensaConsumidorPage() {
       <PageSection title="Canales">
         <ul className="space-y-3 text-sm text-muted-foreground">
           <li>
-            <Link href="/dashboard?tab=reclamos" className="font-semibold text-brand-primary">
+            <Link href="/dashboard?tab=reclamos" className="font-semibold text-brand-primary-700">
               Mesa de reclamos
             </Link>{' '}
             en tu panel (Ley 24.240).
           </li>
           <li>
-            <Link href="/legal/arrepentimiento" className="font-semibold text-brand-primary">
+            <Link href="/legal/arrepentimiento" className="font-semibold text-brand-primary-700">
               Botón de arrepentimiento
             </Link>
           </li>
           <li>
-            <Link href="/legal/baja" className="font-semibold text-brand-primary">
+            <Link href="/legal/baja" className="font-semibold text-brand-primary-700">
               Botón de baja
             </Link>
           </li>
           <li>
             Email:{' '}
-            <a href={`mailto:${BRAND.supportEmail}`} className="font-semibold text-brand-primary">
+            <a href={`mailto:${BRAND.supportEmail}`} className="font-semibold text-brand-primary-700">
               {BRAND.supportEmail}
             </a>
           </li>

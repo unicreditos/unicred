@@ -376,16 +376,16 @@ function buildTreasuryAccounts(): BankAccount[] {
   ]
 }
 
-async function safeQuery<T>(fn: () => Promise<T>, fallback: T, label?: string): Promise<T> {
+async function safeQuery<T>(fn: () => Promise<T>, fallback: T, label?: string, critical = false): Promise<T> {
   try {
     return await fn()
   } catch (err) {
-    if (label) {
-      console.warn(
-        `[admin-desk] safeQuery ${label}:`,
-        err instanceof Error ? err.message : err,
-      )
-    }
+    console.warn(
+      `[admin-desk] safeQuery ${label || 'query'}:`,
+      err instanceof Error ? err.message : err,
+    )
+    // Una lectura crítica que falla no puede guardarse como "cartera en cero".
+    if (critical) throw err
     return fallback
   }
 }
@@ -502,6 +502,8 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .orderBy(desc(user.createdAt))
           .limit(300),
       [],
+      'clients',
+      true,
     ),
     safeQuery(
       () =>
@@ -526,7 +528,7 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .limit(300),
       [],
     ),
-    safeQuery(() => db.select().from(loan).orderBy(desc(loan.createdAt)).limit(400), []),
+    safeQuery(() => db.select().from(loan).orderBy(desc(loan.createdAt)).limit(400), [], 'loan', true),
     safeQuery(
       () =>
         db
@@ -549,6 +551,8 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .orderBy(desc(payment.createdAt))
           .limit(400),
       [],
+      'payments',
+      true,
     ),
     safeQuery(() => db.select().from(disbursement).orderBy(desc(disbursement.createdAt)).limit(200), []),
     safeQuery(

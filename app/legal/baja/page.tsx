@@ -25,7 +25,7 @@ export default function BajaPage() {
           <li>Sin saldo pendiente de liquidación en billetera hacia terceros.</li>
           <li>
             Escribí a{' '}
-            <a className="font-semibold text-brand-primary" href={`mailto:${BRAND.supportEmail}`}>
+            <a className="font-semibold text-brand-primary-700" href={`mailto:${BRAND.supportEmail}`}>
               {BRAND.supportEmail}
             </a>{' '}
             con asunto “Baja de servicio” e identificación (CUIL / mail).

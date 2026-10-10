@@ -1,23 +1,19 @@
 import type { Metadata, Viewport } from 'next'
 import dynamic from 'next/dynamic'
-import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
+import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
 import { maintenanceEnabled } from '@/lib/maintenance'
+import { PUBLIC_PATH_REGEX_SOURCE } from '@/lib/public-routes'
 import './globals.css'
 
 const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
 const Toaster = dynamic(() => import('@/components/ui/sonner').then((m) => m.Toaster))
 
-const sans = Instrument_Sans({
+// Una sola familia para todo el sitio (público, ingreso, panel y admin): títulos y texto.
+const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-geist-sans',
-  display: 'swap',
-})
-
-const display = Bricolage_Grotesque({
-  subsets: ['latin'],
-  variable: '--font-display-face',
   display: 'swap',
 })
 
@@ -72,7 +68,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#20BD5A',
+  themeColor: '#0F2A4A',
 }
 
 import { AnalyticsGate } from '@/components/analytics-gate'
@@ -80,7 +76,9 @@ import { ThemeProvider } from '@/components/theme-provider'
 
 /* Tema (claro/oscuro): se aplica antes del primer pintado sin parpadeo. */
 const THEME_SCRIPT =
-  "(function(){try{var t=localStorage.getItem('theme')||localStorage.getItem('uc-theme');if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}if(t==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();"
+  "(function(){try{var t=localStorage.getItem('theme')||localStorage.getItem('uc-theme');if(new RegExp(" +
+  JSON.stringify(PUBLIC_PATH_REGEX_SOURCE) +
+  ").test(location.pathname)){t='light'}else if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}if(t==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();"
 
 export default function RootLayout({
   children,
@@ -88,7 +86,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-AR" suppressHydrationWarning className={`${sans.variable} ${display.variable} ${mono.variable} bg-background`}>
+    <html lang="es-AR" suppressHydrationWarning className={`${sans.variable} ${mono.variable} bg-background`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

@@ -40,7 +40,7 @@ export default function UsuarioFinancieroPage() {
         <dl className="grid gap-3 sm:grid-cols-2">
           {lines.map((row) => (
             <div key={row.t} className="rounded-2xl border border-border/70 bg-card p-4">
-              <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {row.t}
               </dt>
               <dd className="mt-1 text-sm font-semibold text-brand-navy">{row.d}</dd>

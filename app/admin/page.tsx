@@ -38,9 +38,18 @@ export default async function AdminHome({
   const { tab, period, from, to } = await searchParams
   if (tab && Object.hasOwn(LEGACY_TABS, tab)) redirect(LEGACY_TABS[tab])
 
-  const { state } = await loadDesk()
+  const { state, degraded } = await loadDesk()
   const now = new Date()
   const idx = clientIndex(state)
+
+  if (degraded) {
+    return (
+      <PageHead
+        title="Centro de Control · Backoffice"
+        description="No se pudo leer la cartera en la base de datos. Recargá la página: no se muestran ceros en lugar de los créditos reales."
+      />
+    )
+  }
 
   const active = state.credits.filter((c) => c.status === 'active')
   const last30 = active.filter((c) => c.disbursedAt && daysBetween(c.disbursedAt, now) <= 30).length

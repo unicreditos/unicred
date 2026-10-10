@@ -51,7 +51,7 @@ export function AuthFloatLayout({
           <ul className="mt-8 space-y-3.5">
             {PROMISES.map((p) => (
               <li key={p} className="flex items-start gap-3 text-[15px] leading-snug text-white/80">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-ink">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white">
                   <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                 </span>
                 {p}
@@ -60,7 +60,7 @@ export function AuthFloatLayout({
           </ul>
         </div>
 
-        <p className="relative max-w-md text-[11px] leading-relaxed text-white/45">{groupOperatorLine()}</p>
+        <p className="relative max-w-md text-xs leading-relaxed text-white/65">{groupOperatorLine()}</p>
       </aside>
 
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-14 lg:py-10">
@@ -90,7 +90,7 @@ export function AuthFloatLayout({
               <div className="mb-8">
                 <h1
                   suppressHydrationWarning
-                  className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-navy-900 sm:text-[2.75rem]"
+                  className="font-display text-4xl font-extrabold leading-[1.1] tracking-[-0.03em] text-brand-navy-900 sm:text-[2.75rem]"
                 >
                   {headline}
                 </h1>
@@ -108,7 +108,7 @@ export function AuthFloatLayout({
           </div>
         </div>
 
-        <p className="text-center text-[11px] leading-relaxed text-brand-navy-400 lg:hidden">{groupOperatorLine()}</p>
+        <p className="text-center text-xs leading-relaxed text-brand-navy-500 lg:hidden">{groupOperatorLine()}</p>
       </div>
     </div>
   )

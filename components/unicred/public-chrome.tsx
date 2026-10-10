@@ -5,18 +5,26 @@ import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { BRAND, GROUP, groupOperatorLine, groupSiblingUnits } from '@/lib/brand'
 import { useSession } from '@/lib/auth-client'
 import { ArrowRight, LayoutDashboard, Menu, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export const PUBLIC_NAV = [
-  { label: 'Cómo funciona', href: '/#como-funciona' },
-  { label: 'Costos y CFT', href: '/legal/tasas' },
-  { label: 'Evaluación BCRA', href: '/scoring' },
+  { label: 'Inicio', href: '/' },
+  { label: 'Créditos', href: '/prestamos' },
+  { label: 'Simulador', href: '/simulador' },
   { label: 'Preguntas', href: '/preguntas-frecuentes' },
+  { label: 'Contacto', href: '/contacto' },
 ] as const
+
+function isActive(pathname: string, href: string) {
+  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
+}
 
 export function PublicHeader() {
   const { data: session, isPending } = useSession()
+  const pathname = usePathname()
   const [accountHref, setAccountHref] = useState('/dashboard')
   const [open, setOpen] = useState(false)
   const isLoggedIn = !isPending && Boolean(session?.user)
@@ -40,25 +48,33 @@ export function PublicHeader() {
   const accountLabel = accountHref === '/admin' ? 'Administración' : 'Mi cuenta'
 
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-navy-100 bg-paper/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-navy-800 text-white">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6">
-        <BrandLogo showText />
+        <BrandLogo showText light />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Principal">
-          {PUBLIC_NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-full px-3.5 py-2 text-sm font-medium text-brand-navy-600 transition hover:bg-white hover:text-brand-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {PUBLIC_NAV.map((item) => {
+            const active = isActive(pathname, item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'relative px-3.5 py-5 text-sm font-medium transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-300',
+                  active ? 'text-white' : 'text-white/75',
+                )}
+              >
+                {item.label}
+                {active ? <span aria-hidden className="absolute inset-x-3.5 bottom-0 h-0.5 rounded-full bg-brand-primary-300" /> : null}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
-            <Button asChild size="lg" className="h-10 rounded-full px-4 font-semibold">
+            <Button asChild size="lg" className="h-10 rounded-lg px-4 font-semibold">
               <Link href={accountHref}>
                 <LayoutDashboard className="h-4 w-4" /> {accountLabel}
               </Link>
@@ -67,14 +83,16 @@ export function PublicHeader() {
             <>
               <Button
                 asChild
-                variant="ghost"
+                variant="outline"
                 size="lg"
-                className="hidden h-10 rounded-full px-4 font-semibold sm:inline-flex"
+                className="hidden h-10 rounded-lg border-white/40 bg-transparent px-4 font-semibold text-white hover:bg-white/10 hover:text-white sm:inline-flex"
               >
-                <Link href="/sign-in">Ingresar</Link>
+                <Link href="/sign-in">Iniciar sesión</Link>
               </Button>
-              <Button asChild size="lg" className="h-10 rounded-full px-5 font-semibold">
-                <Link href="/sign-up">Pedir crédito</Link>
+              <Button asChild size="lg" className="h-10 rounded-lg px-4 font-semibold">
+                <Link href="/sign-up">
+                  Pedir crédito <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
               </Button>
             </>
           )}
@@ -82,7 +100,7 @@ export function PublicHeader() {
             type="button"
             variant="outline"
             size="icon"
-            className="size-10 rounded-full lg:hidden"
+            className="size-10 rounded-lg border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white lg:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
@@ -94,14 +112,18 @@ export function PublicHeader() {
       </div>
 
       {open ? (
-        <div id="mobile-nav" className="border-t border-brand-navy-100 bg-paper lg:hidden">
+        <div id="mobile-nav" className="border-t border-white/10 bg-brand-navy-800 lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col px-4 py-3 sm:px-6" aria-label="Móvil">
             {PUBLIC_NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-base font-medium text-brand-navy-800 hover:bg-white"
+                aria-current={isActive(pathname, item.href) ? 'page' : undefined}
+                className={cn(
+                  'rounded-lg px-3 py-3 text-base font-medium hover:bg-white/10',
+                  isActive(pathname, item.href) ? 'text-white' : 'text-white/80',
+                )}
               >
                 {item.label}
               </Link>
@@ -110,9 +132,9 @@ export function PublicHeader() {
               <Link
                 href="/sign-in"
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-base font-semibold text-brand-primary-700"
+                className="rounded-lg px-3 py-3 text-base font-semibold text-brand-primary-300 hover:bg-white/10"
               >
-                Ingresar a mi cuenta
+                Iniciar sesión
               </Link>
             ) : null}
           </nav>
@@ -129,6 +151,7 @@ const FOOTER_COLUMNS = [
       { label: 'Préstamo personal', href: '/prestamos' },
       { label: 'Simulador', href: '/simulador' },
       { label: 'Evaluación BCRA', href: '/scoring' },
+      { label: 'Verificación de identidad', href: '/verificacion-de-identidad' },
       { label: 'Costos y CFT', href: '/legal/tasas' },
       { label: 'Pedir crédito', href: '/sign-up' },
     ],
@@ -169,13 +192,13 @@ export function PublicFooter() {
 
           {FOOTER_COLUMNS.map((col, i) => (
             <div key={col.title} className={i === 0 ? 'md:col-span-2 md:col-start-7' : 'md:col-span-2'}>
-              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-brand-primary-300">
+              <div className="text-xs uppercase tracking-[0.1em] text-brand-primary-300">
                 {col.title}
               </div>
               <ul className="mt-4 space-y-2.5 text-sm">
                 {col.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-white/75 transition hover:text-white">
+                    <Link href={link.href} className="inline-block py-1 text-white/75 transition hover:text-white">
                       {link.label}
                     </Link>
                   </li>
@@ -186,7 +209,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-6 text-sm text-white/65">
-          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/45">
+          <span className="text-xs uppercase tracking-[0.1em] text-white/60">
             Marcas de {GROUP.name}
           </span>
           {groupSiblingUnits().map((unit) => (
@@ -195,14 +218,14 @@ export function PublicFooter() {
               href={unit.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="transition hover:text-white"
+              className="inline-block py-1 transition hover:text-white"
             >
               {unit.name} <span className="text-white/40">· {unit.role}</span>
             </a>
           ))}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2 text-xs text-white/50 md:flex-row md:items-center md:justify-between">
+        <div className="mt-6 flex flex-col gap-2 text-xs text-white/60 md:flex-row md:items-center md:justify-between">
           <p suppressHydrationWarning>
             © {year} {BRAND.company} · {BRAND.domain}
           </p>
@@ -218,7 +241,7 @@ export function PublicFooter() {
 export function PublicCtaBanner() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-ink p-8 text-white sm:p-12">
+      <div className="relative overflow-hidden rounded-[2rem] bg-brand-navy-800 p-8 text-white sm:p-12">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-primary/25 blur-3xl"
@@ -232,7 +255,7 @@ export function PublicCtaBanner() {
             vista. Tenés 10 días para arrepentirte.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="h-12 rounded-full px-6 text-base font-semibold">
+            <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base font-semibold">
               <Link href="/sign-up">
                 Pedir mi crédito <ArrowRight className="h-4 w-4" />
               </Link>
@@ -241,7 +264,7 @@ export function PublicCtaBanner() {
               asChild
               variant="outline"
               size="lg"
-              className="h-12 rounded-full border-white/25 bg-transparent px-6 text-base font-semibold text-white hover:bg-white/10 hover:text-white"
+              className="h-12 rounded-xl border-white/25 bg-transparent px-6 text-base font-semibold text-white hover:bg-white/10 hover:text-white"
             >
               <Link href="/simulador">Probar el simulador</Link>
             </Button>

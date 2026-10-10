@@ -48,7 +48,7 @@ export default async function DocumentosPage() {
               {docs.map(({ key, slug, doc, hasPublishedBody }) => (
                 <tr key={key} className="border-t border-border/60 align-top">
                   <td className="px-4 py-3">
-                    <Link href={hasPublishedBody ? `/legal/documentos/${slug}` : LEGAL_DOC_PATH[key]} className="font-semibold text-brand-navy hover:text-brand-primary">
+                    <Link href={hasPublishedBody ? `/legal/documentos/${slug}` : LEGAL_DOC_PATH[key]} className="font-semibold text-brand-navy hover:text-brand-primary-700">
                       {doc.title}
                     </Link>
                     {doc.summary ? <p className="mt-1 text-xs text-muted-foreground">{doc.summary}</p> : null}

@@ -202,7 +202,7 @@ export function RechartsClientShell({
           </div>
         </div>
       ) : (
-        <div className="bg-emerald-950/20 text-slate-800 p-3 rounded-xl border border-emerald-300/40 flex items-center justify-between gap-4">
+        <div className="bg-emerald-50 text-slate-800 p-3 rounded-xl border border-emerald-300 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 text-xs">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span className="font-semibold text-emerald-950">Semáforo Crediticio Normal:</span>

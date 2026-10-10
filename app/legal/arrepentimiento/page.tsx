@@ -34,7 +34,7 @@ export default function ArrepentimientoPage() {
           <li>Panel → Documentos, si ya iniciaste sesión.</li>
           <li>
             Email a{' '}
-            <a className="font-semibold text-brand-primary" href={`mailto:${BRAND.supportEmail}`}>
+            <a className="font-semibold text-brand-primary-700" href={`mailto:${BRAND.supportEmail}`}>
               {BRAND.supportEmail}
             </a>{' '}
             con asunto “Arrepentimiento”, CUIL y número de contrato.
@@ -42,7 +42,7 @@ export default function ArrepentimientoPage() {
         </ol>
         <p className="mt-4 text-sm text-muted-foreground">
           Ver también{' '}
-          <Link href="/legal/terminos" className="font-semibold text-brand-primary">
+          <Link href="/legal/terminos" className="font-semibold text-brand-primary-700">
             Términos y condiciones
           </Link>
           .

@@ -150,30 +150,30 @@ export default function TerminosPage() {
             <ul className="space-y-1.5 text-xs text-muted-foreground">
               {secciones.map(s => (
                 <li key={s.id}>
-                  <a href={`#sec-${s.id}`} className="flex items-start gap-2 rounded-md px-2 py-1 hover:bg-brand-primary/5 hover:text-brand-primary">
+                  <a href={`#sec-${s.id}`} className="flex min-h-9 items-start gap-2 rounded-md px-2 py-2 hover:bg-brand-primary/5 hover:text-brand-primary-700">
                     <span className="font-mono opacity-70">{s.id}</span><span>{s.t.replace(/^[\d\s·-]+/, '')}</span>
                   </a>
                 </li>
               ))}
             </ul>
           </PageSection>
-          <div className="rounded-2xl bg-emerald-500/5 p-4 ring-1 ring-emerald-500/20">
+          <div className="rounded-2xl bg-brand-primary-500/5 p-4 ring-1 ring-brand-primary-500/20">
             <div className="flex items-start gap-2">
-              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-700" />
-              <p className="text-xs leading-relaxed text-emerald-900">Texto alineado al código vigente. No afirma inscripción BCRA, UIF ni revisión de un estudio externo.</p>
+              <BadgeCheck className="h-4 w-4 shrink-0 text-brand-primary-700" />
+              <p className="text-xs leading-relaxed text-brand-primary-900">Texto alineado al código vigente. No afirma inscripción BCRA, UIF ni revisión de un estudio externo.</p>
             </div>
           </div>
         </aside>
 
         <div className="space-y-6 lg:col-span-3">
           {secciones.map(s => (
-            <section key={s.id} id={`sec-${s.id}`} className="space-y-3 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-lg font-bold text-slate-900">
-                <FileCheck2 className="h-5 w-5 text-brand-primary" />{s.t}
+            <section key={s.id} id={`sec-${s.id}`} className="space-y-3 rounded-3xl border border-brand-navy-200/70 bg-white p-6 shadow-sm">
+              <h2 className="flex items-center gap-3 text-lg font-bold text-brand-navy-900">
+                <FileCheck2 className="h-5 w-5 text-brand-primary-700" />{s.t}
               </h2>
               <div className="space-y-2.5">
                 {s.p.map((par, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700 first-letter:pl-0">{par}</p>
+                  <p key={i} className="text-sm leading-relaxed text-brand-navy-600 first-letter:pl-0">{par}</p>
                 ))}
               </div>
             </section>

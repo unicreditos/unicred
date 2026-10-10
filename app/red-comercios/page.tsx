@@ -51,7 +51,7 @@ export default async function RedComerciosPage({
       <PageSection title={merchants.length ? 'Resultados' : total === 0 ? 'Red en crecimiento' : 'Sin resultados'}>
         {merchants.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-brand-primary/25 bg-brand-primary/5 p-8 text-center">
-            <Store className="mx-auto h-10 w-10 text-brand-primary" />
+            <Store className="mx-auto h-10 w-10 text-brand-primary-700" />
             <p className="mt-4 text-sm font-semibold text-brand-navy">
               {total === 0
                 ? 'Todavía no hay comercios activos publicados.'
@@ -79,7 +79,7 @@ export default async function RedComerciosPage({
               >
                 <div className="text-sm font-bold text-brand-navy">{m.businessName}</div>
                 {m.category ? (
-                  <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-primary">
+                  <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-primary-700">
                     {m.category}
                   </div>
                 ) : null}
@@ -91,7 +91,7 @@ export default async function RedComerciosPage({
                 )}
                 <Link
                   href={`/comprar-en-cuotas?merchant=${m.id}#online`}
-                  className="mt-4 inline-block text-xs font-semibold text-brand-primary hover:underline"
+                  className="mt-4 inline-block text-xs font-semibold text-brand-primary-700 hover:underline"
                 >
                   Financiar compra →
                 </Link>

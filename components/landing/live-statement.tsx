@@ -15,26 +15,15 @@ import { useMemo, useState } from 'react'
 const PERSONAL = catalogByType('personal')
 const TERMS = termOptionsFor(PERSONAL)
 
-function Row({
-  label,
-  value,
-  strong,
-  tone,
-}: {
-  label: string
-  value: string
-  strong?: boolean
-  tone?: 'amber'
-}) {
+function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: 'accent' }) {
   return (
-    <div className="flex items-baseline gap-3">
-      <dt className={cn('shrink-0 text-sm', tone === 'amber' ? 'text-signal-amber' : 'text-white/60')}>{label}</dt>
-      <span aria-hidden className="mb-1 min-w-4 flex-1 border-b border-dotted border-white/20" />
+    <div className="flex items-baseline justify-between gap-3 py-2">
+      <dt className="text-sm text-brand-navy-500">{label}</dt>
       <dd
         className={cn(
-          'shrink-0 font-mono tabular-nums',
-          strong ? 'text-lg font-semibold text-white' : 'text-sm text-white/90',
-          tone === 'amber' && 'text-xl font-bold text-signal-amber',
+          'font-mono tabular-nums',
+          strong ? 'text-base font-bold text-brand-navy-800' : 'text-sm font-medium text-brand-navy-700',
+          tone === 'accent' && 'text-lg font-bold text-brand-primary-700',
         )}
       >
         {value}
@@ -55,37 +44,33 @@ export function LiveStatement({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'relative isolate overflow-hidden rounded-[1.75rem] bg-ink text-white shadow-[0_40px_80px_-30px_rgba(8,23,15,0.55)]',
+        'relative overflow-hidden rounded-3xl border border-brand-navy-100 bg-white text-brand-navy-800 shadow-[0_30px_70px_-30px_rgba(5,15,35,0.6)]',
         className,
       )}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-20 -top-24 -z-10 h-64 w-64 rounded-full bg-brand-primary/20 blur-3xl"
-      />
-
-      <div className="flex items-center justify-between border-b border-white/10 px-6 py-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">
-        <span>Liquidación simulada</span>
-        <span>Cuota fija · sistema francés</span>
+      <div className="px-6 pb-1 pt-6">
+        <h2 className="text-xl font-extrabold tracking-tight text-brand-navy-800">Simulá tu crédito</h2>
+        <p className="mt-0.5 text-sm text-brand-navy-500">Ajustá los valores y mirá el resultado al instante.</p>
       </div>
 
-      <div className="px-6 pb-2 pt-6">
-        <p className="text-sm text-white/60">Pagarías por mes</p>
-        <p className="mt-1 font-display text-5xl font-bold tracking-tight tabular-nums sm:text-6xl" aria-live="polite">
+      <div className="mx-6 mt-4 rounded-2xl bg-brand-navy-800 px-5 py-4 text-white">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/70">Cuota fija mensual</p>
+        <p className="mt-1 text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl" aria-live="polite">
           {formatARS(result.installmentAmount)}
         </p>
-        <p className="mt-1 text-sm text-white/55">
-          durante {term} meses, por {formatARS(amount)} recibidos
+        <p className="mt-1 text-sm text-white/70">
+          {term} cuotas · {formatARS(amount)} recibidos · sistema francés
         </p>
       </div>
 
-      <div className="space-y-6 px-6 pt-5">
+      <div className="space-y-6 px-6 pt-6">
         <div className="space-y-3">
           <AmountField
             value={amount}
             onCommit={setAmount}
             parse={(raw) => parseAmountInput(raw, PERSONAL)}
-            tone="dark"
+            tone="light"
+            label="Monto del crédito"
           />
           <span className="sr-only" id="live-amount-label">
             Monto del crédito, deslizá para cambiarlo
@@ -97,16 +82,15 @@ export function LiveStatement({ className }: { className?: string }) {
             step={SIM_AMOUNT_STEP}
             onValueChange={(v) => setAmount(Array.isArray(v) ? v[0] : (v as number))}
             aria-labelledby="live-amount-label"
-            className="[&_[data-slot=slider-track]]:bg-white/20!"
           />
-          <div className="flex justify-between font-mono text-[11px] text-white/40">
+          <div className="flex justify-between font-mono text-xs text-brand-navy-500">
             <span>{formatARS(PERSONAL.minAmount)}</span>
             <span>{formatARS(PERSONAL.maxAmount)}</span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <span className="text-sm font-medium text-white/80">Cuotas</span>
+          <span className="text-sm font-medium text-brand-navy-800">Plazo en cuotas</span>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Cantidad de cuotas">
             {TERMS.map((t) => (
               <button
@@ -115,10 +99,10 @@ export function LiveStatement({ className }: { className?: string }) {
                 onClick={() => setTerm(t)}
                 aria-pressed={term === t}
                 className={cn(
-                  'h-9 min-w-11 rounded-full px-3 font-mono text-sm tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary',
+                  'h-10 min-w-11 rounded-lg border px-3 text-sm font-semibold tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1',
                   term === t
-                    ? 'bg-brand-primary font-semibold text-ink'
-                    : 'bg-white/8 text-white/75 hover:bg-white/15',
+                    ? 'border-brand-primary bg-brand-primary text-white'
+                    : 'border-brand-navy-200 bg-white text-brand-navy-700 hover:border-brand-primary/50 hover:bg-brand-primary-50',
                 )}
               >
                 {t}
@@ -129,9 +113,7 @@ export function LiveStatement({ className }: { className?: string }) {
       </div>
 
       <div className="mt-6 px-6">
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white/45">
-          Cada cuota por dentro
-        </p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-navy-500">Cada cuota por dentro</p>
         <div
           className="flex h-16 items-end gap-[3px]"
           role="img"
@@ -144,12 +126,12 @@ export function LiveStatement({ className }: { className?: string }) {
               style={{ height: `${(b.installment / maxBar) * 100}%` }}
               title={`Cuota ${b.number}: capital ${formatARS(b.capital)} · interés ${formatARS(b.interest)}`}
             >
-              <div className="bg-signal-amber/90" style={{ height: `${(b.interest / (b.capital + b.interest || 1)) * 100}%` }} />
+              <div className="bg-signal-amber" style={{ height: `${(b.interest / (b.capital + b.interest || 1)) * 100}%` }} />
               <div className="flex-1 bg-brand-primary" />
             </div>
           ))}
         </div>
-        <div className="mt-2 flex items-center gap-4 text-[11px] text-white/55">
+        <div className="mt-2 flex items-center gap-4 text-xs text-brand-navy-600">
           <span className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm bg-brand-primary" /> Capital
           </span>
@@ -159,32 +141,32 @@ export function LiveStatement({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div className="mt-6 px-6">
-        <AmortizationTable rows={result.rows} tone="dark" />
+      <div className="mt-5 px-6">
+        <AmortizationTable rows={result.rows} tone="light" />
       </div>
 
-      <dl className="mt-6 space-y-2.5 border-t border-white/10 px-6 pb-6 pt-5">
+      <dl className="mx-6 mt-4 divide-y divide-brand-navy-100 border-t border-brand-navy-100">
         <Row label="Capital recibido" value={formatARS(amount)} />
         <Row label="Intereses" value={formatARS(result.totalInterest)} />
         <Row label="Total a devolver" value={formatARS(result.totalAmount)} strong />
         <Row label="TNA" value={formatPercent(result.tna)} />
         <Row label="TEA" value={formatPercent(result.tea)} />
-        <Row label="CFT (con IVA sobre intereses)" value={formatPercent(result.cft)} tone="amber" />
+        <Row label="CFT (con IVA sobre intereses)" value={formatPercent(result.cft)} tone="accent" />
       </dl>
 
-      <div className="bg-white/[0.04] px-6 py-5">
+      <div className="mt-2 border-t border-brand-navy-100 bg-brand-navy-50 px-6 py-5">
         <Link
           href={signupHref(amount, term)}
-          className="group flex h-12 items-center justify-center gap-2 rounded-full bg-brand-primary text-base font-semibold text-ink transition hover:bg-brand-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="group flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-primary text-base font-semibold text-white transition hover:bg-brand-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
         >
           Pedir este crédito
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
         </Link>
-        <p className="mt-3 text-[11px] leading-relaxed text-white/45">
+        <p className="mt-3 text-xs leading-relaxed text-brand-navy-600">
           Simulación a tasa de referencia ({formatPercent(PERSONAL_QUOTE.tna)} TNA). Tu primer crédito puede otorgarse hasta{' '}
           {formatARS(FIRST_CREDIT_HARD_CAP)}; la oferta final depende de tu evaluación. Sin gastos de otorgamiento ni
           seguros. CFT = TEA × 1,21 (IVA sobre intereses). Simulación informativa: no es una oferta ni un compromiso.{' '}
-          <Link href="/legal/tasas" className="underline underline-offset-2 hover:text-white/80">
+          <Link href="/legal/tasas" className="font-medium text-brand-primary-700 underline underline-offset-2">
             Cómo se calculan
           </Link>
           .

@@ -12,7 +12,7 @@ export const metadata = pageMetadata({
 
 export default function ScoringPage() {
   const escalas = [
-    { nivel: '1', nombre: 'Normal', score: '720 – 850', consejo: 'Mejor perfil interno. La tasa de la oferta sigue siendo la del producto, confirmada en contrato.', tono: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
+    { nivel: '1', nombre: 'Normal', score: '720 – 850', consejo: 'Mejor perfil interno. La tasa de la oferta sigue siendo la del producto, confirmada en contrato.', tono: 'bg-brand-primary-500/10 text-brand-primary-700 border-brand-primary-500/20' },
     { nivel: '2', nombre: 'Riesgo bajo', score: '640 – 719', consejo: 'Perfil aceptable. La solicitud se evalúa con BCRA, ingresos y KYC.', tono: 'bg-lime-500/10 text-lime-700 border-lime-500/20' },
     { nivel: '3', nombre: 'Riesgo medio', score: '560 – 639', consejo: 'El sistema puede recomendar aprobar si la cuota no supera el 35% de los ingresos y la situación BCRA lo permite; decide un analista.', tono: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
     { nivel: '4', nombre: 'Insuficiente', score: '300 – 559', consejo: 'Recomendación: rechazar. Situación BCRA 4 o 5 también lo recomienda. La decisión final la toma un analista.', tono: 'bg-orange-500/10 text-orange-700 border-orange-500/20' },
@@ -37,7 +37,7 @@ export default function ScoringPage() {
             {escalas.map((n) => (
               <div key={n.nivel} className={`flex flex-col gap-2 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${n.tono}`}>
                 <div className="flex items-center gap-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 text-lg font-bold ring-1 ring-slate-200">{n.nivel}</span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 text-lg font-bold ring-1 ring-brand-navy-200">{n.nivel}</span>
                   <div>
                     <h3 className="text-base font-bold">{n.nombre}</h3>
                     <p className="text-sm opacity-80">
@@ -61,17 +61,17 @@ export default function ScoringPage() {
         </PageSection>
 
         <PageSection eyebrow="Transparencia" title="Qué no prometemos">
-          <ul className="space-y-3 text-sm text-slate-700">
-            <li className="rounded-2xl border border-slate-200/70 bg-white p-4">No hay programa “Mejorar Score en 90 días” ni “Recuperación Crediticia” como producto.</li>
-            <li className="rounded-2xl border border-slate-200/70 bg-white p-4">No hay aprobación “en minutos” garantizada. Depende de Didit y de la API del BCRA.</li>
-            <li className="rounded-2xl border border-slate-200/70 bg-white p-4">Una consulta UNICRÉDITOS no es una consulta que el BCRA publique como score numérico.</li>
+          <ul className="space-y-3 text-sm text-brand-navy-600">
+            <li className="rounded-2xl border border-brand-navy-200/70 bg-white p-4">No hay programa “Mejorar Score en 90 días” ni “Recuperación Crediticia” como producto.</li>
+            <li className="rounded-2xl border border-brand-navy-200/70 bg-white p-4">No hay aprobación “en minutos” garantizada. Depende de Didit y de la API del BCRA.</li>
+            <li className="rounded-2xl border border-brand-navy-200/70 bg-white p-4">Una consulta UNICRÉDITOS no es una consulta que el BCRA publique como score numérico.</li>
           </ul>
           <div className="mt-5 rounded-2xl bg-brand-primary-50 p-4 text-sm ring-1 ring-brand-primary/10">
-            <p className="font-semibold text-slate-900 flex items-center gap-2">
-              <BadgeCheck className="h-4 w-4 text-brand-primary" /> Cómo ver tu informe
+            <p className="font-semibold text-brand-navy-900 flex items-center gap-2">
+              <BadgeCheck className="h-4 w-4 text-brand-primary-700" /> Cómo ver tu informe
             </p>
             <p className="mt-1 text-muted-foreground">Entrá a tu cuenta, pestaña Scoring. Ahí se separa el score UNICRÉDITOS de la situación 1 a 5 del BCRA.</p>
-            <Link href="/sign-up" className="mt-2 inline-flex text-sm font-semibold text-brand-primary hover:underline">
+            <Link href="/sign-up" className="mt-2 inline-flex text-sm font-semibold text-brand-primary-700 hover:underline">
               Crear cuenta para consultar →
             </Link>
           </div>

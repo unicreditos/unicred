@@ -33,7 +33,7 @@ const cachedSnapshot = unstable_cache(
     if (snap.degraded) throw new DegradedSnapshot(snap)
     return snap
   },
-  ['admin-desk-snapshot'],
+  ['admin-desk-snapshot-v2'],
   { tags: [DESK_CACHE_TAG], revalidate: 30 },
 )
 

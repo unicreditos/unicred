@@ -20,7 +20,7 @@ export default function OpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          backgroundColor: '#0C1612',
+          backgroundColor: '#0F2A4A',
           padding: 80,
           fontFamily: 'sans-serif',
         }}
@@ -30,7 +30,7 @@ export default function OpengraphImage() {
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            color: '#6EE7B7',
+            color: '#8FD3D8',
             fontSize: 26,
             fontWeight: 600,
             letterSpacing: 4,
@@ -43,7 +43,7 @@ export default function OpengraphImage() {
               width: 14,
               height: 14,
               borderRadius: 14,
-              backgroundColor: '#20BD5A',
+              backgroundColor: '#2A9CA4',
             }}
           />
           {GROUP.name}
@@ -66,7 +66,7 @@ export default function OpengraphImage() {
             style={{
               display: 'flex',
               marginTop: 28,
-              color: '#e8f9ee',
+              color: '#E3E9F1',
               fontSize: 52,
               fontWeight: 500,
               lineHeight: 1.2,
@@ -83,7 +83,7 @@ export default function OpengraphImage() {
             justifyContent: 'space-between',
             borderTop: '2px solid rgba(255,255,255,0.2)',
             paddingTop: 32,
-            color: '#9AADA3',
+            color: '#9AAAC1',
             fontSize: 28,
           }}
         >

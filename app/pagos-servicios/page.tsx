@@ -41,7 +41,7 @@ export default function PagosServiciosPage() {
             'Debitamos al instante. Tesorería RM liquida al prestador en el circuito operativo.',
           ].map((step, i) => (
             <li key={step} className="rounded-2xl border border-border/70 bg-card p-4 text-sm">
-              <div className="text-xs font-bold uppercase tracking-wider text-brand-primary">Paso {i + 1}</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-brand-primary-700">Paso {i + 1}</div>
               <p className="mt-2 text-muted-foreground">{step}</p>
             </li>
           ))}

@@ -1,5 +1,4 @@
 import { PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
-import { TrustBar } from '@/components/unicred/dashboard-kit'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { ReactNode } from 'react'
@@ -23,46 +22,63 @@ export function PublicPageShell({
   secondaryAction?: { href: string; label: string }
 }) {
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen bg-paper text-brand-navy-900">
       <PublicHeader />
 
       <main id="contenido-principal">
-        <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-          <Link href="/" className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand-primary">
-            <ArrowLeft className="h-4 w-4" /> Volver al inicio
-          </Link>
-          <div className="max-w-3xl space-y-5">
-            {eyebrow && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-primary">
-                {icon}
-                {eyebrow}
-              </span>
-            )}
-            <h1 className="text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl lg:text-5xl">{title}</h1>
-            {description && <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">{description}</p>}
-            {(primaryAction || secondaryAction) && (
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                {primaryAction && (
-                  <Button asChild className="font-semibold shadow-sm shadow-brand-primary/20">
-                    <Link href={primaryAction.href}>
-                      {primaryAction.label} <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Link>
-                  </Button>
-                )}
-                {secondaryAction && (
-                  <Button asChild variant="outline">
-                    <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
-                  </Button>
-                )}
-              </div>
-            )}
+        <section className="relative overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(12,124,132,0.12),transparent_70%)]"
+          />
+          <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12">
+            <Link
+              href="/"
+              className="mb-6 inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-brand-navy-600 transition hover:text-brand-primary-700"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden /> Volver al inicio
+            </Link>
+            <div className="max-w-3xl space-y-5">
+              {eyebrow && (
+                <p className="inline-flex items-center gap-2 rounded-full border border-brand-navy-200 bg-white px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-brand-navy-600">
+                  {icon ?? <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" aria-hidden />}
+                  {eyebrow}
+                </p>
+              )}
+              <h1 className="text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.025em] text-brand-navy-900 sm:text-5xl lg:text-6xl">
+                {title}
+              </h1>
+              {description && (
+                <p className="max-w-2xl text-lg leading-relaxed text-brand-navy-600">{description}</p>
+              )}
+              {(primaryAction || secondaryAction) && (
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  {primaryAction && (
+                    <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base font-semibold">
+                      <Link href={primaryAction.href}>
+                        {primaryAction.label} <ArrowRight className="h-4 w-4" aria-hidden />
+                      </Link>
+                    </Button>
+                  )}
+                  {secondaryAction && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="lg"
+                      className="h-12 rounded-xl border-brand-navy-200 bg-white px-6 text-base font-semibold"
+                    >
+                      <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">{children}</section>
+        <section className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-20 sm:px-6 lg:pb-28">{children}</section>
       </main>
 
-      <TrustBar />
       <PublicFooter />
     </div>
   )
@@ -82,11 +98,18 @@ export function PageSection({
   eyebrow?: string
 }) {
   return (
-    <section id={id} className="scroll-mt-24 space-y-6 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+    <section
+      id={id}
+      className="scroll-mt-24 space-y-6 rounded-3xl border border-brand-navy-200 bg-white p-5 sm:p-8"
+    >
       <div className="max-w-3xl space-y-2">
-        {eyebrow && <p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">{eyebrow}</p>}
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>
-        {subtitle && <p className="leading-relaxed text-muted-foreground">{subtitle}</p>}
+        {eyebrow && (
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand-primary-700">{eyebrow}</p>
+        )}
+        <h2 className="text-balance font-display text-2xl font-bold tracking-tight text-brand-navy-900 sm:text-3xl">
+          {title}
+        </h2>
+        {subtitle && <p className="leading-relaxed text-brand-navy-600">{subtitle}</p>}
       </div>
       <div className="pt-2">{children}</div>
     </section>
@@ -110,20 +133,20 @@ export function FeatureCard({
   badge?: string
 }) {
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/40 p-5 transition hover:border-brand-primary/30 hover:bg-white hover:shadow-md">
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-brand-navy-200 bg-paper p-5 transition hover:border-brand-primary/40 hover:bg-white">
       <div className="flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-primary/15 to-brand-cian-500/15 text-brand-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary-50 text-brand-primary-700">
           {icon}
         </div>
         {badge && (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+          <span className="rounded-full bg-brand-primary-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-brand-primary-700">
             {badge}
           </span>
         )}
       </div>
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+        <h3 className="font-display text-lg font-bold tracking-tight text-brand-navy-900">{title}</h3>
+        <p className="text-sm leading-relaxed text-brand-navy-600">{description}</p>
       </div>
     </div>
   )

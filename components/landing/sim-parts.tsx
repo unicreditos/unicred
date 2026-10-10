@@ -56,7 +56,7 @@ export function AmountField({
           error && 'border-red-400',
         )}
       >
-        <span aria-hidden className={dark ? 'text-white/45' : 'text-muted-foreground'}>
+        <span aria-hidden className={dark ? 'text-white/60' : 'text-muted-foreground'}>
           $
         </span>
         <input
@@ -99,7 +99,7 @@ export function AmortizationTable({ rows, tone = 'dark' }: { rows: TableRow[]; t
     (a, r) => ({ installment: a.installment + r.installment, interest: a.interest + r.interest, capital: a.capital + r.capital }),
     { installment: 0, interest: 0, capital: 0 },
   )
-  const th = cn('px-3 py-2 text-right font-medium', dark ? 'text-white/55' : 'text-muted-foreground')
+  const th = cn('px-3 py-2 text-right font-medium', dark ? 'text-white/70' : 'text-muted-foreground')
   const td = 'px-3 py-1.5 text-right'
   return (
     <details className={cn('group min-w-0 max-w-full rounded-lg border', dark ? 'border-white/10' : 'border-border')}>
@@ -169,7 +169,7 @@ export function AmortizationTable({ rows, tone = 'dark' }: { rows: TableRow[]; t
           </tfoot>
         </table>
       </div>
-      <p className={cn('border-t border-inherit px-3 py-2 text-[11px] leading-relaxed', dark ? 'text-white/45' : 'text-muted-foreground')}>
+      <p className={cn('border-t border-inherit px-3 py-2 text-xs leading-relaxed', dark ? 'text-white/60' : 'text-muted-foreground')}>
         Valores redondeados al centavo: la suma de capital e interés puede diferir unos centavos del total. El contrato
         fija el plan de cuotas definitivo.
       </p>

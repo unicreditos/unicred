@@ -1,5 +1,6 @@
 'use client'
 
+import { BrandMark } from '@/components/brand-mark'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
@@ -188,9 +189,7 @@ export function UcShell({ menu, area, user, today, bottomNav, homeHref, children
       >
         <div className="uc-sb-brand">
           <Link href={homeHref} className="uc-brand-link" aria-label="Ir al inicio" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="uc-logo-mark" aria-hidden="true">
-              U
-            </span>
+            <BrandMark className="uc-logo-mark-svg" tone="white" />
             <span className="uc-sb-label uc-wordmark">
               Unicréditos<small>{area}</small>
             </span>

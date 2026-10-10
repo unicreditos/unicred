@@ -34,16 +34,17 @@ describe('marca UNIPAGOS · RM International', () => {
     )
   })
 
-  it('usa Instrument Sans + Bricolage Grotesque y el verde de grupo, no Inter/Poppins', () => {
+  it('usa Plus Jakarta Sans y el turquesa sobre azul marino de la marca, no Inter/Poppins ni el verde anterior', () => {
     const css = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8')
     const layout = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8')
     const home = readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8')
     const hero = readFileSync(new URL('../../components/unicred/dashboard-kit.tsx', import.meta.url), 'utf8')
-    assert.match(layout, /Instrument_Sans/)
-    assert.match(layout, /Bricolage_Grotesque/)
+    assert.match(layout, /Plus_Jakarta_Sans/)
+    assert.doesNotMatch(layout, /Bricolage_Grotesque|Instrument_Sans/)
     assert.doesNotMatch(layout, /\bInter\b/)
     assert.doesNotMatch(layout, /Poppins/)
-    assert.match(css, /--color-brand-primary: #20BD5A/)
+    assert.match(css, /--color-brand-primary: #0C7C84/)
+    assert.doesNotMatch(css, /--color-brand-primary: #20BD5A/)
     assert.doesNotMatch(css, /--color-brand-primary: #1E58E5/)
     assert.doesNotMatch(css, /--color-brand-cian: #22D3EE/)
     assert.doesNotMatch(home, /PublicBcraTicker/)

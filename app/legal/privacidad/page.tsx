@@ -144,7 +144,7 @@ export default function PrivacidadPage() {
             <ul className="space-y-1.5 text-xs text-muted-foreground">
               {secs.map((s, i) => (
                 <li key={s.t}>
-                  <a href={`#pp-${i}`} className="flex items-start gap-2 rounded-md px-2 py-1 hover:bg-brand-primary/5 hover:text-brand-primary">
+                  <a href={`#pp-${i}`} className="flex min-h-9 items-start gap-2 rounded-md px-2 py-2 hover:bg-brand-primary/5 hover:text-brand-primary-700">
                     <span className="font-mono opacity-70">{String(i + 1).padStart(2, '0')}</span>
                     <span>{s.t.replace(/^[\d\s·-]+/, '')}</span>
                   </a>
@@ -155,26 +155,26 @@ export default function PrivacidadPage() {
         </aside>
         <div className="space-y-6 lg:col-span-3">
           {secs.map((s, i) => (
-            <section id={`pp-${i}`} key={s.t} className="space-y-3 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-lg font-bold text-slate-900">
-                <FileSearch className="h-5 w-5 text-brand-primary" />
+            <section id={`pp-${i}`} key={s.t} className="space-y-3 rounded-3xl border border-brand-navy-200/70 bg-white p-6 shadow-sm">
+              <h2 className="flex items-center gap-3 text-lg font-bold text-brand-navy-900">
+                <FileSearch className="h-5 w-5 text-brand-primary-700" />
                 {s.t}
               </h2>
               <div className="space-y-2.5">
-                {s.p.map((par, k) => <p key={k} className="text-sm leading-relaxed text-slate-700">{par}</p>)}
+                {s.p.map((par, k) => <p key={k} className="text-sm leading-relaxed text-brand-navy-600">{par}</p>)}
               </div>
             </section>
           ))}
-          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-6 ring-1 ring-emerald-500/20">
+          <div className="rounded-3xl border border-brand-primary-500/20 bg-brand-primary-500/5 p-6 ring-1 ring-brand-primary-500/20">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 ring-1 ring-emerald-500/30"><Eye className="h-5 w-5" /></div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-brand-primary-700 ring-1 ring-brand-primary-500/30"><Eye className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-900">Transparencia total</h3>
-                  <p className="text-xs leading-relaxed text-emerald-900/80">Pedido de acceso: email identificado a {BRAND.privacyEmail}</p>
+                  <h3 className="text-sm font-bold text-brand-primary-900">Transparencia total</h3>
+                  <p className="text-xs leading-relaxed text-brand-primary-900/80">Pedido de acceso: email identificado a {BRAND.privacyEmail}</p>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 text-xs text-emerald-900/80">
+              <div className="flex flex-col gap-1 text-xs text-brand-primary-900/80">
                 <span className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5" /> RG AAIP 78/2019 · OK</span>
                 <span className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5" /> Ley 25.326 PDPL · OK</span>
                 <span className="flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5" /> RGPD alignment (best effort) · OK</span>
@@ -189,9 +189,9 @@ export default function PrivacidadPage() {
 
 function LI({ i, t }: { i: any; t: string }) {
   return (
-    <li className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/70">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-brand-primary ring-1 ring-brand-primary/20">{i}</span>
-      <span className="text-sm font-semibold text-slate-800">{t}</span>
+    <li className="flex items-start gap-2 rounded-xl bg-brand-navy-50 p-3 ring-1 ring-brand-navy-200/70">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-brand-primary-700 ring-1 ring-brand-primary/20">{i}</span>
+      <span className="text-sm font-semibold text-brand-navy-700">{t}</span>
     </li>
   )
 }

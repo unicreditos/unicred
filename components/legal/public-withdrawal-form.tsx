@@ -48,7 +48,7 @@ export function PublicWithdrawalForm() {
         {busy ? 'Enviando…' : 'Ejercer arrepentimiento'}
       </Button>
       {message ? (
-        <p className={ok ? 'text-sm text-emerald-700' : 'text-sm text-destructive'}>{message}</p>
+        <p className={ok ? 'text-sm text-brand-primary-700' : 'text-sm text-destructive'}>{message}</p>
       ) : null}
     </form>
   )

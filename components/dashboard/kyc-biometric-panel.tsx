@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation'
 
 import { getDiditPublicConfig, syncDiditSession } from '@/app/actions/didit'
 import { DiditVerifyButton } from '@/components/didit-verify-button'
+import { IdentityGuide } from '@/components/identity-guide'
 import { kycMediaBundle, parseDiditCapture } from '@/lib/didit-capture'
 
 type Profile = typeof profile.$inferSelect
@@ -174,6 +175,7 @@ export function KYCBiometricPanel({
             </p>
           ) : (
             <>
+              <IdentityGuide variant="compact" />
               <DiditVerifyButton
                 mode="session"
                 dni={kyc?.dniNumber ?? profile?.dni ?? undefined}

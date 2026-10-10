@@ -112,7 +112,7 @@ export function ResetPasswordForm() {
           <Button
             type="button"
             asChild
-            className="h-12 bg-[#F5A623] text-base font-semibold text-white hover:bg-[#e39614]"
+            variant="outline" className="h-12 border-brand-navy-300 bg-white text-base font-semibold text-brand-navy-800 hover:bg-brand-navy-50"
           >
             <Link href="/sign-in">Volver</Link>
           </Button>

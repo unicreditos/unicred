@@ -59,7 +59,7 @@ const NOTIFY_HREF = `mailto:${BRAND.supportEmail}?subject=${encodeURIComponent('
 )}`
 
 const CSS = `
-.mx { --paper: #e9efe4; --card: #f7f9f3; --ink: #0c1612; --green: #157a3b; --deep: #0f5a2b; --stamp: #d8400f; }
+.mx { --paper: #e9eef4; --card: #f6f8fb; --ink: #0a1d36; --green: #0c7c84; --deep: #0f2a4a; --stamp: #d8400f; }
 .mx-focus:focus-visible { outline: 3px solid var(--stamp); outline-offset: 3px; }
 @keyframes mx-stamp {
   0% { opacity: 0; transform: translate(-50%, -50%) rotate(-2deg) scale(1.7); }
@@ -239,7 +239,7 @@ function Coupon() {
         </div>
 
         <div className="min-w-0 overflow-hidden rounded-r-2xl">
-          <div className="relative h-20 bg-[var(--deep)] text-[#58d184]">
+          <div className="relative h-20 bg-[var(--deep)] text-[#5ab6bc]">
             <Waves className="absolute inset-0 h-full w-full opacity-70" />
             <div className="relative flex h-full flex-wrap items-end justify-between gap-x-4 px-5 pb-3 text-[var(--paper)]">
               <p className="font-display text-xl font-extrabold tracking-[-0.03em] sm:text-2xl">Cupón de reapertura</p>
@@ -292,7 +292,7 @@ function StateChip({ state }: { state: Stage['state'] }) {
       : state === 'pruebas'
         ? 'border border-[var(--deep)] text-[var(--deep)]'
         : 'border border-[var(--stamp)] text-[#a52e08]'
-  const dot = state === 'listo' ? 'bg-[#58d184]' : state === 'pruebas' ? 'bg-[var(--green)]' : 'bg-[var(--stamp)]'
+  const dot = state === 'listo' ? 'bg-[#5ab6bc]' : state === 'pruebas' ? 'bg-[var(--green)]' : 'bg-[var(--stamp)]'
   return (
     <span
       className={`col-start-2 inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold sm:col-start-3 ${tone}`}

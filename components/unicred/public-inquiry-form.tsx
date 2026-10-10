@@ -34,7 +34,7 @@ export function PublicInquiryForm({
 
   if (state?.ok) {
     return (
-      <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+      <p role="status" className="rounded-xl border border-brand-primary-200 bg-brand-primary-50 px-4 py-3 text-sm text-brand-primary-800">
         Recibimos tu mensaje. Te respondemos a la casilla que indicaste.
       </p>
     )
@@ -43,7 +43,7 @@ export function PublicInquiryForm({
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2" noValidate>
       <label className="space-y-1.5">
-        <span className="text-xs font-semibold text-slate-700">Nombre completo</span>
+        <span className="text-sm font-semibold text-brand-navy-700">Nombre completo</span>
         <input
           name="name"
           required
@@ -52,11 +52,11 @@ export function PublicInquiryForm({
           placeholder="Tu nombre y apellido"
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-xl border border-brand-navy-400 bg-white px-3.5 py-3 text-base text-brand-navy-900 outline-none placeholder:text-brand-navy-400 focus:border-brand-primary-700 focus:ring-2 focus:ring-brand-primary/40"
         />
       </label>
       <label className="space-y-1.5">
-        <span className="text-xs font-semibold text-slate-700">Correo</span>
+        <span className="text-sm font-semibold text-brand-navy-700">Correo</span>
         <input
           name="email"
           required
@@ -66,28 +66,28 @@ export function PublicInquiryForm({
           placeholder="vos@email.com"
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-xl border border-brand-navy-400 bg-white px-3.5 py-3 text-base text-brand-navy-900 outline-none placeholder:text-brand-navy-400 focus:border-brand-primary-700 focus:ring-2 focus:ring-brand-primary/40"
         />
       </label>
       {extraFields}
       <label className="space-y-1.5 sm:col-span-2">
-        <span className="text-xs font-semibold text-slate-700">Asunto</span>
+        <span className="text-sm font-semibold text-brand-navy-700">Asunto</span>
         <input
           name="subject"
           autoComplete="off"
           defaultValue={defaultSubject}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full rounded-xl border border-brand-navy-400 bg-white px-3.5 py-3 text-base text-brand-navy-900 outline-none placeholder:text-brand-navy-400 focus:border-brand-primary-700 focus:ring-2 focus:ring-brand-primary/40"
         />
       </label>
       <label className="space-y-1.5 sm:col-span-2">
-        <span className="text-xs font-semibold text-slate-700">Mensaje</span>
+        <span className="text-sm font-semibold text-brand-navy-700">Mensaje</span>
         <textarea
           name="message"
           required
           rows={6}
           aria-invalid={state?.error ? true : undefined}
           aria-describedby={state?.error ? errorId : undefined}
-          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-brand-primary/30 focus:ring-2"
+          className="w-full resize-none rounded-xl border border-brand-navy-400 bg-white px-3.5 py-3 text-base text-brand-navy-900 outline-none placeholder:text-brand-navy-400 focus:border-brand-primary-700 focus:ring-2 focus:ring-brand-primary/40"
         />
       </label>
       {state?.error ? (
@@ -98,7 +98,7 @@ export function PublicInquiryForm({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex items-center justify-center rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:col-span-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+        className="inline-flex h-12 items-center justify-center rounded-full bg-brand-primary px-6 text-base font-semibold text-white transition hover:bg-brand-primary-400 disabled:opacity-60 sm:col-span-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
       >
         {pending ? 'Enviando…' : 'Enviar'}
       </button>

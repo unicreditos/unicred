@@ -13,6 +13,7 @@ const routes: Route[] = [
   { path: '/prestamos', changeFrequency: 'weekly', priority: 0.95 },
   { path: '/simulador', changeFrequency: 'weekly', priority: 0.9 },
   { path: '/scoring', changeFrequency: 'monthly', priority: 0.8 },
+  { path: '/verificacion-de-identidad', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/preguntas-frecuentes', changeFrequency: 'monthly', priority: 0.75 },
   { path: '/comprar-en-cuotas', changeFrequency: 'monthly', priority: 0.3 },
   { path: '/pagos-servicios', changeFrequency: 'monthly', priority: 0.3 },

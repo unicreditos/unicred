@@ -51,7 +51,7 @@ export async function PublicBcraTicker() {
       <div className="mx-auto flex w-full max-w-7xl items-center gap-4 overflow-x-auto px-4 py-1.5 sm:px-6">
         <Link
           href="/datos-bcra"
-          className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-cian-300 hover:text-white"
+          className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-cian-300 hover:text-white"
         >
           <Landmark className="h-3.5 w-3.5" />
           BCRA oficial
@@ -64,7 +64,7 @@ export async function PublicBcraTicker() {
             </span>
           ))}
         </div>
-        <p className="hidden shrink-0 text-[11px] font-medium text-slate-300/80 lg:block">
+        <p className="hidden shrink-0 text-xs font-medium text-brand-navy-200 lg:block">
           Referencia{fecha ? ` · ${fecha}` : ''} · no es oferta de cambio
         </p>
       </div>
@@ -97,7 +97,7 @@ export async function PublicBcraBoard({
     <div className="overflow-hidden rounded-3xl border border-border/60 bg-white shadow-sm ring-1 ring-slate-900/5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 bg-slate-50/70 px-5 py-4 sm:px-6">
         <div>
-          <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-primary-700">
             <Landmark className="h-3.5 w-3.5" />
             Dato oficial BCRA
           </p>
@@ -109,7 +109,7 @@ export async function PublicBcraBoard({
             de divisas.
           </p>
         </div>
-        <div className="text-right text-[11px] font-semibold text-muted-foreground">
+        <div className="text-right text-xs font-semibold text-muted-foreground">
           {fecha ? <p>Publicado {fecha}</p> : null}
           <p>API oficial · se refresca cada 15 min</p>
           {board.source === 'db_cache' ? <p>Último valor en caché local</p> : null}
@@ -120,32 +120,32 @@ export async function PublicBcraBoard({
         {fx.map((row) => (
           <div
             key={row.moneda}
-            className="rounded-2xl border border-border/60 bg-slate-50/50 px-4 py-3 ring-1 ring-slate-900/4"
+            className="rounded-2xl border border-border/60 bg-brand-navy-50/60 px-4 py-3 ring-1 ring-slate-900/4"
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-primary">{row.moneda}</span>
-              <span className="text-[10px] font-medium text-muted-foreground">ARS</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-primary-700">{row.moneda}</span>
+              <span className="text-xs font-medium text-muted-foreground">ARS</span>
             </div>
             <p className="mt-1 text-xl font-black tabular-nums tracking-tight text-brand-navy">
               {formatFx(row.valor)}
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{row.descripcion}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{row.descripcion}</p>
           </div>
         ))}
       </div>
 
       {indicators.length ? (
         <div className="border-t border-border/60 px-5 py-4 sm:px-6">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Variables principales
           </p>
           <div className={`mt-3 grid gap-3 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
             {indicators.map((row) => (
               <div key={row.id} className="rounded-xl border border-border/50 px-3 py-2.5">
-                <p className="line-clamp-2 text-[11px] font-medium leading-snug text-muted-foreground">{row.nombre}</p>
+                <p className="line-clamp-2 text-xs font-medium leading-snug text-muted-foreground">{row.nombre}</p>
                 <p className="mt-1 text-sm font-black tabular-nums text-brand-navy">
                   {formatIndicator(row.valor)}
-                  {row.unidad ? <span className="ml-1 text-[10px] font-semibold text-muted-foreground">{row.unidad}</span> : null}
+                  {row.unidad ? <span className="ml-1 text-xs font-semibold text-muted-foreground">{row.unidad}</span> : null}
                 </p>
               </div>
             ))}
@@ -153,16 +153,16 @@ export async function PublicBcraBoard({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-slate-50/50 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-brand-navy-50/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6">
         <p>
           Fuente:{' '}
-          <a href={BCRA_API} target="_blank" rel="noreferrer" className="font-semibold text-brand-primary hover:underline">
+          <a href={BCRA_API} target="_blank" rel="noreferrer" className="font-semibold text-brand-primary-700 hover:underline">
             api.bcra.gob.ar
           </a>
           . No constituye oferta, cotización propia ni invitación a operar cambio.
         </p>
         {compact ? (
-          <Link href="/datos-bcra" className="font-semibold text-brand-primary hover:underline">
+          <Link href="/datos-bcra" className="font-semibold text-brand-primary-700 hover:underline">
             Ver tablero completo
           </Link>
         ) : null}

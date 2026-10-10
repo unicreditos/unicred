@@ -1,3 +1,4 @@
+import { BrandMark } from '@/components/brand-mark'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -12,9 +13,7 @@ export function UcStandalone({ children, homeHref = '/', bar = true }: { childre
       {bar ? (
         <header className="uc-standalone-bar">
           <Link href={homeHref} className="uc-brand-link" aria-label="Unicréditos" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="uc-logo-mark" aria-hidden="true">
-              U
-            </span>
+            <BrandMark className="uc-logo-mark-svg" tone="white" />
             <span className="uc-wordmark">Unicréditos</span>
           </Link>
         </header>

@@ -332,9 +332,9 @@ export function calculateRealtimeDelinquency(
     : 0
 
   let statusTone: RealtimeDelinquencyData['statusTone'] = 'healthy'
-  let statusLabel = 'Cartera saludable (mora < 3%)'
+  let statusLabel = totalActiveCredits === 0 ? 'Sin créditos vigentes en la cartera' : 'Cartera saludable (mora < 3%)'
 
-  if (overallDelinquencyRate > 10 || severeDelinquencyRate > 6) {
+  if (totalActiveCredits > 0 && (overallDelinquencyRate > 10 || severeDelinquencyRate > 6)) {
     statusTone = 'critical'
     statusLabel = 'Riesgo crítico de cobranza (mora > 10%)'
   } else if (overallDelinquencyRate > 5 || severeDelinquencyRate > 3) {

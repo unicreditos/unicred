@@ -53,7 +53,7 @@ export default function PrestamosPage() {
             { t: 'CFT ref.', d: PERSONAL_QUOTE.cftLabel },
           ].map((x) => (
             <div key={x.t} className="rounded-2xl border border-border/70 bg-card p-5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{x.t}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{x.t}</p>
               <p className="mt-2 text-xl font-bold tabular-nums text-brand-navy">{x.d}</p>
             </div>
           ))}
@@ -72,7 +72,7 @@ export default function PrestamosPage() {
               key={item}
               className="flex items-start gap-2 rounded-2xl border border-border/70 bg-card p-4 text-sm"
             >
-              <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
+              <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary-700" />
               {item}
             </li>
           ))}
@@ -88,7 +88,7 @@ export default function PrestamosPage() {
             { icon: Banknote, t: 'Operador', d: `${BRAND.legalName} · CUIT ${BRAND.cuit}.` },
           ].map((x) => (
             <div key={x.t} className="rounded-2xl border border-brand-primary/10 bg-brand-primary/5 p-4">
-              <x.icon className="h-5 w-5 text-brand-primary" />
+              <x.icon className="h-5 w-5 text-brand-primary-700" />
               <div className="mt-3 text-sm font-bold text-brand-navy">{x.t}</div>
               <p className="mt-1 text-sm text-muted-foreground">{x.d}</p>
             </div>
