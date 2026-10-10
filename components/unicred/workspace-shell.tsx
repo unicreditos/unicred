@@ -529,29 +529,6 @@ export function WorkspaceShell({
   )
 }
 
-export function PageIntro({
-  kicker,
-  title,
-  description,
-  actions,
-}: {
-  kicker?: string
-  title: string
-  description?: string
-  actions?: ReactNode
-}) {
-  return (
-    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        {kicker ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{kicker}</p> : null}
-        <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground sm:text-[22px]">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
-      </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-    </div>
-  )
-}
-
 export function DecisionBanner({
   tone,
   title,
@@ -604,28 +581,6 @@ export function MetricTile({
       <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <div className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight text-brand-navy-900">{value}</div>
       {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
-    </div>
-  )
-}
-
-/**
- * Piso operativo: llena la altura disponible del panel (los hijos con
- * `flex-1 overflow-auto` scrollean internamente en pantallas grandes),
- * pero usa `min-h` en vez de forzar la altura del viewport, así en
- * laptops chicas o secciones muy cargadas el contenido crece y el
- * `<main>` scrollea en lugar de comprimir las tablas a una franja.
- */
-export function OpsFloor({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'flex w-full flex-1 flex-col gap-2',
-        // min-h fija el piso base; el contenido puede empujar y desbordar hacia el scroll del <main>.
-        'min-h-[calc(100svh-8.5rem)]',
-        className,
-      )}
-    >
-      {children}
     </div>
   )
 }
