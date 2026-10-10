@@ -1,16 +1,16 @@
 'use client'
 
+import { AmortizationTable, AmountField } from '@/components/landing/sim-parts'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
-import { computeFrenchAmortization, formatARS, formatPercent } from '@/lib/finance'
+import { formatARS, formatPercent } from '@/lib/finance'
 import { catalogByType } from '@/lib/loan-catalog'
+import { clampAmount, parseAmountInput, SIM_AMOUNT_STEP, simulate, termOptionsFor } from '@/lib/simulator-core'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-
-const TERMS = [3, 6, 9, 12, 18, 24, 36, 48]
 
 const PERSONAL = catalogByType('personal')
 
@@ -18,6 +18,8 @@ export function LoanSimulator({
   monthlyRate = PERSONAL.monthlyRate,
   minAmount = PERSONAL.minAmount,
   maxAmount = PERSONAL.maxAmount,
+  minTerm = PERSONAL.minTerm,
+  maxTerm = PERSONAL.maxTerm,
   cta = true,
   variant = 'solid',
   className,
@@ -25,19 +27,21 @@ export function LoanSimulator({
   monthlyRate?: number
   minAmount?: number
   maxAmount?: number
+  minTerm?: number
+  maxTerm?: number
   cta?: boolean
   /** `glass` deja ver el fondo (hero). `solid` es la tarjeta opaca de /simulador. */
   variant?: 'solid' | 'glass'
   className?: string
 }) {
-  const [amount, setAmount] = useState(500000)
-  const [term, setTerm] = useState(12)
+  const product = { minAmount, maxAmount, minTerm, maxTerm, monthlyRate }
+  const terms = termOptionsFor(product)
+  const [amount, setAmount] = useState(() => clampAmount(500_000, product))
+  const [term, setTerm] = useState(() => (terms.includes(12) ? 12 : terms[terms.length - 1]))
   const glass = variant === 'glass'
 
-  const result = useMemo(
-    () => computeFrenchAmortization(amount, term, monthlyRate),
-    [amount, term, monthlyRate],
-  )
+  // Mismo calculo que el credito real (lib/finance.ts via simulator-core).
+  const result = useMemo(() => simulate({ monthlyRate }, amount, term), [amount, term, monthlyRate])
 
   const body = (
     <>
@@ -78,24 +82,18 @@ export function LoanSimulator({
 
       <div className="space-y-6 p-6">
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className={glass ? 'text-brand-navy' : undefined}>Monto a solicitar</Label>
-            <span
-              className={cn(
-                'font-mono text-sm font-semibold',
-                glass
-                  ? 'rounded-md bg-white/75 px-2 py-0.5 text-brand-navy shadow-sm'
-                  : 'text-foreground',
-              )}
-            >
-              {formatARS(amount)}
-            </span>
-          </div>
+          <AmountField
+            value={amount}
+            onCommit={setAmount}
+            parse={(raw) => parseAmountInput(raw, product)}
+            tone={glass ? 'glass' : 'light'}
+            label="Monto a solicitar"
+          />
           <Slider
             value={[amount]}
             min={minAmount}
             max={maxAmount}
-            step={10000}
+            step={SIM_AMOUNT_STEP}
             onValueChange={(v) => setAmount(Array.isArray(v) ? v[0] : (v as number))}
             aria-label="Monto del crédito"
             className={glass ? '[&_[data-slot=slider-track]]:bg-white/55' : undefined}
@@ -113,14 +111,14 @@ export function LoanSimulator({
 
         <div className="space-y-3">
           <Label className={glass ? 'text-brand-navy' : undefined}>Plazo en cuotas</Label>
-          <div className="flex flex-wrap gap-2">
-            {TERMS.map((t) => (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Cantidad de cuotas">
+            {terms.map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTerm(t)}
                 className={cn(
-                  'h-9 min-w-12 rounded-md border px-2 text-sm font-medium transition-colors',
+                  'h-11 min-w-12 rounded-md border px-2 text-sm font-medium transition-colors',
                   term === t
                     ? 'border-primary bg-primary text-primary-foreground'
                     : glass
@@ -134,6 +132,8 @@ export function LoanSimulator({
             ))}
           </div>
         </div>
+
+        <AmortizationTable rows={result.rows} tone={glass ? 'glass' : 'light'} />
 
         <dl
           className={cn(
@@ -172,7 +172,7 @@ export function LoanSimulator({
             </dd>
           </div>
           <p className={cn('pt-1 text-[11px] leading-relaxed', glass ? 'text-brand-navy/65' : 'text-muted-foreground')}>
-            CFT = TEA × 1,21. Sin seguros ni gastos de otorgamiento. Simulación informativa: no es oferta.
+            CFT = TEA × 1,21. Sin seguros ni gastos de otorgamiento. Simulación informativa: no es oferta ni compromiso. La oferta final depende de tu evaluación.
           </p>
         </dl>
 
