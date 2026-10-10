@@ -1042,6 +1042,18 @@ html { scroll-behavior: smooth; }
 body {
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "cv02","cv03","cv04","cv11";
+  background-image: radial-gradient(circle at 15% 0%, rgba(32, 189, 90, 0.06), transparent 28rem), radial-gradient(circle at 100% 20%, rgba(16, 185, 129, 0.045), transparent 24rem);
+}
+.uc-future-grid {
+  background-image: linear-gradient(rgba(12, 22, 18, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(12, 22, 18, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.uc-future-glow {
+  box-shadow: 0 0 0 1px rgba(32, 189, 90, 0.08), 0 18px 50px -28px rgba(21, 122, 59, 0.3);
+}
+.uc-future-panel {
+  background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(247,248,246,0.86));
+  backdrop-filter: blur(18px);
 }
 h1,h2,h3,h4,h5,h6 { letter-spacing: -0.01em; }
 

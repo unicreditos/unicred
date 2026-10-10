@@ -189,7 +189,7 @@ export default async function HomePage() {
             </div>
 
             <div className="lg:col-span-6">
-              <LoanSimulator className="shadow-2xl shadow-brand-navy/20" />
+              <LoanSimulator className="uc-future-glow shadow-2xl shadow-brand-navy/20" />
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:hidden">
                 <Button
                   asChild

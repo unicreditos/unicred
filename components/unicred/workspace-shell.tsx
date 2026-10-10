@@ -212,6 +212,7 @@ export function WorkspaceShell({
                         type="button"
                         title={compact ? item.label : undefined}
                         aria-label={item.label}
+                        aria-current={isActive ? 'page' : childActive ? 'true' : undefined}
                         aria-expanded={kids.length ? isOpen : undefined}
                         onClick={() => {
                           if (!kids.length) {
@@ -274,6 +275,7 @@ export function WorkspaceShell({
                                 key={child.id}
                                 type="button"
                                 onClick={() => go(child.id)}
+                                aria-current={on ? 'page' : undefined}
                                 className={cn(
                                   'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] transition',
                                   on
@@ -299,7 +301,13 @@ export function WorkspaceShell({
   )
 
   return (
-    <div className="flex h-svh overflow-hidden bg-background text-foreground">
+    <div className="uc-future-grid flex h-svh overflow-hidden bg-background text-foreground">
+      <a
+        href="#workspace-main"
+        className="sr-only fixed left-4 top-4 z-[60] rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Ir al contenido principal
+      </a>
       <SupportPresenceBeacon />
       <aside
         className={cn(
@@ -348,7 +356,12 @@ export function WorkspaceShell({
           <aside className="relative flex h-full w-[248px] flex-col bg-sidebar">
             <div className="flex h-16 items-center justify-between border-b border-white/8 px-4">
               <BrandLogo href={meta.homeHref} showText light />
-              <button type="button" onClick={() => setMobileOpen(false)} className="text-white/70">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                aria-label="Cerrar menú de navegación"
+              >
                 <X className="h-6 w-6" />
               </button>
             </div>
@@ -358,7 +371,7 @@ export function WorkspaceShell({
       ) : null}
 
       <div className={cn('flex h-svh min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-200', collapsed ? 'md:pl-20' : 'md:pl-[248px]')}>
-        <header className="no-print sticky top-0 z-30 flex h-[4.5rem] items-center gap-3 border-b border-border/70 bg-card/90 px-4 backdrop-blur-xl sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex h-[4.5rem] items-center gap-3 border-b border-border/70 uc-future-panel bg-card/90 px-4 backdrop-blur-xl sm:px-6">
           <button
             type="button"
             className="rounded-xl p-2 text-muted-foreground hover:bg-muted md:hidden"
@@ -402,7 +415,7 @@ export function WorkspaceShell({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar créditos, cuotas o trámites"
                 aria-label="Buscar créditos"
-                className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
             </form>
           )}
@@ -481,6 +494,8 @@ export function WorkspaceShell({
           )}
         </header>
         <main
+          id="workspace-main"
+          tabIndex={-1}
           className={cn(
             'min-h-0 flex-1 overflow-y-auto px-3 py-4 uc-scroll-thin sm:px-6 lg:px-8',
             // Admin: el piso operativo llena la altura disponible pero nunca recorta;

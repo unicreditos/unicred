@@ -562,6 +562,7 @@ export function DashboardTabsWrapper({
                       max={500000}
                       step={10000}
                       value={simAmount}
+                      aria-label="Monto a solicitar"
                       onChange={(e) => setSimAmount(Number(e.target.value))}
                       className="mt-2 h-2 w-full cursor-pointer accent-brand-primary"
                     />
@@ -581,7 +582,7 @@ export function DashboardTabsWrapper({
                           type="button"
                           onClick={() => setSimTerm(t)}
                           className={cn(
-                            'rounded-xl px-3.5 py-2 text-xs font-semibold transition',
+                            'rounded-xl px-3.5 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             simTerm === t
                               ? 'bg-brand-primary text-white shadow-xs ring-2 ring-brand-primary/20'
                               : 'border border-border bg-card text-foreground hover:bg-muted',
@@ -645,7 +646,7 @@ export function DashboardTabsWrapper({
                         <button
                           key={l.id}
                           type="button"
-                          className="flex w-full items-center justify-between gap-3 py-3 text-left first:pt-0 last:pb-0 hover:opacity-90"
+                          className="flex w-full items-center justify-between gap-3 rounded-xl py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring first:pt-0 last:pb-0"
                           onClick={() => setActiveTab('cuotas_vigentes')}
                         >
                           <div className="min-w-0">
@@ -692,7 +693,7 @@ export function DashboardTabsWrapper({
                         key={a.tab}
                         type="button"
                         onClick={() => setActiveTab(a.tab)}
-                        className="group flex items-center justify-between rounded-xl border border-border/70 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                        className="group flex items-center justify-between rounded-xl border border-border/70 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-brand-primary/10 group-hover:text-brand-primary transition">
