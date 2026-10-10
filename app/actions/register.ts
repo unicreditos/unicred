@@ -20,6 +20,8 @@ import {
   getDiditDecision,
   isDiditConfigured,
 } from '@/lib/didit'
+import { isStaffRole, key6Gate, key6InputFromDecision } from '@/lib/key6'
+import { recordKey6Block } from '@/lib/key6-store'
 import { evaluateMerchantKyb, type RepresentativeRole } from '@/lib/merchant-kyb'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { getOrCreateProfile, getSession, newId } from '@/lib/session'
@@ -189,6 +191,32 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     return {
       ok: false as const,
       error: 'Tenés que verificar tu identidad con Didit antes de crear la cuenta. No se aceptan documentos cargados a mano.',
+    }
+  }
+
+  // Key 6 (solo clientes/comercios de alta publica). El rol sale SIEMPRE de accountType en el servidor:
+  // el cliente no puede mandar 'admin' ni ningun rol de personal, y una cuenta de personal no se re-registra aca.
+  const signupRole = input.accountType === 'comercio' ? 'merchant' : 'customer'
+  const [currentProfile] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, session.user.id)).limit(1)
+  if (isStaffRole(currentProfile?.role)) {
+    return { ok: false as const, error: 'Las cuentas de administraci\u00f3n y operadores las crea el administrador desde el panel. No se registran ac\u00e1.' }
+  }
+  let key6Input = key6InputFromDecision(null)
+  try {
+    key6Input = key6InputFromDecision(await getDiditDecision(diditSessionId))
+  } catch {
+    return {
+      ok: false as const,
+      error: 'No pudimos confirmar tu verificaci\u00f3n de identidad (Key 6). No se abre la cuenta. Intent\u00e1 de nuevo en unos minutos.',
+    }
+  }
+  const key6 = key6Gate(signupRole, key6Input)
+  if (!key6.allow) {
+    await recordKey6Block({ userId: session.user.id, where: 'register', evaluation: key6.evaluation, actorUserId: session.user.id })
+    return {
+      ok: false as const,
+      error: key6.message,
+      key6: { state: key6.evaluation.state, missing: key6.evaluation.missing },
     }
   }
 

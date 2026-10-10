@@ -30,6 +30,8 @@ import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-sch
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { diditApprovedForUser } from '@/lib/didit'
+import { assertKey6 } from '@/lib/key6-store'
+import { isStaffRole } from '@/lib/key6'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import {
   evaluateMerchantKyb,
@@ -1151,6 +1153,10 @@ export async function updateUserAdmin(
   }
   const [u] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
   if (!u) throw new Error('Usuario no encontrado')
+  // Key 6: no se marca 'approved' a un cliente sin DNI frente, dorso y selfie en archivo. Personal exento.
+  if (input.kycStatus === 'approved' && !(input.role && isStaffRole(input.role))) {
+    await assertKey6(userId, 'admin_updateUser', adminUserId)
+  }
 
   const now = new Date()
   if (input.name?.trim() || input.email?.trim()) {
