@@ -1,9 +1,10 @@
 import { db } from '@/lib/db'
-import { merchantDocument } from '@/lib/db/schema'
+import { ensureMerchantAdminSchema } from '@/lib/db/ensure-merchant-admin'
+import { readMerchantDocVerifiedWith } from '@/lib/merchant-admin-store'
+import type { SqlExecutor } from '@/lib/otp-pg-store'
 import { auditAdminView } from '@/lib/admin-desk/load'
 import { assertAdmin } from '@/lib/session'
 import { hasPermission } from '@/lib/rbac'
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -26,13 +27,23 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   }
 
   const { id } = await context.params
-  const [doc] = await db.select().from(merchantDocument).where(eq(merchantDocument.id, id)).limit(1)
-  if (!doc) {
+  await ensureMerchantAdminSchema()
+  // Verifica la huella SHA-256 antes de entregar y deja constancia del acceso (quién, cuándo, resultado).
+  const doc = await readMerchantDocVerifiedWith(db as unknown as SqlExecutor, {
+    documentId: id,
+    actor: adminId,
+    ip: _request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    userAgent: _request.headers.get('user-agent'),
+  })
+  if (!doc.ok) {
+    if (doc.reason === 'hash_mismatch') {
+      return NextResponse.json({ error: 'El archivo no coincide con su huella registrada. No se entrega.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
+    }
     return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404, headers: { 'Cache-Control': 'no-store' } })
   }
   await auditAdminView(adminId, 'documento_comercio', id)
 
-  const bytes = Buffer.from(doc.content, 'base64')
+  const bytes = doc.bytes
   const inline = INLINE_MIME.has(doc.mime)
   const safeName = doc.fileName.replace(/[^\w.\- ]+/g, '_').slice(0, 120) || 'documento'
   return new NextResponse(new Uint8Array(bytes), {
