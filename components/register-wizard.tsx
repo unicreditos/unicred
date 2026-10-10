@@ -21,7 +21,7 @@ import type { IdentityMatch } from '@/lib/identity'
 import { type LoanIntent, hasLoanIntent, solicitarHref } from '@/lib/loan-intent'
 import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Loader2, Lock, Mail, Phone, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Phone, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -60,6 +60,7 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
   const [address, setAddress] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [acceptedBcraConsent, setAcceptedBcraConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,7 +97,14 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     lastLookup.current = digits
     setError(null)
     setLookupLoading(true)
-    const res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    let res: Awaited<ReturnType<typeof lookupRegistrationIdentity>>
+    try {
+      res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    } catch {
+      setLookupLoading(false)
+      setError('No pudimos validar el documento ahora. Revisá el número e intentá nuevamente.')
+      return
+    }
     setLookupLoading(false)
     if (!res.ok) {
       setError(res.error)
@@ -169,55 +177,59 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
       return
     }
     setSaving(true)
-    const created = await authClient.signUp.email({ email, password, name: name || email })
-    if (created.error) {
-      setSaving(false)
-      setError('No pudimos crear la cuenta. El email puede estar en uso.')
-      return
-    }
-    const signed = await authClient.signIn.email({ email, password })
-    if (signed.error) {
-      setSaving(false)
-      setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
-      return
-    }
+    const cleanEmail = email.trim().toLowerCase()
+    try {
+      const created = await authClient.signUp.email({ email: cleanEmail, password, name: name.trim() || cleanEmail })
+      if (created.error) {
+        setError('No pudimos crear la cuenta. El email puede estar en uso.')
+        return
+      }
+      const signed = await authClient.signIn.email({ email: cleanEmail, password })
+      if (signed.error) {
+        setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
+        return
+      }
 
-    const done = await completeRegistration({
-      accountType: 'persona',
-      name,
-      cuil,
-      dni,
-      phone,
-      birthDate,
-      province: geo.province || identity.province || '',
-      department: geo.department || identity.department || '',
-      city: geo.city || identity.city || '',
-      postalCode: geo.postalCode || identity.postalCode || '',
-      address: address || identity.address || '',
-      monthlyIncome: 0,
-      employmentStatus: '',
-      businessName: '',
-      category: '',
-      confirmedIdentity,
-      acceptedTerms,
-      acceptedBcraConsent,
-      identity,
-    })
-    setSaving(false)
-    if (!done.ok) {
-      setError(done.error)
-      return
+      const done = await completeRegistration({
+        accountType: 'persona',
+        name,
+        cuil,
+        dni,
+        phone,
+        birthDate,
+        province: geo.province || identity.province || '',
+        department: geo.department || identity.department || '',
+        city: geo.city || identity.city || '',
+        postalCode: geo.postalCode || identity.postalCode || '',
+        address: address || identity.address || '',
+        monthlyIncome: 0,
+        employmentStatus: '',
+        businessName: '',
+        category: '',
+        confirmedIdentity,
+        acceptedTerms,
+        acceptedBcraConsent,
+        identity,
+      })
+      if (!done.ok) {
+        setError(done.error)
+        return
+      }
+      setResult({
+        score: done.score?.score ?? null,
+        band: done.score?.band,
+        reasons: done.score?.reasons,
+        reportId: done.reportId,
+        dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
+        warning: done.warning,
+        diditConfigured: done.diditConfigured,
+      })
+      go('resultado')
+    } catch {
+      setError('No pudimos completar el registro. Revisá tus datos e intentá nuevamente.')
+    } finally {
+      setSaving(false)
     }
-    setResult({
-      score: done.score?.score ?? null,
-      band: done.score?.band,
-      reasons: done.score?.reasons,
-      reportId: done.reportId,
-      dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
-      warning: done.warning,
-      diditConfigured: done.diditConfigured,
-    })
-    go('resultado')
   }
 
   const contactoReady =
@@ -468,14 +480,22 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
               <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-navy-400" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={8}
                 placeholder="Mínimo 8 caracteres"
-                className={cn(fieldClass, 'pl-10')}
+                className={cn(fieldClass, 'pl-10 pr-11')}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-brand-navy-400 hover:text-brand-navy-800"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <div className="space-y-3 rounded-2xl border border-brand-navy-200 bg-white p-4 text-sm text-brand-navy-800">

@@ -39,6 +39,12 @@ export function AuthForm() {
     setLoading(true)
 
     const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !password) {
+      setLoading(false)
+      setError('Ingresá tu correo electrónico y contraseña para continuar.')
+      return
+    }
+
     const { error: signInError } = await authClient.signIn.email({
       email: cleanEmail,
       password,
