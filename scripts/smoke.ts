@@ -46,8 +46,9 @@ async function main() {
     // Sitio principal
     probe('home', '/', {
       status: [200],
-      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Tope del primer crédito'],
+      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Sabé cuánto devolvés', 'Préstamos personales'],
     }),
+    probe('health', '/api/health', { status: [200], bodyIncludes: '"ok":true' }),
     probe('login', '/sign-in', {
       status: [200],
       bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Central de Deudores'],
