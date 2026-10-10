@@ -18,9 +18,11 @@ const ALLOWED = new Set<DeskMutateAction>([
   'rejectTransfer',
   'logCollectionContact',
   'resolveTicket',
+  'reopenApplication',
+  'editApplication',
 ])
 
-export type DeskActionResult = { ok: true } | { ok: false; error: string }
+export type DeskActionResult = { ok: true } | { ok: false; error: string; code?: 'conflict' | 'needs_confirmation' }
 
 export async function runDeskAction(
   action: DeskMutateAction,
@@ -31,7 +33,7 @@ export async function runDeskAction(
     const userId = await assertAdmin()
     await assertDeskPermission(userId, action)
     const result = await deskMutate(userId, action, payload)
-    if (!result.ok) return { ok: false, error: result.error }
+    if (!result.ok) return { ok: false, error: result.error, code: result.code }
     updateTag(DESK_CACHE_TAG)
     revalidatePath('/admin', 'layout')
     return { ok: true }
