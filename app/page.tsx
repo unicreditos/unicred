@@ -5,7 +5,18 @@ import { formatARS } from '@/lib/finance'
 import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import { INCOME_DTI_RATIO } from '@/lib/loan-underwriting'
 import { pageMetadata } from '@/lib/seo'
-import { ArrowRight, Check, FileSignature, Fingerprint, Landmark, ScrollText } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  FileSignature,
+  Fingerprint,
+  KeyRound,
+  Landmark,
+  MonitorSmartphone,
+  ScanFace,
+  ScrollText,
+  ShieldCheck,
+} from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata = pageMetadata({
@@ -33,7 +44,7 @@ const STEPS = [
   },
   {
     t: 'Evaluamos tu perfil',
-    d: 'Con tu consentimiento consultamos la Central de Deudores del BCRA y calculamos tu score. La decisión es automática o pasa a revisión humana.',
+    d: 'Con tu consentimiento consultamos la Central de Deudores del BCRA y calculamos tu score. El score es solo una recomendación: un analista de la mesa de créditos revisa tu solicitud y decide.',
   },
   {
     t: 'Firmás con todo a la vista',
@@ -49,7 +60,7 @@ const DOCUMENTS = [
   {
     icon: FileSignature,
     t: 'Contrato de mutuo',
-    d: 'Con TNA, TEA, CFT y plan de cuotas. Se firma con aceptación electrónica y queda registrado con su huella digital.',
+    d: 'Con TNA, TEA, CFT y plan de cuotas. Se firma con firma electrónica y queda registrado con fecha, IP, CUIL y la huella digital (SHA-256) de su contenido.',
   },
   {
     icon: ScrollText,
@@ -65,6 +76,29 @@ const DOCUMENTS = [
     icon: Fingerprint,
     t: 'Recibos y certificados',
     d: 'Un recibo por cada cuota y, al cancelar, libre deuda y constancia de cancelación.',
+  },
+] as const
+
+const SECURITY = [
+  {
+    icon: KeyRound,
+    t: 'Verificación en dos pasos',
+    d: 'Además de tu contraseña, confirmás con un código de 6 dígitos que te llega por correo o con una app autenticadora. Los códigos vencen y se pueden usar una sola vez.',
+  },
+  {
+    icon: MonitorSmartphone,
+    t: 'Sesiones bajo tu control',
+    d: 'Ves desde qué dispositivos hay sesiones abiertas y las cerrás a distancia, una por una o todas las demás.',
+  },
+  {
+    icon: ScanFace,
+    t: 'Identidad verificada',
+    d: 'Validamos tu DNI y tu cara con Didit antes de operar. La verificación vale 12 meses y después se renueva.',
+  },
+  {
+    icon: ShieldCheck,
+    t: 'Evidencia con huella de integridad',
+    d: 'Cada documento de identidad se guarda con una huella digital SHA-256 y un registro de quién lo consultó, sin sobrescribir versiones anteriores.',
   },
 ] as const
 
@@ -85,7 +119,11 @@ const FAQ = [
   },
   {
     q: '¿Cuánto tarda la respuesta?',
-    a: 'La evaluación es automática: si tu perfil califica la oferta aparece al terminar la verificación. Los casos dudosos pasan a revisión manual de la mesa de créditos.',
+    a: 'Cada solicitud la revisa y decide una persona de la mesa de créditos; no hay aprobación automática. No prometemos un plazo fijo: depende de la verificación de identidad y de la consulta al BCRA. Te avisamos por correo y ves el estado en tu panel.',
+  },
+  {
+    q: '¿Cómo protegen mi cuenta?',
+    a: 'Podés activar la verificación en dos pasos con un código por correo o con una app autenticadora, y ver y cerrar desde tu cuenta las sesiones abiertas en otros dispositivos. Tu identidad se verifica con Didit y la verificación vale 12 meses.',
   },
   {
     q: '¿Puedo tener más de un crédito a la vez?',
@@ -110,7 +148,7 @@ export default function HomePage() {
             className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(32,189,90,0.14),transparent_70%)]"
           />
           <div className="relative mx-auto grid w-full max-w-7xl items-start gap-12 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-28 lg:pt-20">
-            <div className="lg:col-span-6">
+            <div className="min-w-0 lg:col-span-6">
               <p className="inline-flex items-center gap-2 rounded-full border border-brand-navy-200 bg-white px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-brand-navy-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" /> Préstamos personales · 100% online
               </p>
@@ -155,7 +193,7 @@ export default function HomePage() {
               </dl>
             </div>
 
-            <div className="lg:col-span-6 lg:pl-6">
+            <div className="min-w-0 lg:col-span-6 lg:pl-6">
               <LiveStatement />
             </div>
           </div>
@@ -217,6 +255,29 @@ export default function HomePage() {
                   <d.icon className="h-6 w-6 text-brand-primary-700" aria-hidden />
                   <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{d.t}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-brand-navy-600">{d.d}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Seguridad */}
+        <section aria-labelledby="seguridad-titulo" className="border-t border-brand-navy-200 bg-paper">
+          <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+            <div className="max-w-2xl">
+              <h2 id="seguridad-titulo" className="font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl">
+                Tu cuenta y tus datos, protegidos.
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-brand-navy-600">
+                Controles que ya forman parte de la plataforma, para que solo vos operes con tu identidad.
+              </p>
+            </div>
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {SECURITY.map((s) => (
+                <article key={s.t} className="rounded-3xl border border-brand-navy-200 bg-white p-6">
+                  <s.icon className="h-6 w-6 text-brand-primary-700" aria-hidden />
+                  <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{s.t}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-brand-navy-600">{s.d}</p>
                 </article>
               ))}
             </div>

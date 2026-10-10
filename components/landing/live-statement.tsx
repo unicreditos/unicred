@@ -1,29 +1,19 @@
 'use client'
 
+import { AmortizationTable, AmountField } from '@/components/landing/sim-parts'
 import { Slider } from '@/components/ui/slider'
-import { computeFrenchAmortization, formatARS, formatPercent } from '@/lib/finance'
+import { formatARS, formatPercent } from '@/lib/finance'
 import { signupHref } from '@/lib/loan-intent'
 import { catalogByType, PERSONAL_QUOTE } from '@/lib/loan-catalog'
 import { FIRST_CREDIT_HARD_CAP } from '@/lib/loan-underwriting'
+import { parseAmountInput, SIM_AMOUNT_STEP, simulate, termOptionsFor } from '@/lib/simulator-core'
 import { cn } from '@/lib/utils'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 const PERSONAL = catalogByType('personal')
-const TERMS = [3, 6, 12, 18, 24, 36, 48]
-
-/** Desglose capital/interés de cada cuota (sistema francés), para la tira de barras. */
-function splitSchedule(principal: number, term: number, monthlyRate: number, installment: number) {
-  const i = monthlyRate / 100
-  let balance = principal
-  return Array.from({ length: term }, (_, idx) => {
-    const interest = balance * i
-    const capital = Math.min(balance, installment - interest)
-    balance -= capital
-    return { n: idx + 1, interest, capital }
-  })
-}
+const TERMS = termOptionsFor(PERSONAL)
 
 function Row({
   label,
@@ -57,15 +47,10 @@ export function LiveStatement({ className }: { className?: string }) {
   const [amount, setAmount] = useState(400_000)
   const [term, setTerm] = useState(12)
 
-  const result = useMemo(
-    () => computeFrenchAmortization(amount, term, PERSONAL.monthlyRate),
-    [amount, term],
-  )
-  const bars = useMemo(
-    () => splitSchedule(amount, term, PERSONAL.monthlyRate, result.installmentAmount),
-    [amount, term, result.installmentAmount],
-  )
-  const maxBar = bars[0] ? bars[0].capital + bars[0].interest : 1
+  // Mismo calculo que el credito real (lib/finance.ts via simulator-core).
+  const result = useMemo(() => simulate(PERSONAL, amount, term), [amount, term])
+  const bars = result.rows
+  const maxBar = bars[0] ? bars[0].installment : 1
 
   return (
     <div
@@ -96,17 +81,20 @@ export function LiveStatement({ className }: { className?: string }) {
 
       <div className="space-y-6 px-6 pt-5">
         <div className="space-y-3">
-          <div className="flex items-baseline justify-between">
-            <label className="text-sm font-medium text-white/80" id="live-amount-label">
-              Monto
-            </label>
-            <span className="font-mono text-sm tabular-nums text-white">{formatARS(amount)}</span>
-          </div>
+          <AmountField
+            value={amount}
+            onCommit={setAmount}
+            parse={(raw) => parseAmountInput(raw, PERSONAL)}
+            tone="dark"
+          />
+          <span className="sr-only" id="live-amount-label">
+            Monto del crédito, deslizá para cambiarlo
+          </span>
           <Slider
             value={[amount]}
             min={PERSONAL.minAmount}
             max={PERSONAL.maxAmount}
-            step={10_000}
+            step={SIM_AMOUNT_STEP}
             onValueChange={(v) => setAmount(Array.isArray(v) ? v[0] : (v as number))}
             aria-labelledby="live-amount-label"
             className="[&_[data-slot=slider-track]]:bg-white/20!"
@@ -151,12 +139,12 @@ export function LiveStatement({ className }: { className?: string }) {
         >
           {bars.map((b) => (
             <div
-              key={b.n}
+              key={b.number}
               className="flex min-w-[3px] flex-1 flex-col justify-end overflow-hidden rounded-[2px]"
-              style={{ height: `${((b.capital + b.interest) / maxBar) * 100}%` }}
-              title={`Cuota ${b.n}: capital ${formatARS(b.capital)} · interés ${formatARS(b.interest)}`}
+              style={{ height: `${(b.installment / maxBar) * 100}%` }}
+              title={`Cuota ${b.number}: capital ${formatARS(b.capital)} · interés ${formatARS(b.interest)}`}
             >
-              <div className="bg-signal-amber/90" style={{ height: `${(b.interest / (b.capital + b.interest)) * 100}%` }} />
+              <div className="bg-signal-amber/90" style={{ height: `${(b.interest / (b.capital + b.interest || 1)) * 100}%` }} />
               <div className="flex-1 bg-brand-primary" />
             </div>
           ))}
@@ -169,6 +157,10 @@ export function LiveStatement({ className }: { className?: string }) {
             <i className="inline-block h-2 w-2 rounded-sm bg-signal-amber" /> Interés
           </span>
         </div>
+      </div>
+
+      <div className="mt-6 px-6">
+        <AmortizationTable rows={result.rows} tone="dark" />
       </div>
 
       <dl className="mt-6 space-y-2.5 border-t border-white/10 px-6 pb-6 pt-5">
@@ -191,7 +183,11 @@ export function LiveStatement({ className }: { className?: string }) {
         <p className="mt-3 text-[11px] leading-relaxed text-white/45">
           Simulación a tasa de referencia ({formatPercent(PERSONAL_QUOTE.tna)} TNA). Tu primer crédito puede otorgarse hasta{' '}
           {formatARS(FIRST_CREDIT_HARD_CAP)}; la oferta final depende de tu evaluación. Sin gastos de otorgamiento ni
-          seguros.
+          seguros. CFT = TEA × 1,21 (IVA sobre intereses). Simulación informativa: no es una oferta ni un compromiso.{' '}
+          <Link href="/legal/tasas" className="underline underline-offset-2 hover:text-white/80">
+            Cómo se calculan
+          </Link>
+          .
         </p>
       </div>
     </div>
