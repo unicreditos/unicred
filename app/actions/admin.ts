@@ -1,5 +1,6 @@
 'use server'
 
+import { dateOnlyKey, parseDateOnly } from '@/lib/date-ar'
 import { getPrincipalesVariables } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import {
@@ -392,7 +393,7 @@ export async function getBcraVariables() {
       return stored.map((v) => ({
         id: v.idVariable,
         variable: v.variableName,
-        fecha: v.effectiveDate ? new Date(v.effectiveDate).toISOString().split('T')[0] : null,
+        fecha: v.effectiveDate ? dateOnlyKey(v.effectiveDate) : null,
         valor: v.value,
         manualOverride: !!v.manualOverride,
         overrideNote: v.overrideNote,
@@ -599,7 +600,10 @@ export async function updateLoanManual(
     updates.scoreAtApproval = opts.scoreAtApproval
   }
   if (opts.disbursedAt !== undefined && opts.disbursedAt !== null && opts.disbursedAt !== '') {
-    updates.disbursedAt = new Date(opts.disbursedAt)
+    // 'AAAA-MM-DD' del formulario = dia civil argentino (new Date('2026-10-09') seria 08/10 21:00 AR).
+    const parsedDisbursedAt = parseDateOnly(String(opts.disbursedAt)) ?? new Date(opts.disbursedAt)
+    if (Number.isNaN(parsedDisbursedAt.getTime())) throw new Error('Fecha de acreditacion invalida')
+    updates.disbursedAt = parsedDisbursedAt
   }
 
   const nextStatus = (updates.status ?? existing.status) as string
@@ -827,7 +831,7 @@ export async function updateBcraVariable(
       .set({
         variableName: opts.variableName ?? existing[0].variableName,
         value: opts.value !== undefined && opts.value !== null ? String(opts.value) : existing[0].value,
-        effectiveDate: opts.effectiveDate ? new Date(opts.effectiveDate) : existing[0].effectiveDate,
+        effectiveDate: opts.effectiveDate ? (parseDateOnly(String(opts.effectiveDate)) ?? new Date(opts.effectiveDate)) : existing[0].effectiveDate,
         manualOverride: true,
         overrideNote: opts.overrideNote ?? existing[0].overrideNote,
         updatedBy: adminUserId,
@@ -841,7 +845,7 @@ export async function updateBcraVariable(
       idVariable,
       variableName: opts.variableName ?? idVariable,
       value: opts.value !== undefined && opts.value !== null ? String(opts.value) : '0',
-      effectiveDate: opts.effectiveDate ? new Date(opts.effectiveDate) : now,
+      effectiveDate: opts.effectiveDate ? (parseDateOnly(String(opts.effectiveDate)) ?? new Date(opts.effectiveDate)) : now,
       manualOverride: true,
       overrideNote: opts.overrideNote ?? null,
       updatedBy: adminUserId,

@@ -1,3 +1,4 @@
+import { dateOnlyKey, parseDateOnly } from '@/lib/date-ar'
 import { unstable_cache } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
@@ -102,7 +103,7 @@ async function persistFx(rows: MarketFxRow[]) {
   const now = new Date()
   for (const row of rows) {
     const idVariable = fxKey(row.moneda)
-    const effectiveDate = row.fecha ? new Date(row.fecha) : now
+    const effectiveDate = row.fecha ? (parseDateOnly(row.fecha) ?? new Date(row.fecha)) : now
     const [existing] = await db
       .select({ id: bcraVariable.id, manualOverride: bcraVariable.manualOverride })
       .from(bcraVariable)
@@ -140,7 +141,7 @@ async function readFxFromDb(): Promise<MarketFxRow[]> {
         moneda: r.idVariable.replace(/^FX:/, ''),
         descripcion: r.variableName.replace(/^Tipo de cambio\s+/i, ''),
         valor: Number(r.value),
-        fecha: r.effectiveDate ? r.effectiveDate.toISOString().slice(0, 10) : null,
+        fecha: r.effectiveDate ? dateOnlyKey(r.effectiveDate) : null,
       }))
       .filter((r) => Number.isFinite(r.valor))
   } catch (err) {
@@ -159,7 +160,7 @@ async function readIndicatorsFromDb(): Promise<MarketIndicator[]> {
         id: r.idVariable,
         nombre: r.variableName,
         valor: Number(r.value),
-        fecha: r.effectiveDate ? r.effectiveDate.toISOString().slice(0, 10) : null,
+        fecha: r.effectiveDate ? dateOnlyKey(r.effectiveDate) : null,
       }))
   } catch (err) {
     console.warn('[bcra-market] db indicadores:', (err as Error).message)

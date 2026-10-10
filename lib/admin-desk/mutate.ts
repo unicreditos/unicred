@@ -1,3 +1,4 @@
+import { arCompactDate } from '@/lib/date-ar'
 import { and, desc, eq, ne } from 'drizzle-orm'
 import { recordAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
@@ -266,7 +267,7 @@ export async function deskMutate(
           return fail('CBU/CVU de desembolso inválido o incompleto.')
         }
         const now = new Date()
-        const receiptNumber = `DES-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${d.id.slice(-8).toUpperCase()}`
+        const receiptNumber = `DES-${arCompactDate(now)}-${d.id.slice(-8).toUpperCase()}`
         await db.transaction(async (tx) => {
           const acquired = await tx
             .update(disbursement)

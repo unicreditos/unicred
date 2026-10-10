@@ -1,3 +1,4 @@
+import { addDaysAR, arParts, daysInMonth, arWallTimeToInstant, arDateKey, endOfDayAR, parseDateOnly, startOfDayAR } from '@/lib/date-ar'
 import type { Credit, Disbursement, LoanApplication } from './types'
 
 export type PeriodPreset =
@@ -36,10 +37,8 @@ export interface SummaryMetrics {
 /** Formatea una fecha local a YYYY-MM-DD para inputs HTML type="date" */
 export function toInputDate(d: Date | null | undefined): string {
   if (!d || Number.isNaN(d.getTime())) return ''
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  // Dia civil argentino (no el del huso de la maquina).
+  return arDateKey(d)
 }
 
 /** Parsea un string YYYY-MM-DD o DD/MM/YYYY a Date */
@@ -48,27 +47,9 @@ export function parseDateInput(s: string | null | undefined, endOfDay = false): 
   const clean = s.trim()
   if (!clean) return null
 
-  // YYYY-MM-DD
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean)
-  if (isoMatch) {
-    const y = parseInt(isoMatch[1], 10)
-    const m = parseInt(isoMatch[2], 10) - 1
-    const d = parseInt(isoMatch[3], 10)
-    return endOfDay
-      ? new Date(y, m, d, 23, 59, 59, 999)
-      : new Date(y, m, d, 0, 0, 0, 0)
-  }
-
-  // DD/MM/YYYY
-  const dmyMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(clean)
-  if (dmyMatch) {
-    const d = parseInt(dmyMatch[1], 10)
-    const m = parseInt(dmyMatch[2], 10) - 1
-    const y = parseInt(dmyMatch[3], 10)
-    return endOfDay
-      ? new Date(y, m, d, 23, 59, 59, 999)
-      : new Date(y, m, d, 0, 0, 0, 0)
-  }
+  // YYYY-MM-DD o DD/MM/YYYY = dia civil argentino (00:00 o 23:59:59.999 AR).
+  const dayStart = parseDateOnly(clean)
+  if (dayStart) return endOfDay ? endOfDayAR(dayStart) : dayStart
 
   const fallback = new Date(clean)
   return Number.isNaN(fallback.getTime()) ? null : fallback
@@ -88,8 +69,9 @@ export function resolveDateRange(
   customToStr?: string,
   refDate: Date = new Date(),
 ): DateRange {
-  const y = refDate.getFullYear()
-  const m = refDate.getMonth()
+  const ref = arParts(refDate)
+  const y = ref.year
+  const m = ref.month - 1
 
   if (preset === 'custom' && (customFromStr || customToStr)) {
     const from = parseDateInput(customFromStr, false)
@@ -116,10 +98,8 @@ export function resolveDateRange(
 
   switch (preset) {
     case 'last_30_days': {
-      const from = new Date(refDate.getTime() - 30 * 24 * 60 * 60 * 1000)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(refDate)
-      to.setHours(23, 59, 59, 999)
+      const from = startOfDayAR(addDaysAR(refDate, -30))
+      const to = endOfDayAR(refDate)
       return {
         preset: 'last_30_days',
         from,
@@ -133,8 +113,8 @@ export function resolveDateRange(
     case 'last_month': {
       const lastMonthYear = m === 0 ? y - 1 : y
       const lastMonthIdx = m === 0 ? 11 : m - 1
-      const from = new Date(lastMonthYear, lastMonthIdx, 1, 0, 0, 0, 0)
-      const to = new Date(lastMonthYear, lastMonthIdx + 1, 0, 23, 59, 59, 999)
+      const from = arWallTimeToInstant(lastMonthYear, lastMonthIdx + 1, 1)
+      const to = arWallTimeToInstant(lastMonthYear, lastMonthIdx + 1, daysInMonth(lastMonthYear, lastMonthIdx + 1), 23, 59, 59, 999)
       return {
         preset: 'last_month',
         from,
@@ -146,10 +126,8 @@ export function resolveDateRange(
     }
 
     case 'quarter': {
-      const from = new Date(refDate.getTime() - 90 * 24 * 60 * 60 * 1000)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(refDate)
-      to.setHours(23, 59, 59, 999)
+      const from = startOfDayAR(addDaysAR(refDate, -90))
+      const to = endOfDayAR(refDate)
       return {
         preset: 'quarter',
         from,
@@ -161,8 +139,8 @@ export function resolveDateRange(
     }
 
     case 'year': {
-      const from = new Date(y, 0, 1, 0, 0, 0, 0)
-      const to = new Date(y, 11, 31, 23, 59, 59, 999)
+      const from = arWallTimeToInstant(y, 1, 1)
+      const to = arWallTimeToInstant(y, 12, 31, 23, 59, 59, 999)
       return {
         preset: 'year',
         from,
@@ -186,8 +164,8 @@ export function resolveDateRange(
 
     case 'current_month':
     default: {
-      const from = new Date(y, m, 1, 0, 0, 0, 0)
-      const to = new Date(y, m + 1, 0, 23, 59, 59, 999)
+      const from = arWallTimeToInstant(y, m + 1, 1)
+      const to = arWallTimeToInstant(y, m + 1, daysInMonth(y, m + 1), 23, 59, 59, 999)
       return {
         preset: 'current_month',
         from,
@@ -200,6 +178,12 @@ export function resolveDateRange(
   }
 }
 
+/** Fecha sin hora ('2026-05-12') = dia civil argentino; el resto, un instante normal. */
+function asInstant(raw: string | Date): Date {
+  if (raw instanceof Date) return raw
+  return parseDateOnly(raw) ?? new Date(raw)
+}
+
 /**
  * Determina si una fecha está dentro del rango [from, to].
  */
@@ -209,7 +193,7 @@ export function isDateInRange(
   to: Date | null,
 ): boolean {
   if (!dateInput) return false
-  const d = dateInput instanceof Date ? dateInput : new Date(dateInput)
+  const d = asInstant(dateInput)
   if (Number.isNaN(d.getTime())) return false
   if (from && d < from) return false
   if (to && d > to) return false
@@ -231,7 +215,7 @@ export function getApplicationDisbursementDate(
   if (disb) {
     const raw = disb.completedAt || disb.requestedAt
     if (raw) {
-      const d = new Date(raw)
+      const d = asInstant(raw)
       if (!Number.isNaN(d.getTime())) return d
     }
   }
@@ -240,18 +224,18 @@ export function getApplicationDisbursementDate(
   const credit = credits.find((c) => c.applicationId === app.id || c.id === app.id)
   if (credit) {
     if (credit.disbursedAt) {
-      const d = new Date(credit.disbursedAt)
+      const d = asInstant(credit.disbursedAt)
       if (!Number.isNaN(d.getTime())) return d
     }
     if (credit.status !== 'cancelled' && (app.decidedAt || app.createdAt)) {
-      const d = new Date(app.decidedAt || app.createdAt!)
+      const d = asInstant(app.decidedAt || app.createdAt!)
       if (!Number.isNaN(d.getTime())) return d
     }
   }
 
   // 3. Solicitud aprobada
   if (app.status === 'approved' && (app.decidedAt || app.createdAt)) {
-    const d = new Date(app.decidedAt || app.createdAt!)
+    const d = asInstant(app.decidedAt || app.createdAt!)
     if (!Number.isNaN(d.getTime())) return d
   }
 

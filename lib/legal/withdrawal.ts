@@ -1,9 +1,9 @@
+import { addDaysAR } from '@/lib/date-ar'
+
 export const WITHDRAWAL_DAYS = 10
 
 export function withdrawalDeadline(acceptedAt: Date | string) {
-  const deadline = new Date(acceptedAt)
-  deadline.setDate(deadline.getDate() + WITHDRAWAL_DAYS)
-  return deadline
+  return addDaysAR(acceptedAt, WITHDRAWAL_DAYS)
 }
 
 export function canWithdrawAcceptance(opts: {

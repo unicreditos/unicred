@@ -1,3 +1,4 @@
+import { arCompactDate } from '@/lib/date-ar'
 import { getAFIPCredentials, getTicketAcceso } from '@/lib/arca/wsaa'
 import { getActivePtoVta } from '@/lib/arca/config'
 
@@ -19,10 +20,8 @@ export type WsfeCaeResult = {
 }
 
 function yyyymmdd(d = new Date()) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}${m}${day}`
+  // Fecha del comprobante = dia argentino (ARCA rechaza fechas futuras; en UTC despues de las 21:00 seria manana).
+  return arCompactDate(d)
 }
 
 function round2(n: number) {

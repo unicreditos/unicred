@@ -1,5 +1,6 @@
 'use server'
 
+import { startOfDayAR } from '@/lib/date-ar'
 import { recordAudit } from '@/lib/audit'
 import { contractContentHash, signatureRecordHash } from '@/lib/legal/contract-hash'
 import { db } from '@/lib/db'
@@ -434,8 +435,7 @@ export async function refinanceLoan(loanId: string) {
 
   const outstanding = money(unpaid.reduce((sum, row) => sum + Number(row.amount), 0))
   const amounts = splitBalanceEvenly(outstanding, unpaid.length)
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
+  const start = startOfDayAR()
 
   const number = await db.transaction(async (tx) => {
     for (const [index, row] of unpaid.entries()) {

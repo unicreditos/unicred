@@ -1,3 +1,4 @@
+import { addDaysAR, endOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { installment, loan, payment, profile, user as userTable } from '@/lib/db/schema'
 import {
@@ -49,7 +50,7 @@ function sameInstallment(row: { installmentId: string | null; gatewayResponse: u
 
 export function ticketValidUntil(dueDate: Date | string, now = new Date()) {
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
-  const withGrace = new Date(due.getTime() + TICKET_GRACE_DAYS * 24 * 60 * 60 * 1000)
+  const withGrace = addDaysAR(endOfDayAR(due), TICKET_GRACE_DAYS)
   const min = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
   const max = new Date(now.getTime() + TICKET_MAX_DAYS * 24 * 60 * 60 * 1000)
   const target = withGrace > min ? withGrace : min

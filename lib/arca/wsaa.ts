@@ -1,3 +1,4 @@
+import { toArIsoWithOffset } from '@/lib/date-ar'
 import fs from 'node:fs'
 import path from 'node:path'
 import * as forge from 'node-forge'
@@ -21,8 +22,7 @@ export type TicketAcceso = {
 const mem = new Map<string, TicketAcceso>()
 
 function argTime(d: Date) {
-  const local = new Date(d.getTime() - 3 * 60 * 60 * 1000)
-  return `${local.toISOString().replace(/\.\d{3}Z$/, '')}-03:00`
+  return toArIsoWithOffset(d)
 }
 
 function traXml(service: string) {

@@ -33,7 +33,7 @@ function formatFecha(value: string | null) {
   const iso = value.includes('T') ? value : `${value}T12:00:00`
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
 function publicationDate(board: PublicMarketBoard) {

@@ -1,3 +1,4 @@
+import { startOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { installment, loanContract, user as userTable } from '@/lib/db/schema'
 import { contractReadyEmail, intimacionEmail, sendEmail } from '@/lib/email'
@@ -144,8 +145,8 @@ export async function requireAcceptedContract(loanId: string) {
 }
 
 export async function syncOverdueInstallments(filter?: { loanId?: string; userId?: string }) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Hoy a las 00:00 de Argentina: una cuota vence recien al terminar su dia civil argentino.
+  const today = startOfDayAR()
   const conds = [eq(installment.status, 'pending'), lt(installment.dueDate, today)]
   if (filter?.loanId) conds.push(eq(installment.loanId, filter.loanId))
   if (filter?.userId) conds.push(eq(installment.userId, filter.userId))

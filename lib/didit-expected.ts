@@ -1,3 +1,5 @@
+import { addYearsToDateKey, isValidYmd, todayAR } from '@/lib/date-ar'
+
 /** Datos personales que sí se pueden mandar a Didit. Didit verifica una persona, no una SAS. */
 
 const COMPANY_NAME =
@@ -37,24 +39,16 @@ export function isSocietyLabelForDidit(name: string, businessName?: string) {
   return Boolean(biz) && n.localeCompare(biz, 'es', { sensitivity: 'accent' }) === 0
 }
 
-function localIsoDate(d: Date) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
+/** Limites de fecha de nacimiento (fecha civil 'AAAA-MM-DD') segun el dia de hoy en Argentina. */
 export function adultBirthDateBounds(now = new Date()) {
-  const max = new Date(now.getFullYear() - 18, now.getMonth(), now.getDate())
-  const min = new Date(now.getFullYear() - 100, now.getMonth(), now.getDate())
-  return { min: localIsoDate(min), max: localIsoDate(max) }
+  const today = todayAR(now)
+  return { min: addYearsToDateKey(today, -100), max: addYearsToDateKey(today, -18) }
 }
 
 export function isPlausibleAdultBirthDate(iso: string, now = new Date()) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
   const [y, m, d] = iso.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return false
+  if (!isValidYmd(y, m, d)) return false
   const { min, max } = adultBirthDateBounds(now)
   return iso >= min && iso <= max
 }

@@ -1,3 +1,4 @@
+import { arMonthKey, arParts, daysPastDueAR } from '@/lib/date-ar'
 import { Bars, NoAccess, PageHead, Pad, CardHead, Grid, SectionTitle } from '@/components/uc/blocks'
 import { DataGrid } from '@/components/uc/data-grid'
 import type { GridRow } from '@/components/uc/grid-types'
@@ -12,8 +13,7 @@ function monthKey(iso: string | null | undefined) {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  const ar = new Date(d.getTime() - 3 * 3_600_000)
-  return `${ar.getUTCFullYear()}-${String(ar.getUTCMonth() + 1).padStart(2, '0')}`
+  return arMonthKey(d)
 }
 
 export default async function AnaliticasPage() {
@@ -22,10 +22,10 @@ export default async function AnaliticasPage() {
   if (!perms.has('finance.read')) return <>{head}<NoAccess what="las analíticas" /></>
 
   const nowMs = new Date().getTime()
-  const now = new Date(nowMs - 3 * 3_600_000)
+  const nowAR = arParts(new Date(nowMs))
   const months: Array<{ key: string; label: string }> = []
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+    const d = new Date(Date.UTC(nowAR.year, nowAR.month - 1 - i, 1))
     months.push({ key: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`, label: MONTHS[d.getUTCMonth()] })
   }
 
@@ -41,7 +41,7 @@ export default async function AnaliticasPage() {
       if (c.daysPastDue > 30) cur.late += c.principalOutstanding
     }
     for (const i of c.schedule) {
-      if (new Date(i.dueDate).getTime() <= nowMs) {
+      if (daysPastDueAR(i.dueDate, new Date(nowMs)) >= 0) {
         cur.due += i.amount
         cur.paid += Math.min(i.paidAmount, i.amount)
       }
