@@ -60,6 +60,7 @@ import {
 import { arMonthKey, arParts, arWallTimeToInstant, formatDMY } from "@/lib/date-ar"
 import { DecisionBanner, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
 import { SupportChatPanel } from "@/components/support/support-chat"
+import { DocumentosTab } from "@/app/merchant/_documentos"
 import {
   Banknote,
   BarChart3,
@@ -168,6 +169,7 @@ type TabValue =
   | "liquidations"
   | "conciliacion"
   | "reportes"
+  | "documentos"
   | "ayuda"
 
 const MERCHANT_NAV: WorkspaceNavItem[] = [
@@ -180,6 +182,7 @@ const MERCHANT_NAV: WorkspaceNavItem[] = [
   { id: "conciliacion", label: "Conciliación", icon: Scale, group: "Finanzas" },
   { id: "reportes", label: "Reportes", icon: ChartNoAxesCombined, group: "Finanzas" },
   { id: "profile", label: "Datos", icon: Store, group: "Cuenta" },
+  { id: "documentos", label: "Documentación", icon: Mail, group: "Cuenta" },
   { id: "ayuda", label: "Ayuda", icon: Handshake, group: "Cuenta" },
 ]
 
@@ -193,6 +196,7 @@ const MERCHANT_TITLES: Record<TabValue, { title: string; subtitle: string }> = {
   liquidations: { title: "Liquidaciones", subtitle: "Bruto, comisión y neto a favor" },
   conciliacion: { title: "Conciliación", subtitle: "Ventas versus lo esperado a cobrar" },
   reportes: { title: "Reportes", subtitle: "Volumen originado por período" },
+  documentos: { title: "Documentación y mensajes", subtitle: "Qué falta cargar y mensajes de Unicréditos" },
   ayuda: { title: "Ayuda", subtitle: "Operación del panel y contacto" },
 }
 
@@ -243,14 +247,14 @@ export function MerchantTabsClient({
           ? "overview"
           : "profile"
     if (merchant?.status === "active") return requested
-    if (requested === "ayuda") return "ayuda"
+    if (requested === "ayuda" || requested === "documentos") return requested
     return "profile"
   })()
 
   const [activeTab, setActiveTab] = useState<TabValue>(initTab)
 
   function goNav(id: string) {
-    if (merchant?.status !== "active" && id !== "profile" && id !== "ayuda") {
+    if (merchant?.status !== "active" && id !== "profile" && id !== "documentos" && id !== "ayuda") {
       setActiveTab("profile")
       return
     }
@@ -295,7 +299,7 @@ export function MerchantTabsClient({
   const merchantReady = merchant?.status === 'active'
   const nav = merchantReady
     ? MERCHANT_NAV
-    : MERCHANT_NAV.filter((item) => item.id === 'profile' || item.id === 'ayuda')
+    : MERCHANT_NAV.filter((item) => item.id === 'profile' || item.id === 'documentos' || item.id === 'ayuda')
   const mobileNav = merchantReady
     ? [
         { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
@@ -305,6 +309,7 @@ export function MerchantTabsClient({
       ]
     : [
         { id: 'profile', label: 'Datos', icon: Store },
+        { id: 'documentos', label: 'Documentos', icon: Mail },
         { id: 'ayuda', label: 'Ayuda', icon: Handshake },
       ]
 
@@ -388,6 +393,11 @@ export function MerchantTabsClient({
               <TabsContent value="reportes">
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
                   <ReportesTab sales={sales} totals={totals} />
+                </div>
+              </TabsContent>
+              <TabsContent value="documentos">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <DocumentosTab />
                 </div>
               </TabsContent>
               <TabsContent value="ayuda">
