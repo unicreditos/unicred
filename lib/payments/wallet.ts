@@ -21,6 +21,7 @@ import { canSettleOnCollection } from '@/lib/loan-state'
 import { buildSandboxAlias, buildSandboxCvu, parseWalletDestination } from '@/lib/payments/cvu'
 import { executeExternalRail, treasuryOriginLabel } from '@/lib/payments/wallet-rail'
 import { TREASURY_ACCOUNT } from '@/lib/treasury'
+import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
 const MAX_TRANSFER = 10_000_000
@@ -264,6 +265,7 @@ export async function transferInternalP2P(
   destinationRaw: string,
   concept?: string,
 ) {
+  await assertVerifiedCustomer(fromUserId, 'wallet')
   const value = round2(amount)
   if (!(value >= 1) || value > MAX_TRANSFER) {
     throw new Error(`Ingresá un importe entre $1 y ${MAX_TRANSFER.toLocaleString('es-AR')}.`)
@@ -354,6 +356,7 @@ export async function requestTreasuryPayout(
   destinationRaw: string,
   concept?: string,
 ) {
+  await assertVerifiedCustomer(userId, 'wallet')
   const destination = parseWalletDestination(destinationRaw)
   const value = round2(amount)
   if (!(value >= 100) || value > MAX_TRANSFER) {

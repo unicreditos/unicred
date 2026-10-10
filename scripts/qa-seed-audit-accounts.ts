@@ -6,9 +6,17 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadProjectEnv } from './load-env'
 import { confirmDangerousScript } from './confirm-danger'
+import { assertSafeSeedTarget, resolveQaPassword } from './qa-seed-guard'
+import { writeFileSync } from 'node:fs'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 loadProjectEnv(rootDir)
+assertSafeSeedTarget(process.env)
+const qaPassword = resolveQaPassword(process.env, process.argv)
+if (qaPassword.generated) {
+  writeFileSync(path.join(rootDir, '.qa-seed-credentials.local'), qaPassword.password, { mode: 0o600 })
+  console.log('Clave generada y guardada en .qa-seed-credentials.local (ignorado por git).')
+}
 confirmDangerousScript('Sembrar 3 cuentas QA sintéticas (persona/comercio/admin)')
 
 function cuitCheckDigit(base10: string): number {
@@ -30,7 +38,7 @@ async function main() {
   const { profile, user, merchant } = await import('@/lib/db/schema')
   const { eq } = await import('drizzle-orm')
 
-  const password = 'QaAudit#2026!'
+  const password = qaPassword.password
 
   async function ensureUser(email: string, name: string) {
     const [existing] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1)
@@ -132,7 +140,7 @@ async function main() {
     })
   console.log('admin: profile OK, role=admin')
 
-  console.log('\nListo. Password para las 3 cuentas:', password)
+  console.log('\nListo. Cuentas QA creadas. La clave no se imprime (viene de QA_SEED_PASSWORD o .qa-seed-credentials.local).')
   await pool.end()
 }
 

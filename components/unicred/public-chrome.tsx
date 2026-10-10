@@ -207,21 +207,11 @@ export function PublicFooter() {
             © {year} {BRAND.company} · {BRAND.domain}
           </p>
           <p className="max-w-xl md:text-right">
-            La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en el contrato.
+            La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en el contrato, que se firma de forma electrónica.
           </p>
         </div>
       </div>
     </footer>
-  )
-}
-
-export function LegalStrip() {
-  return (
-    <p className="text-[11px] leading-relaxed text-muted-foreground">
-      Simulación informativa a tasa de referencia. La cuota, TNA y CFT finales se confirman en la oferta y el
-      contrato, sujetos a evaluación crediticia, verificación de identidad y capacidad de pago. Sistema de
-      amortización francés (cuota fija).
-    </p>
   )
 }
 

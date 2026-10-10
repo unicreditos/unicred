@@ -57,8 +57,10 @@ import {
   DonutChart,
   StatusChip,
 } from "@/components/unicred/dashboard-kit"
+import { arMonthKey, arParts, arWallTimeToInstant, formatDMY } from "@/lib/date-ar"
 import { DecisionBanner, WorkspaceShell, type WorkspaceNavItem } from "@/components/unicred/workspace-shell"
 import { SupportChatPanel } from "@/components/support/support-chat"
+import { DocumentosTab } from "@/app/merchant/_documentos"
 import {
   Banknote,
   BarChart3,
@@ -167,6 +169,7 @@ type TabValue =
   | "liquidations"
   | "conciliacion"
   | "reportes"
+  | "documentos"
   | "ayuda"
 
 const MERCHANT_NAV: WorkspaceNavItem[] = [
@@ -179,6 +182,7 @@ const MERCHANT_NAV: WorkspaceNavItem[] = [
   { id: "conciliacion", label: "Conciliación", icon: Scale, group: "Finanzas" },
   { id: "reportes", label: "Reportes", icon: ChartNoAxesCombined, group: "Finanzas" },
   { id: "profile", label: "Datos", icon: Store, group: "Cuenta" },
+  { id: "documentos", label: "Documentación", icon: Mail, group: "Cuenta" },
   { id: "ayuda", label: "Ayuda", icon: Handshake, group: "Cuenta" },
 ]
 
@@ -192,6 +196,7 @@ const MERCHANT_TITLES: Record<TabValue, { title: string; subtitle: string }> = {
   liquidations: { title: "Liquidaciones", subtitle: "Bruto, comisión y neto a favor" },
   conciliacion: { title: "Conciliación", subtitle: "Ventas versus lo esperado a cobrar" },
   reportes: { title: "Reportes", subtitle: "Volumen originado por período" },
+  documentos: { title: "Documentación y mensajes", subtitle: "Qué falta cargar y mensajes de Unicréditos" },
   ayuda: { title: "Ayuda", subtitle: "Operación del panel y contacto" },
 }
 
@@ -242,14 +247,14 @@ export function MerchantTabsClient({
           ? "overview"
           : "profile"
     if (merchant?.status === "active") return requested
-    if (requested === "ayuda") return "ayuda"
+    if (requested === "ayuda" || requested === "documentos") return requested
     return "profile"
   })()
 
   const [activeTab, setActiveTab] = useState<TabValue>(initTab)
 
   function goNav(id: string) {
-    if (merchant?.status !== "active" && id !== "profile" && id !== "ayuda") {
+    if (merchant?.status !== "active" && id !== "profile" && id !== "documentos" && id !== "ayuda") {
       setActiveTab("profile")
       return
     }
@@ -294,7 +299,7 @@ export function MerchantTabsClient({
   const merchantReady = merchant?.status === 'active'
   const nav = merchantReady
     ? MERCHANT_NAV
-    : MERCHANT_NAV.filter((item) => item.id === 'profile' || item.id === 'ayuda')
+    : MERCHANT_NAV.filter((item) => item.id === 'profile' || item.id === 'documentos' || item.id === 'ayuda')
   const mobileNav = merchantReady
     ? [
         { id: 'overview', label: 'Inicio', icon: LayoutDashboard },
@@ -304,6 +309,7 @@ export function MerchantTabsClient({
       ]
     : [
         { id: 'profile', label: 'Datos', icon: Store },
+        { id: 'documentos', label: 'Documentos', icon: Mail },
         { id: 'ayuda', label: 'Ayuda', icon: Handshake },
       ]
 
@@ -389,6 +395,11 @@ export function MerchantTabsClient({
                   <ReportesTab sales={sales} totals={totals} />
                 </div>
               </TabsContent>
+              <TabsContent value="documentos">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <DocumentosTab />
+                </div>
+              </TabsContent>
               <TabsContent value="ayuda">
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
                   <AyudaTab initialCaseId={supportCaseId} />
@@ -414,15 +425,13 @@ function MerchantOverview({
   const lastSales = [...sales].slice(0, 8)
   const pendingSales = sales.filter((s) => s.status === 'pending')
   const months: { label: string; value: number }[] = []
-  const now = new Date()
+  const nowAR = arParts(new Date())
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const label = d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '')
+    // Mes calendario argentino (mediodia AR del dia 1 para evitar bordes de huso).
+    const d = arWallTimeToInstant(nowAR.year, nowAR.month - i, 1, 12)
+    const label = d.toLocaleDateString('es-AR', { month: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).replace('.', '')
     const value = sales
-      .filter((row) => {
-        const c = new Date(row.createdAt)
-        return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth()
-      })
+      .filter((row) => arMonthKey(row.createdAt) === arMonthKey(d))
       .reduce((acc, row) => acc + (Number(row.principal) || 0), 0)
     months.push({ label, value })
   }
@@ -614,7 +623,7 @@ function MerchantOverview({
                       />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {new Date(row.createdAt).toLocaleDateString('es-AR')}
+                      {formatDMY(row.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1441,7 +1450,7 @@ function CustomersTab({ sales }: { sales: SaleType[] }) {
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs text-muted-foreground">
                     {g.lastAt
-                      ? new Date(g.lastAt).toLocaleDateString("es-AR")
+                      ? formatDMY(g.lastAt)
                       : "—"}
                   </TableCell>
                 </TableRow>
@@ -1536,7 +1545,7 @@ function LiquidationsTab({
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {new Date(s.createdAt).toLocaleDateString("es-AR")}
+                      {formatDMY(s.createdAt)}
                     </TableCell>
                     <TableCell className="font-medium">
                       {extractCustomerName(s.purpose)}
@@ -2057,7 +2066,7 @@ function SolicitudesRecibidasTab({ sales }: { sales: SaleType[] }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs font-mono text-muted-foreground">
-                      {new Date(s.createdAt).toLocaleDateString("es-AR")}
+                      {formatDMY(s.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" className="h-7 text-xs">
@@ -2141,7 +2150,7 @@ function ConciliacionTab({ merchant, sales, totals }: { merchant: MerchantType |
                       <TableCell className="font-medium">{r.cliente}</TableCell>
                       <TableCell className="text-right font-mono">{formatARS(r.monto)}</TableCell>
                       <TableCell className="text-right font-mono font-bold">{formatARS(r.neto)}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{r.fechaOp.toLocaleDateString("es-AR")}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{formatDMY(r.fechaOp)}</TableCell>
                       <TableCell>
                         <StatusBadge status={r.status} />
                       </TableCell>
@@ -2189,18 +2198,15 @@ function ConciliacionTab({ merchant, sales, totals }: { merchant: MerchantType |
 }
 
 function monthlySalesSeries(sales: SaleType[], months = 6) {
-  const now = new Date()
+  const nowAR = arParts(new Date())
   const labels: string[] = []
   const amounts: number[] = []
   const counts: number[] = []
   for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key = d.getFullYear() * 12 + d.getMonth()
-    labels.push(d.toLocaleDateString("es-AR", { month: "short" }).replace(".", ""))
-    const monthSales = sales.filter((s) => {
-      const sd = new Date(s.createdAt)
-      return sd.getFullYear() * 12 + sd.getMonth() === key
-    })
+    const d = arWallTimeToInstant(nowAR.year, nowAR.month - i, 1, 12)
+    const key = arMonthKey(d)
+    labels.push(d.toLocaleDateString("es-AR", { month: "short", timeZone: "America/Argentina/Buenos_Aires" }).replace(".", ""))
+    const monthSales = sales.filter((s) => arMonthKey(s.createdAt) === key)
     amounts.push(monthSales.reduce((sum, s) => sum + Number(s.principal || 0), 0))
     counts.push(monthSales.length)
   }

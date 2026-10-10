@@ -2,7 +2,7 @@ import { desc } from 'drizzle-orm'
 import { DataGrid } from '@/components/uc/data-grid'
 import { Callout, NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
-import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
+import { auditAdminView, loadDeskChrome } from '@/lib/admin-desk/load'
 import { ensureAuditSchema } from '@/lib/db/ensure-audit'
 import { db } from '@/lib/db'
 import { adminAuditLog } from '@/lib/db/schema'
@@ -14,7 +14,7 @@ const SEVERITY = { info: 'Informativo', warning: 'Atención', error: 'Error' } a
 const TONE = { info: 'neutral', warning: 'warning', error: 'danger' } as const
 
 export default async function AuditoriaPage() {
-  const { perms, userId } = await loadDesk()
+  const { perms, userId } = await loadDeskChrome()
   const head = (
     <PageHead
       title="Auditoría"

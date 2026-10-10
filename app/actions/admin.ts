@@ -1,5 +1,6 @@
 'use server'
 
+import { dateOnlyKey, parseDateOnly } from '@/lib/date-ar'
 import { getPrincipalesVariables } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/lib/db/schema'
 import { getSession, syncUserRole } from '@/lib/session'
 import { requirePermission } from '@/lib/rbac'
+import { assertHumanDecision } from '@/lib/loan-underwriting'
 import { desc, eq, sql, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { persistBankLookup } from '@/lib/bank-lookup'
@@ -30,6 +32,8 @@ import { ensurePendingDisbursement, ensureInstallmentPlan } from '@/lib/loan-sch
 import { recordAudit, diffFields, getAuditLog } from '@/lib/audit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
 import { diditApprovedForUser } from '@/lib/didit'
+import { assertKey6 } from '@/lib/key6-store'
+import { isStaffRole } from '@/lib/key6'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import {
   evaluateMerchantKyb,
@@ -390,7 +394,7 @@ export async function getBcraVariables() {
       return stored.map((v) => ({
         id: v.idVariable,
         variable: v.variableName,
-        fecha: v.effectiveDate ? new Date(v.effectiveDate).toISOString().split('T')[0] : null,
+        fecha: v.effectiveDate ? dateOnlyKey(v.effectiveDate) : null,
         valor: v.value,
         manualOverride: !!v.manualOverride,
         overrideNote: v.overrideNote,
@@ -421,6 +425,8 @@ export async function approveLoan(
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'approved')
+  // Decisión humana: nota obligatoria y recomendación (score/BCRA) previa.
+  const decisionNote = assertHumanDecision({ action: 'approve', note: opts?.notes, scoreAtApproval: opts?.score ?? existing.scoreAtApproval })
   // La solicitud puede llevar días en cola: si el KYC/Didit del titular cambió
   // o se invalidó mientras tanto (p. ej. cambió DNI/CUIL), no se aprueba a
   // ciegas sobre una identidad que ya no está verificada.
@@ -502,6 +508,7 @@ export async function approveLoan(
     summary: `Crédito aprobado por ${principal.toFixed(2)} ARS en ${term} cuotas`,
     changes: diffFields(existing as any, {
       status: 'approved',
+      nota: decisionNote,
       principal: principal.toFixed(2),
       term,
       monthlyRate: String(monthlyRate),
@@ -524,6 +531,7 @@ export async function rejectLoan(id: string, reason: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   assertAdminTransition(existing.status, 'rejected')
+  assertHumanDecision({ action: 'reject', note: reason })
 
   await db.transaction(async (tx) => {
     await tx
@@ -598,7 +606,10 @@ export async function updateLoanManual(
     updates.scoreAtApproval = opts.scoreAtApproval
   }
   if (opts.disbursedAt !== undefined && opts.disbursedAt !== null && opts.disbursedAt !== '') {
-    updates.disbursedAt = new Date(opts.disbursedAt)
+    // 'AAAA-MM-DD' del formulario = dia civil argentino (new Date('2026-10-09') seria 08/10 21:00 AR).
+    const parsedDisbursedAt = parseDateOnly(String(opts.disbursedAt)) ?? new Date(opts.disbursedAt)
+    if (Number.isNaN(parsedDisbursedAt.getTime())) throw new Error('Fecha de acreditacion invalida')
+    updates.disbursedAt = parsedDisbursedAt
   }
 
   const nextStatus = (updates.status ?? existing.status) as string
@@ -826,7 +837,7 @@ export async function updateBcraVariable(
       .set({
         variableName: opts.variableName ?? existing[0].variableName,
         value: opts.value !== undefined && opts.value !== null ? String(opts.value) : existing[0].value,
-        effectiveDate: opts.effectiveDate ? new Date(opts.effectiveDate) : existing[0].effectiveDate,
+        effectiveDate: opts.effectiveDate ? (parseDateOnly(String(opts.effectiveDate)) ?? new Date(opts.effectiveDate)) : existing[0].effectiveDate,
         manualOverride: true,
         overrideNote: opts.overrideNote ?? existing[0].overrideNote,
         updatedBy: adminUserId,
@@ -840,7 +851,7 @@ export async function updateBcraVariable(
       idVariable,
       variableName: opts.variableName ?? idVariable,
       value: opts.value !== undefined && opts.value !== null ? String(opts.value) : '0',
-      effectiveDate: opts.effectiveDate ? new Date(opts.effectiveDate) : now,
+      effectiveDate: opts.effectiveDate ? (parseDateOnly(String(opts.effectiveDate)) ?? new Date(opts.effectiveDate)) : now,
       manualOverride: true,
       overrideNote: opts.overrideNote ?? null,
       updatedBy: adminUserId,
@@ -1152,6 +1163,10 @@ export async function updateUserAdmin(
   }
   const [u] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
   if (!u) throw new Error('Usuario no encontrado')
+  // Key 6: no se marca 'approved' a un cliente sin DNI frente, dorso y selfie en archivo. Personal exento.
+  if (input.kycStatus === 'approved' && !(input.role && isStaffRole(input.role))) {
+    await assertKey6(userId, 'admin_updateUser', adminUserId)
+  }
 
   const now = new Date()
   if (input.name?.trim() || input.email?.trim()) {

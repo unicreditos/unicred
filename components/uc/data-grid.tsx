@@ -88,7 +88,28 @@ function RenderCell({ col, row }: { col: Col; row: GridRow }) {
   }
 }
 
-type State = { chip: string; q: string; from: string; to: string; sel: Record<string, string>; sort: string | null; dir: 1 | -1; page: number }
+function parseAmount(s: string): number | null {
+  const clean = s.replace(/\./g, '').replace(',', '.').trim()
+  if (!clean) return null
+  const n = Number(clean)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Exporta las filas filtradas (todas, no solo la pagina) como CSV con las columnas visibles. */
+function exportCsv(cfg: GridConfig, rows: GridRow[]) {
+  const cols = cfg.columns.filter((c) => c.kind !== 'actions')
+  const esc = (v: string) => '"' + v.replace(/"/g, '""') + '"'
+  const lines = [cols.map((c) => esc(c.label)).join(';')]
+  for (const r of rows) lines.push(cols.map((c) => esc(plain(r[c.key] as Cell))).join(';'))
+  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = (cfg.exportName ?? cfg.id) + '.csv'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+type State = { chip: string; q: string; from: string; to: string; sel: Record<string, string>; sort: string | null; dir: 1 | -1; page: number; amin: string; amax: string }
 
 export function DataGrid({ cfg }: { cfg: GridConfig }) {
   const hasToolbar = cfg.toolbar !== false
@@ -101,6 +122,8 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
     sort: cfg.sort?.key ?? null,
     dir: cfg.sort?.dir ?? 1,
     page: 1,
+    amin: '',
+    amax: '',
   })
   const scroller = useRef<HTMLDivElement>(null)
   const patch = (p: Partial<State>) => setSt((s) => ({ ...s, ...p }))
@@ -125,7 +148,14 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
     const from = parseDMY(st.from)
     const to = parseDMY(st.to)
     const q = norm(st.q.trim())
+    const amin = parseAmount(st.amin)
+    const amax = parseAmount(st.amax)
     return cfg.rows.filter((r, i) => {
+      if (cfg.amountKey && (amin != null || amax != null)) {
+        const v = Number(r[cfg.amountKey])
+        if (amin != null && !(v >= amin)) return false
+        if (amax != null && !(v <= amax)) return false
+      }
       if (q && cfg.searchKeys && !searchable[i].includes(q)) return false
       if (cfg.dateKey) {
         const t = r[cfg.dateKey] ? new Date(String(r[cfg.dateKey])).getTime() : null
@@ -137,7 +167,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
       }
       return true
     })
-  }, [cfg, st.q, st.from, st.to, st.sel, searchable])
+  }, [cfg, st.q, st.from, st.to, st.sel, st.amin, st.amax, searchable])
 
   const chipMatch = (r: GridRow, v: string) => {
     if (!cfg.chips) return true
@@ -176,7 +206,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
     else if (nums[nums.length - 1] !== '…') nums.push('…')
   }
 
-  const active = st.chip !== 'all' || st.q || st.from || st.to || Object.values(st.sel).some(Boolean)
+  const active = st.chip !== 'all' || st.q || st.from || st.to || st.amin || st.amax || Object.values(st.sel).some(Boolean)
   const sumValue = cfg.summary?.sumKey
     ? rows.reduce((s, r) => s + (Number(r[cfg.summary!.sumKey!] as number) || 0), 0)
     : null
@@ -261,6 +291,27 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                   ))}
                 </div>
               ) : null}
+              {cfg.amountKey ? (
+                <div className="uc-date-range" role="group" aria-label={cfg.amountLabel ?? 'Importe'}>
+                  <span>{cfg.amountLabel ?? 'Importe'}</span>
+                  {(['amin', 'amax'] as const).map((k, i) => (
+                    <span key={k} style={{ display: 'contents' }}>
+                      {i === 1 ? <span aria-hidden="true">{'\u2013'}</span> : null}
+                      <div className="uc-date-field">
+                        <input
+                          className="uc-field uc-num"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={k === 'amin' ? 'M\u00ednimo' : 'M\u00e1ximo'}
+                          aria-label={k === 'amin' ? 'Importe m\u00ednimo' : 'Importe m\u00e1ximo'}
+                          value={st[k]}
+                          onChange={(e) => patch({ [k]: e.target.value.replace(/[^\d.,]/g, ''), page: 1 })}
+                        />
+                      </div>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               {(cfg.selects ?? []).map((s) => (
                 <label key={s.key}>
                   <span className="uc-sr-only">{s.label}</span>
@@ -304,6 +355,11 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
               ) : null}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {cfg.exportName ? (
+                <button type="button" className="uc-link-btn" onClick={() => exportCsv(cfg, rows)}>
+                  Exportar CSV
+                </button>
+              ) : null}
               {cfg.exportExcel ? (
                 <button
                   type="button"
@@ -318,7 +374,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                       ? 'Exportando...'
                       : typeof cfg.exportExcel === 'object' && cfg.exportExcel.label
                         ? cfg.exportExcel.label
-                        : 'Export to Excel'}
+                        : 'Exportar Excel'}
                   </span>
                 </button>
               ) : null}
@@ -340,7 +396,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                   <span>
                     {typeof cfg.printable === 'object' && cfg.printable.label
                       ? cfg.printable.label
-                      : 'Print'}
+                      : 'Imprimir'}
                   </span>
                 </button>
               ) : null}
@@ -348,7 +404,7 @@ export function DataGrid({ cfg }: { cfg: GridConfig }) {
                 <button
                   type="button"
                   className="uc-link-btn"
-                  onClick={() => setSt((s) => ({ ...s, chip: 'all', q: '', from: '', to: '', sel: {}, page: 1 }))}
+                  onClick={() => setSt((s) => ({ ...s, chip: 'all', q: '', from: '', to: '', amin: '', amax: '', sel: {}, page: 1 }))}
                 >
                   Limpiar filtros
                 </button>

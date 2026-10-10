@@ -23,9 +23,40 @@ export default async function CustomerHome() {
     getMyBankAccounts().catch(() => []),
     loadCustomerContracts(userId),
     getLoanProducts().catch(() => []),
-    db.select().from(bcraCheck).where(eq(bcraCheck.userId, userId)).orderBy(desc(bcraCheck.createdAt)).limit(1).then((r) => r[0] ?? null).catch(() => null),
-    db.select().from(payment).where(eq(payment.userId, userId)).orderBy(desc(payment.createdAt)).limit(8).catch(() => []),
-    db.select().from(disbursement).where(eq(disbursement.userId, userId)).orderBy(desc(disbursement.createdAt)).limit(5).catch(() => []),
+    db
+      .select({ computedScore: bcraCheck.computedScore })
+      .from(bcraCheck)
+      .where(eq(bcraCheck.userId, userId))
+      .orderBy(desc(bcraCheck.createdAt))
+      .limit(1)
+      .then((r) => r[0] ?? null)
+      .catch(() => null),
+    db
+      .select({
+        status: payment.status,
+        method: payment.method,
+        amount: payment.amount,
+        paidAt: payment.paidAt,
+        createdAt: payment.createdAt,
+      })
+      .from(payment)
+      .where(eq(payment.userId, userId))
+      .orderBy(desc(payment.createdAt))
+      .limit(8)
+      .catch(() => []),
+    db
+      .select({
+        status: disbursement.status,
+        loanId: disbursement.loanId,
+        amount: disbursement.amount,
+        creditedAt: disbursement.creditedAt,
+        createdAt: disbursement.createdAt,
+      })
+      .from(disbursement)
+      .where(eq(disbursement.userId, userId))
+      .orderBy(desc(disbursement.createdAt))
+      .limit(5)
+      .catch(() => []),
   ])
 
   const now = new Date()

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
+import { SecondFactorForm } from '@/components/auth/second-factor-form'
 
 function safeCallbackUrl(value: string | null): string | null {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return null
@@ -29,6 +30,8 @@ export function AuthForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Segundo factor DENTRO del ingreso: se muestra aca mismo antes de llegar a cualquier pantalla protegida.
+  const [challenge, setChallenge] = useState<{ endpoint: string; totpEnabled: boolean; next: string } | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,28 +56,34 @@ export function AuthForm() {
       return
     }
 
-    if (callbackUrl) {
-      router.push(callbackUrl)
-      router.refresh()
+    let target = callbackUrl
+    if (!target) {
+      const res = await fetch('/api/me/dashboard-url', { cache: 'no-store' }).then((r) => r.json().catch(() => ({ dashboardUrl: '/dashboard' })))
+      target = res.dashboardUrl || '/dashboard'
+    }
+    // Si el servidor exige segundo factor para esta sesion, se pide ahora. El servidor igual lo hace cumplir en cada pantalla protegida.
+    const st = await fetch('/api/2fa/status', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)
+    if (st?.ok && st.required && !st.passed) {
+      setLoading(false)
+      setChallenge({ endpoint: st.endpoint, totpEnabled: !!st.totpEnabled, next: target as string })
       return
     }
-
-    try {
-      const res = await fetch('/api/me/dashboard-url', {
-        cache: 'no-store',
-      }).then((r) => r.json().catch(() => ({ dashboardUrl: '/dashboard' })))
-      router.push(res.dashboardUrl || '/dashboard')
-      router.refresh()
-    } catch {
-      router.push('/dashboard')
-      router.refresh()
-    }
+    router.push(target as string)
+    router.refresh()
   }
 
   const fillDemoAccount = () => {
     setEmail('qa-persona-audit@unicreditos.com')
     setPassword('QaAudit#2026!')
     setError(null)
+  }
+
+  if (challenge) {
+    return (
+      <AuthFloatLayout headline="Verificación en dos pasos" lede="Un paso más para proteger tu cuenta.">
+        <SecondFactorForm endpoint={challenge.endpoint} next={challenge.next} totpEnabled={challenge.totpEnabled} />
+      </AuthFloatLayout>
+    )
   }
 
   return (

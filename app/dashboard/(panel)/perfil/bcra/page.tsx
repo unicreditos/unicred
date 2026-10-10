@@ -3,13 +3,13 @@ import { BCRAScore } from '@/components/dashboard/bcra-score'
 import { Badge, CardHead, Kv, Pad, PageHead } from '@/components/uc/blocks'
 import { db } from '@/lib/db'
 import { bcraCheck } from '@/lib/db/schema'
-import { loadCustomer } from '@/lib/customer/load'
+import { loadCustomerBase } from '@/lib/customer/load'
 import { fdate, money } from '@/lib/uc/format'
 
 export const metadata = { title: 'Informe BCRA' }
 
 export default async function BcraPage() {
-  const { userId, profile } = await loadCustomer()
+  const { userId, profile } = await loadCustomerBase()
   const last = await db
     .select()
     .from(bcraCheck)

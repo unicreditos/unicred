@@ -190,7 +190,7 @@ export function DocumentFooter({
         </p>
         <p>
           {BRAND.iva} · {BRAND.iibbRegime} · IGJ {BRAND.igj} · constitución {BRAND.incorporated}.
-          Documento electrónico. Firma digital conforme Ley 25.506. Comprobante o instrumento
+          Documento electrónico. Firma electrónica conforme Ley 25.506. Comprobante o instrumento
           interno; no reemplaza la factura electrónica ARCA del IVA sobre intereses.
         </p>
         {extra ? <p className="mt-1">{extra}</p> : null}

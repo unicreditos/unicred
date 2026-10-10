@@ -83,6 +83,10 @@ const nextConfig = {
   },
   reactStrictMode: true,
   poweredByHeader: false,
+  // Los íconos se importan de a uno: sin esto el paquete entero entra en el JS de la página.
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   serverExternalPackages: ['soap', 'node-forge', 'xml2js'],
   compress: true,
   generateEtags: true,

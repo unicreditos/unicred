@@ -1,5 +1,5 @@
 import { DataGrid } from '@/components/uc/data-grid'
-import { NoAccess, PageHead } from '@/components/uc/blocks'
+import { ButtonLink, NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDesk } from '@/lib/admin-desk/load'
 import { badge } from '@/lib/uc/admin'
@@ -11,7 +11,13 @@ const TONE = { active: 'success', paused: 'warning', onboarding: 'info', rejecte
 
 export default async function ComerciosPage() {
   const { state, perms } = await loadDesk()
-  const head = <PageHead title="Comercios" description="Comercios adheridos que venden en cuotas con Unicréditos." />
+  const head = (
+    <PageHead
+      title="Comercios"
+      description="Comercios adheridos que venden en cuotas con Unicréditos."
+      actions={perms.has('merchants.write') ? <ButtonLink primary href="/admin/comercios/nuevo">Alta de comercio</ButtonLink> : undefined}
+    />
+  )
   if (!perms.has('merchants.read')) return <>{head}<NoAccess what="los comercios" /></>
 
   const ops = new Map<string, { n: number; total: number }>()
@@ -35,6 +41,7 @@ export default async function ComerciosPage() {
     estadoKey: LABEL[m.status],
     estado: badge(LABEL[m.status], TONE[m.status]),
     alta: m.onboardedAt,
+    ver: [{ kind: 'link' as const, label: 'Abrir', href: `/admin/comercios/${encodeURIComponent(m.id)}` }],
   }))
 
   return (
@@ -70,6 +77,7 @@ export default async function ComerciosPage() {
             { key: 'ventas', label: 'Ventas financiadas', kind: 'money', align: 'r', amount: true },
             { key: 'estado', label: 'Estado', kind: 'badge', order: ['En alta', 'Activo', 'Pausado', 'Rechazado'] },
             { key: 'alta', label: 'Alta', kind: 'date' },
+            { key: 'ver', label: 'Acción', kind: 'actions', align: 'r' },
           ],
           summary: { noun: 'comercios', sumKey: 'ventas', sumLabel: 'financiados' },
         }}

@@ -21,6 +21,9 @@ const GROUPS: Group[] = [
       { label: 'Documentación', route: '/admin/originacion/documentacion', perm: 'kyc.review' },
       { label: 'Aprobaciones', route: '/admin/originacion/aprobaciones', perm: 'credits.read' },
       { label: 'BCRA / Riesgo', route: '/admin/originacion/riesgo', perm: 'risk.read' },
+      { label: 'Historial BCRA', route: '/admin/originacion/bcra-historial', perm: 'risk.read' },
+      { label: 'Padrón ARCA', route: '/admin/originacion/padron-arca', perm: 'kyc.review' },
+      { label: 'Webhooks Didit', route: '/admin/originacion/webhooks-didit', perm: 'kyc.review' },
     ],
   },
   {
@@ -29,6 +32,7 @@ const GROUPS: Group[] = [
     icon: 'credit',
     children: [
       { label: 'Otorgados', route: '/admin/creditos/otorgados', perm: 'credits.read' },
+      { label: 'Todos los cr\u00e9ditos', route: '/admin/creditos/todos', perm: 'credits.read' },
       { label: 'En revisión', route: '/admin/creditos/revision', perm: 'credits.read' },
       { label: 'Pendientes de desembolso', route: '/admin/creditos/desembolso', perm: 'payments.read' },
       { label: 'Contratos', route: '/admin/creditos/contratos', perm: 'credits.read' },
@@ -74,6 +78,7 @@ const GROUPS: Group[] = [
       { label: 'Auditoría', route: '/admin/sistema/auditoria', perm: 'audit.read' },
       { label: 'Configuración', route: '/admin/sistema/configuracion', perm: 'users.manage' },
       { label: 'Soporte', route: '/admin/sistema/soporte', perm: 'clients.read' },
+      { label: 'Mi seguridad (2FA y sesiones)', route: '/cuenta/seguridad', perm: 'clients.read' },
     ],
   },
 ]

@@ -10,6 +10,8 @@ export const DESK_ACTION_PERMISSION: Record<DeskMutateAction, PermissionKey> = {
   requestInformation: 'credits.approve',
   cancelApplication: 'credits.reject',
   createApplication: 'credits.edit',
+  reopenApplication: 'credits.edit',
+  editApplication: 'credits.edit',
   decideKyc: 'kyc.review',
   markDisbursed: 'disbursements.credit',
   failDisbursement: 'disbursements.credit',

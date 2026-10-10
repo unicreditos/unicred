@@ -1,6 +1,11 @@
 'use server'
 
+import { addYearsToDateKey, normalizeDateOnly, todayAR } from '@/lib/date-ar'
 import { persistBcraReportForUser } from '@/lib/bcra-report'
+import { isUniqueViolation } from '@/lib/pg-errors'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
+import { runRegistrationPreflight } from '@/lib/registration-preflight'
+import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { arcaConfigured, lookupPersonaByCuit } from '@/lib/arca/padron'
 import { snapshotFromIdentity, snapshotFromPersona } from '@/lib/arca/constancia-snapshot'
@@ -16,6 +21,8 @@ import {
   getDiditDecision,
   isDiditConfigured,
 } from '@/lib/didit'
+import { isStaffRole, key6Gate, key6InputFromDecision } from '@/lib/key6'
+import { recordKey6Block } from '@/lib/key6-store'
 import { evaluateMerchantKyb, type RepresentativeRole } from '@/lib/merchant-kyb'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { getOrCreateProfile, getSession, newId } from '@/lib/session'
@@ -29,11 +36,9 @@ async function clientKey() {
 }
 
 function isAdult(birthDate: string) {
-  const d = new Date(birthDate)
-  if (Number.isNaN(d.getTime())) return false
-  const limit = new Date()
-  limit.setFullYear(limit.getFullYear() - 18)
-  return d <= limit
+  const key = normalizeDateOnly(birthDate)
+  if (!key) return false
+  return key <= addYearsToDateKey(todayAR(), -18)
 }
 
 async function isIdentifierTaken(cuil: string) {
@@ -188,6 +193,38 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     }
   }
 
+  // Key 6 (solo clientes/comercios de alta publica). El rol sale SIEMPRE de accountType en el servidor:
+  // el cliente no puede mandar 'admin' ni ningun rol de personal, y una cuenta de personal no se re-registra aca.
+  const signupRole = input.accountType === 'comercio' ? 'merchant' : 'customer'
+  const [currentProfile] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, session.user.id)).limit(1)
+  if (isStaffRole(currentProfile?.role)) {
+    return { ok: false as const, error: 'Las cuentas de administraci\u00f3n y operadores las crea el administrador desde el panel. No se registran ac\u00e1.' }
+  }
+  let key6Input = key6InputFromDecision(null)
+  try {
+    key6Input = key6InputFromDecision(await getDiditDecision(diditSessionId))
+  } catch {
+    return {
+      ok: false as const,
+      error: 'No pudimos confirmar tu verificaci\u00f3n de identidad (Key 6). No se abre la cuenta. Intent\u00e1 de nuevo en unos minutos.',
+    }
+  }
+  const key6 = key6Gate(signupRole, key6Input)
+  if (!key6.allow) {
+    await recordKey6Block({ userId: session.user.id, where: 'register', evaluation: key6.evaluation, actorUserId: session.user.id })
+    return {
+      ok: false as const,
+      error: key6.message,
+      key6: { state: key6.evaluation.state, missing: key6.evaluation.missing },
+    }
+  }
+
+  // BCRA y ARCA se consultan ANTES de escribir nada (3 reintentos con espera creciente en cada una).
+  const preflight = await runRegistrationPreflight({ cuil, declaredName: input.name })
+  if (!preflight.allow) {
+    return { ok: false as const, error: preflight.blockers[0] }
+  }
+
   const userId = session.user.id
   await ensureOriginacionSchema()
   await getOrCreateProfile()
@@ -196,27 +233,35 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
   const accountRole = input.accountType === 'comercio' ? 'merchant' : 'customer'
   const consentIp = await clientKey()
 
-  await db
-    .update(profile)
-    .set({
-      role: accountRole,
-      cuil,
-      dni,
-      phone: input.phone.trim(),
-      birthDate: input.birthDate,
-      province,
-      department: department || null,
-      city,
-      postalCode: postalCode || null,
-      address,
-      monthlyIncome: String(income),
-      employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : 'A completar'),
-      kycStatus: 'pending',
-      bcraConsentAt: now,
-      bcraConsentIp: consentIp,
-      updatedAt: now,
-    })
-    .where(eq(profile.userId, userId))
+  try {
+    await db
+      .update(profile)
+      .set({
+        role: accountRole,
+        cuil,
+        dni,
+        phone: input.phone.trim(),
+        birthDate: input.birthDate,
+        province,
+        department: department || null,
+        city,
+        postalCode: postalCode || null,
+        address,
+        monthlyIncome: String(income),
+        employmentStatus: input.employmentStatus.trim() || (input.accountType === 'comercio' ? 'Comercio' : 'A completar'),
+        kycStatus: 'pending',
+        bcraConsentAt: now,
+        bcraConsentIp: consentIp,
+        updatedAt: now,
+      })
+      .where(eq(profile.userId, userId))
+  } catch (err) {
+    // Dos altas simultáneas con el mismo CUIL: gana una, la otra recibe el mismo mensaje que la comprobación previa.
+    if (isUniqueViolation(err)) {
+      return { ok: false as const, error: 'Ese CUIT/CUIL ya tiene una cuenta UNICRÉDITOS. Ingresá con tu email.' }
+    }
+    throw err
+  }
 
   await db.update(user).set({ role: accountRole, updatedAt: now }).where(eq(user.id, userId))
 
@@ -226,6 +271,16 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
       ? snapshotFromIdentity(input.identity)
       : null
   const prevOcr = (existingKyc?.ocrData as Record<string, unknown> | null) ?? {}
+  const ocrPatch = {
+    accountType: input.accountType,
+    sources: input.identity?.sources ?? [],
+    nameConfirmed: input.name.trim(),
+    ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
+    ...(preflight.persona
+      ? { arcaPadron: snapshotFromPersona(preflight.persona), arcaLookedUpAt: now.toISOString() }
+      : {}),
+    ...(preflight.manualReview ? { manualReview: { ...preflight.manualReview, flaggedAt: now.toISOString() } } : {}),
+  }
   const kycValues = {
     dniNumber: dni,
     cuilVerified: true,
@@ -233,17 +288,14 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
     verificationLevel: 'biometric' as const,
     provider: 'didit',
     providerReferenceId: diditSessionId,
-    ocrData: {
-      ...prevOcr,
-      accountType: input.accountType,
-      sources: input.identity?.sources ?? [],
-      nameConfirmed: input.name.trim(),
-      ...(personSnapshot ? { arcaPadron: personSnapshot, arcaLookedUpAt: personSnapshot.consultedAt } : {}),
-    },
+    ocrData: { ...prevOcr, ...ocrPatch },
     updatedAt: now,
   }
   if (existingKyc) {
-    await db.update(kycVerification).set(kycValues).where(eq(kycVerification.id, existingKyc.id))
+    await db
+      .update(kycVerification)
+      .set({ ...kycValues, ocrData: ocrMergeSql(ocrPatch) })
+      .where(eq(kycVerification.id, existingKyc.id))
   } else {
     await db.insert(kycVerification).values({
       id: newId('kyc'),
@@ -311,6 +363,19 @@ export async function completeRegistration(input: CompleteRegistrationInput) {
         ...merchantValues,
       })
     }
+  }
+
+  if (preflight.manualReview) {
+    await recordAudit({
+      actorUserId: userId,
+      action: 'KYC_MANUAL_REVIEW_FLAGGED',
+      entityType: 'kyc_verification',
+      entityId: existingKyc?.id ?? null,
+      targetUserId: userId,
+      severity: 'warning',
+      summary: 'El nombre declarado no coincide con el padrón ARCA: queda en revisión manual',
+      changes: { arca: preflight.manualReview.arcaName, declarado: preflight.manualReview.declaredName },
+    }).catch(() => undefined)
   }
 
   await attachDiditSessionToUser(diditSessionId, userId)

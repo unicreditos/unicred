@@ -1,0 +1,23 @@
+import { sql } from 'drizzle-orm'
+import type { SqlExecutor } from '@/lib/otp-pg-store'
+
+/** Contador por clave con UPSERT atomico (una sola sentencia). El ejecutor se inyecta para poder probarlo contra Postgres real. */
+export async function consumeRateLimitWith(db: SqlExecutor, key: string, limit: number, windowMs: number) {
+  const resetAt = new Date(Date.now() + windowMs)
+  const result = await db.execute(sql`
+    INSERT INTO rate_limit_bucket (key, count, "resetAt")
+    VALUES (${key}, 1, ${resetAt})
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE WHEN rate_limit_bucket."resetAt" <= now() THEN 1 ELSE rate_limit_bucket.count + 1 END,
+      "resetAt" = CASE WHEN rate_limit_bucket."resetAt" <= now() THEN ${resetAt} ELSE rate_limit_bucket."resetAt" END
+    RETURNING count, "resetAt"
+  `)
+  const row = result.rows[0] as { count: number; resetAt: string | Date } | undefined
+  if (!row) return { ok: true as const, remaining: limit - 1 }
+  const count = Number(row.count)
+  if (count > limit) {
+    const retryInMs = new Date(row.resetAt).getTime() - Date.now()
+    return { ok: false as const, remaining: 0, retryInMs: Math.max(0, retryInMs) }
+  }
+  return { ok: true as const, remaining: limit - count }
+}

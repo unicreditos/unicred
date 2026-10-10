@@ -271,3 +271,54 @@ export function contractNeedsSignature(status: string | null | undefined): boole
   if (!status) return false
   return status === 'pending_acceptance' || status === 'generated'
 }
+
+// ---------------------------------------------------------------------------
+// Decision humana obligatoria: el score y las reglas SOLO recomiendan.
+// Interruptor de salida: MANUAL_DECISION_ONLY=no restablece el comportamiento anterior.
+// ---------------------------------------------------------------------------
+export type UnderwriteRecommendation = 'approve' | 'reject' | 'review'
+
+export const MANUAL_DECISION_NOTICE =
+  'Nunca se aprueba ni se rechaza autom\u00e1ticamente tras la consulta BCRA: decide un analista de Finanzas.'
+
+export const MIN_DECISION_NOTE_LENGTH = 10
+
+export function manualDecisionOnly(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.MANUAL_DECISION_ONLY ?? 'yes').trim().toLowerCase() !== 'no'
+}
+
+export function recommendationOf(decision: UnderwriteDecision): UnderwriteRecommendation {
+  if (decision.outcome === 'rejected') return 'reject'
+  if (decision.outcome === 'qualified') return 'approve'
+  return 'review'
+}
+
+/** Estado con el que se guarda una solicitud nueva. En modo manual es siempre 'pending'. */
+export function statusForDecision(
+  decision: UnderwriteDecision,
+  manual: boolean = manualDecisionOnly(),
+): 'pending' | 'approved' | 'rejected' {
+  if (manual) return 'pending'
+  if (decision.outcome === 'rejected') return 'rejected'
+  if (decision.outcome === 'pending_review') return 'pending'
+  return 'approved'
+}
+
+/**
+ * Valida que una decision de Finanzas/admin cumpla la politica: nota obligatoria y, para aprobar,
+ * una recomendacion previa (consulta BCRA/score guardada). Devuelve la nota normalizada.
+ */
+export function assertHumanDecision(
+  input: { action: 'approve' | 'reject'; note?: string | null; scoreAtApproval?: number | string | null },
+  manual: boolean = manualDecisionOnly(),
+): string {
+  const note = String(input.note ?? '').trim()
+  if (!manual) return note
+  if (note.length < MIN_DECISION_NOTE_LENGTH) {
+    throw new Error(`La nota de la decisi\u00f3n es obligatoria (m\u00ednimo ${MIN_DECISION_NOTE_LENGTH} caracteres).`)
+  }
+  if (input.action === 'approve' && !(Number(input.scoreAtApproval) > 0)) {
+    throw new Error('No se puede aprobar sin una recomendaci\u00f3n: falta la consulta BCRA/score de la solicitud.')
+  }
+  return note
+}

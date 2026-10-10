@@ -1,3 +1,4 @@
+import { addMonthsDateOnlyAR } from '@/lib/date-ar'
 import { bankAccount, disbursement, installment, loan } from '@/lib/db/schema'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { canTransition } from '@/lib/loan-state'
@@ -24,8 +25,8 @@ export function buildInstallmentValues(input: {
   return {
     amort,
     rows: amort.schedule.map((s) => {
-      const due = new Date(from)
-      due.setMonth(due.getMonth() + s.number)
+      // Vencimiento = mismo dia del mes en hora argentina (con recorte a fin de mes), a las 00:00 AR.
+      const due = addMonthsDateOnlyAR(from, s.number)
       return {
         id: newId('inst'),
         loanId: input.loanId,

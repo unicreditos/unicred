@@ -1,12 +1,14 @@
 'use server'
 
+import { adultBirthDateBounds } from '@/lib/didit-expected'
+import { addDaysAR, isValidYmd, startOfDayAR } from '@/lib/date-ar'
 import { recordAudit } from '@/lib/audit'
 import { persistBcraConsultation } from '@/lib/bcra-persist'
 import { isValidCuit, normalizeCuit } from '@/lib/bcra'
 import { db } from '@/lib/db'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from '@/lib/legal/expediente'
-import { decideUnderwriting, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
+import { decideUnderwriting, recommendationOf, statusForDecision, manualDecisionOnly, MANUAL_DECISION_NOTICE, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
 import { getActiveRiskRules } from '@/lib/risk-rules'
 import { loanPricingFields } from '@/lib/loan-rates'
 import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
@@ -195,9 +197,9 @@ function parseProfileBirthDate(value: string) {
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
-  const date = new Date(year, month - 1, day)
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
-  return date
+  if (!isValidYmd(year, month, day)) return null
+  // Fecha civil 'AAAA-MM-DD' (sin huso): se compara como texto contra los limites de edad.
+  return `${match[1]}-${match[2]}-${match[3]}`
 }
 
 export async function updateProfile(input: {
@@ -255,12 +257,9 @@ export async function updateProfile(input: {
   }
   const birth = parseProfileBirthDate(input.birthDate)
   if (!birth) throw new Error('Fecha de nacimiento inválida.')
-  const adultLimit = new Date()
-  adultLimit.setFullYear(adultLimit.getFullYear() - 18)
+  const { min: oldestBirth, max: adultLimit } = adultBirthDateBounds()
   if (birth > adultLimit) throw new Error('Tenés que ser mayor de 18 años.')
-  const oldest = new Date()
-  oldest.setFullYear(oldest.getFullYear() - 100)
-  if (birth < oldest) throw new Error('Fecha de nacimiento inválida.')
+  if (birth < oldestBirth) throw new Error('Fecha de nacimiento inválida.')
   if (!input.province?.trim() || !input.department?.trim() || !input.city?.trim() || !input.address?.trim()) {
     throw new Error('Completá provincia, departamento, localidad y dirección.')
   }
@@ -411,33 +410,33 @@ export async function requestLoan(input: {
       term,
       monthlyRate: String(monthlyRate),
       ...loanPricingFields(stub),
-      status: 'rejected',
+      status: manualDecisionOnly() ? 'pending' : 'rejected',
       purpose: input.purpose.trim(),
       scoreAtApproval: score.score,
-      rejectionReason: offer.reason,
+      rejectionReason: manualDecisionOnly() ? null : offer.reason,
       disbursedAt: null,
       createdAt: now,
       updatedAt: now,
     })
     await recordAudit({
       actorUserId: userId,
-      action: 'LOAN_AUTO_REJECTED',
+      action: manualDecisionOnly() ? 'LOAN_SENT_TO_REVIEW' : 'LOAN_AUTO_REJECTED',
       entityType: 'loan',
       entityId: loanId,
       targetUserId: userId,
-      summary: 'Solicitud rechazada automáticamente por la política de crédito',
-      changes: { score: score.score, motivo: offer.reason },
+      summary: manualDecisionOnly() ? 'Solicitud enviada a revisi\u00f3n manual (recomendaci\u00f3n: rechazar, fuera de oferta)' : 'Solicitud rechazada automáticamente por la política de crédito',
+      changes: { score: score.score, motivo: offer.reason, recomendacion: 'reject' },
     })
     revalidateCustomer()
     return {
       ok: true as const,
-      status: 'rejected' as const,
+      status: (manualDecisionOnly() ? 'pending' : 'rejected') as 'pending' | 'rejected',
       score: score.score,
       band: score.band,
       reasons: score.reasons,
-      decision: 'rejected' as const,
-      decisionReason: offer.reason,
-      rejectionReason: offer.reason,
+      decision: (manualDecisionOnly() ? 'pending_review' : 'rejected') as 'pending_review' | 'rejected',
+      decisionReason: manualDecisionOnly() ? MANUAL_DECISION_NOTICE : offer.reason,
+      rejectionReason: manualDecisionOnly() ? null : offer.reason,
       loanId,
       contractId: null,
       offerMaxAmount: 0,
@@ -464,18 +463,9 @@ export async function requestLoan(input: {
     rules,
   })
 
-  let status: 'pending' | 'approved' | 'rejected'
-  let rejectionReason: string | null = null
-  if (decision.outcome === 'rejected') {
-    status = 'rejected'
-    rejectionReason = decision.reason
-  } else if (decision.outcome === 'pending_review') {
-    status = 'pending'
-    rejectionReason = null
-  } else {
-    status = 'approved'
-    rejectionReason = null
-  }
+  const recommendation = recommendationOf(decision)
+  const status = statusForDecision(decision)
+  const rejectionReason: string | null = status === 'rejected' ? decision.reason : null
 
   const loanId = newId('loan')
   const now = new Date()
@@ -531,8 +521,8 @@ export async function requestLoan(input: {
         ? 'Solicitud calificada automáticamente por scoring (se emitió el contrato)'
         : status === 'rejected'
           ? 'Solicitud rechazada automáticamente por scoring'
-          : 'Solicitud enviada a revisión manual',
-    changes: { monto: amount, cuotas: term, score: score.score, decision: decision.outcome, motivo: decision.reason },
+          : `Solicitud enviada a revisi\u00f3n manual (recomendaci\u00f3n del sistema: ${recommendation})`,
+    changes: { monto: amount, cuotas: term, score: score.score, recomendacion: recommendation, decision: decision.outcome, motivo: decision.reason },
   })
   revalidateCustomer()
   return {
@@ -541,8 +531,8 @@ export async function requestLoan(input: {
     score: score.score,
     band: score.band,
     reasons: score.reasons,
-    decision: decision.outcome,
-    decisionReason: decision.reason,
+    decision: manualDecisionOnly() ? ('pending_review' as const) : decision.outcome,
+    decisionReason: manualDecisionOnly() ? MANUAL_DECISION_NOTICE : decision.reason,
     rejectionReason,
     loanId,
     contractId,
@@ -562,10 +552,8 @@ export async function getMyLoans() {
 export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boolean } = {}) {
   const userId = await assertRole('customer')
   await syncOverdueInstallments({ userId })
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const in60 = new Date(today)
-  in60.setDate(in60.getDate() + 60)
+  const today = startOfDayAR()
+  const in60 = addDaysAR(today, 60)
 
   const rows = await db
     .select({
@@ -595,8 +583,7 @@ export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boole
   if (!upcomingOnly) return rows
   return rows.filter((r) => {
     if (r.status === 'paid' || r.status === 'cancelled') return false
-    const d = new Date(r.dueDate as any)
-    d.setHours(0, 0, 0, 0)
+    const d = startOfDayAR(r.dueDate as any)
     if (r.status === 'overdue' || d < today) return true
     return d <= in60
   })

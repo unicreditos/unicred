@@ -1,3 +1,4 @@
+import { addDaysAR, formatDMY, startOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { ensureSupportCaseTable } from '@/lib/db/ensure-support-case'
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/lib/db/schema'
 import { formatARS } from '@/lib/finance'
 import { loadReadItemIds } from '@/lib/inbox-read'
+import { identityInboxNotice } from '@/lib/identity-notice'
 import type { Role } from '@/lib/session'
 import { and, desc, eq, inArray, lt } from 'drizzle-orm'
 
@@ -44,10 +46,8 @@ function sortItems(items: InboxItem[]) {
 }
 
 async function customerInbox(userId: string): Promise<InboxItem[]> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const week = new Date(today)
-  week.setDate(week.getDate() + 7)
+  const today = startOfDayAR()
+  const week = addDaysAR(today, 7)
 
   const [dues, pays, loans, kycs, disbs] = await Promise.all([
     db
@@ -115,7 +115,7 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
     items.push({
       id: `inst-${row.id}`,
       title: overdue ? `Cuota #${row.number} vencida` : `Cuota #${row.number} próxima`,
-      detail: `${formatARS(row.amount)} · vence ${due.toLocaleDateString('es-AR')}`,
+      detail: `${formatARS(row.amount)} · vence ${formatDMY(due)}`,
       at: iso(row.dueDate),
       href: '/dashboard?tab=pagos',
       tone: overdue ? 'critical' : due <= week ? 'warn' : 'info',
@@ -172,6 +172,11 @@ async function customerInbox(userId: string): Promise<InboxItem[]> {
       tone: kyc.status === 'rejected' ? 'warn' : 'info',
     })
   }
+
+  // Aviso de identidad: solicitud abierta sin verificacion Didit aprobada (se arma solo, sin escribir en la base).
+  const hasOpenLoan = loans.some((l) => l.status === 'pending' || l.status === 'approved')
+  const identityNotice = identityInboxNotice(kyc?.status === 'approved' || kyc?.status === 'verified' ? 'ok' : 'not_approved', hasOpenLoan)
+  if (identityNotice) items.push({ ...identityNotice, at: new Date().toISOString() })
 
   for (const row of disbs) {
     if (row.status !== 'credited') continue
@@ -260,8 +265,7 @@ async function merchantInbox(userId: string): Promise<InboxItem[]> {
 }
 
 async function adminInbox(): Promise<InboxItem[]> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = startOfDayAR()
 
   const [pendingLoans, pendingKyc, pendingMerchants, pendingDisb, overdue] = await Promise.all([
     db

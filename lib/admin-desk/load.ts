@@ -2,7 +2,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { user as userTable } from '@/lib/db/schema'
+import { adminRole, profile, user as userTable } from '@/lib/db/schema'
 import { getAdminPermissions, type PermissionKey } from '@/lib/rbac'
 import { requireAdmin } from '@/lib/session'
 import { recordAudit } from '@/lib/audit'
@@ -45,6 +45,53 @@ async function getSnapshot(): Promise<AdminDeskSnapshot> {
     throw err
   }
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  director: 'Director',
+  super_admin: 'Director',
+  gerente: 'Director',
+  originacion: 'Originación',
+  creditos: 'Originación',
+  comercial: 'Originación',
+  tesoreria: 'Tesorería',
+  finanzas: 'Tesorería',
+  cobranzas: 'Tesorería',
+  riesgo: 'Riesgo',
+  soporte: 'Soporte',
+  auditor: 'Auditoría',
+}
+
+export type DeskChrome = {
+  userId: string
+  operator: { name: string; email: string }
+  perms: Set<PermissionKey>
+  roleLabel: string
+}
+
+/**
+ * Menú y operador, sin armar la cartera. El layout y las pantallas que leen
+ * su propia tabla (contratos, CBU, documentación, auditoría) usan esto.
+ */
+export const loadDeskChrome = cache(async (): Promise<DeskChrome> => {
+  const userId = await requireAdmin()
+  const [perms, rows] = await Promise.all([
+    getAdminPermissions(userId),
+    db
+      .select({ name: userTable.name, email: userTable.email, roleKey: adminRole.key })
+      .from(userTable)
+      .leftJoin(profile, eq(profile.userId, userTable.id))
+      .leftJoin(adminRole, eq(profile.adminRoleId, adminRole.id))
+      .where(eq(userTable.id, userId))
+      .limit(1),
+  ])
+  const key = (rows[0]?.roleKey || '').toLowerCase()
+  return {
+    userId,
+    operator: { name: rows[0]?.name || 'Operador', email: rows[0]?.email || '' },
+    perms,
+    roleLabel: ROLE_LABEL[key] || 'Operador',
+  }
+})
 
 export type DeskContext = {
   userId: string

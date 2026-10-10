@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from 'next'
+import dynamic from 'next/dynamic'
 import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
-import { AnalyticsGate } from '@/components/analytics-gate'
-import { CookieConsent } from '@/components/cookie-consent'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
-import { Toaster } from '@/components/ui/sonner'
+import { maintenanceEnabled } from '@/lib/maintenance'
 import './globals.css'
+
+const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
+const Toaster = dynamic(() => import('@/components/ui/sonner').then((m) => m.Toaster))
 
 const sans = Instrument_Sans({
   subsets: ['latin'],
@@ -23,7 +25,11 @@ const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
   display: 'swap',
+  preload: false,
 })
+
+// Con el sitio cerrado no se publican datos de la empresa: ni autor en el <head> ni JSON-LD.
+const closed = maintenanceEnabled()
 
 const siteTitle = 'UNICRÉDITOS'
 const siteDescription =
@@ -37,8 +43,7 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: 'UNICRÉDITOS',
-  authors: [{ name: 'RM International Group S.A.S.' }],
-  creator: 'RM International Group S.A.S.',
+  ...(closed ? {} : { authors: [{ name: 'RM International Group S.A.S.' }], creator: 'RM International Group S.A.S.' }),
   openGraph: {
     type: 'website',
     siteName: 'UNICRÉDITOS',
@@ -70,6 +75,7 @@ export const viewport: Viewport = {
   themeColor: '#20BD5A',
 }
 
+import { AnalyticsGate } from '@/components/analytics-gate'
 import { ThemeProvider } from '@/components/theme-provider'
 
 /* Tema (claro/oscuro): se aplica antes del primer pintado sin parpadeo. */
@@ -89,7 +95,7 @@ export default function RootLayout({
       <body className="font-sans antialiased text-foreground bg-background">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SkipLink />
-          <SiteJsonLd />
+          {closed ? null : <SiteJsonLd />}
           {children}
           <CookieConsent />
           <Toaster richColors closeButton position="top-right" />

@@ -28,9 +28,41 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
 
   const [contracts, reports, receipts, disbursements, accounts] = await Promise.all([
     loadCustomerContracts(userId),
-    db.select().from(bcraReport).where(eq(bcraReport.userId, userId)).orderBy(desc(bcraReport.createdAt)).limit(20).catch(() => []),
-    db.select().from(paymentReceipt).where(eq(paymentReceipt.userId, userId)).orderBy(desc(paymentReceipt.createdAt)).limit(60).catch(() => []),
-    db.select().from(disbursement).where(eq(disbursement.userId, userId)).orderBy(desc(disbursement.createdAt)).limit(20).catch(() => []),
+    db
+      .select({ id: bcraReport.id, reportNumber: bcraReport.reportNumber, createdAt: bcraReport.createdAt })
+      .from(bcraReport)
+      .where(eq(bcraReport.userId, userId))
+      .orderBy(desc(bcraReport.createdAt))
+      .limit(20)
+      .catch(() => []),
+    db
+      .select({
+        id: paymentReceipt.id,
+        receiptNumber: paymentReceipt.receiptNumber,
+        amount: paymentReceipt.amount,
+        loanId: paymentReceipt.loanId,
+        paidAt: paymentReceipt.paidAt,
+        createdAt: paymentReceipt.createdAt,
+      })
+      .from(paymentReceipt)
+      .where(eq(paymentReceipt.userId, userId))
+      .orderBy(desc(paymentReceipt.createdAt))
+      .limit(60)
+      .catch(() => []),
+    db
+      .select({
+        id: disbursement.id,
+        amount: disbursement.amount,
+        status: disbursement.status,
+        loanId: disbursement.loanId,
+        creditedAt: disbursement.creditedAt,
+        createdAt: disbursement.createdAt,
+      })
+      .from(disbursement)
+      .where(eq(disbursement.userId, userId))
+      .orderBy(desc(disbursement.createdAt))
+      .limit(20)
+      .catch(() => []),
     getMyBankAccounts().catch(() => []),
   ])
 

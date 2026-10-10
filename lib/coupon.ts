@@ -1,3 +1,4 @@
+import { arCompactDate } from '@/lib/date-ar'
 import { publicBrandWebsite } from '@/lib/brand'
 import { formatARSDecimal } from '@/lib/finance'
 import { installmentPosPath as dashboardPosPath } from '@/lib/workspace-gate'
@@ -31,11 +32,8 @@ const CODE128_PATTERNS = [
 ]
 
 function dueStamp(dueDate: Date | string) {
-  const d = dueDate instanceof Date ? dueDate : new Date(dueDate)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}${m}${day}`
+  // Dia de vencimiento en hora argentina (el servidor corre en UTC).
+  return arCompactDate(dueDate)
 }
 
 export function couponCode(input: {

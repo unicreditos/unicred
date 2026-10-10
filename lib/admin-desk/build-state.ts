@@ -1,3 +1,4 @@
+import { addDaysAR, arDateKey, daysPastDueAR, todayAR } from '@/lib/date-ar'
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { BRAND } from '@/lib/brand'
 import { db, isPlaceholderDbUrl } from '@/lib/db'
@@ -75,7 +76,8 @@ function iso(d: Date | string | null | undefined): string | null {
 
 function dayKey(d: Date | string | null | undefined): string | null {
   const s = iso(d)
-  return s ? s.slice(0, 10) : null
+  // Dia calendario en Argentina (no el dia UTC: despues de las 21:00 AR UTC ya es "manana").
+  return s ? arDateKey(s) : null
 }
 
 function splitName(name: string): { firstName: string; lastName: string } {
@@ -210,7 +212,7 @@ function mapInstallmentStatus(
   if (s === 'paid') return 'paid'
   if (s === 'partial') return 'partial'
   if (s === 'overdue') return 'overdue'
-  if (dueDate.getTime() < now.getTime() && s !== 'paid') return 'overdue'
+  if (daysPastDueAR(dueDate, now) > 0 && s !== 'paid') return 'overdue'
   return 'pending'
 }
 
@@ -276,13 +278,10 @@ function mapCendeuResult(worst: number | null | undefined): CendeuResult {
 
 function emptySeries(): DailyPoint[] {
   const out: DailyPoint[] = []
-  const today = new Date()
-  today.setHours(12, 0, 0, 0)
+  const today = todayAR()
   for (let i = 30; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
     out.push({
-      date: d.toISOString().slice(0, 10),
+      date: arDateKey(addDaysAR(today, -i)),
       solicitudes: 0,
       aprobadas: 0,
       rechazadas: 0,
@@ -411,8 +410,6 @@ export async function buildAdminDeskSnapshot(): Promise<AdminDeskSnapshot> {
   }
 
   try {
-    const { ensureAuditSchema } = await import('@/lib/db/ensure-audit')
-    await ensureAuditSchema()
     const state = await buildFromDb()
     return { state, degraded: false }
   } catch (err) {
@@ -530,9 +527,47 @@ async function buildFromDb(): Promise<AdminDeskState> {
       [],
     ),
     safeQuery(() => db.select().from(loan).orderBy(desc(loan.createdAt)).limit(400), []),
-    safeQuery(() => db.select().from(payment).orderBy(desc(payment.createdAt)).limit(400), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: payment.id,
+            loanId: payment.loanId,
+            userId: payment.userId,
+            method: payment.method,
+            status: payment.status,
+            amount: payment.amount,
+            paidAt: payment.paidAt,
+            createdAt: payment.createdAt,
+            externalId: payment.externalId,
+            referenceNumber: payment.referenceNumber,
+            processedBy: payment.processedBy,
+            notes: payment.notes,
+            failureReason: payment.failureReason,
+          })
+          .from(payment)
+          .orderBy(desc(payment.createdAt))
+          .limit(400),
+      [],
+    ),
     safeQuery(() => db.select().from(disbursement).orderBy(desc(disbursement.createdAt)).limit(200), []),
-    safeQuery(() => db.select().from(paymentReceipt).orderBy(desc(paymentReceipt.issuedAt)).limit(200), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: paymentReceipt.id,
+            paymentId: paymentReceipt.paymentId,
+            disbursementId: paymentReceipt.disbursementId,
+            userId: paymentReceipt.userId,
+            receiptNumber: paymentReceipt.receiptNumber,
+            amount: paymentReceipt.amount,
+            issuedAt: paymentReceipt.issuedAt,
+          })
+          .from(paymentReceipt)
+          .orderBy(desc(paymentReceipt.issuedAt))
+          .limit(200),
+      [],
+    ),
     safeQuery(
       () =>
         db
@@ -542,9 +577,40 @@ async function buildFromDb(): Promise<AdminDeskState> {
           .limit(500),
       [],
     ),
-    safeQuery(() => db.select().from(bcraCheck).orderBy(desc(bcraCheck.createdAt)).limit(400), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: bcraCheck.id,
+            userId: bcraCheck.userId,
+            worstSituation: bcraCheck.worstSituation,
+            entitiesCount: bcraCheck.entitiesCount,
+            computedScore: bcraCheck.computedScore,
+            consultedAt: bcraCheck.consultedAt,
+            createdAt: bcraCheck.createdAt,
+          })
+          .from(bcraCheck)
+          .orderBy(desc(bcraCheck.createdAt))
+          .limit(400),
+      [],
+    ),
     safeQuery(() => db.select().from(bcraVariable).limit(100), []),
-    safeQuery(() => db.select().from(loanContract).orderBy(desc(loanContract.updatedAt)).limit(100), []),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: loanContract.id,
+            loanId: loanContract.loanId,
+            templateName: loanContract.templateName,
+            version: loanContract.version,
+            status: loanContract.status,
+            updatedAt: loanContract.updatedAt,
+          })
+          .from(loanContract)
+          .orderBy(desc(loanContract.updatedAt))
+          .limit(100),
+      [],
+    ),
     safeQuery(() => db.select().from(supportCase).orderBy(desc(supportCase.updatedAt)).limit(100), []),
     safeQuery(() => db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(200), [], 'adminAuditLog'),
   ])
@@ -801,11 +867,8 @@ async function buildFromDb(): Promise<AdminDeskState> {
     let daysPastDue = 0
     let overdueAmount = 0
     for (const s of schedule) {
-      if (s.status === 'overdue' || (s.status === 'pending' && new Date(s.dueDate) < now)) {
-        const days = Math.max(
-          0,
-          Math.floor((now.getTime() - new Date(s.dueDate).getTime()) / 86_400_000),
-        )
+      if (s.status === 'overdue' || (s.status === 'pending' && daysPastDueAR(s.dueDate, now) > 0)) {
+        const days = Math.max(0, daysPastDueAR(s.dueDate, now))
         daysPastDue = Math.max(daysPastDue, days)
         overdueAmount += s.amount - s.paidAmount
       }

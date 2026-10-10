@@ -1,4 +1,12 @@
 import { notFound } from 'next/navigation'
+import { eq } from 'drizzle-orm'
+import { KycEvidenceViewer } from '@/components/admin/kyc-evidence-viewer'
+import { LoanAdminActions } from '@/components/uc/loan-admin-actions'
+import { getAuditLogForEntity } from '@/lib/audit'
+import { db } from '@/lib/db'
+import { loan as loanTable, loanProduct } from '@/lib/db/schema'
+import { loadKycFacts, loadReopenFacts } from '@/lib/loan-admin-facts'
+import { originacionKycBlockers } from '@/lib/loan-admin-rules'
 import Link from 'next/link'
 import { DeskActionButton } from '@/components/uc/desk-action'
 import { BackLink, Badge, ButtonLink, Callout, Grid, Kv, NoAccess, PageHead, Pad, CardHead } from '@/components/uc/blocks'
@@ -37,6 +45,15 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
   if (!app) notFound()
 
   const client = state.clients.find((c) => c.id === app.clientId)
+  // Lecturas de solo lectura para la gestión: versión del crédito, límites, identidad, historial.
+  const [loanRow] = await db.select({ updatedAt: loanTable.updatedAt, status: loanTable.status, productId: loanTable.productId }).from(loanTable).where(eq(loanTable.id, app.id)).limit(1).catch(() => [])
+  const [prodRow] = loanRow?.productId ? await db.select().from(loanProduct).where(eq(loanProduct.id, loanRow.productId)).limit(1).catch(() => []) : []
+  const kycFacts = await loadKycFacts(app.clientId).catch(() => null)
+  const kycBlockers = kycFacts ? originacionKycBlockers(kycFacts) : ['No se pudo leer el estado de identidad.']
+  const reopenFacts = loanRow ? await loadReopenFacts(app.id, loanRow.status).catch(() => null) : null
+  const timeline = perms.has('credits.read') ? await getAuditLogForEntity('loan', app.id, 50).catch(() => []) : []
+  const executed = !!reopenFacts && (reopenFacts.disbursementsCredited > 0 || reopenFacts.paidInstallments > 0)
+  const DOC_LABEL = { dni_front: 'DNI frente', dni_back: 'DNI dorso', selfie: 'Selfie', video: 'Video de prueba de vida' } as const
   const product = state.products.find((p) => p.id === app.productId)
   const approval = state.approvals.find((a) => a.applicationId === app.id)
   const bcra = bcraByClient(state).get(app.clientId)
@@ -114,6 +131,54 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
               />
             ) : (
               <p className="uc-note">Todavía no se consultó la situación del cliente en el BCRA.</p>
+            )}
+          </Pad>
+
+          <Pad>
+            <CardHead title="Identidad y verificaciones" aside={client ? <Link href={`/admin/originacion/documentacion/${encodeURIComponent(client.id)}`}>Documentación</Link> : undefined} />
+            {kycFacts ? (
+              <Kv
+                rows={[
+                  ['Didit', <Badge key="d" tone={kycFacts.diditApproved ? 'success' : 'danger'}>{kycFacts.diditApproved ? 'Aprobado y vigente' : kycFacts.kycRecordStatus ? `No vigente (${kycFacts.kycRecordStatus})` : 'Sin verificar'}</Badge>],
+                  ['Revisado', kycFacts.reviewedAt ? fdate(kycFacts.reviewedAt.toISOString()) : '—'],
+                  ['Vence', kycFacts.expiresAt ? fdate(kycFacts.expiresAt.toISOString()) : '12 meses desde la revisión'],
+                  ['Consentimiento BCRA', <Badge key="b" tone={kycFacts.bcraConsent ? 'success' : 'danger'}>{kycFacts.bcraConsent ? 'Otorgado' : 'Falta'}</Badge>],
+                  ['Padrón ARCA', <Badge key="a" tone={kycFacts.arcaManualReview ? 'warning' : kycFacts.arcaChecked ? 'success' : 'neutral'}>{kycFacts.arcaManualReview ? 'Revisión manual' : kycFacts.arcaChecked ? 'Consultado' : 'Sin consultar'}</Badge>],
+                  ...(Object.keys(DOC_LABEL) as Array<keyof typeof DOC_LABEL>).map((k): [string, React.ReactNode] => [DOC_LABEL[k], <Badge key={k} tone={kycFacts.docs[k] ? 'success' : 'warning'}>{kycFacts.docs[k] ? 'Cargado' : 'Falta'}</Badge>]),
+                ]}
+              />
+            ) : (
+              <p className="uc-note">No se pudo leer el estado de identidad. Reintentá en unos segundos.</p>
+            )}
+            {kycBlockers.length ? (
+              <div className="uc-req" style={{ marginTop: 12 }}>
+                {kycBlockers.join(' ')}
+              </div>
+            ) : null}
+          </Pad>
+
+          <Pad>
+            <CardHead title="Documentación completa" />
+            {perms.has('kyc.review') && client ? (
+              <KycEvidenceViewer userId={client.id} />
+            ) : (
+              <p className="uc-note">Tu rol no puede ver la documentación de identidad.</p>
+            )}
+          </Pad>
+
+          <Pad>
+            <CardHead title="Historial de la solicitud" />
+            {timeline.length ? (
+              <ol className="uc-check" style={{ display: 'grid', gap: 10, listStyle: 'none', padding: 0 }}>
+                {timeline.map((t) => (
+                  <li key={t.id}>
+                    <b>{fdate(new Date(t.createdAt).toISOString())}</b> · {t.actorEmail ?? 'Sistema'}
+                    <div className="uc-note">{t.action.replace(/_/g, ' ').toLowerCase()}{t.summary ? ` — ${t.summary}` : ''}</div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="uc-note">Todavía no hay movimientos registrados para esta solicitud.</p>
             )}
           </Pad>
         </div>
@@ -215,6 +280,26 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
               </div>
             )}
           </Pad>
+          {loanRow && reopenFacts && perms.has('credits.edit') ? (
+            <Pad>
+              <CardHead title="Gestión" />
+              <LoanAdminActions
+                applicationId={app.id}
+                expectedUpdatedAt={new Date(loanRow.updatedAt).toISOString()}
+                status={loanRow.status}
+                canEdit={Boolean(prodRow)}
+                amount={app.amount}
+                installments={app.installments}
+                minAmount={Number(prodRow?.minAmount ?? 0)}
+                maxAmount={Number(prodRow?.maxAmount ?? 0)}
+                minTerm={prodRow?.minTerm ?? 1}
+                maxTerm={prodRow?.maxTerm ?? 1}
+                contractAccepted={reopenFacts.contractAccepted}
+                locked={executed || loanRow.status === 'active' || loanRow.status === 'paid'}
+                lockedReason="Hay un desembolso, pagos o el crédito está vigente: no se puede reabrir ni editar. Las operaciones ejecutadas no se alteran."
+              />
+            </Pad>
+          ) : null}
         </div>
       </Grid>
     </>

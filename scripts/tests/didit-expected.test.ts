@@ -64,7 +64,7 @@ describe('Didit verifica persona, no la sociedad', () => {
   })
 
   it('rechaza fecha de nacimiento futura o de hoy', () => {
-    const now = new Date(2026, 7, 26)
+    const now = new Date('2026-08-26T12:00:00-03:00')
     const { max } = adultBirthDateBounds(now)
     assert.equal(isPlausibleAdultBirthDate('2026-08-25', now), false)
     assert.equal(isPlausibleAdultBirthDate(max, now), true)

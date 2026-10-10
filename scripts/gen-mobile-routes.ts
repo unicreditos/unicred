@@ -196,7 +196,7 @@ const specs: Spec[] = [
     methods: ['POST'],
     auth: true,
     admin: true,
-    handler: `const id = String((await params).id); return mobileJson(req, await mobileAdminApproveLoan(userId, id))`,
+    handler: `const body = await req.json().catch(() => ({})) as { note?: string; comment?: string }\n    const id = String((await params).id); return mobileJson(req, await mobileAdminApproveLoan(userId, id, String(body.note || body.comment || '')))`,
   },
   {
     file: 'admin/loans/[id]/reject/route.ts',

@@ -1,5 +1,6 @@
 'use server'
 
+import { arCompactDate } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import {
   bankAccount,
@@ -23,6 +24,7 @@ import { isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { persistBankLookup, toExtractedProfile } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { parseWalletDestination } from '@/lib/payments/cvu'
+import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 
 type AccountType = 'cbu' | 'cvu' | 'alias' | 'cci'
 
@@ -70,6 +72,7 @@ export async function createBankAccount(input: {
   setAsPrimary?: boolean
 }) {
   const userId = await assertRole('customer')
+  await assertVerifiedCustomer(userId, 'bank')
   const id = crypto.randomUUID()
 
   if (!input.holderName?.trim()) {
@@ -731,7 +734,7 @@ export async function markDisbursementAsCredited(
   const now = new Date()
   // Determinístico: si el admin hace doble clic, el segundo intento choca contra
   // el número de comprobante ya emitido en vez de generar uno nuevo.
-  const receiptNumber = `DES-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${d.id.slice(-8).toUpperCase()}`
+  const receiptNumber = `DES-${arCompactDate(now)}-${d.id.slice(-8).toUpperCase()}`
 
   const loan = d.loanId
     ? (

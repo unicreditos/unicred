@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { contractContentHash, signatureRecordHash } from '@/lib/legal/contract-hash'
 import { recordAudit } from '@/lib/audit'
 import { hasPermission, type PermissionKey } from '@/lib/rbac'
 import { db } from '@/lib/db'
@@ -28,11 +29,15 @@ import { listServicePayments, payServiceFromWallet } from '@/lib/payments/servic
 import { SERVICE_CATEGORIES, SERVICE_PROVIDERS } from '@/lib/services/catalog'
 import { getRoleForUser, newId } from '@/lib/session'
 import { createDiditSession, diditApprovedForUser, isDiditConfigured } from '@/lib/didit'
+import { assertKey6 } from '@/lib/key6-store'
 import { computeFrenchAmortization, frenchAmortizationSchedule } from '@/lib/finance'
 import { loanPricingFields } from '@/lib/loan-rates'
 import {
   computeCreditOffer,
   decideUnderwriting,
+  statusForDecision,
+  manualDecisionOnly,
+  assertHumanDecision,
   OPEN_LOAN_STATUSES,
   type AppRepaymentHistory,
 } from '@/lib/loan-underwriting'
@@ -295,17 +300,46 @@ export async function mobileSignLoan(userId: string, loanId: string, opts?: { ip
     .limit(1)
 
   const now = new Date()
+  const [loanForHash] = await db.select().from(loan).where(and(eq(loan.id, loanId), eq(loan.userId, userId))).limit(1)
+  const contentHash = contractContentHash({
+    contractId: contract.id,
+    loanId,
+    userId,
+    version: contract.version,
+    templateName: contract.templateName,
+    loan: loanForHash,
+    signer: { name: ident?.fullName ?? null, cuil: ident?.cuil ?? null },
+  })
+  const signatureHash = signatureRecordHash({
+    contentHash,
+    acceptedAt: now,
+    ip: opts?.ip,
+    userAgent: opts?.ua,
+    cuil: ident?.cuil,
+    userId,
+    signatureType: 'clickwrap',
+  })
   await db.transaction(async (tx) => {
     await tx
       .update(loanContract)
       .set({
         status: 'accepted',
+        contentHash,
         acceptedAt: now,
         acceptedIp: opts?.ip ?? null,
         acceptedUserAgent: opts?.ua ?? null,
         signatureType: 'clickwrap',
         signerName: ident?.fullName ?? null,
         signerCuil: ident?.cuil ?? null,
+        signatureData: {
+          ...((contract.signatureData as Record<string, unknown> | null) ?? {}),
+          hashAlgorithm: 'SHA-256',
+          contentHash,
+          signatureHash,
+          signedIp: opts?.ip ?? null,
+          signedUserAgent: String(opts?.ua ?? '').slice(0, 300) || null,
+          signerCuil: ident?.cuil ?? null,
+        },
         updatedAt: now,
       })
       .where(eq(loanContract.id, contract.id))
@@ -423,14 +457,14 @@ export async function mobileApplyLoan(
       term,
       monthlyRate: String(monthlyRate),
       ...loanPricingFields(amort),
-      status: 'rejected',
+      status: manualDecisionOnly() ? 'pending' : 'rejected',
       purpose,
       scoreAtApproval: score.score,
-      rejectionReason: offer.reason || 'Fuera de oferta',
+      rejectionReason: manualDecisionOnly() ? null : offer.reason || 'Fuera de oferta',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
-    return { id: loanId, status: 'REJECTED', applicationDate: new Date().toISOString() }
+    return { id: loanId, status: manualDecisionOnly() ? 'PENDING' : 'REJECTED', applicationDate: new Date().toISOString() }
   }
 
   const amort = computeFrenchAmortization(amount, term, monthlyRate)
@@ -442,8 +476,7 @@ export async function mobileApplyLoan(
     rejectedChecksCount: consulted.snapshot.chequesRechazados.count,
     rules,
   })
-  const status =
-    decision.outcome === 'rejected' ? 'rejected' : decision.outcome === 'pending_review' ? 'pending' : 'approved'
+  const status = statusForDecision(decision)
   const loanId = newId('loan')
   const now = new Date()
 
@@ -1248,10 +1281,11 @@ export async function mobileAdminLoans(status?: string, page = 1, limit = 50) {
   }
 }
 
-export async function mobileAdminApproveLoan(adminId: string, id: string) {
+export async function mobileAdminApproveLoan(adminId: string, id: string, note?: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
   await assertCanApproveLoan(existing)
+  assertHumanDecision({ action: 'approve', note, scoreAtApproval: existing.scoreAtApproval })
   assertAdminTransition(existing.status, 'approved')
   const now = new Date()
   await db.transaction(async (tx) => {
@@ -1259,6 +1293,15 @@ export async function mobileAdminApproveLoan(adminId: string, id: string) {
       .update(loan)
       .set({ status: 'approved', rejectionReason: null, updatedAt: now })
       .where(eq(loan.id, id))
+    await recordAudit({
+      actorUserId: adminId,
+      action: 'LOAN_APPROVED',
+      entityType: 'loan',
+      entityId: id,
+      targetUserId: existing.userId,
+      summary: `Aprobado por analista: ${String(note).trim()}`,
+      changes: { nota: String(note).trim(), score: existing.scoreAtApproval },
+    })
     await ensureLoanContract(
       tx,
       { id, userId: existing.userId, type: existing.type, status: 'approved' },
@@ -1271,6 +1314,7 @@ export async function mobileAdminApproveLoan(adminId: string, id: string) {
 export async function mobileAdminRejectLoan(_adminId: string, id: string, reason: string) {
   const [existing] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
   if (!existing) throw new Error('Préstamo no encontrado')
+  assertHumanDecision({ action: 'reject', note: reason })
   assertAdminTransition(existing.status, 'rejected')
   await db.transaction(async (tx) => {
     await tx
@@ -1367,7 +1411,9 @@ export async function mobileAdminSetScore(_adminId: string, customerId: string, 
   return { success: true, message: 'Score actualizado' }
 }
 
-export async function mobileAdminKycApprove(_adminId: string, customerId: string) {
+export async function mobileAdminKycApprove(adminId: string, customerId: string) {
+  // Key 6: sin DNI frente, dorso y selfie en archivo (prueba de vida y sesion aprobadas) no se aprueba a un cliente.
+  await assertKey6(customerId, 'mobile_admin_kyc_approve', adminId)
   await upsertKycApproved(customerId, 'mobile_admin')
   return { success: true, message: 'KYC aprobado' }
 }

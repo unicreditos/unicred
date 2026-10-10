@@ -405,14 +405,14 @@ export function LoanRequestSimulator({
                         ? 'Calificado: el contrato está listo para firmar. El dinero se acredita después, por tesorería.'
                         : resultModal.status === 'rejected'
                           ? 'En este momento no podemos aprobar tu solicitud'
-                          : 'Resultado de la solicitud'}
+                          : 'Solicitud recibida: queda en revisión de Finanzas'}
                     </h3>
                     <p className="mt-0.5 text-sm opacity-80">
                       {resultModal.status === 'approved'
                         ? 'El plan de cuotas se habilita cuando UNICRÉDITOS acredite el desembolso en tu CBU o CVU.'
                         : resultModal.status === 'rejected'
                           ? 'No es un rechazo definitivo. Podés volver a solicitar cuando tu perfil o tus ingresos hayan cambiado.'
-                          : 'Revisá los detalles.'}
+                          : 'Nunca se aprueba ni se rechaza automáticamente: un analista de Finanzas revisa tu solicitud y te avisamos por email.'}
                     </p>
                   </div>
                 </div>

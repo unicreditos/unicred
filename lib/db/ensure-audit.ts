@@ -6,6 +6,23 @@ let ensured = false
 /** Crea admin_audit_log si falta (mismo patrón que ensureRbacSchema). */
 export async function ensureAuditSchema() {
   if (ensured) return
+  // Si el disparador ya existe, no recrear la función ni los triggers: eso son varios
+  // viajes a la base en cada proceso nuevo, antes de cualquier lectura.
+  try {
+    const found = await db.execute(sql`
+      SELECT 1 AS ok
+      FROM pg_trigger
+      WHERE tgname = 'admin_audit_log_no_truncate'
+      LIMIT 1
+    `)
+    const rows = Array.isArray(found) ? found : (found as { rows?: unknown[] }).rows
+    if (rows && rows.length > 0) {
+      ensured = true
+      return
+    }
+  } catch {
+    /* una base nueva sigue por el alta de abajo */
+  }
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS admin_audit_log (
       id text PRIMARY KEY,

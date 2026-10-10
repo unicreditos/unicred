@@ -1,4 +1,5 @@
 import { CouponBookPrintable } from '@/components/documents/coupon-book-printable'
+import { loadCouponPaymentData } from '@/lib/documents/coupon-payment-data'
 import { DocumentPackLinks } from '@/components/documents/document-pack-links'
 import { DocumentPreviewShell } from '@/components/documents/document-preview-shell'
 import { Button } from '@/components/ui/button'
@@ -28,9 +29,10 @@ export default async function CuponeraPage({
   const [loanRow] = await db.select({ userId: loan.userId }).from(loan).where(eq(loan.id, loanId)).limit(1)
   const allowed = loanRow ? await canViewOwnedRecord(userId, loanRow.userId) : false
   const data = allowed && loanRow ? await loadLoanPackByLoanId(loanRow.userId, loanId) : null
+  const pay = data ? await loadCouponPaymentData() : null
   const backHref = data ? await documentBackHrefForLoan(userId, loanId) : await documentBackHref(userId)
 
-  if (!data) {
+  if (!data || !pay) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <div className="space-y-4 text-center">
@@ -54,7 +56,7 @@ export default async function CuponeraPage({
       extra={<DocumentPackLinks contractId={data.id} loanId={loanId} />}
       hint="Vista previa A4. Imprimí o guardá como PDF: cronograma y un talón por cuota abierta. El cupón de Pago Fácil o Rapipago se emite al pagar, no en esta impresión."
     >
-      <CouponBookPrintable contract={data} />
+      <CouponBookPrintable contract={data} pay={pay} />
     </DocumentPreviewShell>
   )
 }

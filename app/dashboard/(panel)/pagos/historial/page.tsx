@@ -5,7 +5,7 @@ import { ButtonLink, PageHead } from '@/components/uc/blocks'
 import { db } from '@/lib/db'
 import { paymentReceipt } from '@/lib/db/schema'
 import { badge } from '@/lib/uc/admin'
-import { loadCustomer, loadCustomerPayments } from '@/lib/customer/load'
+import { loadCustomerPayments, loadCustomerShell } from '@/lib/customer/load'
 import { PAYMENT_LABEL, PAYMENT_TONE, solRef } from '@/lib/customer/view'
 import { documentPrintPath } from '@/lib/documents/customer-view'
 
@@ -24,10 +24,15 @@ const METHOD: Record<string, string> = {
 }
 
 export default async function HistorialPagosPage() {
-  const { userId } = await loadCustomer()
+  const { userId } = await loadCustomerShell()
   const [payments, receipts] = await Promise.all([
     loadCustomerPayments(userId),
-    db.select().from(paymentReceipt).where(eq(paymentReceipt.userId, userId)).limit(100).catch(() => []),
+    db
+      .select({ id: paymentReceipt.id, paymentId: paymentReceipt.paymentId, receiptNumber: paymentReceipt.receiptNumber })
+      .from(paymentReceipt)
+      .where(eq(paymentReceipt.userId, userId))
+      .limit(100)
+      .catch(() => []),
   ])
   const receiptByPayment = new Map(receipts.filter((r) => r.paymentId).map((r) => [r.paymentId as string, r]))
 

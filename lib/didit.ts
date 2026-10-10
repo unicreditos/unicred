@@ -1,4 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { ocrMergeSql } from '@/lib/kyc-ocr-merge'
+import { preserveLegacyEvidence, saveVersionedEvidence } from '@/lib/evidence'
+import { isKycFresh } from '@/lib/kyc-validity'
 import { db } from '@/lib/db'
 import { diditSession, diditWebhookLog, kycVerification, merchant, profile } from '@/lib/db/schema'
 import { newId } from '@/lib/session'
@@ -6,6 +9,8 @@ import { eq } from 'drizzle-orm'
 import { notifyKycDecision } from '@/lib/notify-email'
 import { parseDiditCapture, kycMediaBundle } from '@/lib/didit-capture'
 import { persistKycMedia } from '@/lib/didit-media'
+import { key6EnforceExisting, key6Gate, key6InputFromDecision, key6Record } from '@/lib/key6'
+import { loadKey6ForUser, recordKey6Block, roleOfUser } from '@/lib/key6-store'
 
 const DIDIT_API = 'https://verification.didit.me'
 const WEBHOOK_MAX_SKEW_SECONDS = 300
@@ -73,17 +78,30 @@ export function isDiditConfigured() {
 export async function diditApprovedForUser(userId: string) {
   if (!userId) return false
   const [kyc] = await db
-    .select({ status: kycVerification.status, provider: kycVerification.provider })
+    .select({
+      status: kycVerification.status,
+      provider: kycVerification.provider,
+      expiresAt: kycVerification.expiresAt,
+      reviewedAt: kycVerification.reviewedAt,
+      updatedAt: kycVerification.updatedAt,
+    })
     .from(kycVerification)
     .where(eq(kycVerification.userId, userId))
     .limit(1)
   if (kyc?.provider !== 'didit' || kyc.status !== 'approved') return false
+  // Vigencia: la verificación vence a los 12 meses (KYC_MAX_AGE_MONTHS) y exige reverificar.
+  if (!isKycFresh({ expiresAt: kyc.expiresAt, reviewedAt: kyc.reviewedAt, updatedAt: kyc.updatedAt })) return false
   const [prof] = await db
     .select({ kycStatus: profile.kycStatus })
     .from(profile)
     .where(eq(profile.userId, userId))
     .limit(1)
-  return prof?.kycStatus === 'approved'
+  if (prof?.kycStatus !== 'approved') return false
+  // Key 6: un cliente solo cuenta como verificado con DNI frente, dorso y selfie + prueba de vida + sesion aprobadas.
+  // Personal exento. Aprobados anteriores a Key 6 (sin registro key6) se toleran salvo KEY6_ENFORCE_EXISTING=yes.
+  const k6 = await loadKey6ForUser(userId)
+  if (k6.gate.allow) return true
+  return !k6.hasRecord && !key6EnforceExisting()
 }
 
 function humanizeDiditApiError(status: number, detail: string) {
@@ -407,9 +425,35 @@ export async function applyDiditDecision(input: {
     return { ok: true as const, pendingSignup: true as const, userId: null }
   }
 
-  const kycStatus = mapDiditToKyc(input.status)
-  if (!kycStatus) {
+  const mappedStatus = mapDiditToKyc(input.status)
+  if (!mappedStatus) {
     return { ok: true as const, ignored: true as const, userId }
+  }
+
+  // Key 6: un cliente solo queda 'approved' con DNI frente, DNI dorso, selfie, prueba de vida aprobada y sesion aprobada.
+  // Personal (admin/operadores) queda exento. Si falta algo, el estado queda 'pending' (nunca verificado) y se audita.
+  let kycStatus: typeof mappedStatus = mappedStatus
+  let resolvedDecision: Record<string, unknown> | null = input.decision ?? null
+  let key6Eval: ReturnType<typeof key6Gate> | null = null
+  if (mappedStatus === 'approved') {
+    const role = await roleOfUser(userId)
+    let gate = key6Gate(role, key6InputFromDecision(resolvedDecision, input.status))
+    if (!gate.allow && isDiditConfigured()) {
+      // El webhook puede llegar sin las capturas: se pide la decision completa antes de decidir.
+      try {
+        const full = await getDiditDecision(input.sessionId)
+        resolvedDecision = full
+        gate = key6Gate(role, key6InputFromDecision(full, input.status))
+      } catch {
+        /* se conserva el bloqueo */
+      }
+    }
+    key6Eval = gate
+    if (!gate.allow) kycStatus = 'pending'
+  }
+  const key6Blocked = key6Eval && !key6Eval.allow ? key6Eval.evaluation : null
+  if (key6Blocked) {
+    await recordKey6Block({ userId, where: 'didit_decision', evaluation: key6Blocked })
   }
 
   const [existing] = await db
@@ -424,10 +468,17 @@ export async function applyDiditDecision(input: {
   }
 
   const now = new Date()
-  const decision = input.decision ?? null
+  const decision = resolvedDecision
   const expired = input.status === 'Expired' || input.status === 'KYC Expired' || input.status === 'Kyc Expired'
   const previousOcr = ((existing?.ocrData as Record<string, unknown> | null) ?? {}) as Record<string, unknown>
   const previousDidit = (previousOcr.didit as Record<string, unknown> | undefined) ?? {}
+  const key6Patch: Record<string, unknown> = key6Eval
+    ? {
+        key6: key6Eval.allow
+          ? { state: 'completo', missing: [], exempt: key6Eval.exempt, where: 'didit_decision', checkedAt: now.toISOString() }
+          : key6Record(key6Eval.evaluation, 'didit_decision', now),
+      }
+    : {}
   const values = {
     provider: 'didit',
     providerReferenceId: input.sessionId,
@@ -438,12 +489,13 @@ export async function applyDiditDecision(input: {
     cuilVerified: kycStatus === 'approved' ? true : existing?.cuilVerified ?? false,
     phoneVerified: featureApproved(decision, 'phone_verifications') || existing?.phoneVerified || false,
     emailVerified: featureApproved(decision, 'email_verifications') || existing?.emailVerified || false,
-    rejectionReason: pickRejection(input.status, decision),
+    rejectionReason: key6Blocked ? key6Blocked.message : pickRejection(input.status, decision),
     reviewedBy: 'didit',
     reviewedAt: kycStatus === 'approved' || kycStatus === 'rejected' ? now : existing?.reviewedAt ?? null,
     expiresAt: expired ? now : existing?.expiresAt ?? null,
     ocrData: {
       ...previousOcr,
+      ...key6Patch,
       didit: {
         ...previousDidit,
         sessionId: input.sessionId,
@@ -461,7 +513,11 @@ export async function applyDiditDecision(input: {
   }
 
   if (existing) {
-    await db.update(kycVerification).set(values).where(eq(kycVerification.id, existing.id))
+    // ocrData se fusiona en la base (solo la clave didit): no pisa claves que otro proceso escriba a la vez (p. ej. arcaPadron).
+    await db
+      .update(kycVerification)
+      .set({ ...values, ocrData: ocrMergeSql({ didit: values.ocrData.didit, ...key6Patch }) })
+      .where(eq(kycVerification.id, existing.id))
   } else {
     await db.insert(kycVerification).values({
       id: newId('kyc'),
@@ -481,6 +537,9 @@ export async function applyDiditDecision(input: {
   // Tolerante a fallos: un error de descarga no debe romper la aprobación.
   if (kycStatus === 'approved' && decision) {
     try {
+      const sameSession = existing?.providerReferenceId === input.sessionId
+      // Una verificación nueva NO pisa la evidencia anterior: se conserva como versión antes de reemplazar.
+      if (!sameSession) await preserveLegacyEvidence(userId)
       const capture = parseDiditCapture(decision, { sessionId: input.sessionId, status: input.status })
       const bundle = kycMediaBundle(capture)
       const liveVideo = capture.liveness
@@ -488,13 +547,16 @@ export async function applyDiditDecision(input: {
         .find((m) => m.kind === 'video')?.url
       const persisted = await persistKycMedia(
         { front: bundle.front, back: bundle.back, selfie: bundle.selfie, video: liveVideo },
-        {
-          dniFrontImageUrl: existing?.dniFrontImageUrl ?? null,
-          dniBackImageUrl: existing?.dniBackImageUrl ?? null,
-          selfieImageUrl: existing?.selfieImageUrl ?? null,
-          videoUrl: existing?.videoUrl ?? null,
-        },
+        sameSession
+          ? {
+              dniFrontImageUrl: existing?.dniFrontImageUrl ?? null,
+              dniBackImageUrl: existing?.dniBackImageUrl ?? null,
+              selfieImageUrl: existing?.selfieImageUrl ?? null,
+              videoUrl: existing?.videoUrl ?? null,
+            }
+          : null,
       )
+      await saveVersionedEvidence({ userId, sessionId: input.sessionId, kycVerificationId: existing?.id ?? null, media: persisted })
       if (
         persisted.dniFrontImageUrl ||
         persisted.dniBackImageUrl ||
@@ -515,7 +577,7 @@ export async function applyDiditDecision(input: {
     await notifyKycDecision({ userId, status: kycStatus })
   }
 
-  return { ok: true as const, userId, kycStatus }
+  return { ok: true as const, userId, kycStatus, key6: key6Blocked ? { state: key6Blocked.state, missing: key6Blocked.missing } : undefined }
 }
 
 export async function attachDiditSessionToUser(sessionId: string, userId: string) {

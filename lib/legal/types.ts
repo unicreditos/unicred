@@ -31,6 +31,7 @@ export type ContractDocData = {
   signerCuil?: string | null
   signatureType?: string | null
   acceptedIp?: string | null
+  contentHash?: string | null
   loan: {
     id: string
     principal: string | number

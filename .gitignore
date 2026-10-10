@@ -36,3 +36,14 @@ tsconfig.tsbuildinfo
 *.log
 next-env.d.ts
 .vercel
+
+# Configuracion local de herramientas (launch.json de preview, MCP, planes del agente)
+.claude/
+.cursor/
+.agents/
+
+# Credenciales QA generadas localmente
+.qa-seed-credentials.local
+
+# Reportes de simulacion (contienen ids de usuarios)
+/reports/

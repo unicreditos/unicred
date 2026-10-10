@@ -97,6 +97,7 @@ export async function loadContractPack(userId: string, contractId: string): Prom
     signerCuil: contract.signerCuil ?? p?.cuil ?? null,
     signatureType: contract.signatureType,
     acceptedIp: contract.acceptedIp,
+    contentHash: contract.contentHash,
     loan: {
       id: loanRow?.id ?? contract.loanId,
       principal: loanRow?.principal ?? 0,

@@ -32,38 +32,69 @@ export function profileProgress(p: {
   return { steps, done, total: steps.length, pct: Math.round((done / steps.length) * 100) }
 }
 
-/**
- * Datos base del panel del cliente. Una sola carga por request: el layout y la
- * página comparten el resultado gracias a `cache`.
- */
-export const loadCustomer = cache(async () => {
+/** Nombre del cliente para el marco. No toca préstamos ni cuotas. */
+export const loadCustomerShell = cache(async () => {
   const userId = await requireCustomer()
   const session = await getSession()
-  const [profile, loans, installments, kycRows] = await Promise.all([
-    getOrCreateProfile(),
-    getMyLoans().catch(() => []),
-    getMyInstallments().catch(() => []),
-    db
-      .select()
-      .from(kycVerification)
-      .where(eq(kycVerification.userId, userId))
-      .orderBy(desc(kycVerification.updatedAt))
-      .limit(1)
-      .catch(() => []),
-  ])
-  const kyc = kycRows[0] ?? null
   return {
     userId,
     user: {
       name: session?.user?.name || session?.user?.email?.split('@')[0] || 'Mi cuenta',
       email: session?.user?.email || '',
     },
+  }
+})
+
+/** Perfil e identidad, sin la cartera. Lo usan perfil, cuentas, BCRA e identidad. */
+export const loadCustomerBase = cache(async () => {
+  const shell = await loadCustomerShell()
+  const [profile, kycRows] = await Promise.all([
+    getOrCreateProfile(),
+    db
+      .select({
+        status: kycVerification.status,
+        provider: kycVerification.provider,
+        reviewedAt: kycVerification.reviewedAt,
+        updatedAt: kycVerification.updatedAt,
+      })
+      .from(kycVerification)
+      .where(eq(kycVerification.userId, shell.userId))
+      .orderBy(desc(kycVerification.updatedAt))
+      .limit(1)
+      .catch(() => []),
+  ])
+  const kyc = kycRows[0] ?? null
+  return {
+    ...shell,
     profile,
-    loans,
-    installments,
     kyc,
     identityVerified: kyc?.provider === 'didit' && kyc.status === 'approved',
   }
+})
+
+/** Fila completa de identidad. Solo la pantalla de validación: incluye fotos y el OCR. */
+export async function loadCustomerKyc(userId: string) {
+  const rows = await db
+    .select()
+    .from(kycVerification)
+    .where(eq(kycVerification.userId, userId))
+    .orderBy(desc(kycVerification.updatedAt))
+    .limit(1)
+    .catch(() => [])
+  return rows[0] ?? null
+}
+
+/**
+ * Cartera del cliente. Solo las pantallas que muestran préstamos o cuotas.
+ * El marco del panel no la espera.
+ */
+export const loadCustomer = cache(async () => {
+  const base = await loadCustomerBase()
+  const [loans, installments] = await Promise.all([
+    getMyLoans().catch(() => []),
+    getMyInstallments().catch(() => []),
+  ])
+  return { ...base, loans, installments }
 })
 
 /** Domicilio en una línea, sin repetir localidad/provincia si ya vienen en la calle. */
@@ -80,7 +111,12 @@ export function oneLineAddress(p: { address?: string | null; city?: string | nul
 
 export async function loadCustomerContracts(userId: string) {
   return db
-    .select()
+    .select({
+      id: loanContract.id,
+      loanId: loanContract.loanId,
+      status: loanContract.status,
+      createdAt: loanContract.createdAt,
+    })
     .from(loanContract)
     .where(eq(loanContract.userId, userId))
     .orderBy(desc(loanContract.createdAt))
@@ -89,7 +125,15 @@ export async function loadCustomerContracts(userId: string) {
 
 export async function loadCustomerPayments(userId: string) {
   return db
-    .select()
+    .select({
+      id: payment.id,
+      loanId: payment.loanId,
+      amount: payment.amount,
+      status: payment.status,
+      method: payment.method,
+      paidAt: payment.paidAt,
+      createdAt: payment.createdAt,
+    })
     .from(payment)
     .where(and(eq(payment.userId, userId)))
     .orderBy(desc(payment.createdAt))

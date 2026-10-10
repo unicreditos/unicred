@@ -30,6 +30,8 @@ const ACTIONS = new Set<DeskMutateAction>([
   'pauseMerchant',
   'activateMerchant',
   'createApplication',
+  'reopenApplication',
+  'editApplication',
 ])
 
 /** Mutaciones del desk. Body: { action, payload?, refresh?: boolean } */
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
     await assertDeskPermission(userId, action)
     const result = await deskMutate(userId, action, body?.payload ?? {})
     if (!result.ok) {
-      return mobileJson(req, { ok: false, error: result.error }, { status: 400 })
+      return mobileJson(req, { ok: false, error: result.error, code: result.code }, { status: result.code === 'conflict' ? 409 : 400 })
     }
     if (body?.refresh === false) {
       return mobileJson(req, { ok: true, id: result.id })
