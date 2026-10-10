@@ -54,12 +54,12 @@ export function InAppDocumentPanel({
 
   if (state === 'loading') {
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border bg-muted/40 px-4 py-2.5">
           <p className="text-sm font-semibold text-brand-navy-900">{documentKindTitle(kind)}</p>
         </div>
-        <div className="flex min-h-[420px] items-center justify-center bg-slate-100">
-          <p className="text-sm text-slate-500">Abriendo documento…</p>
+        <div className="flex min-h-[420px] items-center justify-center bg-muted">
+          <p className="text-sm text-muted-foreground">Abriendo documento…</p>
         </div>
       </div>
     )
@@ -67,24 +67,24 @@ export function InAppDocumentPanel({
 
   if (state === 'error' || !payload || !payload.ok) {
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex min-h-[280px] flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-          <FileText className="h-8 w-8 text-slate-300" />
+          <FileText className="h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm font-semibold text-brand-navy-900">{documentKindTitle(kind)}</p>
-          <p className="max-w-md text-sm text-slate-500">{error || 'No se pudo abrir el documento.'}</p>
+          <p className="max-w-md text-sm text-muted-foreground">{error || 'No se pudo abrir el documento.'}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="in-app-doc-stage overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="in-app-doc-stage overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <DocumentPrintTitle fileName={payload.fileName} />
-      <div className="no-print flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+      <div className="no-print flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
         <p className="text-sm font-semibold text-brand-navy-900">{payload.title}</p>
         <PrintButton fileName={payload.fileName} />
       </div>
-      <div className="in-app-doc-canvas max-h-[min(78vh,920px)] overflow-auto bg-slate-100 px-3 py-5 sm:px-6">
+      <div className="in-app-doc-canvas max-h-[min(78vh,920px)] overflow-auto bg-muted px-3 py-5 sm:px-6">
         <DocumentBody payload={payload} />
       </div>
     </div>

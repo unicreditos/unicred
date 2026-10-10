@@ -13,8 +13,8 @@ const TONE_CLASSES: Record<StatusTone, { pill: string; dot: string }> = {
   success: { pill: 'bg-success/10 text-success border-success/20', dot: 'bg-success' },
   warning: { pill: 'bg-warning/10 text-warning border-warning/20', dot: 'bg-warning' },
   danger: { pill: 'bg-destructive/10 text-destructive border-destructive/20', dot: 'bg-destructive' },
-  info: { pill: 'bg-sky-500/10 text-sky-700 border-sky-200', dot: 'bg-sky-500' },
-  complete: { pill: 'bg-teal-500/10 text-teal-700 border-teal-200', dot: 'bg-teal-500' },
+  info: { pill: 'bg-brand-primary/10 text-brand-primary-800 border-brand-primary/20', dot: 'bg-brand-primary' },
+  complete: { pill: 'bg-muted text-brand-navy-700 border-border', dot: 'bg-brand-navy-400' },
   neutral: { pill: 'bg-muted text-muted-foreground border-transparent', dot: 'bg-muted-foreground' },
 }
 

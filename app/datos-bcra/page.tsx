@@ -48,7 +48,7 @@ export default function DatosBcraPage() {
           </Grid>
         </PageSection>
 
-        <div className="rounded-2xl border border-brand-primary/15 bg-brand-primary-50/40 p-5 text-sm text-slate-700">
+        <div className="rounded-2xl border border-brand-primary/15 bg-brand-primary-50/40 p-5 text-sm text-brand-navy-700">
           <p className="flex items-center gap-2 font-semibold text-brand-navy">
             <BadgeCheck className="h-4 w-4 text-brand-primary" />
             Aviso

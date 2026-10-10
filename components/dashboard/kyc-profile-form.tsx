@@ -3,16 +3,7 @@
 import { requestProfileChange } from '@/app/actions/account'
 import { grantBcraConsent, updateProfile } from '@/app/actions/loans'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,13 +14,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { AccountAvatar } from '@/components/unicred/account-avatar'
+import { SectionCard, StatusChip } from '@/components/unicred/dashboard-kit'
+import { DecisionBanner } from '@/components/unicred/workspace-shell'
 import { BRAND } from '@/lib/brand'
 import { formatARS } from '@/lib/finance'
 import { profile } from '@/lib/db/schema'
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AccountAvatar } from '@/components/unicred/account-avatar'
-import { CheckCircle2, Loader2, Lock, Send } from 'lucide-react'
+import { CheckCircle2, Loader2, Send } from 'lucide-react'
 
 type Profile = typeof profile.$inferSelect
 
@@ -111,19 +104,7 @@ export function KYCProfileForm({
     }
   }, [formState?.ok])
 
-  const kycStatusLabel: Record<
-    string,
-    { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
-  > = {
-    pending: { label: 'Pendiente', variant: 'secondary' },
-    submitted: { label: 'En revisión', variant: 'outline' },
-    reviewing: { label: 'En revisión', variant: 'outline' },
-    verified: { label: 'Verificado', variant: 'default' },
-    approved: { label: 'Aprobado', variant: 'default' },
-    rejected: { label: 'Rechazado', variant: 'destructive' },
-  }
-
-  const status = kycStatusLabel[initialProfile?.kycStatus ?? 'pending'] ?? kycStatusLabel.pending
+  const status = initialProfile?.kycStatus ?? 'pending'
   const fieldClass = identityLocked ? 'bg-muted/40 text-foreground' : undefined
 
   function submitProfileChangeRequest() {
@@ -148,34 +129,33 @@ export function KYCProfileForm({
   return (
     <div className="mx-auto max-w-3xl space-y-4" id="kyc-form">
       {identityLocked ? (
-        <div className="flex items-start gap-3 rounded-xl border border-brand-navy-200 bg-brand-navy-50 px-4 py-3 text-sm text-brand-navy-800">
-          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
-          <div>
-            <p className="font-semibold">Ficha verificada · solo lectura</p>
-            <p className="mt-1 text-xs leading-relaxed text-brand-navy-600">
-              Los datos aprobados con Didit no se editan desde el panel. Pedí el cambio a UNICRÉDITOS: se abre un
-              caso de identidad para el equipo y recibís confirmación por mail.
-            </p>
-          </div>
-        </div>
+        <DecisionBanner
+          tone="info"
+          title="Ficha verificada · solo lectura"
+          detail="Los datos aprobados con Didit no se editan desde el panel. Pedí el cambio a UNICRÉDITOS: se abre un caso de identidad para el equipo y recibís confirmación por mail."
+        />
       ) : null}
 
       {requestMsg ? (
-        <div
-          className={
-            requestMsg.ok
-              ? 'rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800'
-              : 'rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive'
-          }
-        >
-          {requestMsg.text}
-        </div>
+        <DecisionBanner
+          tone={requestMsg.ok ? 'ok' : 'critical'}
+          title={requestMsg.text}
+        />
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex gap-3">
+      <SectionCard
+        title="Ficha personal"
+        description={
+          identityLocked
+            ? 'Identidad y domicilio registrados en tu expediente UNICRÉDITOS.'
+            : 'Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican con Didit.'
+        }
+        action={<StatusChip status={status} />}
+        bodyClassName="p-0"
+      >
+        <form action={identityLocked ? undefined : action}>
+          <div className="grid gap-6 p-4 md:grid-cols-2 sm:p-5">
+            <div className="md:col-span-2">
               <AccountAvatar
                 name={user?.name}
                 email={user?.email}
@@ -183,21 +163,7 @@ export function KYCProfileForm({
                 size="lg"
                 editable={!identityLocked}
               />
-              <div>
-                <CardTitle>Ficha personal</CardTitle>
-                <CardDescription>
-                  {identityLocked
-                    ? 'Identidad y domicilio registrados en tu expediente UNICRÉDITOS.'
-                    : 'Completá CUIL, domicilio e ingresos. El DNI y la biometría se verifican con Didit.'}
-                </CardDescription>
-              </div>
             </div>
-            <Badge variant={status.variant}>{status.label}</Badge>
-          </div>
-        </CardHeader>
-
-        <form action={identityLocked ? undefined : action}>
-          <CardContent className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cuil">CUIL *</Label>
               <Input
@@ -315,7 +281,7 @@ export function KYCProfileForm({
                 />
               </div>
               {monthlyIncome && !isNaN(Number(monthlyIncome)) && Number(monthlyIncome) > 0 && (
-                <p className="font-mono text-xs text-muted-foreground">~ {formatARS(monthlyIncome)} / mes</p>
+                <p className="text-xs tabular-nums text-muted-foreground">~ {formatARS(monthlyIncome)} / mes</p>
               )}
             </div>
 
@@ -358,9 +324,9 @@ export function KYCProfileForm({
                 {formState.error}
               </div>
             )}
-          </CardContent>
+          </div>
 
-          <CardFooter className="flex flex-wrap items-center justify-end gap-3 border-t">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border px-4 py-4 sm:px-5">
             {identityLocked ? (
               <Button type="button" variant="outline" size="lg" onClick={() => setShowRequest((v) => !v)}>
                 <Send className="h-4 w-4" />
@@ -386,19 +352,16 @@ export function KYCProfileForm({
                 </Button>
               </>
             )}
-          </CardFooter>
+          </div>
         </form>
-      </Card>
+      </SectionCard>
 
       {identityLocked && showRequest ? (
-        <Card className="border-brand-primary/30">
-          <CardHeader>
-            <CardTitle className="text-base">Pedido de cambio de ficha</CardTitle>
-            <CardDescription>
-              Se crea un caso en Reclamos (categoría identidad) y ops recibe el aviso. No edites datos vos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SectionCard
+          title="Pedido de cambio de ficha"
+          description="Se crea un caso en Reclamos (categoría identidad) y ops recibe el aviso. No edites datos vos."
+        >
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="change-fields">Qué querés corregir</Label>
               <Input
@@ -418,8 +381,8 @@ export function KYCProfileForm({
                 placeholder="Explicá el dato incorrecto y el valor correcto (mín. 20 caracteres)."
               />
             </div>
-          </CardContent>
-          <CardFooter className="justify-end gap-2 border-t">
+          </div>
+          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="ghost" onClick={() => setShowRequest(false)}>
               Cerrar
             </Button>
@@ -431,19 +394,16 @@ export function KYCProfileForm({
               {requestPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Enviar pedido
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </SectionCard>
       ) : null}
 
       {!initialProfile?.bcraConsentAt ? (
-        <Card className="border-amber-200/80">
-          <CardHeader>
-            <CardTitle className="text-base">Autorización CENDEU</CardTitle>
-            <CardDescription>
-              Sin esta autorización no se puede consultar la Central de Deudores ni solicitar un crédito.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
+        <DecisionBanner
+          tone="warn"
+          title="Autorización CENDEU"
+          detail="Sin esta autorización no se puede consultar la Central de Deudores ni solicitar un crédito."
+          action={
             <Button
               type="button"
               variant="outline"
@@ -457,8 +417,8 @@ export function KYCProfileForm({
             >
               Autorizo la consulta a la Central de Deudores del BCRA
             </Button>
-          </CardFooter>
-        </Card>
+          }
+        />
       ) : (
         <p className="text-xs text-muted-foreground">
           Consulta CENDEU autorizada el{' '}

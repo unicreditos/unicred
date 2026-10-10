@@ -155,13 +155,13 @@ export default function PrivacidadPage() {
         </aside>
         <div className="space-y-6 lg:col-span-3">
           {secs.map((s, i) => (
-            <section id={`pp-${i}`} key={s.t} className="space-y-3 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-lg font-bold text-slate-900">
+            <section id={`pp-${i}`} key={s.t} className="space-y-3 rounded-2xl border border-border/60 bg-card p-6">
+              <h2 className="flex items-center gap-3 text-lg font-bold text-brand-navy">
                 <FileSearch className="h-5 w-5 text-brand-primary" />
                 {s.t}
               </h2>
               <div className="space-y-2.5">
-                {s.p.map((par, k) => <p key={k} className="text-sm leading-relaxed text-slate-700">{par}</p>)}
+                {s.p.map((par, k) => <p key={k} className="text-sm leading-relaxed text-brand-navy-700">{par}</p>)}
               </div>
             </section>
           ))}
@@ -189,9 +189,9 @@ export default function PrivacidadPage() {
 
 function LI({ i, t }: { i: any; t: string }) {
   return (
-    <li className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/70">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-brand-primary ring-1 ring-brand-primary/20">{i}</span>
-      <span className="text-sm font-semibold text-slate-800">{t}</span>
+    <li className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 ring-1 ring-border/60">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-card text-brand-primary ring-1 ring-brand-primary/20">{i}</span>
+      <span className="text-sm font-semibold text-brand-navy">{t}</span>
     </li>
   )
 }

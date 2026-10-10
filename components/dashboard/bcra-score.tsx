@@ -2,9 +2,9 @@
 
 import { consultMyBcra } from '@/app/actions/bcra'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BcraExtract } from '@/components/unicred/bcra-extract'
-import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
+import { DecisionBanner, EmptyState, MetricTile } from '@/components/unicred/workspace-shell'
 import { formatARS, formatDateTimeArg } from '@/lib/finance'
 import {
   formatPeriodoBcra,
@@ -171,29 +171,24 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
       </div>
 
       {isSynthetic && !live ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          El dato guardado no es una consulta real. Volvé a consultar el BCRA para extraer el informe completo.
-        </p>
+        <DecisionBanner
+          tone="warn"
+          title="El dato guardado no es una consulta real"
+          detail="Volvé a consultar el BCRA para extraer el informe completo."
+        />
       ) : null}
 
       {snap ? (
         <BcraExtract snapshot={snap} />
       ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Todavía no hay extracto. Consultá el BCRA para ver situación de créditos, último informe, históricas y cheques.
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Todavía no hay extracto"
+          description="Consultá el BCRA para ver situación de créditos, último informe, históricas y cheques."
+        />
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Scale className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm">Factores del score</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-slate-600">
+      <SectionCard title="Factores del score" icon={<Scale className="h-4 w-4" />}>
+        <div className="space-y-2 text-sm text-muted-foreground">
           {persistedReasons.length ? (
             persistedReasons.map((r) => (
               <p key={r} className="rounded-lg border border-border bg-muted px-3 py-2">{r}</p>
@@ -212,8 +207,8 @@ export function BCRAScore({ profile, lastBcraCheck, autoConsult = false }: BCRAS
             {' · '}
             {formatDateTimeArg(snap?.consultedAt ?? lastBcraCheck?.consultedAt ?? lastBcraCheck?.createdAt)}
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </SectionCard>
     </div>
   )
 }

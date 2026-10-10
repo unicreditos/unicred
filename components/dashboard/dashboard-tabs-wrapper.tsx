@@ -19,14 +19,6 @@ import {
 import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -878,7 +870,7 @@ export function DashboardTabsWrapper({
                     >
                       <summary className="flex cursor-pointer items-center justify-between gap-4 list-none">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-[12px] font-black text-brand-primary">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-[12px] font-bold text-brand-primary">
                             {String(i + 1).padStart(2, '0')}
                           </span>
                           <div className="font-semibold leading-snug">{f.q}</div>
@@ -1723,14 +1715,13 @@ function BancosPanel({
           )}
       </SectionCard>
 
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">{editingId ? 'Editar cuenta' : 'Agregar cuenta'}</CardTitle>
-          <CardDescription>
-            Solo CBU, CVU (22 dígitos) o alias. Al validar, completamos y guardamos los datos de la red.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <SectionCard
+        className="lg:col-span-2"
+        title={editingId ? 'Editar cuenta' : 'Agregar cuenta'}
+        description="Solo CBU, CVU (22 dígitos) o alias. Al validar, completamos y guardamos los datos de la red."
+        bodyClassName="p-0"
+      >
+        <div className="space-y-3 p-4 sm:p-5">
           <div className="space-y-1.5">
             <Label htmlFor="bank-identifier">CBU, CVU o alias</Label>
             <Input
@@ -1807,8 +1798,8 @@ function BancosPanel({
               </span>
             </label>
           ) : null}
-        </CardContent>
-        <CardFooter className="gap-2 border-t bg-muted/20">
+        </div>
+        <div className="flex gap-2 border-t border-border bg-muted/20 px-4 py-3 sm:px-5">
           {editingId ? (
             <>
               <Button type="button" variant="outline" className="w-full" disabled={isPending} onClick={resetForm}>
@@ -1858,8 +1849,8 @@ function BancosPanel({
               )}
             </Button>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </SectionCard>
     </div>
   )
 }
@@ -1943,15 +1934,10 @@ function PagosPanel({
         <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={backToList}>
           <ArrowLeft className="h-4 w-4" /> Volver a cuotas pendientes
         </Button>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Formulario de pago</CardTitle>
-            <CardDescription>
-              {selectedIds.length} cuota{selectedIds.length === 1 ? '' : 's'} · total{' '}
-              <span className="font-semibold text-foreground">{formatARS(totalSel)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SectionCard
+          title="Formulario de pago"
+          description={`${selectedIds.length} cuota${selectedIds.length === 1 ? '' : 's'} · total ${formatARS(totalSel)}`}
+        >
             <ul className="space-y-2 rounded-xl border bg-muted/20 p-3 text-sm">
               {pending
                 .filter((i) => selectedIds.includes(i.id))
@@ -2030,8 +2016,7 @@ function PagosPanel({
                 </div>
               </div>
             )}
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2 border-t bg-muted/20 pt-4">
+          <div className="flex flex-col gap-2 border-t border-border pt-4">
             <Button
               disabled={isPending || selectedIds.length === 0}
               className="w-full gap-1.5"
@@ -2063,8 +2048,8 @@ function PagosPanel({
                   loanId: i.loanId,
                 }))}
             />
-          </CardFooter>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
     )
   }

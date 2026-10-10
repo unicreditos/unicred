@@ -1,3 +1,9 @@
+/**
+ * Kit de producto UNICRÉDITOS. Ver DESIGN.md.
+ * Canónico: SectionCard, KpiCard, TrustBar, BrandLogo.
+ * App: MetricTile + acentos WorkspaceShell (brand-primary, no cian/naranja).
+ * Público: hero de vidrio en app/page.tsx; no usar HeroLanding en home.
+ */
 import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/finance'
 import { BRAND, GROUP } from '@/lib/brand'
@@ -149,7 +155,7 @@ export function DonutChart({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           {centerTitle ? <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{centerTitle}</div> : null}
-          {centerValue ? <div className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums">{centerValue}</div> : null}
+          {centerValue ? <div className="mt-0.5 text-xl font-bold tracking-tight text-foreground tabular-nums">{centerValue}</div> : null}
         </div>
       </div>
       <div className="w-full sm:w-auto space-y-1.5">
@@ -287,7 +293,7 @@ export function ProgressBar({
 }: {
   value: number
   max?: number
-  tone?: 'primary' | 'emerald' | 'amber' | 'cian'
+  tone?: 'primary' | 'emerald' | 'amber' | 'cian' // cian: alias deprecado → primary
   className?: string
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
@@ -336,6 +342,10 @@ export function StatusChip({
     expired: 'vencido',
     cancelled: 'rechazado',
     in_review: 'en_evaluacion',
+    submitted: 'en_evaluacion',
+    reviewing: 'en_evaluacion',
+    verified: 'aprobado',
+    disbursed: 'activo',
   }
   const raw = String(status).toLowerCase()
   const s = ALIASES[raw] ?? raw
@@ -511,13 +521,13 @@ function InfoField({
 
 export function BrandMark({
   className,
-  tone = 'orange',
+  tone = 'brand',
 }: {
   className?: string
-  /** orange = marca principal; white = fondos oscuros; cream = variante Global-Cash */
-  tone?: 'orange' | 'white' | 'cream'
+  /** brand = verde de producto; white/cream = fondos oscuros. `orange` es alias deprecado de brand. */
+  tone?: 'brand' | 'orange' | 'white' | 'cream'
 }) {
-  const fg = tone === 'orange' ? '#FF5722' : tone === 'cream' ? '#ECF0E5' : '#FFFFFF'
+  const fg = tone === 'white' ? '#FFFFFF' : tone === 'cream' ? '#ECF0E5' : '#20BD5A'
   const cut = '#000000'
   return (
     <svg viewBox="0 0 100 100" className={cn('h-5 w-5', className)} aria-hidden>
@@ -532,7 +542,7 @@ export function BrandMark({
         textAnchor="middle"
         fontSize="22"
         fontWeight="700"
-        fontFamily="Impact, Haettenschweiler, Arial Black, sans-serif"
+        fontFamily="Geist, Plus Jakarta Sans, Arial, sans-serif"
         fill={cut}
       >
         $
@@ -560,16 +570,15 @@ export function BrandLogo({
           light ? 'bg-black ring-1 ring-white/15' : 'bg-black shadow-sm ring-1 ring-black/20',
         )}
       >
-        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'orange'} />
+        <BrandMark className="h-[1.65rem] w-[1.65rem]" tone={light ? 'cream' : 'brand'} />
       </span>
       {showText ? (
         <span className="flex flex-col leading-none">
           <span
             className={cn(
-              'text-[17px] font-black uppercase tracking-[-0.04em]',
+              'text-[16px] font-bold uppercase tracking-[-0.03em]',
               light ? 'text-[#ECF0E5]' : 'text-brand-navy-800 dark:text-white',
             )}
-            style={{ fontFamily: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif" }}
           >
             {BRAND.company}
           </span>
@@ -592,7 +601,7 @@ export function DigitalCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A0A0A] via-[#1A120E] to-[#FF5722] p-5 text-white shadow-xl',
+        'relative overflow-hidden rounded-2xl bg-brand-navy p-5 text-white shadow-xl',
         className,
       )}
     >
@@ -603,7 +612,7 @@ export function DigitalCard({
             <BrandMark className="h-[1.65rem] w-[1.65rem]" tone="cream" />
           </span>
           <span>
-            <span className="block text-sm font-black tracking-[0.06em]">{BRAND.company}</span>
+            <span className="block text-sm font-bold tracking-[0.06em]">{BRAND.company}</span>
             <span className="block max-w-[160px] text-[10px] font-medium leading-snug text-white/70">{BRAND.slogan}</span>
           </span>
         </span>
@@ -637,7 +646,7 @@ export function TrustBar({ tone = 'navy' }: { tone?: 'navy' | 'light' }) {
       className={
         light
           ? 'w-full border-y border-border/50 bg-white/80 text-brand-navy-600 backdrop-blur-md'
-          : 'w-full bg-brand-navy-800 text-slate-200'
+          : 'w-full bg-brand-navy-800 text-white/80'
       }
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-3 px-4 py-3 sm:justify-between">
@@ -647,7 +656,7 @@ export function TrustBar({ tone = 'navy' }: { tone?: 'navy' | 'light' }) {
               className={
                 light
                   ? 'flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/15'
-                  : 'flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-brand-cian-300 ring-1 ring-white/5'
+                  : 'flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-brand-primary ring-1 ring-white/5'
               }
             >
               {i.icon}
@@ -670,14 +679,14 @@ export function HeroLanding() {
       />
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-12 lg:py-24">
         <div className="lg:col-span-7">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-cian-200">
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
             {GROUP.productLine} · crédito en línea
           </p>
           <h1 className="mt-6 max-w-3xl text-[40px] font-bold leading-[1.06] tracking-tight text-white sm:text-[54px] lg:text-[60px]">
             Un crédito que se entiende antes de pedirlo.
           </h1>
-          <p className="mt-5 max-w-xl text-lg font-medium leading-snug text-brand-cian-100 sm:text-xl">
+          <p className="mt-5 max-w-xl text-lg font-medium leading-snug text-white/85 sm:text-xl">
             {BRAND.valueProp}
           </p>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-white/75">
@@ -701,7 +710,7 @@ export function HeroLanding() {
           </div>
           <dl className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Tope del primer crédito
               </dt>
               <dd className="mt-1 text-lg font-bold tabular-nums text-white">
@@ -709,13 +718,13 @@ export function HeroLanding() {
               </dd>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Cuotas fijas
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">3 a 48</dd>
             </div>
             <div className="col-span-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 sm:col-span-1">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-cian-200">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
                 Antes de firmar
               </dt>
               <dd className="mt-1 text-lg font-bold text-white">TNA y CFT</dd>
@@ -725,7 +734,7 @@ export function HeroLanding() {
 
         <div className="lg:col-span-5">
           <div className="rounded-[1.75rem] border border-white/15 bg-white/[0.06] p-6 sm:p-8">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-cian-200">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-primary-200">
               Lo que sí hacemos
             </p>
             <ul className="mt-5 space-y-4">

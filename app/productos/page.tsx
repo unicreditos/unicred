@@ -30,7 +30,7 @@ export default function ProductosPage() {
       ],
       rate: PERSONAL_QUOTE,
       cta: { href: '/simulador', label: 'Simular préstamo personal' },
-      tone: 'from-brand-primary/10 to-brand-cian-500/10 border-brand-primary/20',
+      tone: 'border-brand-primary/20 bg-brand-primary/5',
     },
     {
       icon: <Building2 className="h-6 w-6" />,
@@ -46,7 +46,7 @@ export default function ProductosPage() {
       ],
       rate: COMERCIO_QUOTE,
       cta: { href: '/sign-up', label: 'Solicitar crédito comercial' },
-      tone: 'from-emerald-500/10 to-brand-cian-500/10 border-emerald-500/20',
+      tone: 'border-border/60 bg-card',
     },
   ]
 
@@ -63,31 +63,31 @@ export default function ProductosPage() {
         <PageSection eyebrow="Líneas disponibles" title="Elegí el producto">
           <Grid cols={2}>
             {productos.map((p) => (
-              <div id={p.id} key={p.title} className={`flex h-full scroll-mt-28 flex-col gap-4 rounded-3xl border bg-gradient-to-br p-6 ${p.tone}`}>
+              <div id={p.id} key={p.title} className={`flex h-full scroll-mt-28 flex-col gap-4 rounded-2xl border p-6 ${p.tone}`}>
                 <div className="flex items-start justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-brand-primary ring-1 ring-slate-200/80">{p.icon}</div>
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-700 ring-1 ring-slate-200/80">{p.tag}</span>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-card text-brand-primary ring-1 ring-border">{p.icon}</div>
+                  <span className="rounded-full bg-card px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-navy-700 ring-1 ring-border">{p.tag}</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">{p.title}</h3>
+                  <h3 className="text-lg font-bold text-brand-navy">{p.title}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{p.subtitle}</p>
                 </div>
                 <ul className="space-y-2">
                   {p.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-2 text-sm text-slate-700">
-                      <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> <span>{b}</span>
+                    <li key={b} className="flex items-start gap-2 text-sm text-brand-navy-700">
+                      <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" /> <span>{b}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="rounded-2xl bg-white/80 p-4 ring-1 ring-slate-200/80">
+                <div className="rounded-2xl border border-border/60 bg-card p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tasas de referencia</p>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-bold text-slate-900">{p.rate.tnaLabel}</p>
+                      <p className="text-lg font-bold tabular-nums text-brand-navy">{p.rate.tnaLabel}</p>
                       <p className="text-[10px] text-muted-foreground">TNA</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-slate-900">{p.rate.cftLabel}</p>
+                      <p className="text-lg font-bold tabular-nums text-brand-navy">{p.rate.cftLabel}</p>
                       <p className="text-[10px] text-muted-foreground">CFT c/IVA intereses</p>
                     </div>
                   </div>
@@ -124,8 +124,8 @@ export default function ProductosPage() {
               'Mayor de 18 años',
               'Situación 4 o 5 en BCRA: rechazo automático salvo revisión admin',
             ].map((r) => (
-              <li key={r} className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-white p-4 text-sm leading-relaxed text-slate-700">
-                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {r}
+              <li key={r} className="flex items-start gap-2 rounded-xl border border-border/60 bg-background p-4 text-sm leading-relaxed text-brand-navy-700">
+                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" /> {r}
               </li>
             ))}
           </ul>

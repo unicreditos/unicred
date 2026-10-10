@@ -900,12 +900,12 @@ function Header({ title, text }: { title: string; text: string }) {
 
 function Alert({ text }: { text: string }) {
   return (
-    <p
-      className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    <div
+      className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-relaxed text-destructive"
       role="alert"
     >
       {text}
-    </p>
+    </div>
   )
 }
 

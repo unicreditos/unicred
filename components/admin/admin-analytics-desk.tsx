@@ -95,7 +95,7 @@ export function AdminAnalyticsDesk({
               derived.byProduct.map((p) => (
                 <li key={p.name} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
                   <span className="truncate">{p.name}</span>
-                  <span className="shrink-0 tabular-nums text-slate-600">
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
                     {p.n} · {formatARS(p.volume)}
                   </span>
                 </li>

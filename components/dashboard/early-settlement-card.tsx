@@ -2,7 +2,8 @@
 
 import { createEarlySettlementCheckout, quoteEarlySettlement } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SectionCard } from '@/components/unicred/dashboard-kit'
+import { DecisionBanner, MetricTile } from '@/components/unicred/workspace-shell'
 import { formatARS } from '@/lib/finance'
 import { Banknote, FileText, Loader2, Scale } from 'lucide-react'
 import Link from 'next/link'
@@ -38,34 +39,27 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
 
   if (loanStatus === 'paid') {
     return (
-      <Card className="border-emerald-200 bg-emerald-50/40">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
-          <div>
-            <p className="text-sm font-semibold">Crédito cancelado</p>
-            <p className="text-sm text-muted-foreground">Ya podés descargar la constancia de libre deuda.</p>
-          </div>
+      <DecisionBanner
+        tone="ok"
+        title="Crédito cancelado"
+        detail="Ya podés descargar la constancia de libre deuda."
+        action={
           <Button asChild size="sm" variant="outline">
             <Link href={`/dashboard?tab=documentos_certificados&doc=libre-deuda&docId=${encodeURIComponent(loanId)}`}>Libre deuda</Link>
           </Button>
-        </CardContent>
-      </Card>
+        }
+      />
     )
   }
 
   if (loanStatus !== 'active') return null
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Scale className="h-4 w-4 text-primary" />
-          Cancelación anticipada
-        </CardTitle>
-        <CardDescription>
-          Se cobra el capital remanente. Los intereses no devengados se deducen del saldo contractual.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <SectionCard
+      title="Cancelación anticipada"
+      description="Se cobra el capital remanente. Los intereses no devengados se deducen del saldo contractual."
+      icon={<Scale className="h-4 w-4" />}
+    >
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Calculando liquidación…
@@ -73,33 +67,26 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : quote && quote.unpaidCount > 0 ? (
-          <>
-            <dl className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border bg-muted/40 p-3">
-                <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Saldo contractual
-                </dt>
-                <dd className="mt-1 font-mono text-sm font-semibold">{formatARS(quote.contractualRemaining)}</dd>
-              </div>
-              <div className="rounded-lg border bg-muted/40 p-3">
-                <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Intereses no devengados
-                </dt>
-                <dd className="mt-1 font-mono text-sm font-semibold text-emerald-700">
-                  −{formatARS(quote.interestDeduction)}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  A pagar hoy
-                </dt>
-                <dd className="mt-1 font-mono text-base font-bold">{formatARS(quote.settlementAmount)}</dd>
-              </div>
-            </dl>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetricTile label="Saldo contractual" value={formatARS(quote.contractualRemaining)} />
+              <MetricTile
+                label="Intereses no devengados"
+                value={`−${formatARS(quote.interestDeduction)}`}
+                tone="ok"
+              />
+              <MetricTile
+                label="A pagar hoy"
+                value={formatARS(quote.settlementAmount)}
+                hint={
+                  quote.unpaidCount === 1
+                    ? '1 cuota abierta'
+                    : `${quote.unpaidCount} cuotas abiertas`
+                }
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              {quote.unpaidCount === 1
-                ? '1 cuota abierta. El recibo se emite cuando Mercado Pago confirma el cobro.'
-                : `${quote.unpaidCount} cuotas abiertas. El recibo se emite cuando Mercado Pago confirma el cobro.`}
+              El recibo se emite cuando Mercado Pago confirma el cobro.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -131,11 +118,10 @@ export function EarlySettlementCard({ loanId, loanStatus }: { loanId: string; lo
                 </Link>
               </Button>
             </div>
-          </>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No hay saldo de capital para cancelar.</p>
         )}
-      </CardContent>
-    </Card>
+    </SectionCard>
   )
 }

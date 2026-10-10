@@ -30,7 +30,7 @@ function flagBits(e: BcraDeudaEntidad) {
 
 function Flags({ e, compact }: { e: BcraDeudaEntidad; compact?: boolean }) {
   const bits = flagBits(e)
-  if (!bits.length) return compact ? null : <span className="text-slate-400">—</span>
+  if (!bits.length) return compact ? null : <span className="text-muted-foreground">—</span>
   if (compact) {
     return <span className="doc-flag"> · {bits.join(' · ')}</span>
   }
@@ -47,7 +47,7 @@ function Flags({ e, compact }: { e: BcraDeudaEntidad; compact?: boolean }) {
 
 function EntidadesTable({ rows, compact }: { rows: BcraDeudaEntidad[]; compact?: boolean }) {
   if (!rows.length) {
-    return <p className="px-4 py-6 text-center text-sm text-slate-500">Sin entidades en este informe.</p>
+    return <p className="px-4 py-6 text-center text-sm text-muted-foreground">Sin entidades en este informe.</p>
   }
   if (compact) {
     return (
@@ -66,7 +66,7 @@ function EntidadesTable({ rows, compact }: { rows: BcraDeudaEntidad[]; compact?:
               <td>
                 {e.entidad}
                 {e.fechaSit1 ? (
-                  <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                  <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
                     Sit. 1 desde {formatDateArg(e.fechaSit1)}
                   </span>
                 ) : null}
@@ -102,7 +102,7 @@ function EntidadesTable({ rows, compact }: { rows: BcraDeudaEntidad[]; compact?:
             </TableCell>
             <TableCell className="text-right font-mono text-xs">{formatARS(e.monto)}</TableCell>
             <TableCell className="text-right font-mono text-xs">{e.diasAtrasoPago ?? 0} d</TableCell>
-            <TableCell className="text-xs text-slate-500">{e.fechaSit1 ? formatDateArg(e.fechaSit1) : '—'}</TableCell>
+            <TableCell className="text-xs text-muted-foreground">{e.fechaSit1 ? formatDateArg(e.fechaSit1) : '—'}</TableCell>
             <TableCell><Flags e={e} /></TableCell>
           </TableRow>
         ))}
@@ -113,7 +113,7 @@ function EntidadesTable({ rows, compact }: { rows: BcraDeudaEntidad[]; compact?:
 
 function PeriodosTable({ rows, compact }: { rows: BcraPeriodoResumen[]; compact?: boolean }) {
   if (!rows.length) {
-    return <p className="px-4 py-6 text-center text-sm text-slate-500">Sin informes históricos.</p>
+    return <p className="px-4 py-6 text-center text-sm text-muted-foreground">Sin informes históricos.</p>
   }
   if (compact) {
     return (
@@ -186,7 +186,7 @@ export function BcraExtract({
             Último informe vigente
             {snapshot.deudas.periodo ? ` · ${formatPeriodoBcra(snapshot.deudas.periodo)}` : ''}
           </CardTitle>
-          {titular ? <p className="text-sm text-slate-500">{titular}</p> : null}
+          {titular ? <p className="text-sm text-muted-foreground">{titular}</p> : null}
         </CardHeader>
         <CardContent className="p-0">
           <EntidadesTable rows={vigentes} compact={isDoc} />
@@ -272,7 +272,7 @@ export function BcraExtract({
         </CardHeader>
         <CardContent className="p-0">
           {!cheques.length ? (
-            <p className="px-4 py-6 text-center text-sm text-slate-500">Sin cheques rechazados informados.</p>
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">Sin cheques rechazados informados.</p>
           ) : isDoc ? (
             <table className="doc-table">
               <thead>
@@ -289,7 +289,7 @@ export function BcraExtract({
                     <td className="font-mono text-xs">{c.nroCheque ?? '—'}</td>
                     <td>
                       {c.denomJuridica || c.entidad || '—'}
-                      <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                      <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
                         {c.fechaRechazo ? `Rechazo ${formatDateArg(c.fechaRechazo)}` : 'Rechazo s/d'}
                         {c.fechaPago ? ` · Pago ${formatDateArg(c.fechaPago)}` : ''}
                         {c.procesoJud ? ' · En juicio' : c.enRevision ? ' · En revisión' : ''}
@@ -328,7 +328,7 @@ export function BcraExtract({
                     <TableCell className="max-w-[200px] text-sm">
                       {c.denomJuridica || c.entidad || '—'}
                       {c.ctaPersonal === false ? (
-                        <span className="mt-0.5 block text-[10px] font-normal text-slate-500">Cta. comercial</span>
+                        <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">Cta. comercial</span>
                       ) : null}
                     </TableCell>
                     <TableCell className="font-mono text-xs">{c.sucursal ?? '—'}</TableCell>

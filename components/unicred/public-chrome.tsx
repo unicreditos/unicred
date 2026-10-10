@@ -87,7 +87,7 @@ function MegaMenuItemLink({
         'group flex items-start gap-3 rounded-xl px-3 py-2.5 transition ' +
         (item.featured
           ? 'col-span-2 mt-1 border border-dashed border-brand-primary/20 bg-brand-primary-50/50 font-semibold text-brand-primary hover:bg-brand-primary-50'
-          : 'hover:bg-slate-50 hover:text-brand-primary')
+          : 'hover:bg-muted hover:text-brand-primary')
       }
     >
       {Icon ? (
@@ -164,8 +164,8 @@ export function PublicHeader({
                     aria-label={menu.label}
                     className="absolute left-1/2 top-full z-50 mt-2 w-[540px] -translate-x-1/2 rounded-2xl border border-border/70 bg-card p-3 shadow-2xl shadow-brand-navy/15"
                   >
-                    <div className="rounded-xl border border-dashed border-brand-primary/15 bg-gradient-to-br from-brand-primary-50/50 to-brand-cian-50/20 p-4">
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-brand-primary-700">{menu.hint}</div>
+                    <div className="rounded-xl border border-border/60 bg-muted/40 p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-brand-primary">{menu.hint}</div>
                       <div className="mt-0.5 text-base font-extrabold text-brand-navy-900">{menu.label}</div>
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-0.5">
@@ -270,25 +270,25 @@ export function PublicHeader({
 export function PublicFooter() {
   const year = new Date().getFullYear()
   return (
-    <footer className="border-t border-white/10 bg-brand-navy text-slate-200">
+    <footer className="border-t border-white/10 bg-brand-navy text-white/80">
       <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="space-y-4 md:col-span-4">
             <BrandLogo showText light />
-            <p className="max-w-md text-sm leading-relaxed text-slate-300/85">
+            <p className="max-w-md text-sm leading-relaxed text-white/70">
               {groupOperatorLine()} No somos un banco: originamos y administramos créditos sujetos a evaluación
               crediticia, con TNA, CFT e impuestos informados en cada simulación y contrato.
             </p>
-            <div className="flex flex-wrap gap-3 text-xs text-slate-300/80">
-              <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-brand-cian-300" /> Ley 25.326</span>
-              <span className="inline-flex items-center gap-1.5"><Landmark className="h-3.5 w-3.5 text-brand-cian-300" /> Consulta BCRA</span>
-              <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-brand-cian-300" /> TLS 1.3</span>
+            <div className="flex flex-wrap gap-3 text-xs text-white/65">
+              <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-brand-primary" /> Ley 25.326</span>
+              <span className="inline-flex items-center gap-1.5"><Landmark className="h-3.5 w-3.5 text-brand-primary" /> Consulta BCRA</span>
+              <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-brand-primary" /> TLS 1.3</span>
             </div>
           </div>
 
           <div className="md:col-span-2">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Crédito</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Crédito</div>
+            <ul className="mt-4 space-y-2 text-sm text-white/75">
               <li><Link href="/prestamos" className="hover:text-white">Préstamo personal</Link></li>
               {SHOW_MERCHANT_CREDIT_MARKETING ? (
                 <li><Link href="/productos#comercial" className="hover:text-white">Crédito comercial</Link></li>
@@ -301,8 +301,8 @@ export function PublicFooter() {
           </div>
 
           <div className="md:col-span-3">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Quién opera</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/80">
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Quién opera</div>
+            <ul className="mt-4 space-y-2 text-sm text-white/75">
               <li><Link href="/legal/usuario-financiero" className="hover:text-white">Usuario financiero</Link></li>
               <li><Link href="/legal/arrepentimiento" className="hover:text-white">Arrepentimiento (10 días)</Link></li>
               <li><Link href="/legal/defensa-consumidor" className="hover:text-white">Defensa del consumidor</Link></li>
@@ -311,8 +311,8 @@ export function PublicFooter() {
           </div>
 
           <div className="md:col-span-3">
-            <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Ayuda y legales</div>
-            <ul className="mt-4 space-y-2 text-sm text-slate-200/90">
+            <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Ayuda y legales</div>
+            <ul className="mt-4 space-y-2 text-sm text-white/80">
               <li><Link href="/preguntas-frecuentes" className="hover:text-white">Preguntas frecuentes</Link></li>
               <li><Link href="/contacto" className="hover:text-white">Contacto</Link></li>
               <li><Link href="/legal/arrepentimiento" className="hover:text-white">Botón de arrepentimiento</Link></li>
@@ -327,22 +327,22 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-10 border-t border-white/10 pt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-brand-cian-300">Marcas de {GROUP.name}</div>
-          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-200/80">
+          <div className="text-xs font-bold uppercase tracking-widest text-brand-primary-300">Marcas de {GROUP.name}</div>
+          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75">
             {groupSiblingUnits().map((unit) => (
               <li key={unit.id}>
                 <a href={unit.href} target="_blank" rel="noopener noreferrer" className="hover:text-white">
                   {unit.name}
                 </a>
-                <span className="ml-1 text-slate-400/80">· {unit.role}</span>
+                <span className="ml-1 text-white/45">· {unit.role}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-300/80 md:flex-row md:items-center">
+        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/65 md:flex-row md:items-center">
           <p suppressHydrationWarning>© {year} UNICRÉDITOS · {BRAND.domain} · {BRAND.domains.slice(1).join(' · ')}</p>
-          <p className="max-w-xl text-slate-300/80 md:text-right">
+          <p className="max-w-xl text-white/65 md:text-right">
             La cuota, TNA y CFT de la simulación son informativos. La oferta final se confirma en contrato.
           </p>
         </div>
@@ -364,26 +364,30 @@ export function LegalStrip() {
 export function PublicCtaBanner() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
-      <div className="overflow-hidden rounded-3xl border border-brand-primary/15 bg-gradient-to-br from-brand-primary via-brand-royal to-brand-navy p-8 text-white shadow-xl shadow-brand-navy/20 sm:p-10 lg:p-12">
-        <div className="grid items-center gap-8 lg:grid-cols-5">
+      <div className="relative overflow-hidden rounded-3xl bg-brand-navy p-8 text-white sm:p-10 lg:p-12">
+        <div
+          className="pointer-events-none absolute -right-20 -top-16 h-64 w-64 rounded-full bg-brand-primary/25 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative grid items-center gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-cian-200 ring-1 ring-white/10">
-              <Shield className="h-3.5 w-3.5" /> Evaluación con KYC y BCRA · Cuota fija
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">
+              <Shield className="h-3.5 w-3.5 text-brand-primary" /> Evaluación con KYC y BCRA · Cuota fija
             </div>
-            <h2 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+            <h2 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
               {BRAND.valueProp}
             </h2>
-            <p className="mt-3 max-w-xl text-base text-slate-200/90">
+            <p className="mt-3 max-w-xl text-base text-white/75">
               {BRAND.slogan} Creá tu cuenta, verificá identidad y, si el perfil califica, firmás con TNA,
               CFT y plan de cuotas a la vista.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild className="bg-white font-bold tracking-tight text-brand-navy hover:bg-slate-100 shadow-lg shadow-brand-navy/30">
+              <Button asChild className="bg-brand-primary font-bold tracking-tight text-white hover:bg-brand-primary-600">
                 <Link href="/sign-up">
                   Solicitar evaluación <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/20 bg-white/5 font-semibold text-white hover:bg-white/10">
+              <Button asChild variant="outline" className="border-white/25 bg-transparent font-semibold text-white hover:bg-white/10">
                 <Link href="/simulador">Ir al simulador</Link>
               </Button>
             </div>
@@ -395,9 +399,9 @@ export function PublicCtaBanner() {
               { n: 'CFT', l: 'Antes de firmar' },
               { n: '10 días', l: 'Arrepentimiento' },
             ].map((s) => (
-              <div key={s.l} className="rounded-2xl border border-white/10 bg-white/5 p-4 ring-1 ring-white/5">
-                <div className="text-2xl font-black tracking-tight text-white tabular-nums">{s.n}</div>
-                <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-cian-200">{s.l}</div>
+              <div key={s.l} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="text-2xl font-bold tracking-tight text-white tabular-nums">{s.n}</div>
+                <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/60">{s.l}</div>
               </div>
             ))}
           </div>

@@ -615,6 +615,27 @@ export function MetricTile({
  * laptops chicas o secciones muy cargadas el contenido crece y el
  * `<main>` scrollea en lugar de comprimir las tablas a una franja.
  */
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: {
+  icon?: ReactNode
+  title: string
+  description?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+      {icon ? <div className="text-muted-foreground/50">{icon}</div> : null}
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      {description ? <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">{description}</p> : null}
+      {action}
+    </div>
+  )
+}
+
 export function OpsFloor({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div

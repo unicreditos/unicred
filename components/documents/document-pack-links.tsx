@@ -33,7 +33,7 @@ export function DocumentPackLinks({
         <Link
           key={item.href}
           href={item.href}
-          className="rounded border border-slate-300 bg-white px-2 py-1 font-medium text-slate-700 hover:border-slate-500"
+          className="rounded border border-border bg-white px-2 py-1 font-medium text-foreground hover:border-brand-navy/40"
         >
           {item.label}
         </Link>
