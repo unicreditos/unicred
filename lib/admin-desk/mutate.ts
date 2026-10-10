@@ -27,6 +27,16 @@ import {
 import { newId } from '@/lib/session'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { requireAcceptedContract } from '@/lib/legal/expediente'
+import { loadKycFacts, loadReopenFacts } from '@/lib/loan-admin-facts'
+import {
+  CONFLICT_MESSAGE,
+  isStale,
+  originacionKycBlockers,
+  originacionKycMessage,
+  reopenDecision,
+  validateLoanEdit,
+} from '@/lib/loan-admin-rules'
+import { diffFields } from '@/lib/audit'
 
 export type DeskMutateAction =
   | 'approveApplication'
@@ -44,8 +54,10 @@ export type DeskMutateAction =
   | 'pauseMerchant'
   | 'activateMerchant'
   | 'createApplication'
+  | 'reopenApplication'
+  | 'editApplication'
 
-export type DeskMutateResult = { ok: true; id?: string } | { ok: false; error: string }
+export type DeskMutateResult = { ok: true; id?: string } | { ok: false; error: string; code?: 'conflict' | 'needs_confirmation' }
 
 function fail(error: string): DeskMutateResult {
   return { ok: false, error }
@@ -109,6 +121,12 @@ async function deskApplyToInstallment(
       createdAt: now,
     })
   })
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+async function lockedFresh(tx: Tx, id: string, expected: unknown): Promise<boolean> {
+  const [r] = await tx.select({ updatedAt: loan.updatedAt }).from(loan).where(eq(loan.id, id)).for('update').limit(1)
+  return Boolean(r) && !isStale(expected, r.updatedAt)
 }
 
 export async function deskMutate(
@@ -531,6 +549,9 @@ export async function deskMutate(
         if (!clientId || !productId || !(amount > 0) || !(installmentsCount > 0)) {
           return fail('Datos incompletos')
         }
+        // KYC obligatorio en originación (Didit vigente + consentimiento BCRA + ARCA sin revisión pendiente).
+        const kycBlockers = originacionKycBlockers(await loadKycFacts(clientId))
+        if (kycBlockers.length) return fail(originacionKycMessage(kycBlockers))
         const [prod] = await db.select().from(loanProduct).where(eq(loanProduct.id, productId)).limit(1)
         if (!prod || !prod.active) return fail('Producto inválido')
         if (amount < Number(prod.minAmount) || amount > Number(prod.maxAmount)) {
@@ -569,6 +590,92 @@ export async function deskMutate(
           entityId: id,
           targetUserId: clientId,
           summary: `Alta mesa ${amount} · ${installmentsCount} cuotas`,
+        })
+        return ok(id)
+      }
+
+      case 'reopenApplication': {
+        const id = String(payload.applicationId || payload.id || '')
+        const reason = String(payload.reason || payload.comment || '').trim()
+        if (!id) return fail('Solicitud requerida')
+        const [row] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
+        if (!row) return fail('Solicitud no encontrada')
+        if (isStale(payload.expectedUpdatedAt, row.updatedAt)) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        const facts = await loadReopenFacts(id, row.status)
+        const verdict = reopenDecision(facts, { reason, confirmSigned: payload.confirmSigned === true || payload.confirmSigned === 'true' })
+        if (!verdict.ok) return { ok: false, error: verdict.error, code: verdict.code === 'needs_confirmation' ? 'needs_confirmation' : undefined }
+        assertAdminTransition(row.status, 'pending')
+        const now = new Date()
+        // Bloqueo optimista: se relee la fila con lock y se compara la versión que vio el operador.
+        const done = await db.transaction(async (tx) => {
+          if (!(await lockedFresh(tx, id, payload.expectedUpdatedAt))) return false
+          await tx.update(loan).set({ status: 'pending', rejectionReason: null, updatedAt: now }).where(eq(loan.id, id))
+          // Un desembolso pendiente de un crédito aprobado deja de valer; los acreditados no se tocan (ya bloqueado arriba).
+          await tx
+            .update(disbursement)
+            .set({ status: 'failed', failureReason: `Reabierto: ${reason}`, updatedAt: now })
+            .where(and(eq(disbursement.loanId, id), ne(disbursement.status, 'credited'), ne(disbursement.status, 'completed')))
+          return true
+        })
+        if (!done) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        await recordAudit({
+          actorUserId: adminUserId,
+          action: 'LOAN_REOPENED',
+          entityType: 'loan',
+          entityId: id,
+          targetUserId: row.userId,
+          severity: 'warning',
+          summary: `Vuelta a pendiente desde ${row.status}: ${reason}`,
+          changes: { estado: { antes: row.status, despues: 'pending' }, motivo: reason, firmaConfirmada: facts.contractAccepted },
+        })
+        return ok(id)
+      }
+
+      case 'editApplication': {
+        const id = String(payload.applicationId || payload.id || '')
+        const reason = String(payload.reason || payload.comment || '').trim()
+        if (!id) return fail('Solicitud requerida')
+        const [row] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
+        if (!row) return fail('Solicitud no encontrada')
+        if (isStale(payload.expectedUpdatedAt, row.updatedAt)) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        const amount = payload.amount === undefined || payload.amount === '' ? null : Number(payload.amount)
+        const installments = payload.installments === undefined || payload.installments === '' ? null : Number(payload.installments)
+        const [prod] = row.productId ? await db.select().from(loanProduct).where(eq(loanProduct.id, row.productId)).limit(1) : []
+        if (!prod) return fail('El crédito no tiene un producto asociado: no se puede validar el rango.')
+        const verdict = validateLoanEdit(
+          { status: row.status, principal: Number(row.principal), term: row.term },
+          { amount, installments },
+          { minAmount: Number(prod.minAmount), maxAmount: Number(prod.maxAmount), minTerm: prod.minTerm, maxTerm: prod.maxTerm },
+          reason,
+        )
+        if (!verdict.ok) return fail(verdict.error)
+        const nextAmount = amount ?? Number(row.principal)
+        const nextTerm = installments ?? row.term
+        const amort = computeFrenchAmortization(nextAmount, nextTerm, Number(row.monthlyRate))
+        const patch = {
+          principal: nextAmount.toFixed(2),
+          term: nextTerm,
+          tea: String(amort.tea),
+          cft: String(amort.cft),
+          installmentAmount: amort.installmentAmount.toFixed(2),
+          totalAmount: amort.totalAmount.toFixed(2),
+        }
+        const now = new Date()
+        const done = await db.transaction(async (tx) => {
+          if (!(await lockedFresh(tx, id, payload.expectedUpdatedAt))) return false
+          await tx.update(loan).set({ ...patch, updatedAt: now }).where(and(eq(loan.id, id), eq(loan.status, 'pending')))
+          return true
+        })
+        if (!done) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        await recordAudit({
+          actorUserId: adminUserId,
+          action: 'LOAN_EDITED_ADMIN',
+          entityType: 'loan',
+          entityId: id,
+          targetUserId: row.userId,
+          severity: 'warning',
+          summary: `Edición de condiciones: ${reason}`,
+          changes: { motivo: reason, diff: diffFields(row as unknown as Record<string, unknown>, patch) },
         })
         return ok(id)
       }

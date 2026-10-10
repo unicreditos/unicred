@@ -3,7 +3,7 @@ import { Callout, Card, NoAccess, PageHead } from '@/components/uc/blocks'
 import { Icon } from '@/components/uc/icons'
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDesk } from '@/lib/admin-desk/load'
-import { badge, bcraBadge, bcraByClient, clientCell, clientIndex, clientSearch } from '@/lib/uc/admin'
+import { badge, bcraBadge, bcraByClient, clientCell, clientIndex, clientSearch, kycBadge } from '@/lib/uc/admin'
 
 export const metadata = { title: 'En revisión' }
 
@@ -30,6 +30,7 @@ export default async function RevisionPage() {
       cuotas: a.installments,
       etapaKey: String(stage),
       etapa: stage === 0 ? badge('Validación de identidad', 'info') : badge('Revisión manual de finanzas', 'warning'),
+      kyc: kycBadge(idx.get(a.clientId)?.kycStatus ?? 'pending'),
       bcra: bcraBadge(bcra.get(a.clientId)?.sit),
       ingreso: a.createdAt,
       ver: [{ kind: 'link', label: 'Revisar', href: `/admin/originacion/solicitudes/${encodeURIComponent(a.id)}` }],
@@ -89,6 +90,7 @@ export default async function RevisionPage() {
             { key: 'importe', label: 'Importe', kind: 'money', align: 'r', amount: true },
             { key: 'cuotas', label: 'Cuotas', kind: 'num', align: 'c' },
             { key: 'etapa', label: 'Etapa', kind: 'badge', order: ['Validación de identidad', 'Revisión manual de finanzas'] },
+            { key: 'kyc', label: 'Identidad (KYC)', kind: 'badge', order: ['Verificado', 'En revisión', 'Pendiente', 'Rechazado', 'Vencido'] },
             { key: 'bcra', label: 'BCRA', kind: 'badge', order: ['Sin consultar', 'Situación 1', 'Situación 2', 'Situación 3', 'Situación 4', 'Situación 5'] },
             { key: 'ingreso', label: 'Ingreso', kind: 'date' },
             { key: 'ver', label: 'Acción', kind: 'actions', align: 'r' },
