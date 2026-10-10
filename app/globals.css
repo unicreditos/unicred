@@ -1056,3 +1056,146 @@ h1,h2,h3,h4,h5,h6 { letter-spacing: -0.01em; }
     @apply bg-background text-foreground;
   }
 }
+
+/* ===================================================================
+   Cuponera: 4 cupones por hoja A4 (talón + línea de corte + cupón de pago)
+   con bloque "Datos para pagar". Prefijo cp-.
+   =================================================================== */
+.cp-root { display: block; }
+
+.cp-draft-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 2px solid #b45309;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.cp-draft-banner strong { font-size: 13px; letter-spacing: 0.04em; }
+
+.cp-print-block { display: none; }
+
+.cp-sheet { display: block; margin: 0 0 1.25rem; }
+.cp-sheet-foot {
+  margin: 0.35rem 0 0;
+  padding-top: 0.25rem;
+  border-top: 1px solid #94a3b8;
+  font-size: 9px;
+  color: #475569;
+  text-align: center;
+}
+
+.cp {
+  display: grid;
+  grid-template-columns: 46mm 5mm minmax(0, 1fr);
+  min-height: 62mm;
+  margin: 0;
+  border: 1px solid #0f2a4a;
+  background: #fff;
+  color: #111;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.cp + .cp { margin-top: -1px; border-top: 0.3mm dashed #111; }
+
+.cp-stub {
+  padding: 2.5mm 2.5mm 2mm;
+  background: #f3f6f9;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2mm;
+}
+.cp-stub-tag { margin: 0; font-size: 6.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 0.2mm solid #111; padding-bottom: 1mm; }
+.cp-stub-quota { margin: 0; font-size: 12pt; font-weight: 800; }
+.cp-stub-list { margin: 0; display: grid; gap: 1mm; }
+.cp-stub-list div { display: flex; flex-direction: column; }
+.cp-stub-list dt { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #444; }
+.cp-stub-list dd { margin: 0; font-size: 9pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cp-strong { font-weight: 800 !important; font-size: 10.5pt !important; }
+.cp-stub-ref { margin: auto 0 0; font-family: "Courier New", ui-monospace, monospace; font-size: 6.5pt; color: #444; }
+
+.cp-cut {
+  position: relative;
+  border-left: 0.3mm dashed #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2.5mm;
+  width: 0;
+}
+.cp-cut span { background: #fff; font-size: 9pt; line-height: 1; padding: 1mm 0; margin-left: -0.6mm; transform: rotate(-90deg); }
+
+.cp-main { min-width: 0; padding: 2.5mm 3mm 2mm 3mm; display: flex; flex-direction: column; gap: 1.6mm; }
+.cp-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3mm; align-items: baseline; border-bottom: 0.6mm solid #0f2a4a; padding-bottom: 1mm; }
+.cp-brand { margin: 0; font-size: 11pt; font-weight: 800; letter-spacing: 0.04em; color: #0f2a4a; }
+.cp-holder { margin: 0; font-size: 7.5pt; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-quota { margin: 0; font-size: 10pt; white-space: nowrap; }
+.cp-quota strong { font-weight: 800; }
+
+.cp-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
+.cp-label { margin: 0; font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #444; }
+.cp-value { margin: 0; font-size: 12pt; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cp-amount { font-size: 12pt; }
+.cp-overdue { text-decoration: underline; }
+
+.cp-body { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: 3mm; align-items: start; }
+.cp-code-col { min-width: 0; display: flex; flex-direction: column; gap: 1mm; }
+.cp-barcode .cuponera-barcode { width: 100%; }
+.cp-barcode svg { display: block; width: 100%; height: 11mm; shape-rendering: crispEdges; }
+.cp-barcode .cuponera-barcode-number { margin: 0.6mm 0 0; font-family: "Courier New", ui-monospace, monospace; font-size: 7pt; letter-spacing: 0.02em; text-align: left; }
+.cp-channels { margin: 0.5mm 0 0; display: flex; flex-wrap: wrap; gap: 1mm; }
+.cp-chip { display: inline-block; border: 0.3mm solid #111; padding: 0.4mm 1.6mm; font-size: 7pt; font-weight: 700; }
+.cp-note { margin: 0; font-size: 6.5pt; line-height: 1.3; color: #444; }
+
+.cp-paydata { min-width: 0; border: 0.35mm solid #0f2a4a; padding: 1.4mm 2mm 1.6mm; }
+.cp-paydata-title { margin: 0 0 1mm; font-size: 7.5pt; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #0f2a4a; }
+.cp-paydata-body { display: grid; grid-template-columns: minmax(0, 1fr) 22mm; gap: 2mm; align-items: start; }
+.cp-paydata-list { margin: 0; display: grid; gap: 0.5mm; }
+.cp-paydata-list > div { display: grid; grid-template-columns: 16mm minmax(0, 1fr); gap: 1mm; }
+.cp-paydata-list dt { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #444; padding-top: 0.2mm; }
+.cp-paydata-list dd { margin: 0; font-size: 7.5pt; font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
+.cp-mono { font-family: "Courier New", ui-monospace, monospace; letter-spacing: 0.01em; }
+.cp-pending { display: inline-block; border: 0.3mm dashed #b91c1c; color: #b91c1c; font-size: 6.5pt; font-weight: 800; padding: 0 1mm; line-height: 1.35; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cp-qr { margin: 0; width: 22mm; text-align: center; }
+.cp-qr-img { width: 22mm; height: 22mm; background: #fff; }
+.cp-qr-img svg { display: block; width: 22mm; height: 22mm; shape-rendering: crispEdges; }
+.cp-qr-pending { display: flex; align-items: center; justify-content: center; border: 0.3mm dashed #b91c1c; padding: 1mm; }
+.cp-qr-pending span { font-size: 6pt; font-weight: 800; line-height: 1.2; color: #b91c1c; }
+.cp-qr figcaption { margin-top: 0.6mm; font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
+
+/* Pantallas angostas: apilar */
+@container docsheet (max-width: 44rem) {
+  .cp { grid-template-columns: minmax(0, 1fr); }
+  .cp-cut { display: none; }
+  .cp-stub { border-bottom: 0.3mm dashed #111; }
+  .cp-body { grid-template-columns: minmax(0, 1fr); }
+  .cp-head { grid-template-columns: minmax(0, 1fr) auto; }
+  .cp-holder { grid-column: 1 / -1; order: 3; white-space: normal; }
+}
+
+@media print {
+  @page cuponera { size: A4 portrait; margin: 8mm; }
+  .cuponera-book { page: cuponera; }
+  .cp-draft-banner { display: none !important; }
+  .cuponera-book .cuponera-cover { break-after: page; page-break-after: always; }
+  .cuponera-book .cuponera-coupons { padding: 0 !important; }
+  .cp-sheet { height: 280mm; margin: 0; break-after: page; page-break-after: always; display: flex; flex-direction: column; }
+  .cp-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .cp { flex: 0 0 auto; height: 66mm; min-height: 0; overflow: hidden; }
+  .cp-sheet-foot { margin-top: auto; }
+  .cp-stub { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Bloqueo: sin datos de cobro completos no se imprime la cuponera */
+  .cp-root[data-final="false"] > *:not(.cp-print-block) { display: none !important; }
+  .cp-root[data-final="false"] > .cp-print-block { display: block !important; padding: 20mm; border: 1mm solid #000; font-size: 14pt; }
+  .cp-root[data-final="false"] > .cp-print-block strong { display: block; font-size: 18pt; margin-bottom: 4mm; }
+}
+
+@media print {
+  .cp-barcode .cuponera-barcode svg,
+  .cp-barcode svg { width: 100% !important; height: 11mm !important; }
+}

@@ -30,6 +30,7 @@ import {
 import { asMoraRows, evaluateIntimation, type IntimableRow } from '@/lib/legal/mora'
 import type { ContractDocData } from '@/lib/legal/types'
 import { requireUserId } from '@/lib/session'
+import { loadCouponPaymentData, type CouponPaymentData } from '@/lib/documents/coupon-payment-data'
 import { eq } from 'drizzle-orm'
 
 export type CustomerDocumentPayload =
@@ -39,6 +40,8 @@ export type CustomerDocumentPayload =
       title: string
       fileName: string
       contract: ContractDocData
+      /** Solo talonario: datos de cobro de UNICRÉDITOS, resueltos en el servidor. */
+      pay?: CouponPaymentData
     }
   | {
       ok: true
@@ -243,6 +246,7 @@ export async function loadCustomerDocument(
         title,
         fileName: documentPdfBaseName('Cuponera', shortDocCode(id, 'CUP')),
         contract: packByLoan,
+        pay: await loadCouponPaymentData(),
       })
     }
 
