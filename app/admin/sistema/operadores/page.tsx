@@ -3,6 +3,9 @@ import { NoAccess, PageHead } from '@/components/uc/blocks'
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDesk } from '@/lib/admin-desk/load'
 import { badge } from '@/lib/uc/admin'
+import { db } from '@/lib/db'
+import { listOperators } from '@/lib/operators/service'
+import { OperatorManager } from '@/components/uc/operator-manager'
 
 export const metadata = { title: 'Operadores' }
 
@@ -16,9 +19,11 @@ const ROLE: Record<string, string> = {
 }
 
 export default async function OperadoresPage() {
-  const { state, perms } = await loadDesk()
+  const { state, perms, userId } = await loadDesk()
   const head = <PageHead title="Operadores" description="Usuarios internos del backoffice y su rol." />
   if (!perms.has('users.manage')) return <>{head}<NoAccess what="los operadores" /></>
+
+  const manageRows = await listOperators(db)
 
   const rows: GridRow[] = state.operators.map((o) => ({
     id: o.id,
@@ -33,6 +38,7 @@ export default async function OperadoresPage() {
   return (
     <>
       {head}
+      <OperatorManager rows={manageRows} selfId={userId} />
       <DataGrid
         cfg={{
           id: 'ops',
