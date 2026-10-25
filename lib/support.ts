@@ -371,16 +371,6 @@ export async function listUserCases(userId: string) {
   return hydrateCases(rows, 'customer')
 }
 
-export async function listAdminCases() {
-  await ensureSupportCaseTable()
-  const rows = await db
-    .select()
-    .from(supportCase)
-    .orderBy(desc(supportCase.lastMessageAt), desc(supportCase.createdAt))
-    .limit(80)
-  return hydrateCases(rows, 'admin')
-}
-
 export async function listRelatedLoans(userId: string) {
   return db
     .select({

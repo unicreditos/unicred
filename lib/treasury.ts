@@ -42,4 +42,3 @@ export function treasuryForClient() {
   }
 }
 
-export type TreasuryClientView = ReturnType<typeof treasuryForClient>

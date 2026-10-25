@@ -140,7 +140,7 @@ export function GeoArFields({
       <div className="space-y-2">
         <Label>Provincia *</Label>
         <Select
-          value={value.province || undefined}
+          value={value.province || null}
           onValueChange={(province) =>
             onChange({ province: province ?? '', department: '', city: '', postalCode: value.postalCode })
           }
@@ -161,7 +161,7 @@ export function GeoArFields({
       <div className="space-y-2">
         <Label>Departamento / partido *</Label>
         <Select
-          value={value.department || undefined}
+          value={value.department || null}
           onValueChange={(department) =>
             onChange({ ...value, department: department ?? '', city: '' })
           }
@@ -190,7 +190,7 @@ export function GeoArFields({
           />
         )}
         <Select
-          value={value.city || undefined}
+          value={value.city || null}
           onValueChange={(city) => onChange({ ...value, city: city ?? '' })}
           disabled={!value.department || loadingLoc}
         >

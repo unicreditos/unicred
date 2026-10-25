@@ -8,13 +8,13 @@ import {
   reportBankTransfer,
   type PaymentMethod,
 } from '@/app/actions/payments'
+import { SHOW_INTERNAL_WALLET } from '@/lib/feature-flags'
 import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatARS } from '@/lib/finance'
 import type { BrickChannel } from '@/lib/payments/brick-methods'
-import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
@@ -34,7 +34,7 @@ type InstallmentPay = {
   loanId: string
 }
 
-const CUSTOMER_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
+const ALL_CUSTOMER_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
   { id: 'tarjeta_credito', label: 'Tarjeta de crédito', hint: 'Formulario en este punto de venta. No hace falta entrar a Mercado Pago.' },
   { id: 'tarjeta_debito', label: 'Tarjeta de débito', hint: 'Formulario en este punto de venta. No hace falta entrar a Mercado Pago.' },
   { id: 'pago_facil', label: 'Pago Fácil', hint: 'Se emite el cupón ahora. Tiene vencimiento: pagalo o imprimilo en el momento.' },
@@ -42,6 +42,9 @@ const CUSTOMER_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
   { id: 'payway_wallet', label: 'Billetera UNICRÉDITOS', hint: 'Saldo y CVU de tu cuenta. El cobro queda en esta plataforma.' },
   { id: 'transferencia_bancaria', label: 'Transferencia a RM', hint: 'Transferí al CBU de tesorería y subí el comprobante.' },
 ]
+
+/** La billetera interna se oculta hasta tener CVU reales (ver lib/feature-flags.ts). */
+const CUSTOMER_METHODS = ALL_CUSTOMER_METHODS.filter((row) => row.id !== 'payway_wallet' || SHOW_INTERNAL_WALLET)
 
 function isConcreteMethod(method: PaymentMethod | undefined): method is PaymentMethod {
   return CUSTOMER_METHODS.some((row) => row.id === method)
@@ -425,31 +428,6 @@ export function PayInstallmentDialog({
         )}
       </div>
     </div>
-  )
-}
-
-export function PayInstallmentButton({
-  installment,
-  email,
-  className,
-}: {
-  installment: InstallmentPay
-  email?: string | null
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Button type="button" size="sm" className={cn('h-8', className)} onClick={() => setOpen(true)}>
-        Pagar
-      </Button>
-      <PayInstallmentDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        installments={[installment]}
-        email={email}
-      />
-    </>
   )
 }
 

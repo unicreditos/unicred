@@ -45,10 +45,6 @@ export function documentPrintPath(kind: CustomerDocKind, id: string) {
   return `${path}?print=1`
 }
 
-export function documentEmbedSrc(kind: CustomerDocKind, id: string) {
-  return documentPrintPath(kind, id).replace('?print=1', '?embed=1')
-}
-
 export function documentKindTitle(kind: CustomerDocKind) {
   switch (kind) {
     case 'contrato':
@@ -76,14 +72,6 @@ export function documentKindTitle(kind: CustomerDocKind) {
     case 'cancelacion':
       return 'Liquidación de cancelación'
   }
-}
-
-export function customerTabForKind(kind: CustomerDocKind) {
-  if (kind === 'contrato') return 'documentos_contrato'
-  if (kind === 'pagare') return 'documentos_pagare'
-  if (kind === 'talonario') return 'documentos_talonario'
-  if (kind === 'recibo' || kind === 'liquidacion') return 'comprobantes'
-  return 'documentos'
 }
 
 export function customerDashboardDocUrl(kind: CustomerDocKind, id?: string) {

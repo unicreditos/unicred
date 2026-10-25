@@ -20,5 +20,3 @@ export function isPublicPath(pathname: string | null | undefined): boolean {
   return !THEMED_APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
-/** Misma regla para el script inline del <head>, que corre antes del primer pintado. */
-export const PUBLIC_PATH_REGEX_SOURCE = `^(?!(${THEMED_APP_PREFIXES.join('|')})(/|$)).*$`

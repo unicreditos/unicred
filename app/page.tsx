@@ -25,7 +25,7 @@ import Link from 'next/link'
 export const metadata = pageMetadata({
   title: 'Plataforma de soluciones financieras',
   description:
-    'Plataforma de soluciones financieras en Argentina: préstamo personal online con TNA, TEA y CFT a la vista, pagos de servicios, billetera virtual y red de comercios.',
+    'Plataforma de soluciones financieras en Argentina: préstamo personal online con TNA, TEA y CFT a la vista, y financiación para comercios.',
   path: '/',
 })
 

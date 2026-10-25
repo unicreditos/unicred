@@ -178,4 +178,3 @@ export function bcraByClient(state: AdminDeskState) {
   return m
 }
 
-export const PERIOD_DAYS = 30

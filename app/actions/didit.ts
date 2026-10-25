@@ -9,7 +9,6 @@ import { db } from '@/lib/db'
 import { diditSession, kycVerification, profile } from '@/lib/db/schema'
 import {
   applyDiditDecision,
-  attachDiditSessionToUser,
   createDiditSession,
   diditApprovedForUser,
   diditCookieOptions,
@@ -261,18 +260,6 @@ export async function getMyDiditSession() {
   }
 
   return { configured: isDiditConfigured(), sessionId: null, status: null, url: null }
-}
-
-export async function linkDiditCookieToUser() {
-  const userId = await requireUserId()
-  const jar = await cookies()
-  const sessionId = jar.get(DIDIT_SESSION_COOKIE)?.value
-  if (!sessionId) return { ok: true as const, linked: false as const }
-  const linked = await attachDiditSessionToUser(sessionId, userId)
-  if (!linked.ok) return { ok: false as const, error: linked.error }
-  revalidatePath('/dashboard')
-  revalidatePath('/merchant')
-  return { ok: true as const, linked: true as const, status: linked.status, url: linked.url }
 }
 
 export async function getDiditReturnPath() {

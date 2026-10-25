@@ -6,6 +6,7 @@ import { DiditVerifyButton } from '@/components/didit-verify-button'
 import { IdentityGuide } from '@/components/identity-guide'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
 import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
+import { SignupSessionGate } from '@/components/auth/signup-session-gate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,9 +41,32 @@ const STEP_LABEL: Record<Step, string> = {
   resultado: 'Listo',
 }
 
+/** Qué decirle a la persona según cómo va su verificación de identidad en Didit. */
+function diditPendingMessage(status: string | null) {
+  switch (status) {
+    case 'Approved':
+      return 'Identidad verificada.'
+    case 'In Review':
+      return 'Tu verificación quedó en revisión. Te avisamos por email cuando se resuelva; recién ahí podés crear la cuenta.'
+    case 'Declined':
+    case 'Abandoned':
+    case 'Kyc Expired':
+      return 'La verificación no se aprobó. Tocá "Reintentar verificación" y repetí el escaneo del DNI y la prueba de vida.'
+    default:
+      return 'Terminá la verificación en Didit (DNI, prueba de vida y selfie). Cuando figure como aprobada se habilita "Crear cuenta".'
+  }
+}
+
 const fieldClass = 'h-12 rounded-xl border-brand-navy-200 bg-white text-base'
 
-export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
+export function RegisterWizard({
+  intent,
+  activeSessionPanelHref = null,
+}: {
+  intent?: LoanIntent
+  /** Panel de la sesión abierta al entrar a /sign-up (null si no hay sesión). */
+  activeSessionPanelHref?: string | null
+}) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('id')
   const [identifier, setIdentifier] = useState('')
@@ -67,6 +91,7 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
   const [saving, setSaving] = useState(false)
   const [diditConfigured, setDiditConfigured] = useState<boolean | null>(null)
   const [diditStarted, setDiditStarted] = useState(false)
+  const [diditStatus, setDiditStatus] = useState<string | null>(null)
   const [result, setResult] = useState<{
     score: number | null
     band?: string
@@ -136,6 +161,7 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     void getDiditPublicConfig().then((cfg) => setDiditConfigured(cfg.configured))
     void getMyDiditSession().then((s) => {
       if (s.sessionId) setDiditStarted(true)
+      if (s.status) setDiditStatus(s.status)
     })
   }, [])
 
@@ -184,18 +210,27 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
       setError('Autorizá la consulta a la Central de Deudores del BCRA para continuar.')
       return
     }
+    if (diditStatus !== 'Approved') {
+      setError(diditPendingMessage(diditStatus))
+      return
+    }
     setSaving(true)
     const cleanEmail = email.trim().toLowerCase()
     try {
       const created = await authClient.signUp.email({ email: cleanEmail, password, name: name.trim() || cleanEmail })
       if (created.error) {
-        setError('No pudimos crear la cuenta. El email puede estar en uso.')
-        return
-      }
-      const signed = await authClient.signIn.email({ email: cleanEmail, password })
-      if (signed.error) {
-        setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
-        return
+        // Un intento anterior pudo dejar la cuenta creada sin perfil: si la clave coincide, se retoma ahí.
+        const retaken = await authClient.signIn.email({ email: cleanEmail, password })
+        if (retaken.error) {
+          setError('Ese email ya tiene una cuenta. Si es tuya, ingresá con tu clave; si no, usá otro email.')
+          return
+        }
+      } else {
+        const signed = await authClient.signIn.email({ email: cleanEmail, password })
+        if (signed.error) {
+          setError('No pudimos abrir tu sesión con ese email y esa clave. Si ya tenías una cuenta con este email, usá "Ingresá"; si no, probá con otro email.')
+          return
+        }
       }
 
       const done = await completeRegistration({
@@ -247,6 +282,12 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     isPlausibleAdultBirthDate(birthDate)
 
   const domicilioIncompleto = !(address.trim() && (geo.province || identity?.province) && (geo.city || identity?.city))
+
+  // Quien llega con una sesión ya abierta ve el aviso; quien está en pleno alta (su propia cuenta nueva abrió sesión)
+  // sigue en el asistente hasta ver "Tu cuenta está lista".
+  if (activeSessionPanelHref && step === 'id' && !result && !saving) {
+    return <SignupSessionGate panelHref={activeSessionPanelHref} />
+  }
 
   return (
     <AuthFloatLayout
@@ -566,22 +607,31 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
                 phone={phone}
                 email={email}
                 className="w-full"
-                onStarted={() => setDiditStarted(true)}
-                onCompleted={() => setDiditStarted(true)}
+                onStarted={() => {
+                  setDiditStarted(true)
+                  setDiditStatus((prev) => prev ?? 'In Progress')
+                }}
+                onCompleted={(status) => {
+                  setDiditStarted(true)
+                  setDiditStatus(status)
+                  setError(null)
+                }}
                 onError={setError}
               />
-              {diditStarted && (
-                <p className="text-sm font-medium text-brand-primary-700">
-                  Verificación iniciada. Cuando termines en Didit, creá tu cuenta.
+              {diditStatus === 'Approved' ? (
+                <p className="text-sm font-medium text-emerald-700">
+                  Identidad verificada. Ya podés crear tu cuenta.
                 </p>
-              )}
+              ) : diditStarted ? (
+                <p className="text-sm font-medium text-brand-primary-700">{diditPendingMessage(diditStatus)}</p>
+              ) : null}
             </div>
           )}
           {error && <Alert text={error} />}
           <NavRow
             onBack={() => go('clave')}
             nextLabel={saving ? 'Creando cuenta…' : 'Crear cuenta e ingresar'}
-            nextDisabled={!diditConfigured || !diditStarted || saving}
+            nextDisabled={!diditConfigured || diditStatus !== 'Approved' || saving}
             onNext={() => void handleCreate()}
             nextIcon={saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           />

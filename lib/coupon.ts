@@ -1,6 +1,5 @@
 import { arCompactDate } from '@/lib/date-ar'
 import { publicBrandWebsite } from '@/lib/brand'
-import { formatARSDecimal } from '@/lib/finance'
 import { installmentPosPath as dashboardPosPath } from '@/lib/workspace-gate'
 
 export function installmentPayPath(installmentId: string) {
@@ -46,19 +45,6 @@ export function couponCode(input: {
   const n = String(input.number).padStart(2, '0')
   const cents = String(Math.round((Number(input.amount) || 0) * 100)).padStart(10, '0')
   return `UC${loan}${n}${dueStamp(input.dueDate)}${cents}`
-}
-
-export function parseCouponCode(code: string) {
-  const raw = code.trim().toUpperCase()
-  const match = raw.match(/^UC([A-Z0-9]{6,10})(\d{2})(\d{8})(\d{10})$/)
-  if (!match) return null
-  const [, loan, number, due, cents] = match
-  return {
-    loanKey: loan,
-    number: Number(number),
-    dueDate: `${due.slice(0, 4)}-${due.slice(4, 6)}-${due.slice(6, 8)}`,
-    amount: Number(cents) / 100,
-  }
 }
 
 function encodeCode128B(text: string) {
@@ -166,15 +152,3 @@ export function itfBarcodeSvg(digits: string, opts?: { height?: number; narrow?:
   return `<svg xmlns="http://www.w3.org/2000/svg" class="doc-barcode doc-barcode-fit" width="100%" height="${height}" viewBox="0 0 ${total} ${height}" preserveAspectRatio="none" role="img" aria-label="${xmlEscape(value)}" style="width:100%;max-width:100%;display:block">${rects}</svg>`
 }
 
-export function couponLabel(input: {
-  loanId: string
-  number: number
-  dueDate: Date | string
-  amount: number | string
-}) {
-  return {
-    code: couponCode(input),
-    amountLabel: formatARSDecimal(input.amount),
-    dueStamp: dueStamp(input.dueDate),
-  }
-}

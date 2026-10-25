@@ -19,17 +19,6 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 
 export const DIDIT_SESSION_COOKIE = COOKIE_NAME
 
-export type DiditStatus =
-  | 'Not Started'
-  | 'In Progress'
-  | 'Approved'
-  | 'Declined'
-  | 'In Review'
-  | 'Abandoned'
-  | 'Resubmitted'
-  | 'Kyc Expired'
-  | string
-
 export type DiditKycStatus = 'pending' | 'reviewing' | 'approved' | 'rejected'
 
 export type DiditExpectedDetails = {
@@ -241,8 +230,6 @@ export const DIDIT_WEBHOOK_EVENTS = [
   'transaction.created',
   'transaction.status.updated',
 ] as const
-
-export type DiditWebhookType = (typeof DIDIT_WEBHOOK_EVENTS)[number]
 
 export function mapDiditToKyc(status: string): DiditKycStatus | null {
   switch (status) {

@@ -45,26 +45,34 @@ export function AuthForm() {
       return
     }
 
-    const { error: signInError } = await authClient.signIn.email({
-      email: cleanEmail,
-      password,
-      rememberMe,
-    })
+    let signInError: { message?: string; code?: string; status?: number } | null = null
+    try {
+      const res = await authClient.signIn.email({ email: cleanEmail, password, rememberMe })
+      signInError = res.error ?? null
+    } catch {
+      setLoading(false)
+      setError('No pudimos conectarnos. Revisá tu conexión e intentá de nuevo.')
+      return
+    }
 
     if (signInError) {
       setLoading(false)
       const raw = `${signInError.message || ''} ${signInError.code || ''}`.toLowerCase()
       setError(
-        raw.includes('verif') || raw.includes('email_not_verified')
-          ? 'Tu correo todavía no está verificado. Revisá tu bandeja de entrada o solicitá un nuevo enlace.'
-          : 'El correo electrónico o la contraseña ingresada no coinciden. Revisá los datos e intentá nuevamente.',
+        signInError.status === 429 || raw.includes('too many') || raw.includes('rate')
+          ? 'Hiciste demasiados intentos. Esperá unos minutos y volvé a probar.'
+          : raw.includes('verif') || raw.includes('email_not_verified')
+            ? 'Tu correo todavía no está verificado. Revisá tu bandeja de entrada o solicitá un nuevo enlace.'
+            : 'El correo electrónico o la contraseña ingresada no coinciden. Revisá los datos e intentá nuevamente.',
       )
       return
     }
 
     let target = callbackUrl
     if (!target) {
-      const res = await fetch('/api/me/dashboard-url', { cache: 'no-store' }).then((r) => r.json().catch(() => ({ dashboardUrl: '/dashboard' })))
+      const res = await fetch('/api/me/dashboard-url', { cache: 'no-store' })
+        .then((r) => r.json().catch(() => ({ dashboardUrl: '/dashboard' })))
+        .catch(() => ({ dashboardUrl: '/dashboard' }))
       target = res.dashboardUrl || '/dashboard'
     }
     // Si el servidor exige segundo factor para esta sesion, se pide ahora. El servidor igual lo hace cumplir en cada pantalla protegida.

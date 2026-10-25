@@ -1,5 +1,4 @@
 import type { Tone } from '@/components/uc/grid-types'
-import { badge } from '@/lib/uc/admin'
 
 /** Estado de un crédito tal como lo ve el cliente. */
 export function creditState(loanStatus: string, contractAccepted: boolean) {
@@ -17,11 +16,6 @@ export function creditState(loanStatus: string, contractAccepted: boolean) {
     default:
       return { key: 'En revisión', tone: 'info' as Tone }
   }
-}
-
-export const creditBadge = (loanStatus: string, contractAccepted: boolean) => {
-  const s = creditState(loanStatus, contractAccepted)
-  return badge(s.key, s.tone)
 }
 
 export const INSTALLMENT_LABEL: Record<string, string> = {

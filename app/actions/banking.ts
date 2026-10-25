@@ -10,21 +10,21 @@ import {
   loan as loansTable,
   user,
 } from '@/lib/db/schema'
+import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 import { assertRole } from '@/lib/session'
 import { requirePermission } from '@/lib/rbac'
 import { receiptBranding } from '@/lib/brand'
 import { recordAudit } from '@/lib/audit'
-import { ensureLoanContract, requireAcceptedContract } from '@/lib/legal/expediente'
-import { activateLoanAfterDisbursement, ensurePendingDisbursement } from '@/lib/loan-schedule'
+import { requireAcceptedContract } from '@/lib/legal/expediente'
+import { activateLoanAfterDisbursement } from '@/lib/loan-schedule'
 import { revalidateOps } from '@/lib/revalidate'
 import { notifyDisbursementCredited } from '@/lib/notify-email'
-import { and, eq, sql, desc, ne } from 'drizzle-orm'
+import { and, eq, desc, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { isValidBankAlias, normalizeBankAlias } from '@/lib/finance'
 import { persistBankLookup, toExtractedProfile } from '@/lib/bank-lookup'
 import { validateBankAccountAuto } from '@/lib/argenapi'
 import { parseWalletDestination } from '@/lib/payments/cvu'
-import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 
 type AccountType = 'cbu' | 'cvu' | 'alias' | 'cci'
 
@@ -32,7 +32,6 @@ const RE_CUIL = /^\d{11}$/
 const RE_CBU_CVU = /^\d{22}$/
 const RE_ALIAS = /^[a-z0-9.]{6,20}$/
 const RE_SWIFT_CCI = /^[A-Z0-9]{8,34}$/
-const RE_DNI_AR = /^\d{7,8}$/
 
 function validateCuilMod11(cuil: string): boolean {
   if (!RE_CUIL.test(cuil)) return false
@@ -53,141 +52,6 @@ export async function getMyBankAccounts() {
     .orderBy(desc(bankAccount.isPrimary), desc(bankAccount.createdAt))
 }
 
-export async function getPrimaryBankAccount() {
-  const accounts = await getMyBankAccounts()
-  return accounts.find((a) => a.isPrimary) ?? accounts[0] ?? null
-}
-
-export async function createBankAccount(input: {
-  accountType: AccountType
-  bankName: string
-  accountNumber?: string
-  cbu?: string
-  cvu?: string
-  alias?: string
-  holderName: string
-  holderCuil: string
-  holderDocumentType?: string
-  holderDocumentNumber?: string
-  setAsPrimary?: boolean
-}) {
-  const userId = await assertRole('customer')
-  await assertVerifiedCustomer(userId, 'bank')
-  const id = crypto.randomUUID()
-
-  if (!input.holderName?.trim()) {
-    throw new Error('Nombre del titular obligatorio')
-  }
-  if (!input.holderCuil) {
-    throw new Error('CUIL del titular obligatorio')
-  }
-  if (!validateCuilMod11(input.holderCuil)) {
-    throw new Error('CUIL inválido: deben ser 11 dígitos con dígito verificador correcto')
-  }
-  if (input.holderDocumentType && input.holderDocumentNumber) {
-    const docType = input.holderDocumentType.toUpperCase()
-    const docNum = input.holderDocumentNumber.trim()
-    if (docType === 'DNI' || docType === 'LC' || docType === 'LE') {
-      if (!RE_DNI_AR.test(docNum)) {
-        throw new Error('Número de documento inválido (DNI: 7-8 dígitos)')
-      }
-    }
-  }
-
-  const accountType = input.accountType
-  if (accountType === 'cbu') {
-    const val = (input.cbu ?? input.accountNumber ?? '').trim()
-    if (!val) throw new Error('CBU o número de cuenta requerido')
-    if (!RE_CBU_CVU.test(val)) {
-      throw new Error('CBU inválido: deben ser exactamente 22 dígitos')
-    }
-  } else if (accountType === 'cvu') {
-    const val = (input.cvu ?? '').trim()
-    if (!val) throw new Error('CVU requerido')
-    if (!RE_CBU_CVU.test(val)) {
-      throw new Error('CVU inválido: deben ser exactamente 22 dígitos')
-    }
-  } else if (accountType === 'alias') {
-    const val = normalizeBankAlias(input.alias ?? '')
-    if (!val) throw new Error('Alias requerido')
-    if (!isValidBankAlias(val) || !RE_ALIAS.test(val)) {
-      throw new Error('Alias inválido: 6 a 20 caracteres (letras, números y punto). No uses @.')
-    }
-    input.alias = val
-  } else if (accountType === 'cci') {
-    const val = (input.accountNumber ?? '').trim().toUpperCase()
-    if (!val) throw new Error('Número CCI / SWIFT / IBAN requerido')
-    if (!RE_SWIFT_CCI.test(val)) {
-      throw new Error('CCI/SWIFT/IBAN inválido: 8-34 caracteres alfanuméricos')
-    }
-    input.accountNumber = val
-  }
-
-  const setAsPrimary = input.setAsPrimary ?? false
-
-  const [result] = await db.transaction(async (tx) => {
-    if (setAsPrimary) {
-      await tx
-        .update(bankAccount)
-        .set({ isPrimary: false, updatedAt: new Date() })
-        .where(eq(bankAccount.userId, userId))
-    }
-    return tx
-      .insert(bankAccount)
-      .values({
-        id,
-        userId,
-        accountType,
-        bankName: input.bankName,
-        accountNumber: input.accountNumber,
-        cbu: input.cbu,
-        cvu: input.cvu,
-        alias: input.alias ? normalizeBankAlias(input.alias) : input.alias,
-        holderName: input.holderName.trim(),
-        holderCuil: input.holderCuil,
-        holderDocumentType: input.holderDocumentType,
-        holderDocumentNumber: input.holderDocumentNumber,
-        isPrimary: setAsPrimary,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning()
-  })
-
-  if (result.cbu || result.cvu || result.alias) {
-    try {
-      const lookup = await validateBankAccountAuto({
-        cbu: result.cbu,
-        cvu: result.cvu,
-        alias: result.alias,
-      })
-      await persistBankLookup({
-        bankAccountId: result.id,
-        lookup,
-        actorUserId: userId,
-        source: 'unicred_on_create',
-      })
-    } catch (e) {
-      console.warn('[banking] lookup on create skipped:', (e as Error).message)
-    }
-  }
-
-  await recordAudit({
-    actorUserId: userId,
-    action: 'BANK_ACCOUNT_ADDED',
-    entityType: 'bank_account',
-    entityId: result.id,
-    targetUserId: userId,
-    summary: 'El cliente cargó una cuenta para cobrar',
-    changes: { banco: input.bankName, terminacion: String(result.cbu || result.cvu || result.alias || '').slice(-4) },
-  })
-
-  revalidatePath('/dashboard')
-  revalidatePath('/dashboard/perfil')
-  return { ok: true, id: result.id }
-}
-
 /**
  * Flujo operativo: el cliente ingresa solo CBU, CVU o alias.
  * Consulta ArgenAPI, completa titular/banco/CUIL y guarda la cuenta verificada.
@@ -197,6 +61,7 @@ export async function lookupAndCreateBankAccount(input: {
   setAsPrimary?: boolean
 }) {
   const userId = await assertRole('customer')
+  await assertVerifiedCustomer(userId, 'bank')
   const dest = parseWalletDestination(input.identifier)
 
   const lookup = await validateBankAccountAuto({
@@ -520,121 +385,6 @@ export async function deleteBankAccount(id: string) {
   return { ok: true }
 }
 
-export async function getDisbursementsForLoan(loanId: string) {
-  const userId = await assertRole('customer')
-  return db
-    .select()
-    .from(disbursement)
-    .where(and(eq(disbursement.loanId, loanId), eq(disbursement.userId, userId)))
-    .limit(1)
-}
-
-export async function getMyDisbursements() {
-  const userId = await assertRole('customer')
-  return db
-    .select()
-    .from(disbursement)
-    .where(eq(disbursement.userId, userId))
-    .orderBy(sql`${disbursement.createdAt} desc`)
-}
-
-export async function generateDisbursementReceipt(disbursementId: string) {
-  const userId = await assertRole('customer')
-
-  const [d] = await db
-    .select()
-    .from(disbursement)
-    .where(and(eq(disbursement.id, disbursementId), eq(disbursement.userId, userId)))
-    .limit(1)
-
-  if (!d) throw new Error('Desembolso no encontrado')
-
-  const bank = d.bankAccountId
-    ? (
-        await db
-          .select()
-          .from(bankAccount)
-          .where(eq(bankAccount.id, d.bankAccountId))
-          .limit(1)
-      )[0]
-    : undefined
-
-  const id = crypto.randomUUID()
-  const receiptNumber = `ACR-${Date.now().toString().slice(-8)}`
-
-  const [receipt] = await db
-    .insert(paymentReceipt)
-    .values({
-      id,
-      receiptNumber,
-      receiptType: 'disbursement',
-      userId,
-      disbursementId: d.id,
-      loanId: d.loanId,
-      amount: d.amount,
-      currency: d.currency,
-      previousBalance: '0',
-      newBalance: '0',
-      pendingInstallments: 0,
-      totalPaidToDate: '0',
-      bankAccountSnapshot: bank ? JSON.parse(JSON.stringify(bank)) : null,
-      method: d.disbursementMethod,
-      referenceNumber: d.referenceNumber,
-      paidAt: d.creditedAt,
-      issuedAt: new Date(),
-      branding: JSON.parse(JSON.stringify(receiptBranding())),
-      createdAt: new Date(),
-    })
-    .returning()
-
-  revalidatePath('/dashboard')
-  revalidatePath('/dashboard/comprobantes')
-  return { ok: true, receiptId: receipt.id, receiptNumber }
-}
-
-export async function getDisbursementReceipts(loanId: string) {
-  const userId = await assertRole('customer')
-  return db
-    .select()
-    .from(paymentReceipt)
-    .where(
-      and(
-        eq(paymentReceipt.loanId, loanId),
-        eq(paymentReceipt.userId, userId),
-        eq(paymentReceipt.receiptType, 'disbursement'),
-      ),
-    )
-}
-
-export async function registerBankAccountVerification(id: string, method: 'deposito' | 'otp' | 'argenapi' = 'argenapi') {
-  const userId = await assertRole('customer')
-
-  const [acc] = await db
-    .select()
-    .from(bankAccount)
-    .where(and(eq(bankAccount.id, id), eq(bankAccount.userId, userId)))
-    .limit(1)
-  if (!acc) throw new Error('Cuenta no encontrada')
-
-  if (method === 'argenapi') {
-    return validateBankAccountLive(id)
-  }
-
-  await db
-    .update(bankAccount)
-    .set({
-      verificationMethod: method,
-      verificationCodeSentAt: new Date(),
-      verificationAttempts: (acc.verificationAttempts ?? 0) + 1,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(bankAccount.id, id), eq(bankAccount.userId, userId)))
-
-  revalidatePath('/dashboard')
-  revalidatePath('/dashboard/perfil')
-  return { ok: true, method }
-}
-
 export async function validateBankAccountLive(id: string) {
   const userId = await assertRole('customer')
 
@@ -878,111 +628,3 @@ export async function markDisbursementAsCredited(
   return { ok: true as const, receiptNumber, creditedAt: now.toISOString() }
 }
 
-export async function disburseAndActivateLoan(loanId: string) {
-  try {
-    const adminUserId = await requirePermission('disbursements.credit')
-    const [existing] = await db.select().from(loansTable).where(eq(loansTable.id, loanId)).limit(1)
-    if (!existing) throw new Error('Préstamo no encontrado')
-    if (existing.status === 'rejected' || existing.status === 'cancelled' || existing.status === 'paid') {
-      throw new Error('Este crédito no puede desembolsarse en su estado actual.')
-    }
-    if (existing.status === 'pending') {
-      throw new Error('Aprobá el crédito antes de desembolsar.')
-    }
-
-    const now = new Date()
-    await db.transaction(async (tx) => {
-      await ensureLoanContract(
-        tx,
-        {
-          id: loanId,
-          userId: existing.userId,
-          type: existing.type,
-          status: existing.status === 'active' ? 'active' : 'approved',
-        },
-        { generatedBy: adminUserId, now },
-      )
-      await ensurePendingDisbursement(tx, {
-        loanId,
-        userId: existing.userId,
-        amount: Number(existing.principal),
-        now,
-      })
-    })
-
-    const [d] = await db.select().from(disbursement).where(eq(disbursement.loanId, loanId)).limit(1)
-    if (!d) throw new Error('No se pudo crear la orden de desembolso.')
-
-    if (d.status === 'credited') {
-      if (existing.status !== 'active') {
-        await db.transaction(async (tx) => {
-          await activateLoanAfterDisbursement(tx, {
-            loanId,
-            userId: existing.userId,
-            principal: Number(existing.principal),
-            term: existing.term,
-            monthlyRate: Number(existing.monthlyRate),
-            now,
-          })
-        })
-      }
-      revalidateOps()
-      return { ok: true as const, receiptNumber: d.receiptNumber, alreadyCredited: true }
-    }
-
-    return await markDisbursementAsCredited(d.id, undefined, { requireSignedContract: false })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'No se pudo desembolsar el crédito'
-    return { ok: false as const, error: msg }
-  }
-}
-
-export async function getAllDisbursements(limit = 100) {
-  await requirePermission('finance.read')
-  return db
-    .select()
-    .from(disbursement)
-    .orderBy(desc(disbursement.createdAt))
-    .limit(limit)
-}
-
-export async function attachDisbursementProof(disbursementId: string, formData: FormData) {
-  const adminUserId = await requirePermission('disbursements.credit')
-  const [row] = await db.select().from(disbursement).where(eq(disbursement.id, disbursementId)).limit(1)
-  if (!row) throw new Error('Desembolso no encontrado.')
-  if (row.status !== 'credited') {
-    throw new Error('Adjuntá el comprobante después de acreditar la transferencia.')
-  }
-
-  const file = formData.get('proof')
-  const reference = String(formData.get('reference') || '').trim()
-  if (!(file instanceof File)) {
-    throw new Error('Subí el comprobante de la transferencia (PDF o imagen).')
-  }
-  const { fileToDbProof } = await import('@/lib/proof-storage')
-  const { dataUrl: proofUrl } = await fileToDbProof(file)
-
-  await db
-    .update(disbursement)
-    .set({
-      proofUrl,
-      referenceNumber: reference || row.referenceNumber,
-      notes: row.notes,
-      updatedAt: new Date(),
-    })
-    .where(eq(disbursement.id, row.id))
-
-  await recordAudit({
-    actorUserId: adminUserId,
-    action: 'DISBURSEMENT_PROOF_ATTACHED',
-    entityType: 'disbursement',
-    entityId: row.id,
-    targetUserId: row.userId,
-    summary: `Comprobante de transferencia adjunto · ${row.receiptNumber}`,
-    changes: { proofUrl, reference: reference || null },
-  })
-
-  revalidateOps()
-  revalidatePath('/admin')
-  return { ok: true, proofUrl }
-}

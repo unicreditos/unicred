@@ -34,17 +34,6 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const action = String(body?.action ?? '').trim()
 
-    if (action === 'topup_sandbox') {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias.',
-        },
-        { status: 400 },
-      )
-    }
-
     if (action === 'deposit') {
       const wallet = await reportWalletInbound(
         userId,

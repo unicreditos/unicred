@@ -10,8 +10,6 @@ const WSAA = {
   production: 'https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL',
 } as const
 
-export type AfipEnv = 'testing' | 'production'
-
 export type TicketAcceso = {
   token: string
   sign: string

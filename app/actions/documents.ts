@@ -1,6 +1,5 @@
 'use server'
 
-import { startOfDayAR } from '@/lib/date-ar'
 import { recordAudit } from '@/lib/audit'
 import { contractContentHash, signatureRecordHash } from '@/lib/legal/contract-hash'
 import { db } from '@/lib/db'
@@ -8,38 +7,21 @@ import {
   bcraReport,
   loanContract,
   loan,
-  installment,
   profile,
-  disbursement,
   bankAccount,
   user as userTable,
 } from '@/lib/db/schema'
 import {
   CONTRACT_VERSION,
   ensureLoanContract,
-  lastRefinanceAt,
   notifyContractReady,
-  persistIntimation,
-  persistRefinance,
-  notifyIntimation,
-  readSignatureData,
-  syncOverdueInstallments,
 } from '@/lib/legal/expediente'
 import { ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
-import {
-  addMonths,
-  asMoraRows,
-  evaluateIntimation,
-  evaluateRefinance,
-  MAX_REFINANCES,
-  money,
-  splitBalanceEvenly,
-} from '@/lib/legal/mora'
+
 import { persistBcraReportForUser } from '@/lib/bcra-report'
-import { canTransition } from '@/lib/loan-state'
-import { assertRole, getRoleForUser } from '@/lib/session'
-import { and, eq, desc, ne } from 'drizzle-orm'
-import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
+import { assertRole } from '@/lib/session'
+import { and, eq, desc } from 'drizzle-orm'
+import { revalidateCustomer } from '@/lib/revalidate'
 
 export async function generateBCRAReport(checkId?: string | null) {
   const userId = await assertRole('customer', 'merchant', 'admin')
@@ -60,21 +42,6 @@ export async function getLastBCRAReport() {
     console.warn('[documents.getLastBCRAReport] fallback bcra_report read:', e?.message ?? String(e))
     return null
   }
-}
-
-export async function getBCRAReport(id: string) {
-  const userId = await assertRole('customer', 'merchant', 'admin')
-  const role = await getRoleForUser(userId)
-  const rows = await db
-    .select()
-    .from(bcraReport)
-    .where(
-      role === 'admin'
-        ? eq(bcraReport.id, id)
-        : and(eq(bcraReport.id, id), eq(bcraReport.userId, userId)),
-    )
-    .limit(1)
-  return rows[0] ?? null
 }
 
 export async function listBCRAReports(limit = 10) {
@@ -283,246 +250,3 @@ export async function acceptLoanContract(
   return { ok: true }
 }
 
-export async function rejectLoanContract(contractId: string, reason: string) {
-  const userId = await assertRole('customer')
-  if (!reason?.trim()) throw new Error('Motivo de rechazo obligatorio')
-
-  const [c] = await db
-    .select({ loanId: loanContract.loanId })
-    .from(loanContract)
-    .where(and(eq(loanContract.id, contractId), eq(loanContract.userId, userId)))
-    .limit(1)
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(loanContract)
-      .set({
-        status: 'rejected',
-        rejectedAt: new Date(),
-        rejectedReason: reason.trim(),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(loanContract.id, contractId), eq(loanContract.userId, userId)))
-    if (c?.loanId) {
-      // Rechazar el contrato solo lleva el crédito a 'rejected' si la máquina de
-      // estados lo permite (pending/approved). Un crédito ya vigente/cancelado no
-      // se rechaza por esta vía: se corrige desde el back office.
-      const [loanRow] = await tx
-        .select({ status: loan.status })
-        .from(loan)
-        .where(eq(loan.id, c.loanId))
-        .limit(1)
-      if (loanRow && canTransition(loanRow.status, 'rejected')) {
-        await tx
-          .update(loan)
-          .set({ status: 'rejected', rejectionReason: reason.trim(), updatedAt: new Date() })
-          .where(eq(loan.id, c.loanId))
-      }
-      await tx
-        .update(disbursement)
-        .set({
-          status: 'cancelled',
-          failureReason: 'Contrato rechazado por el cliente',
-          updatedAt: new Date(),
-        })
-        .where(and(eq(disbursement.loanId, c.loanId), ne(disbursement.status, 'credited')))
-    }
-  })
-
-  await recordAudit({
-    actorUserId: userId,
-    action: 'CONTRACT_REJECTED',
-    entityType: 'loan_contract',
-    entityId: contractId,
-    targetUserId: userId,
-    severity: 'warning',
-    summary: 'El cliente rechazó el contrato',
-    changes: { motivo: reason.trim().slice(0, 200) },
-  })
-  revalidateCustomer()
-  return { ok: true }
-}
-
-export async function issueIntimation(contractId: string) {
-  const userId = await assertRole('admin')
-
-  const [c] = await db
-    .select({
-      id: loanContract.id,
-      userId: loanContract.userId,
-      loanId: loanContract.loanId,
-      signatureData: loanContract.signatureData,
-    })
-    .from(loanContract)
-    .where(eq(loanContract.id, contractId))
-    .limit(1)
-  if (!c) throw new Error('Contrato no encontrado')
-
-  await syncOverdueInstallments({ loanId: c.loanId })
-  const plan = await db
-    .select({
-      number: installment.number,
-      amount: installment.amount,
-      dueDate: installment.dueDate,
-      status: installment.status,
-    })
-    .from(installment)
-    .where(eq(installment.loanId, c.loanId))
-    .orderBy(installment.number)
-
-  const decision = evaluateIntimation(asMoraRows(plan), lastRefinanceAt(c.signatureData))
-  if (!decision.ok) throw new Error(decision.message)
-
-  const noticeNumber = await persistIntimation(c.id, {
-    overdueCount: decision.items.length,
-    amount: decision.amount,
-    installments: decision.items.map((row) => ({
-      number: row.number,
-      dueDate: new Date(row.dueDate).toISOString(),
-      amount: row.amount,
-      daysLate: row.daysLate,
-    })),
-  })
-
-  await recordAudit({
-    actorUserId: userId,
-    action: 'INTIMATION_ISSUED',
-    entityType: 'loan_contract',
-    entityId: c.id,
-    targetUserId: c.userId,
-    severity: 'warning',
-    summary: `Intimación ${noticeNumber} · ${decision.items.length} cuota(s) · ${decision.amount.toFixed(2)} ARS`,
-  })
-  await notifyIntimation({
-    userId: c.userId,
-    contractId: c.id,
-    amount: decision.amount,
-    overdueCount: decision.items.length,
-  })
-
-  revalidateOps()
-  return { ok: true, noticeNumber, overdueCount: decision.items.length, amount: decision.amount }
-}
-
-export async function refinanceLoan(loanId: string) {
-  const userId = await assertRole('customer', 'admin')
-  const role = await getRoleForUser(userId)
-
-  const [loanRow] = await db.select().from(loan).where(eq(loan.id, loanId)).limit(1)
-  if (!loanRow) throw new Error('Crédito no encontrado.')
-  if (role !== 'admin' && loanRow.userId !== userId) throw new Error('No autorizado.')
-  if (loanRow.status === 'paid' || loanRow.status === 'rejected' || loanRow.status === 'cancelled') {
-    throw new Error('Este crédito no admite refinanciación.')
-  }
-
-  const [contract] = await db
-    .select()
-    .from(loanContract)
-    .where(eq(loanContract.loanId, loanId))
-    .limit(1)
-  if (!contract) throw new Error('Emití el contrato antes de refinanciar.')
-
-  const used = readSignatureData(contract.signatureData).refinanciaciones?.length ?? 0
-  const plan = await db
-    .select()
-    .from(installment)
-    .where(eq(installment.loanId, loanId))
-    .orderBy(installment.number)
-  const decision = evaluateRefinance(asMoraRows(plan), used)
-  if (!decision.ok) throw new Error(decision.message)
-
-  const unpaid = plan.filter((row) => row.status !== 'paid')
-
-  const outstanding = money(unpaid.reduce((sum, row) => sum + Number(row.amount), 0))
-  const amounts = splitBalanceEvenly(outstanding, unpaid.length)
-  const start = startOfDayAR()
-
-  const number = await db.transaction(async (tx) => {
-    for (const [index, row] of unpaid.entries()) {
-      await tx
-        .update(installment)
-        .set({
-          amount: amounts[index].toFixed(2),
-          dueDate: addMonths(start, index + 1),
-          status: 'pending',
-        })
-        .where(eq(installment.id, row.id))
-    }
-    await tx
-      .update(loan)
-      .set({
-        installmentAmount: amounts[0].toFixed(2),
-        updatedAt: new Date(),
-      })
-      .where(eq(loan.id, loanId))
-    return persistRefinance(
-      contract.id,
-      {
-        outstanding,
-        installmentAmount: amounts[0],
-        remainingCount: unpaid.length,
-      },
-      tx,
-    )
-  })
-
-  await recordAudit({
-    actorUserId: userId,
-    action: 'LOAN_REFINANCED',
-    entityType: 'loan',
-    entityId: loanId,
-    targetUserId: loanRow.userId,
-    summary: `Refinanciación ${number}/${MAX_REFINANCES} · saldo ${outstanding.toFixed(2)} en ${unpaid.length} cuotas`,
-  })
-
-  revalidateOps()
-  revalidateCustomer()
-  return {
-    ok: true,
-    number,
-    remaining: MAX_REFINANCES - number,
-    installmentAmount: amounts[0],
-    remainingCount: unpaid.length,
-    outstanding,
-  }
-}
-
-export async function getContractForLoan(loanId: string) {
-  const userId = await assertRole('customer')
-  const rows = await db
-    .select()
-    .from(loanContract)
-    .where(and(eq(loanContract.loanId, loanId), eq(loanContract.userId, userId)))
-    .orderBy(desc(loanContract.createdAt))
-    .limit(1)
-  return rows[0] ?? null
-}
-
-export async function getLoanDetailsForContract(loanId: string) {
-  const userId = await assertRole('customer')
-
-  const [loanRow] = await db
-    .select()
-    .from(loan)
-    .where(and(eq(loan.id, loanId), eq(loan.userId, userId)))
-    .limit(1)
-  if (!loanRow) return null
-
-  const installments = await db
-    .select()
-    .from(installment)
-    .where(and(eq(installment.loanId, loanId), eq(installment.userId, userId)))
-    .orderBy(installment.number)
-
-  const [customer] = await db
-    .select()
-    .from(profile)
-    .where(eq(profile.userId, userId))
-    .limit(1)
-
-  return {
-    loan: loanRow,
-    installments,
-    customer: customer ?? null,
-  }
-}

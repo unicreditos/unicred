@@ -275,6 +275,11 @@ export const auth = betterAuth({
     },
     useSecureCookies: !isDev,
     csrfProtection: true,
+    // Desde better-auth 1.7.7 cada llamada de autenticación espera una introspección del catálogo de Postgres
+    // (validación de esquema). En Neon esa introspección falla y, como el error no se cachea, rompía registro,
+    // ingreso y lectura de sesión en cada request ("Could not validate the database schema"). El esquema de auth
+    // ya lo controlan las migraciones del repo (scripts/db-verify.ts), así que la validación en caliente se apaga.
+    database: { validateSchema: false },
     cookieDomain: isDev ? undefined : (process.env.BETTER_AUTH_COOKIE_DOMAIN || undefined),
   },
   logger: {

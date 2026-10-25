@@ -37,10 +37,6 @@ export async function wsfePointOfSale(): Promise<number> {
   return ptoVta
 }
 
-export function wsfeConfigured() {
-  return Boolean(getAFIPCredentials())
-}
-
 /**
  * Factura B (tipo 6) al consumidor: IVA 21% sobre el interés de la cuota.
  * El capital no se factura. Si ARCA no está configurado, el caller deja pending_cae.

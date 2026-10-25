@@ -28,7 +28,7 @@ const closed = maintenanceEnabled()
 
 const siteTitle = 'UNICRÉDITOS · Plataforma de soluciones financieras'
 const siteDescription =
-  'Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.'
+  'Plataforma de soluciones financieras: préstamos personales online y financiación para comercios, con el costo completo a la vista antes de firmar.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),
@@ -79,7 +79,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-AR" suppressHydrationWarning className={`${sans.variable} ${mono.variable} bg-background`}>
+    <html
+      lang="es-AR"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+      className={`${sans.variable} ${mono.variable} bg-background`}
+    >
       <body className="font-sans antialiased text-foreground bg-background">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SkipLink />

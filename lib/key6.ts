@@ -10,7 +10,6 @@
  */
 import { extractDiditDecision } from '@/lib/didit-capture'
 
-export const KEY6_NAME = 'Key 6'
 export const KEY6_ITEMS = ['dni_front', 'dni_back', 'selfie', 'liveness_passed', 'session_approved'] as const
 export type Key6Item = (typeof KEY6_ITEMS)[number]
 export type Key6State = 'completo' | 'incompleto'

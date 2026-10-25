@@ -55,7 +55,7 @@ export function organizationJsonLd() {
     url: absoluteUrl('/'),
     logo: absoluteUrl('/apple-icon'),
     description:
-      'Plataforma de soluciones financieras en Argentina: créditos personales online, pagos de servicios, billetera virtual y red de comercios. TNA y CFT informados antes de firmar. Consulta a la Central de Deudores del BCRA con autorización del titular.',
+      'Plataforma de soluciones financieras en Argentina: créditos personales online y financiación para comercios. TNA y CFT informados antes de firmar. Consulta a la Central de Deudores del BCRA con autorización del titular.',
     email: 'soporte@unicreditos.com',
     address: {
       '@type': 'PostalAddress',

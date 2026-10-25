@@ -113,6 +113,8 @@ const nextConfig = {
       { source: '/dashboard/cuotas', destination: '/dashboard/pagos', permanent: false },
       { source: '/dashboard/cuenta', destination: '/dashboard/perfil', permanent: false },
       { source: '/mercado', destination: '/datos-bcra', permanent: false },
+      { source: '/login', destination: '/sign-in', permanent: true },
+      { source: '/admin/finanzas/panel-control', destination: '/admin/panel-control', permanent: false },
       { source: '/directo', destination: '/', permanent: true },
       { source: '/directo/:path*', destination: '/prestamos', permanent: true },
       { source: '/productos', destination: '/prestamos', permanent: true },

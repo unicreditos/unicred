@@ -1,7 +1,6 @@
 import { addMonthsDateOnlyAR, daysPastDueAR, parseDateOnly, startOfDayAR } from '@/lib/date-ar'
 
 export const INTIMATION_GRACE_DAYS = 30
-export const MAX_REFINANCES = 2
 
 export type MoraInstallment = {
   number: number
@@ -125,58 +124,3 @@ export function evaluateIntimation(
   }
 }
 
-export type RefinanceDecision = {
-  ok: boolean
-  reason: 'ok' | 'al_dia' | 'tope' | 'cuotas'
-  message: string
-  unpaidCount: number
-}
-
-export function evaluateRefinance(
-  rows: MoraInstallment[],
-  used: number,
-  now = new Date(),
-): RefinanceDecision {
-  const unpaid = rows.filter((row) => row.status !== 'paid')
-  const overdue = unpaid.filter((row) => daysPastDue(row.dueDate, now) > 0)
-
-  if (used >= MAX_REFINANCES) {
-    return {
-      ok: false,
-      reason: 'tope',
-      message: `Este crédito ya usó las ${MAX_REFINANCES} refinanciaciones permitidas.`,
-      unpaidCount: unpaid.length,
-    }
-  }
-  if (!overdue.length) {
-    return {
-      ok: false,
-      reason: 'al_dia',
-      message: 'El cliente está al día. No hay deuda para refinanciar.',
-      unpaidCount: unpaid.length,
-    }
-  }
-  if (unpaid.length < 2) {
-    return {
-      ok: false,
-      reason: 'cuotas',
-      message: 'Hace falta más de una cuota impaga para repartir el saldo.',
-      unpaidCount: unpaid.length,
-    }
-  }
-  return {
-    ok: true,
-    reason: 'ok',
-    message: `Se reparte el saldo deudor en ${unpaid.length} cuotas iguales.`,
-    unpaidCount: unpaid.length,
-  }
-}
-
-export function splitBalanceEvenly(outstanding: number, count: number) {
-  if (count <= 0) return []
-  const base = money(outstanding / count)
-  const amounts = Array.from({ length: count }, () => base)
-  const drift = money(outstanding - base * count)
-  amounts[count - 1] = money(amounts[count - 1] + drift)
-  return amounts
-}

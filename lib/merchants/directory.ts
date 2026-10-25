@@ -54,18 +54,3 @@ export async function countActiveMerchants() {
   return Number(row?.n ?? 0)
 }
 
-export async function getPublicMerchant(id: string) {
-  const [row] = await db
-    .select({
-      id: merchant.id,
-      businessName: merchant.businessName,
-      category: merchant.category,
-      province: merchant.province,
-      city: merchant.city,
-      address: merchant.address,
-    })
-    .from(merchant)
-    .where(and(eq(merchant.id, id), eq(merchant.status, 'active')))
-    .limit(1)
-  return row ?? null
-}

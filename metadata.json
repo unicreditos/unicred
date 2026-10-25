@@ -1,6 +1,6 @@
 {
   "name": "UNICRÉDITOS",
-  "description": "Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.",
+  "description": "Plataforma de soluciones financieras: préstamos personales online y financiación para comercios, con el costo completo a la vista antes de firmar.",
   "requestFramePermissions": [
     "camera",
     "microphone"

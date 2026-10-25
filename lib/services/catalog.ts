@@ -201,6 +201,3 @@ export function serviceProviderById(id: string) {
   return SERVICE_PROVIDERS.find((p) => p.id === id) ?? null
 }
 
-export function providersByCategory(category: ServiceCategoryId) {
-  return SERVICE_PROVIDERS.filter((p) => p.category === category)
-}

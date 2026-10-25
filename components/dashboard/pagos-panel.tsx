@@ -1,5 +1,6 @@
 'use client'
 
+import { SHOW_INTERNAL_WALLET } from '@/lib/feature-flags'
 import {
   SectionCard,
   StatusChip,
@@ -22,10 +23,8 @@ import {
 } from '@/lib/finance'
 import {
   paymentMethodLabel,
-  paymentStatusLabel,
 } from '@/lib/labels'
 import {
-  payment,
   savedPaymentMethod,
 } from '@/lib/db/schema'
 import { useState, useEffect, KeyboardEvent } from 'react'
@@ -33,11 +32,8 @@ import {
   CheckCircle2,
   CreditCard,
   Wallet,
-  XCircle,
-  Receipt,
   ArrowLeft,
   Check,
-  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -45,7 +41,6 @@ import { toast } from 'sonner'
 
 import { PayInstallmentDialog, payCta } from '@/components/payments/pay-installment-dialog'
 
-type PaymentType = typeof payment.$inferSelect
 type SavedMethodType = typeof savedPaymentMethod.$inferSelect
 
 type UpcomingInstallment = {
@@ -93,7 +88,7 @@ export function PagosPanel({
     setStep('checkout')
     if (
       methodFromUrl &&
-      ['tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'transferencia_bancaria', 'payway_wallet'].includes(
+      ['tarjeta_credito', 'tarjeta_debito', 'pago_facil', 'rapipago', 'ticket', 'transferencia_bancaria', ...(SHOW_INTERNAL_WALLET ? ['payway_wallet'] : [])].includes(
         methodFromUrl,
       )
     ) {
@@ -173,7 +168,7 @@ export function PagosPanel({
                   <SelectItem value="tarjeta_debito">Tarjeta de débito</SelectItem>
                   <SelectItem value="pago_facil">Pago Fácil (efectivo)</SelectItem>
                   <SelectItem value="rapipago">Rapipago (efectivo)</SelectItem>
-                  <SelectItem value="payway_wallet">Billetera UNICRÉDITOS</SelectItem>
+                  {SHOW_INTERNAL_WALLET ? <SelectItem value="payway_wallet">Billetera UNICRÉDITOS</SelectItem> : null}
                   <SelectItem value="transferencia_bancaria">Transferencia a RM (tesorería)</SelectItem>
                 </SelectContent>
               </Select>
@@ -417,71 +412,6 @@ export function PagosPanel({
             </div>
           </>
         )}
-    </SectionCard>
-  )
-}
-
-export function HistorialPagosPanel({ payments }: { payments: PaymentType[] }) {
-  if (payments.length === 0) {
-    return (
-      <SectionCard
-        title="Historial de pagos"
-        description="Acá aparecen los pagos registrados en tu cuenta."
-        icon={<Receipt className="h-4 w-4" />}
-      >
-          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
-            <Clock className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm font-medium">Todavía no hay pagos</p>
-            <p className="max-w-xs text-xs text-muted-foreground">Cuando pagues una cuota, el movimiento queda listado acá.</p>
-          </div>
-      </SectionCard>
-    )
-  }
-
-  return (
-    <SectionCard
-      title="Historial de pagos"
-      description={`${payments.length} movimiento${payments.length === 1 ? '' : 's'} · los comprobantes PDF están en Comprobantes.`}
-      icon={<Receipt className="h-4 w-4" />}
-      bodyClassName="space-y-2 p-4 sm:p-5"
-    >
-        {payments.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl',
-                  p.status === 'paid'
-                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                    : p.status === 'pending'
-                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                      : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {p.status === 'paid' ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : p.status === 'pending' ? (
-                  <Clock className="h-4 w-4" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-medium">{paymentMethodLabel(p.method)}</p>
-                <p className="truncate font-mono text-[11px] text-muted-foreground">
-                  {p.referenceNumber ?? p.id.slice(0, 10)} ·{' '}
-                  {new Date(p.createdAt as any).toLocaleDateString('es-AR', {
-                    timeZone: 'America/Argentina/Buenos_Aires',
-                  })}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-mono font-semibold">{formatARS(p.amount)}</p>
-              <p className="text-[11px] text-muted-foreground">{paymentStatusLabel(p.status)}</p>
-            </div>
-          </div>
-        ))}
     </SectionCard>
   )
 }

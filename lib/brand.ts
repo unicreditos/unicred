@@ -58,8 +58,6 @@ export const GROUP = {
   ],
 } as const
 
-export type GroupUnit = (typeof GROUP.units)[number]
-
 export const BRAND = {
   company: 'UNICRÉDITOS',
   legalName: 'RM International Group S.A.S.',
@@ -67,7 +65,7 @@ export const BRAND = {
   slogan: 'Plataforma de soluciones financieras',
   /** Descripción corta para SEO, manifest y redes. */
   description:
-    'Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.',
+    'Plataforma de soluciones financieras: préstamos personales online y financiación para comercios, con el costo completo a la vista antes de firmar.',
   tagline: 'Pedilo online. Lo evaluamos. Lo acreditamos en tu cuenta.',
   valueProp: 'Crédito personal 100% digital, con el costo completo antes de firmar.',
   cuit: resolvedCuit,
