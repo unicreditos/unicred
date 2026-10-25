@@ -241,7 +241,6 @@ export function DiditVerifyButton({
             src={url}
             className="min-h-0 w-full flex-1 border-0 bg-background"
             allow="camera; microphone; fullscreen; autoplay; encrypted-media"
-            allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
           />
         </div>

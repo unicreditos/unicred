@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { SignupSessionGate } from '@/components/auth/signup-session-gate'
 import { RegisterWizard } from '@/components/register-wizard'
 import { hasLoanIntent, parseLoanIntent } from '@/lib/loan-intent'
 import { getSession, getDashboardUrlForUser } from '@/lib/session'
@@ -19,8 +18,10 @@ export default async function SignUpPage({
 }) {
   const intent = parseLoanIntent(await searchParams)
   const session = await getSession()
-  if (session?.user?.id && !hasLoanIntent(intent)) {
-    return <SignupSessionGate panelHref={await getDashboardUrlForUser(session.user.id)} />
-  }
-  return <RegisterWizard intent={intent} />
+  // El aviso de sesión abierta lo decide el asistente: durante el alta la propia cuenta nueva abre sesión y la
+  // página se vuelve a renderizar; si acá se reemplazara el asistente por el aviso, la persona perdería el paso
+  // final ("Tu cuenta está lista") y parecería que el registro falló.
+  const activeSessionPanelHref =
+    session?.user?.id && !hasLoanIntent(intent) ? await getDashboardUrlForUser(session.user.id) : null
+  return <RegisterWizard intent={intent} activeSessionPanelHref={activeSessionPanelHref} />
 }

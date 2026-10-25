@@ -415,7 +415,7 @@ export function KYCProfileForm({
                 {identityLocked ? (
                   <Input value={employmentStatus || '—'} readOnly className={fieldClass} />
                 ) : (
-                  <Select value={employmentStatus || undefined} onValueChange={(v) => setEmploymentStatus(v ?? '')}>
+                  <Select value={employmentStatus || null} onValueChange={(v) => setEmploymentStatus(v ?? '')}>
                     <SelectTrigger id="employmentStatus" className="w-full">
                       <SelectValue placeholder="Seleccioná una opción" />
                     </SelectTrigger>

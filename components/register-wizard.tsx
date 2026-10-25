@@ -6,6 +6,7 @@ import { DiditVerifyButton } from '@/components/didit-verify-button'
 import { IdentityGuide } from '@/components/identity-guide'
 import { GeoArFields, type GeoValue } from '@/components/geo-ar-fields'
 import { AuthFloatLayout } from '@/components/auth/auth-float-layout'
+import { SignupSessionGate } from '@/components/auth/signup-session-gate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,7 +59,14 @@ function diditPendingMessage(status: string | null) {
 
 const fieldClass = 'h-12 rounded-xl border-brand-navy-200 bg-white text-base'
 
-export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
+export function RegisterWizard({
+  intent,
+  activeSessionPanelHref = null,
+}: {
+  intent?: LoanIntent
+  /** Panel de la sesión abierta al entrar a /sign-up (null si no hay sesión). */
+  activeSessionPanelHref?: string | null
+}) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('id')
   const [identifier, setIdentifier] = useState('')
@@ -274,6 +282,12 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     isPlausibleAdultBirthDate(birthDate)
 
   const domicilioIncompleto = !(address.trim() && (geo.province || identity?.province) && (geo.city || identity?.city))
+
+  // Quien llega con una sesión ya abierta ve el aviso; quien está en pleno alta (su propia cuenta nueva abrió sesión)
+  // sigue en el asistente hasta ver "Tu cuenta está lista".
+  if (activeSessionPanelHref && step === 'id' && !result && !saving) {
+    return <SignupSessionGate panelHref={activeSessionPanelHref} />
+  }
 
   return (
     <AuthFloatLayout
