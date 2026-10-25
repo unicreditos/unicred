@@ -241,16 +241,23 @@ export async function getMercadoPagoQrOrder(orderId: string) {
   return res.data
 }
 
+/**
+ * Ids de los pagos de una orden QR (solo los ya procesados o aprobados). Cada pago de una orden trae DOS
+ * identificadores: `id` (PAY01…, interno de la API de órdenes, que /v1/payments no reconoce) y `reference_id`
+ * (el número real del pago, p. ej. 183403935234). Se usa el numérico: con el interno Mercado Pago responde 404
+ * y el cobro no se acreditaba.
+ */
 export function paymentIdsFromQrOrder(order: Record<string, unknown> | null | undefined) {
   if (!order) return [] as string[]
   const payments = (order.transactions as { payments?: Array<Record<string, unknown>> } | undefined)?.payments ?? []
   const ids: string[] = []
   for (const row of payments) {
     const status = String(row.status ?? '').toLowerCase()
-    const id = row.id ?? row.payment_id ?? row.reference_id
-    if (!id) continue
-    if (status && !['processed', 'paid', 'approved', 'ready_to_process', 'created'].includes(status)) continue
-    ids.push(String(id))
+    if (status && !['processed', 'paid', 'approved', 'accredited', 'ready_to_process', 'created'].includes(status)) continue
+    const id = [row.reference_id, row.payment_id, row.id]
+      .map((v) => (v === undefined || v === null ? '' : String(v)))
+      .find((v) => /^\d+$/.test(v))
+    if (id) ids.push(id)
   }
   return ids
 }
