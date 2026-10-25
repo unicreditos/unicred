@@ -63,6 +63,8 @@ export function isWorkspaceStayPath(pathname: string) {
   if (pathname === '/cuenta/seguridad' || pathname.startsWith('/cuenta/seguridad/')) return true
   if (pathname === '/verificar-2fa' || pathname.startsWith('/verificar-2fa/')) return true
   if (pathname.startsWith('/legal/')) return true
+  // Vidriera de cada comercio adherido: el cliente la recorre con su sesión para pedir la compra en cuotas.
+  if (pathname.startsWith('/red-comercios/')) return true
   // Productos y ayuda públicos: se pueden ver con sesión abierta (el header muestra "Mi cuenta").
   if (
     pathname === '/prestamos' ||

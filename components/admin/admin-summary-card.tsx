@@ -206,7 +206,7 @@ export function AdminSummaryCard({
         {/* Selector de Presets de Rango de Fecha */}
         <div
           data-testid="summary-card-date-range-selector"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}
         >
           <div className="uc-chips" role="toolbar" aria-label="Seleccionar rango de fechas">
             {PRESETS.map((p) => {

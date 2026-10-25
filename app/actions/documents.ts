@@ -16,6 +16,7 @@ import {
   ensureLoanContract,
   notifyContractReady,
 } from '@/lib/legal/expediente'
+import { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
 import { ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
 
 import { persistBcraReportForUser } from '@/lib/bcra-report'
@@ -135,6 +136,8 @@ export async function acceptLoanContract(
     throw new Error('El contrato sólo se puede aceptar sobre un crédito aprobado.')
   }
 
+  // Venta en comercio con anticipo: el capital lo cobra el comercio, el cliente no necesita CBU de desembolso.
+  const merchantSale = await isMerchantOrderLoan(db, loanRow.id)
   const [destination] = await db
     .select({
       id: bankAccount.id,
@@ -147,7 +150,7 @@ export async function acceptLoanContract(
     .where(and(eq(bankAccount.userId, userId), eq(bankAccount.isActive, true)))
     .orderBy(desc(bankAccount.isPrimary))
     .limit(1)
-  if (!destination || !(destination.cbu || destination.cvu || destination.alias)) {
+  if (!merchantSale && (!destination || !(destination.cbu || destination.cvu || destination.alias))) {
     throw new Error(
       'Cargá un CBU, CVU o alias a tu nombre en Cuentas de desembolso antes de firmar. El crédito no se gira a terceros ni a la billetera interna.',
     )
@@ -217,7 +220,7 @@ export async function acceptLoanContract(
       .from(loan)
       .where(and(eq(loan.id, c.loanId), eq(loan.userId, userId)))
       .limit(1)
-    if (loanFull && loanFull.status === 'approved') {
+    if (loanFull && loanFull.status === 'approved' && !merchantSale) {
       const now = new Date()
       await ensureInstallmentPlan(tx, {
         loanId: loanFull.id,

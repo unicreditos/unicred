@@ -17,6 +17,8 @@ import {
   supportCase,
 } from '@/lib/db/schema'
 import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
+import { notifyOrderCancelled } from '@/lib/merchant-orders/notify'
+import { cancelOrder, isMerchantOrderLoan, loadOrders } from '@/lib/merchant-orders/service'
 import { assertAdminTransition, canSettleOnCollection } from '@/lib/loan-state'
 import {
   activateLoanAfterDisbursement,
@@ -216,6 +218,24 @@ export async function deskMutate(
           return fail('El crédito ya está vigente o saldado')
         }
         assertAdminTransition(row.status, 'cancelled')
+        if (await isMerchantOrderLoan(db, id)) {
+          // Venta en comercio: se anula la operación entera (y queda la devolución si el anticipo ya se cobró).
+          const [order] = await loadOrders({ loanId: id, limit: 1 })
+          if (!order) return fail('No se encontró la venta del comercio')
+          if (reason.trim().length < 5) return fail('Contá el motivo de la anulación')
+          const res = await cancelOrder({ orderId: order.id, by: adminUserId, reason, asAdmin: true })
+          await recordAudit({
+            actorUserId: adminUserId,
+            action: 'MERCHANT_ORDER_CANCELLED',
+            entityType: 'merchant_order',
+            entityId: order.id,
+            targetUserId: row.userId,
+            severity: 'warning',
+            summary: `Anulada desde la mesa: ${reason}${res?.refundPending ? ' · anticipo a devolver' : ''}`,
+          })
+          await notifyOrderCancelled(order.id)
+          return ok()
+        }
         const now = new Date()
         await db.update(loan).set({ status: 'cancelled', rejectionReason: reason, updatedAt: now }).where(eq(loan.id, id))
         await db
@@ -660,6 +680,10 @@ export async function deskMutate(
         const [row] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
         if (!row) return fail('Solicitud no encontrada')
         if (isStale(payload.expectedUpdatedAt, row.updatedAt)) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
+        if (await isMerchantOrderLoan(db, id)) {
+          const [order] = await loadOrders({ loanId: id, limit: 1 })
+          if (order?.cancelledAt) return fail('La venta del comercio está anulada: el comercio tiene que cargarla de nuevo.')
+        }
         const facts = await loadReopenFacts(id, row.status)
         const verdict = reopenDecision(facts, { reason, confirmSigned: payload.confirmSigned === true || payload.confirmSigned === 'true' })
         if (!verdict.ok) return { ok: false, error: verdict.error, code: verdict.code === 'needs_confirmation' ? 'needs_confirmation' : undefined }
@@ -697,6 +721,9 @@ export async function deskMutate(
         if (!id) return fail('Solicitud requerida')
         const [row] = await db.select().from(loan).where(eq(loan.id, id)).limit(1)
         if (!row) return fail('Solicitud no encontrada')
+        if (await isMerchantOrderLoan(db, id)) {
+          return fail('Las ventas en comercios no se editan: el monto sale del catálogo y del anticipo. Anulala y que el comercio la cargue de nuevo.')
+        }
         if (isStale(payload.expectedUpdatedAt, row.updatedAt)) return { ok: false, error: CONFLICT_MESSAGE, code: 'conflict' }
         const amount = payload.amount === undefined || payload.amount === '' ? null : Number(payload.amount)
         const installments = payload.installments === undefined || payload.installments === '' ? null : Number(payload.installments)
