@@ -30,7 +30,7 @@ export function StagePill({ stage }: { stage: OrderStage }) {
 
 export function Panel({ title, eyebrow, action, children, className }: { title?: ReactNode; eyebrow?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn('rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6', className)}>
+    <section className={cn('min-w-0 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6', className)}>
       {title || eyebrow || action ? (
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>

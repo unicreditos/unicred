@@ -103,7 +103,7 @@ export function CustomersTab({ data }: { data: Commerce }) {
   return (
     <Panel eyebrow="Clientes" title={`${rows.length} clientes financiados`}>
       {rows.length ? (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">

@@ -97,7 +97,7 @@ export function SettlementsTab({ data }: { data: Commerce }) {
 
       <Panel eyebrow="Historial" title="Liquidaciones">
         {data.settlements.length ? (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
