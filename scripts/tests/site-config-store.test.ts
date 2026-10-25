@@ -2,17 +2,21 @@ import assert from 'node:assert/strict'
 import { describe, it, before, after } from 'node:test'
 
 /**
- * Contra una base LOCAL (se saltea si DATABASE_URL no es 127.0.0.1/localhost): flujo borrador → revisión →
- * aprobación → publicación, doble control, historial inmutable, vuelta atrás y lectura pública.
+ * Contra Postgres real: se omite sin TEST_DATABASE_URL; solo localhost y una base *_test (la prueba borra y recrea
+ * las tablas site_config_*). Flujo borrador → revisión → aprobación → publicación, doble control, historial
+ * inmutable, vuelta atrás y lectura pública.
  */
-const url = process.env.DATABASE_URL ?? ''
+const url = process.env.TEST_DATABASE_URL ?? ''
 let host = ''
+let dbName = ''
 try {
-  host = new URL(url).hostname
+  const u = new URL(url)
+  host = u.hostname
+  dbName = u.pathname.replace(/^\//, '')
 } catch {
   /* sin URL */
 }
-const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(host)
+const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(host) && dbName.endsWith('_test')
 
 type Store = typeof import('../../lib/site-config/store')
 const perm = (...p: string[]) => new Set(p)
@@ -24,7 +28,7 @@ const hero = (text: string) => ({ text })
 const charges = (o = 0) => ({ originationFeePct: o, insurancePct: 0, punitiveRateMonthlyPct: 0 })
 const blocked = (re: RegExp) => (e: unknown) => re.test(String((e as { cause?: { message?: string } }).cause?.message ?? (e as Error).message))
 
-describe('site-config store (PG local)', { skip: isLocal ? false : 'requiere DATABASE_URL local' }, () => {
+describe('site-config store (PG local)', { skip: isLocal ? false : 'requiere TEST_DATABASE_URL local con base *_test' }, () => {
   let s: Store
   let db: typeof import('../../lib/db').db
   let pool: typeof import('../../lib/db').pool
@@ -32,6 +36,7 @@ describe('site-config store (PG local)', { skip: isLocal ? false : 'requiere DAT
   let read: typeof import('../../lib/site-config/read')
 
   before(async () => {
+    process.env.DATABASE_URL = url
     ;({ db, pool } = await import('../../lib/db'))
     ;({ sql: sqlTag } = await import('drizzle-orm'))
     s = await import('../../lib/site-config/store')
