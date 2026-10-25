@@ -8,7 +8,7 @@ import { pageMetadata } from '@/lib/seo'
 export const metadata = pageMetadata({
   title: 'Comercios y PyMEs',
   description:
-    'Adherí tu comercio para ofrecer cuotas. El cliente debe tener cuenta UNICRÉDITOS y KYC. Comisión informada al adherir. Sin costo de alta.',
+    'Adherí tu comercio y vendé en cuotas: el cliente paga el 30% de anticipo a UNICRÉDITOS, financiamos el resto y te liquidamos todos los viernes.',
   path: '/comercios',
 })
 
@@ -18,7 +18,7 @@ export default function ComerciosPage() {
       eyebrow="Red de comercios"
       title="Ofrecé cuotas. El deudor es tu cliente."
       icon={<Store className="h-3.5 w-3.5" />}
-      description="El comercio adhiere, carga el CUIL del comprador y UNICRÉDITOS evalúa a esa persona. No hay “cuotas sin interés”: el CFT lo paga el cliente. No hay cobro en 48 horas garantizado."
+      description="Cargás tu catálogo, armás la venta con el CUIL del comprador y UNICRÉDITOS evalúa a esa persona. El cliente paga el 30% de anticipo a UNICRÉDITOS, financiamos el resto y te liquidamos lo entregado todos los viernes."
       primaryAction={{ href: '/sign-up?plan=merchant', label: 'Adherir mi comercio' }}
       secondaryAction={{ href: '/contacto', label: 'Consultar por formulario' }}
     >
@@ -29,10 +29,10 @@ export default function ComerciosPage() {
           subtitle={`Línea consumo: TNA ${CONSUMO_QUOTE.tnaLabel} · CFT ${CONSUMO_QUOTE.cftLabel} de referencia. Tope ${formatARS(CONSUMO_QUOTE.maxAmount)}.`}
         >
           <Grid cols={4}>
-            <FeatureCard icon={<Users className="h-5 w-5" />} title="Cliente con cuenta" description="Sin CUIL UNICRÉDITOS y KYC Didit aprobado no se origina el crédito." />
+            <FeatureCard icon={<Users className="h-5 w-5" />} title="Anticipo del 30%" description="El cliente lo paga a UNICRÉDITOS por QR o transferencia, nunca al comercio. Necesita cuenta con identidad verificada." />
             <FeatureCard icon={<ShieldCheck className="h-5 w-5" />} title="Evaluación UNICRÉDITOS" description="Central de Deudores, score interno y tope de cuota 35% del ingreso." />
             <FeatureCard icon={<Calculator className="h-5 w-5" />} title="Comisión al comercio" description="Un porcentaje sobre la venta aprobada, informado al activar el comercio. Default operativo 8%." />
-            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Acreditación" description="El neto se paga cuando tesorería marca el desembolso. No hay SLA de 48 horas." />
+            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Liquidación los viernes" description="Lo entregado en la semana se transfiere el viernes siguiente (o el próximo día hábil): precio de contado menos comisión." />
           </Grid>
         </PageSection>
 
@@ -49,6 +49,15 @@ export default function ComerciosPage() {
               </li>
             ))}
           </ul>
+        </PageSection>
+
+        <PageSection eyebrow="Tu panel" title="Todo en un solo lugar">
+          <Grid cols={4}>
+            <FeatureCard icon={<Store className="h-5 w-5" />} title="Catálogo" description="Productos con precio de contado, stock y foto. También se publican en tu vidriera de UNICRÉDITOS." />
+            <FeatureCard icon={<Calculator className="h-5 w-5" />} title="Nueva venta" description="Carrito, plazo y CUIL: ves al instante anticipo, cuota del cliente, comisión y lo que cobrás." />
+            <FeatureCard icon={<BadgeCheck className="h-5 w-5" />} title="Operaciones" description="Seguís cada venta: revisión, firma, anticipo y entrega con el código del cliente." />
+            <FeatureCard icon={<Landmark className="h-5 w-5" />} title="Liquidaciones" description="Próximo viernes, historial y comprobante imprimible de cada transferencia." />
+          </Grid>
         </PageSection>
 
         <PageSection eyebrow="Requisitos adhesión" title="Qué pedimos al comercio">
@@ -73,7 +82,7 @@ export default function ComerciosPage() {
             {[
               { t: '1 · Creás la cuenta comercio', d: 'CUIT en ARCA, Didit del titular y, si es sociedad, el expediente. Queda pendiente.' },
               { t: '2 · UNICRÉDITOS valida', d: 'Se vuelve a consultar ARCA. Sin Didit, clave inactiva o expediente incompleto no se habilita.' },
-              { t: '3 · Cargás el CUIL del cliente', d: 'Si califica, se origina el crédito a su nombre.' },
+              { t: '3 · Vendés en cuotas', d: 'Armás la venta desde tu catálogo. La mesa aprueba, el cliente firma y paga el anticipo, y entregás con su código de 6 dígitos.' },
             ].map((s) => (
               <li key={s.t} className="rounded-2xl border border-brand-navy-200/70 bg-white p-5">
                 <h3 className="text-base font-bold text-brand-navy-900">{s.t}</h3>

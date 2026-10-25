@@ -32,3 +32,15 @@ Método del CFT (hoy TEA × 1,21, que subestima el costo con IVA compuesto), com
 - Se eliminaron ~4.700 líneas de código sin uso: el admin heredado (incluidas acciones de borrado de usuarios y créditos que nadie llamaba), la carga "sandbox" de la billetera, helpers de BCRA y etiquetas sin referencias, y dos páginas duplicadas (`/login` y `/admin/finanzas/panel-control`, ahora redirecciones permanentes).
 - Al borrar la función muerta `createBankAccount` apareció que la función viva `lookupAndCreateBankAccount` no exigía identidad verificada para cargar una cuenta bancaria; se agregó esa guarda.
 - Las rutas `/api/wallet/*` se conservan: son el contrato con la app móvil externa (`scripts/gen-mobile-routes.ts`).
+
+## 6. Venta financiada en comercios (anticipo del 30% y liquidación de los viernes)
+
+Circuito (código en `lib/merchant-orders/`, tablas en `lib/merchant-commerce-ddl.ts`, se crean solas en el primer uso):
+
+1. **Catálogo**: el comercio carga productos con precio de contado, stock y foto (`/merchant?tab=catalogo`). Se publican en su vidriera `/red-comercios/<id>`.
+2. **Venta**: el comercio arma el carrito y carga el CUIL (o el cliente lo pide online desde la vidriera). Se calcula el anticipo del 30% (redondeado hacia arriba al peso) y el crédito es por el 70% restante, a nombre del cliente. El crédito nace **siempre pendiente**: lo decide la mesa en Originación → Aprobaciones.
+3. **Cliente**: firma el contrato y paga el anticipo **a UNICRÉDITOS** (nunca al comercio): QR dinámico de Mercado Pago (se acredita solo por webhook firmado) o transferencia a la cuenta de tesorería con comprobante (la acredita Cobranzas en Comercios → Ventas en comercios).
+4. **Entrega**: con firma + anticipo acreditado el cliente ve un código de 6 dígitos; el comercio lo carga al entregar. Ahí el crédito queda vigente y las cuotas arrancan desde la fecha de entrega. No se genera desembolso al cliente.
+5. **Liquidación**: cada entrega entra en el lote del **viernes siguiente** (si es feriado, el próximo día hábil; feriados en `AR_BANK_HOLIDAYS`, agregar cada año). Neto = precio de contado − comisión del comercio. Tesorería transfiere y marca el lote como pagado con el número de operación (Comercios → Liquidaciones). Comprobante imprimible para ambas partes.
+
+Pendientes operativos: el QR necesita credenciales de producción de Mercado Pago (con las de prueba se ofrece solo transferencia); la titularidad de la cuenta de cobro se valida con ArgenAPI cuando responde, si no la revisa tesorería antes del primer pago; las devoluciones de anticipos de operaciones anuladas se registran a mano.

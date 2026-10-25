@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession, requireMerchant } from "@/lib/session"
-import { getMyMerchant, getMerchantSales, getMyMerchantDocuments } from "@/app/actions/merchant"
+import { getMyMerchant, getMyMerchantDocuments } from "@/app/actions/merchant"
+import { getMerchantCommerce } from "@/app/actions/merchant-commerce"
 import { getMyDiditApproved } from "@/app/actions/didit"
 import { MerchantTabsClient } from "@/app/merchant/_client"
 
@@ -19,7 +20,7 @@ export default async function MerchantPage({
   if (!session?.user) redirect("/sign-in")
 
   const merchant = await getMyMerchant()
-  const sales = await getMerchantSales()
+  const commerce = merchant?.status === "active" ? await getMerchantCommerce() : null
   const documents = await getMyMerchantDocuments()
   const titularDiditApproved = await getMyDiditApproved()
   const params = await searchParams
@@ -38,7 +39,7 @@ export default async function MerchantPage({
     <MerchantTabsClient
       user={user}
       merchant={merchant as any}
-      sales={sales as any}
+      commerce={commerce}
       defaultTab={defaultTab}
       supportCaseId={params.case}
       titularDiditApproved={titularDiditApproved}

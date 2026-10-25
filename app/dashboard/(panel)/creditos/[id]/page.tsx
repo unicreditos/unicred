@@ -13,6 +13,8 @@ import { loadCustomer } from '@/lib/customer/load'
 import { creditState, INSTALLMENT_LABEL, INSTALLMENT_TONE, solRef } from '@/lib/customer/view'
 import { fdate, fmtPct, money } from '@/lib/uc/format'
 import { documentPrintPath } from '@/lib/documents/customer-view'
+import { getMyMerchantOrders } from '@/app/actions/merchant-order-customer'
+import { PurchaseCard } from '@/components/merchant-orders/purchase-card'
 
 export const metadata = { title: 'Crédito' }
 
@@ -32,6 +34,8 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
     .limit(1)
     .catch(() => [])
   const st = creditState(l.status, contract?.status === 'accepted')
+  const purchases = l.merchantId ? await getMyMerchantOrders() : null
+  const purchase = purchases?.orders.find((o) => o.loanId === id) ?? null
   const mine = installments.filter((i) => i.loanId === id)
   const paid = mine.filter((i) => i.status === 'paid').length
   const open = mine
@@ -89,7 +93,12 @@ export default async function CreditoDetail({ params }: { params: Promise<{ id: 
           </Callout>
         </div>
       ) : null}
-      {st.key === 'Firma pendiente' ? (
+      {purchase && purchases ? (
+        <div style={{ marginBottom: 20 }}>
+          <PurchaseCard order={purchase} treasury={purchases.treasury} />
+        </div>
+      ) : null}
+      {st.key === 'Firma pendiente' && !purchase ? (
         <div style={{ marginBottom: 20 }}>
           <Callout icon="pen" title="Falta firmar el contrato">
             Tu crédito fue aprobado. Firmá el contrato y el pagaré en <a href="/dashboard/documentos">Documentos</a> para que lo acreditemos en tu cuenta.

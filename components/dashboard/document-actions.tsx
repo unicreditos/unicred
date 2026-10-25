@@ -59,7 +59,7 @@ export function GenerateBcraButton() {
 }
 
 /** Firma por aceptación expresa: el contrato y el pagaré se aceptan juntos. */
-export function AcceptContractBar({ contractId }: { contractId: string }) {
+export function AcceptContractBar({ contractId, merchantSale = false }: { contractId: string; merchantSale?: boolean }) {
   const { pending, run } = useRun()
   const [agree, setAgree] = useState(false)
   return (
@@ -68,7 +68,11 @@ export function AcceptContractBar({ contractId }: { contractId: string }) {
         <h2>Firmar contrato y pagaré</h2>
       </div>
       <p className="uc-muted" style={{ margin: '0 0 14px' }}>
-        Leé el documento completo. Al aceptar, queda firmado el expediente y el crédito pasa a acreditarse en tu cuenta. Tenés derecho a arrepentirte
+        Leé el documento completo. Al aceptar, queda firmado el expediente
+        {merchantSale
+          ? ' de tu compra en cuotas: con el anticipo acreditado retirás el producto en el comercio y ahí empieza el crédito.'
+          : ' y el crédito pasa a acreditarse en tu cuenta.'}{' '}
+        Tenés derecho a arrepentirte
         según la normativa vigente: si lo necesitás, presentalo desde Ayuda → Reclamos y consultas.
       </p>
       <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>

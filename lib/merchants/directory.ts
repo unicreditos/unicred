@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
-import { merchant } from '@/lib/db/schema'
+import { ensureMerchantCommerceSchema } from '@/lib/db/ensure-merchant-commerce'
+import { merchant, merchantProduct } from '@/lib/db/schema'
 import { and, asc, eq, ilike, or, sql } from 'drizzle-orm'
 
 export type PublicMerchant = {
@@ -54,3 +55,35 @@ export async function countActiveMerchants() {
   return Number(row?.n ?? 0)
 }
 
+
+/** Vidriera pública de un comercio activo: datos de contacto comerciales y catálogo a la venta. */
+export async function getPublicStorefront(id: string) {
+  const [m] = await db
+    .select({
+      id: merchant.id,
+      businessName: merchant.businessName,
+      category: merchant.category,
+      province: merchant.province,
+      city: merchant.city,
+      address: merchant.address,
+    })
+    .from(merchant)
+    .where(and(eq(merchant.id, id), eq(merchant.status, 'active')))
+    .limit(1)
+  if (!m) return null
+  await ensureMerchantCommerceSchema()
+  const products = await db
+    .select({
+      id: merchantProduct.id,
+      name: merchantProduct.name,
+      description: merchantProduct.description,
+      category: merchantProduct.category,
+      price: merchantProduct.price,
+      stock: merchantProduct.stock,
+      image: merchantProduct.image,
+    })
+    .from(merchantProduct)
+    .where(and(eq(merchantProduct.merchantId, id), eq(merchantProduct.active, true)))
+    .orderBy(asc(merchantProduct.name))
+  return { merchant: m, products: products.map((p) => ({ ...p, price: Number(p.price) })) }
+}

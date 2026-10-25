@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   integer,
   jsonb,
   numeric,
@@ -210,6 +211,127 @@ export const merchantDocument = pgTable('merchant_document', {
 }, (t) => [
   index('merchant_document_merchant_idx').on(t.merchantId),
 ])
+
+/* ---------------- Venta financiada en comercios (DDL: lib/merchant-commerce-ddl.ts) ---------------- */
+
+/** Catálogo del comercio: lo que puede vender en cuotas con anticipo del 30%. */
+export const merchantProduct = pgTable('merchant_product', {
+  id: text('id').primaryKey(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'cascade' }),
+  sku: text('sku'),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category'),
+  price: numeric('price', { precision: 14, scale: 2 }).notNull(),
+  /** null = sin control de stock. */
+  stock: integer('stock'),
+  /** Foto chica como data URL (Vercel no tiene disco durable). */
+  image: text('image'),
+  active: boolean('active').notNull().default(true),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('merchant_product_merchant_idx').on(t.merchantId, t.active),
+  check('merchant_product_price_check', sql`${t.price} > 0`),
+  check('merchant_product_stock_check', sql`${t.stock} IS NULL OR ${t.stock} >= 0`),
+])
+
+/**
+ * Operación de venta financiada: el cliente paga el anticipo a UNICRÉDITOS, el resto es un crédito a su
+ * nombre (loanId) y el comercio cobra en la liquidación semanal. La etapa se deriva (lib/merchant-orders/rules).
+ */
+export const merchantOrder = pgTable('merchant_order', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'restrict' }),
+  customerUserId: text('customerUserId').notNull().references(() => user.id, { onDelete: 'restrict' }),
+  loanId: text('loanId').notNull().unique().references(() => loan.id, { onDelete: 'restrict' }),
+  origin: text('origin').notNull().default('local'),
+  items: jsonb('items').$type<Array<{ productId: string; name: string; unitPrice: number; quantity: number; subtotal: number }>>().notNull(),
+  totalAmount: numeric('totalAmount', { precision: 14, scale: 2 }).notNull(),
+  downPaymentRate: numeric('downPaymentRate', { precision: 5, scale: 4 }).notNull(),
+  downPaymentAmount: numeric('downPaymentAmount', { precision: 14, scale: 2 }).notNull(),
+  financedAmount: numeric('financedAmount', { precision: 14, scale: 2 }).notNull(),
+  commissionRate: numeric('commissionRate', { precision: 5, scale: 2 }).notNull(),
+  commissionAmount: numeric('commissionAmount', { precision: 14, scale: 2 }).notNull(),
+  netAmount: numeric('netAmount', { precision: 14, scale: 2 }).notNull(),
+  downPaymentStatus: text('downPaymentStatus').notNull().default('pending'),
+  downPaymentMethod: text('downPaymentMethod'),
+  downPaymentReference: text('downPaymentReference'),
+  downPaymentProof: text('downPaymentProof'),
+  downPaymentReportedAt: tsCol('downPaymentReportedAt'),
+  downPaidAt: tsCol('downPaidAt'),
+  downPaymentReviewedBy: text('downPaymentReviewedBy'),
+  downPaymentNote: text('downPaymentNote'),
+  mpOrderId: text('mpOrderId'),
+  mpExternalRef: text('mpExternalRef'),
+  mpQrData: text('mpQrData'),
+  mpQrExpiresAt: tsCol('mpQrExpiresAt'),
+  mpPaymentId: text('mpPaymentId'),
+  deliveryCode: text('deliveryCode').notNull(),
+  deliveredAt: tsCol('deliveredAt'),
+  deliveredBy: text('deliveredBy'),
+  deliveryNote: text('deliveryNote'),
+  settlementId: text('settlementId').references(() => merchantSettlement.id, { onDelete: 'set null' }),
+  cancelledAt: tsCol('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
+  createdBy: text('createdBy'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('merchant_order_merchant_idx').on(t.merchantId, t.createdAt),
+  index('merchant_order_customer_idx').on(t.customerUserId),
+  index('merchant_order_settlement_idx').on(t.settlementId),
+  uniqueIndex('merchant_order_mp_payment_unique').on(t.mpPaymentId).where(sql`${t.mpPaymentId} is not null`),
+  index('merchant_order_mp_ref_idx').on(t.mpExternalRef).where(sql`${t.mpExternalRef} is not null`),
+  check('merchant_order_origin_check', sql`${t.origin} IN ('local','online')`),
+  check('merchant_order_totalAmount_check', sql`${t.totalAmount} > 0`),
+  check('merchant_order_downPaymentStatus_check', sql`${t.downPaymentStatus} IN ('pending','reported','confirmed','rejected')`),
+  check('merchant_order_split_ok', sql`${t.downPaymentAmount} + ${t.financedAmount} = ${t.totalAmount}`),
+])
+
+/** Lote semanal que UNICRÉDITOS transfiere a cada comercio (viernes o próximo día hábil). */
+export const merchantSettlement = pgTable('merchant_settlement', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'restrict' }),
+  /** Fecha civil de pago (YYYY-MM-DD, calendario argentino). */
+  payDate: text('payDate').notNull(),
+  status: text('status').notNull().default('scheduled'),
+  orderCount: integer('orderCount').notNull().default(0),
+  grossAmount: numeric('grossAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  downPaymentsAmount: numeric('downPaymentsAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  financedAmount: numeric('financedAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  commissionAmount: numeric('commissionAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  netAmount: numeric('netAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  payoutCbu: text('payoutCbu'),
+  payoutHolder: text('payoutHolder'),
+  transferReference: text('transferReference'),
+  paidAt: tsCol('paidAt'),
+  paidBy: text('paidBy'),
+  notes: text('notes'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('merchant_settlement_merchant_date_unique').on(t.merchantId, t.payDate),
+  index('merchant_settlement_date_idx').on(t.payDate, t.status),
+  check('merchant_settlement_status_check', sql`${t.status} IN ('scheduled','paid')`),
+])
+
+/** Cuenta donde el comercio cobra las liquidaciones (CBU/CVU a nombre del CUIT del comercio). */
+export const merchantPayoutAccount = pgTable('merchant_payout_account', {
+  merchantId: text('merchantId').primaryKey().references(() => merchant.id, { onDelete: 'cascade' }),
+  cbu: text('cbu').notNull(),
+  alias: text('alias'),
+  holder: text('holder').notNull(),
+  holderCuit: text('holderCuit').notNull(),
+  bankName: text('bankName'),
+  /** Titularidad confirmada contra la red bancaria (ArgenAPI). null = la revisa tesorería antes de pagar. */
+  verifiedAt: tsCol('verifiedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
 
 export const loanProduct = pgTable('loan_product', {
   id: text('id').primaryKey(),
