@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import dynamic from 'next/dynamic'
-import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import { SiteJsonLd } from '@/components/json-ld'
 import { SkipLink } from '@/components/skip-link'
 import { maintenanceEnabled } from '@/lib/maintenance'
@@ -9,10 +9,17 @@ import './globals.css'
 const CookieConsent = dynamic(() => import('@/components/cookie-consent').then((m) => m.CookieConsent))
 const Toaster = dynamic(() => import('@/components/ui/sonner').then((m) => m.Toaster))
 
-// Una sola familia para todo el sitio (público, ingreso, panel y admin): títulos y texto.
-const sans = Plus_Jakarta_Sans({
+// Texto de todo el sitio (público, ingreso, panel y admin): Instrument Sans, sobria y muy legible en cifras.
+const sans = Instrument_Sans({
   subsets: ['latin'],
   variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+// Títulos: Bricolage Grotesque, con carácter y ancho variable. Se usa con moderación (clase font-display).
+const display = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-bricolage',
   display: 'swap',
 })
 
@@ -83,7 +90,7 @@ export default function RootLayout({
       lang="es-AR"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${sans.variable} ${mono.variable} bg-background`}
+      className={`${sans.variable} ${display.variable} ${mono.variable} bg-background`}
     >
       <body className="font-sans antialiased text-foreground bg-background">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

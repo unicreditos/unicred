@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateWebhookSignature } from '@/lib/mercadopago'
 import { getMercadoPagoQrOrder, paymentIdsFromQrOrder } from '@/lib/mercadopago-qr'
+import { dispatchWalletQrNotification } from '@/lib/mercadopago/dispatch'
 import { findLocalPaymentId, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
+import { settleDownPaymentByMpPayment, settleDownPaymentFromMp } from '@/lib/merchant-orders/down-payment'
+import { isDownPaymentRef } from '@/lib/merchant-orders/rules'
 import { revalidatePath } from 'next/cache'
 
 export const runtime = 'nodejs'
@@ -49,6 +52,10 @@ export async function POST(req: NextRequest) {
       /order/i.test(topic) ||
       String(body?.action ?? '').startsWith('order.')
 
+    // Cobros con QR de la billetera (caja propia de cada persona): se acreditan en su billetera.
+    const wallet = await dispatchWalletQrNotification({ dataId: mpPaymentId, isOrder: looksLikeOrder, topic: topic.toLowerCase() })
+    if (wallet.handled) return NextResponse.json(wallet.body ?? { ok: true, matched: true, wallet: true })
+
     const paymentIds: string[] = []
     let orderExternalRef: string | null = body?.data?.external_reference ?? body?.external_reference ?? null
     const orderId: string | null = looksLikeOrder ? mpPaymentId : null
@@ -59,6 +66,11 @@ export async function POST(req: NextRequest) {
         (order?.external_reference ? String(order.external_reference) : null) ?? orderExternalRef
       for (const id of paymentIdsFromQrOrder(order)) {
         if (!id.startsWith('ORD')) paymentIds.push(id)
+      }
+      // Anticipo del 30% de una venta en comercio: tiene su propio circuito (no es una cuota).
+      if (isDownPaymentRef(orderExternalRef)) {
+        const down = await settleDownPaymentFromMp({ externalReference: orderExternalRef, orderId: mpPaymentId, mpPaymentIds: paymentIds })
+        return NextResponse.json({ ok: true, downPayment: down })
       }
       if (!paymentIds.length) {
         const localPaymentId = await findLocalPaymentId({
@@ -91,6 +103,13 @@ export async function POST(req: NextRequest) {
         localPaymentId,
         webhookBody: body,
       })
+      if (!result.matched && !localPaymentId) {
+        const down = await settleDownPaymentByMpPayment(id)
+        if (down.matched) {
+          results.push({ mpPaymentId: id, matched: true, credited: 0, downPayment: down })
+          continue
+        }
+      }
       results.push({ mpPaymentId: id, ...result })
 
       if (result.matched && result.credited > 0 && result.userId) {

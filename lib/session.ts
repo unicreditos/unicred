@@ -128,7 +128,7 @@ async function clearStaleAuthCookies() {
   }
 }
 
-const isBanned = cache(async (userId: string) => {
+export const isBanned = cache(async (userId: string) => {
   const [u] = await db
     .select({ banned: userTable.banned })
     .from(userTable)
@@ -314,4 +314,16 @@ export async function getOrCreateProfile() {
 
 export function newId(prefix: string) {
   return `${prefix}_${crypto.randomUUID()}`
+}
+
+/** Páginas de personas: exige sesión y deriva a las cuentas de administración a su panel. */
+export async function requireCustomerId() {
+  const userId = await requireUserId()
+  if ((await getRoleForUser(userId)) === 'admin') redirect('/admin')
+  return userId
+}
+
+/** Server actions de personas: igual que `requireCustomerId`, pero lanzando error. */
+export async function assertCustomerId() {
+  return assertRole('customer', 'merchant')
 }

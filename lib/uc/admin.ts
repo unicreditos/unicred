@@ -51,6 +51,16 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    id: 'tesoreria',
+    label: 'Billetera y tesorería',
+    icon: 'wallet',
+    children: [
+      { label: 'Billeteras', route: '/admin/billeteras', perm: 'finance.read' },
+      { label: 'Retiros', route: '/admin/retiros', perm: 'finance.read' },
+      { label: 'Cobros con QR', route: '/admin/cobros-qr', perm: 'finance.read' },
+    ],
+  },
+  {
     id: 'clientes',
     label: 'Clientes',
     icon: 'users',
@@ -59,13 +69,22 @@ const GROUPS: Group[] = [
       { label: 'Cuentas CBU', route: '/admin/clientes/cbu', perm: 'clients.read' },
     ],
   },
-  { id: 'comercios', label: 'Comercios', icon: 'store', route: '/admin/comercios', perm: 'merchants.read' },
+  {
+    id: 'comercios',
+    label: 'Comercios',
+    icon: 'store',
+    children: [
+      { label: 'Comercios adheridos', route: '/admin/comercios', perm: 'merchants.read' },
+      { label: 'Ventas en comercios', route: '/admin/comercios/operaciones', anyOf: ['merchants.read', 'payments.read'] },
+      { label: 'Liquidaciones', route: '/admin/comercios/liquidaciones', anyOf: ['payments.read', 'finance.read'] },
+    ],
+  },
   {
     id: 'finanzas',
     label: 'Finanzas',
     icon: 'chart',
     children: [
-      { label: 'Panel Ejecutivo (Recharts)', route: '/admin/panel-control', perm: 'finance.read' },
+      { label: 'Panel Ejecutivo', route: '/admin/panel-control', perm: 'finance.read' },
       { label: 'Finanzas', route: '/admin/finanzas/resumen', perm: 'finance.read' },
       { label: 'Analíticas', route: '/admin/finanzas/analiticas', perm: 'finance.read' },
     ],

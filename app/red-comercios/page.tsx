@@ -33,7 +33,7 @@ export default async function RedComerciosPage({
           : 'La red está en expansión. Adherí tu local o pedí financiación cuando haya comercios activos.'
       }
       icon={<Store className="h-3.5 w-3.5" />}
-      primaryAction={{ href: '/comprar-en-cuotas', label: 'Comprar en cuotas' }}
+      primaryAction={{ href: '/comprar-en-cuotas', label: 'Cómo funciona' }}
       secondaryAction={{ href: '/comercios', label: 'Adherí tu comercio' }}
     >
       <form className="mb-8 flex flex-wrap gap-2" action="/red-comercios" method="get">
@@ -92,10 +92,10 @@ export default async function RedComerciosPage({
                   </div>
                 )}
                 <Link
-                  href={`/comprar-en-cuotas?merchant=${m.id}#online`}
+                  href={`/red-comercios/${m.id}`}
                   className="mt-4 inline-block text-xs font-semibold text-brand-primary-700 hover:underline"
                 >
-                  Financiar compra →
+                  Ver catálogo en cuotas →
                 </Link>
               </li>
             ))}

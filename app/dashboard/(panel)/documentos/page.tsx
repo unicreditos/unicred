@@ -87,12 +87,15 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         />
         <div style={{ display: 'grid', gap: 20 }}>
           {pendingContract ? (
-            accounts.length === 0 ? (
+            accounts.length === 0 && !loans.find((l) => l.id === pendingContract.loanId)?.merchantId ? (
               <Callout icon="alert" title="Falta tu cuenta para recibir el dinero" tone="warning">
                 Para firmar necesitás una cuenta a tu nombre. <Link href="/dashboard/perfil">Cargala en Perfil</Link>.
               </Callout>
             ) : (
-              <AcceptContractBar contractId={pendingContract.id} />
+              <AcceptContractBar
+                contractId={pendingContract.id}
+                merchantSale={Boolean(loans.find((l) => l.id === pendingContract.loanId)?.merchantId)}
+              />
             )
           ) : null}
           <Card style={{ background: '#fff', color: '#111', padding: 24, overflow: 'auto' }}>

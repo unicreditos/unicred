@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   integer,
   jsonb,
   numeric,
@@ -210,6 +211,148 @@ export const merchantDocument = pgTable('merchant_document', {
 }, (t) => [
   index('merchant_document_merchant_idx').on(t.merchantId),
 ])
+
+/* ---------------- Venta financiada en comercios (DDL: lib/merchant-commerce-ddl.ts) ---------------- */
+
+/** Catálogo del comercio: lo que puede vender en cuotas con anticipo del 30%. */
+export const merchantProduct = pgTable('merchant_product', {
+  id: text('id').primaryKey(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'cascade' }),
+  sku: text('sku'),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category'),
+  price: numeric('price', { precision: 14, scale: 2 }).notNull(),
+  /** null = sin control de stock. */
+  stock: integer('stock'),
+  /** Foto chica como data URL (Vercel no tiene disco durable). */
+  image: text('image'),
+  active: boolean('active').notNull().default(true),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('merchant_product_merchant_idx').on(t.merchantId, t.active),
+  check('merchant_product_price_check', sql`${t.price} > 0`),
+  check('merchant_product_stock_check', sql`${t.stock} IS NULL OR ${t.stock} >= 0`),
+])
+
+/**
+ * Operación de venta financiada: el cliente paga el anticipo a UNICRÉDITOS, el resto es un crédito a su
+ * nombre (loanId) y el comercio cobra en la liquidación semanal. La etapa se deriva (lib/merchant-orders/rules).
+ */
+export const merchantOrder = pgTable('merchant_order', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'restrict' }),
+  customerUserId: text('customerUserId').notNull().references(() => user.id, { onDelete: 'restrict' }),
+  loanId: text('loanId').notNull().unique().references(() => loan.id, { onDelete: 'restrict' }),
+  origin: text('origin').notNull().default('local'),
+  items: jsonb('items').$type<Array<{ productId: string; name: string; unitPrice: number; quantity: number; subtotal: number }>>().notNull(),
+  totalAmount: numeric('totalAmount', { precision: 14, scale: 2 }).notNull(),
+  downPaymentRate: numeric('downPaymentRate', { precision: 5, scale: 4 }).notNull(),
+  downPaymentAmount: numeric('downPaymentAmount', { precision: 14, scale: 2 }).notNull(),
+  financedAmount: numeric('financedAmount', { precision: 14, scale: 2 }).notNull(),
+  commissionRate: numeric('commissionRate', { precision: 5, scale: 2 }).notNull(),
+  commissionAmount: numeric('commissionAmount', { precision: 14, scale: 2 }).notNull(),
+  netAmount: numeric('netAmount', { precision: 14, scale: 2 }).notNull(),
+  downPaymentStatus: text('downPaymentStatus').notNull().default('pending'),
+  downPaymentMethod: text('downPaymentMethod'),
+  downPaymentReference: text('downPaymentReference'),
+  downPaymentProof: text('downPaymentProof'),
+  downPaymentReportedAt: tsCol('downPaymentReportedAt'),
+  downPaidAt: tsCol('downPaidAt'),
+  downPaymentReviewedBy: text('downPaymentReviewedBy'),
+  downPaymentNote: text('downPaymentNote'),
+  mpOrderId: text('mpOrderId'),
+  mpExternalRef: text('mpExternalRef'),
+  mpQrData: text('mpQrData'),
+  mpQrExpiresAt: tsCol('mpQrExpiresAt'),
+  mpPaymentId: text('mpPaymentId'),
+  deliveryCode: text('deliveryCode').notNull(),
+  deliveredAt: tsCol('deliveredAt'),
+  deliveredBy: text('deliveredBy'),
+  deliveryNote: text('deliveryNote'),
+  settlementId: text('settlementId').references(() => merchantSettlement.id, { onDelete: 'set null' }),
+  cancelledAt: tsCol('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
+  /** Cuándo la mesa aprobó el crédito: cuenta el plazo para firmar y pagar el anticipo. */
+  approvedAt: tsCol('approvedAt'),
+  remindersSent: integer('remindersSent').notNull().default(0),
+  /** Devolución del anticipo de una operación anulada con el dinero ya cobrado. */
+  refundStatus: text('refundStatus'),
+  refundAmount: numeric('refundAmount', { precision: 14, scale: 2 }),
+  refundMethod: text('refundMethod'),
+  refundReference: text('refundReference'),
+  refundedAt: tsCol('refundedAt'),
+  refundedBy: text('refundedBy'),
+  createdBy: text('createdBy'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('merchant_order_merchant_idx').on(t.merchantId, t.createdAt),
+  index('merchant_order_customer_idx').on(t.customerUserId),
+  index('merchant_order_settlement_idx').on(t.settlementId),
+  uniqueIndex('merchant_order_mp_payment_unique').on(t.mpPaymentId).where(sql`${t.mpPaymentId} is not null`),
+  index('merchant_order_mp_ref_idx').on(t.mpExternalRef).where(sql`${t.mpExternalRef} is not null`),
+  check('merchant_order_origin_check', sql`${t.origin} IN ('local','online')`),
+  check('merchant_order_totalAmount_check', sql`${t.totalAmount} > 0`),
+  check('merchant_order_downPaymentStatus_check', sql`${t.downPaymentStatus} IN ('pending','reported','confirmed','rejected')`),
+  check('merchant_order_split_ok', sql`${t.downPaymentAmount} + ${t.financedAmount} = ${t.totalAmount}`),
+  check('merchant_order_refundStatus_check', sql`${t.refundStatus} IS NULL OR ${t.refundStatus} IN ('pending','refunded')`),
+  index('merchant_order_refund_idx').on(t.refundStatus).where(sql`${t.refundStatus} = 'pending'`),
+])
+
+/** Feriados bancarios de Argentina (se actualizan solos desde una fuente pública; hay lista fija de respaldo). */
+export const bankHoliday = pgTable('bank_holiday', {
+  date: text('date').primaryKey(),
+  name: text('name'),
+  kind: text('kind'),
+  source: text('source').notNull().default('argentinadatos'),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
+
+/** Lote semanal que UNICRÉDITOS transfiere a cada comercio (viernes o próximo día hábil). */
+export const merchantSettlement = pgTable('merchant_settlement', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  merchantId: text('merchantId').notNull().references(() => merchant.id, { onDelete: 'restrict' }),
+  /** Fecha civil de pago (YYYY-MM-DD, calendario argentino). */
+  payDate: text('payDate').notNull(),
+  status: text('status').notNull().default('scheduled'),
+  orderCount: integer('orderCount').notNull().default(0),
+  grossAmount: numeric('grossAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  downPaymentsAmount: numeric('downPaymentsAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  financedAmount: numeric('financedAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  commissionAmount: numeric('commissionAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  netAmount: numeric('netAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  payoutCbu: text('payoutCbu'),
+  payoutHolder: text('payoutHolder'),
+  transferReference: text('transferReference'),
+  paidAt: tsCol('paidAt'),
+  paidBy: text('paidBy'),
+  notes: text('notes'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('merchant_settlement_merchant_date_unique').on(t.merchantId, t.payDate),
+  index('merchant_settlement_date_idx').on(t.payDate, t.status),
+  check('merchant_settlement_status_check', sql`${t.status} IN ('scheduled','paid')`),
+])
+
+/** Cuenta donde el comercio cobra las liquidaciones (CBU/CVU a nombre del CUIT del comercio). */
+export const merchantPayoutAccount = pgTable('merchant_payout_account', {
+  merchantId: text('merchantId').primaryKey().references(() => merchant.id, { onDelete: 'cascade' }),
+  cbu: text('cbu').notNull(),
+  alias: text('alias'),
+  holder: text('holder').notNull(),
+  holderCuit: text('holderCuit').notNull(),
+  bankName: text('bankName'),
+  /** Titularidad confirmada contra la red bancaria (ArgenAPI). null = la revisa tesorería antes de pagar. */
+  verifiedAt: tsCol('verifiedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
 
 export const loanProduct = pgTable('loan_product', {
   id: text('id').primaryKey(),
@@ -853,3 +996,144 @@ export const adminAuditLog = pgTable('admin_audit_log', {
   index('admin_audit_log_actor_idx').on(t.actorUserId),
   index('admin_audit_log_entity_idx').on(t.entityType, t.entityId),
 ])
+
+/* ---- Tablas portadas de unicred-verify (la base se comparte; ver scripts/sql/2026-10-25_07_verify_tablas.sql) ---- */
+
+export const signatureCheck = pgTable('signature_check', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  loanId: text('loanId').notNull().references(() => loan.id, { onDelete: 'cascade' }),
+  contractId: text('contractId').notNull().references(() => loanContract.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'),
+  method: text('method').notNull().default('manual'),
+  referenceSource: text('referenceSource'),
+  faceMatchScore: numeric('faceMatchScore', { precision: 5, scale: 2 }),
+  providerRequestId: text('providerRequestId'),
+  /**
+   * ⚠️ MIGRACIÓN PENDIENTE (SEC-05): La selfie de validación se almacena como
+   * data-URL en Postgres. Esto implica filas grandes y potencial exposición en
+   * backups. Migrar a presigned URLs de S3/R2: guardar solo la URL, no el blob.
+   * Mientras tanto, la columna solo es accesible desde el panel de administración
+   * y nunca se serializa en respuestas públicas.
+   */
+  selfieImage: text('selfieImage'),
+  reason: text('reason'),
+  ip: text('ip'),
+  userAgent: text('userAgent'),
+  reviewedBy: text('reviewedBy'),
+  reviewedAt: tsCol('reviewedAt'),
+  usedAt: tsCol('usedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('signature_check_user_idx').on(t.userId),
+  index('signature_check_contract_idx').on(t.contractId),
+  index('signature_check_status_idx').on(t.status),
+])
+
+/**
+ * Cobros con QR de Mercado Pago. Cada persona tiene su propia caja (PDV) en la cuenta de Mercado Pago de UNICRÉDITOS:
+ * `mp_qr_pos` (una por persona), `mp_qr_order` (QR con importe, uno por cobro) y `mp_qr_payment` (cada pago recibido,
+ * clave = id del pago en Mercado Pago, así un mismo pago nunca se acredita dos veces). Tablas propias de esta app.
+ */
+export const mpQrPos = pgTable('mp_qr_pos', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull(),
+  externalId: text('externalId').notNull().unique(),
+  mpPosId: text('mpPosId'),
+  mpStoreId: text('mpStoreId'),
+  storeExternalId: text('storeExternalId'),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('active'),
+  qrImageUrl: text('qrImageUrl'),
+  qrTemplateUrl: text('qrTemplateUrl'),
+  qrCode: text('qrCode'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
+
+export const mpQrOrder = pgTable('mp_qr_order', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull(),
+  posExternalId: text('posExternalId').notNull(),
+  externalReference: text('externalReference').notNull().unique(),
+  mpOrderId: text('mpOrderId').unique(),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  concept: text('concept'),
+  qrData: text('qrData'),
+  /** dynamic = QR propio del cobro · static = el importe se carga en el QR permanente de la caja */
+  mode: text('mode').notNull().default('dynamic'),
+  status: text('status').notNull().default('created'),
+  expiresAt: tsCol('expiresAt'),
+  mpPaymentId: text('mpPaymentId'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('mp_qr_order_user_idx').on(t.userId),
+  index('mp_qr_order_status_idx').on(t.status),
+])
+
+export const mpQrPayment = pgTable('mp_qr_payment', {
+  mpPaymentId: text('mpPaymentId').primaryKey(),
+  userId: text('userId'),
+  walletId: text('walletId'),
+  orderId: text('orderId'),
+  posExternalId: text('posExternalId'),
+  matchedBy: text('matchedBy'),
+  status: text('status').notNull().default('pending'),
+  mpStatus: text('mpStatus'),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  fee: numeric('fee', { precision: 14, scale: 2 }),
+  creditedAmount: numeric('creditedAmount', { precision: 14, scale: 2 }),
+  reversedAmount: numeric('reversedAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  paymentMethod: text('paymentMethod'),
+  movementId: text('movementId'),
+  reversalMovementId: text('reversalMovementId'),
+  note: text('note'),
+  raw: jsonb('raw'),
+  paidAt: tsCol('paidAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('mp_qr_payment_user_idx').on(t.userId),
+  index('mp_qr_payment_status_idx').on(t.status),
+])
+
+export const installmentReminder = pgTable('installment_reminder', {
+  id: text('id').primaryKey(),
+  installmentId: text('installmentId').notNull().references(() => installment.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  sentAt: tsCol('sentAt').notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('installment_reminder_unique').on(t.installmentId, t.kind),
+  index('installment_reminder_user_idx').on(t.userId),
+])
+
+/** Destinatarios que una persona guarda para volver a transferirles sin tipear el alias. */
+export const savedContact = pgTable('saved_contact', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  cvu: text('cvu').notNull(),
+  alias: text('alias'),
+  name: text('name').notNull(),
+  label: text('label'),
+  lastUsedAt: tsCol('lastUsedAt'),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('saved_contact_user_cvu_unique').on(t.userId, t.cvu),
+  index('saved_contact_user_idx').on(t.userId),
+])
+
+/** Notas internas del equipo sobre una persona. Nunca las ve la persona. */
+export const adminNote = pgTable('admin_note', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  authorId: text('authorId'),
+  authorName: text('authorName'),
+  body: text('body').notNull(),
+  pinned: boolean('pinned').notNull().default(false),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [index('admin_note_user_idx').on(t.userId)])

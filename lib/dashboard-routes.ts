@@ -6,7 +6,7 @@
 const LEGACY_TAB_ROUTE: Record<string, string> = {
   overview: '/dashboard',
   notificaciones: '/dashboard',
-  billetera: '/dashboard',
+  billetera: '/dashboard/billetera',
   servicios: '/dashboard',
   comprobantes: '/dashboard/documentos',
   solicitar: '/dashboard/solicitar',
@@ -47,6 +47,7 @@ const PANEL_ROUTES = new Set([
   'perfil',
   'ayuda',
   'pagar',
+  'billetera',
 ])
 
 export function isPanelRoute(leaf: string) {

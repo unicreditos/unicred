@@ -116,7 +116,7 @@
 
 :root {
   color-scheme: light;
-  --font-display-face: var(--font-geist-sans);
+  --font-display-face: var(--font-bricolage), var(--font-geist-sans);
   --paper: #EEF2F6;
   --ink: #07142B;
   --background: #F3F5F8;
@@ -1473,4 +1473,34 @@ details[open] > :not(summary) { animation: uc-fade 0.35s ease both; }
   .uc-stagger > *, .uc-enter-card, .uc-float, .uc-dot-live, .uc-reveal { animation: none !important; }
   .uc-lift:hover { transform: none; }
   .uc-shine:hover::after { animation: none; }
+}
+
+/* ---- Comprobante de simulación (hero): papel con troquel, como el talón de la cuponera ---- */
+.uc-ticket {
+  filter: drop-shadow(0 40px 60px rgb(3 10 24 / 0.55)) drop-shadow(0 6px 14px rgb(3 10 24 / 0.35));
+}
+.uc-ticket-notch {
+  position: absolute;
+  top: -0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--uc-ticket-bg, var(--color-brand-navy-800));
+}
+
+/* ---- Guilloche: roseta de líneas finas, como la marca de agua de un documento de valor ---- */
+.uc-guilloche {
+  color: var(--color-brand-primary-300);
+  opacity: 0.16;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .uc-guilloche svg {
+    animation: uc-guilloche-spin 240s linear infinite;
+    transform-origin: 50% 50%;
+  }
+}
+@keyframes uc-guilloche-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

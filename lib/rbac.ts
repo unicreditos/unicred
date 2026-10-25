@@ -1,7 +1,8 @@
 import { db } from '@/lib/db'
 import { adminPermission, adminRolePermission, profile } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { assertAdmin } from '@/lib/session'
+import { assertAdmin, requireAdmin } from '@/lib/session'
+import { redirect } from 'next/navigation'
 import { ensureRbacSchema, type PermissionKey } from '@/lib/db/ensure-rbac'
 import { cache } from 'react'
 
@@ -45,3 +46,9 @@ export async function hasPermission(userId: string, permissionKey: PermissionKey
   return perms.has(permissionKey)
 }
 
+/** Páginas del backoffice: sesión de admin vigente + permiso; sin permiso vuelve al resumen con un aviso. */
+export async function requirePagePermission(key: PermissionKey): Promise<string> {
+  const userId = await requireAdmin()
+  if (!(await getAdminPermissions(userId)).has(key)) redirect(`/admin?sinpermiso=${encodeURIComponent(key)}`)
+  return userId
+}

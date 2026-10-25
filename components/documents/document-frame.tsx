@@ -16,6 +16,7 @@ export type DocumentKind =
   | 'cancelacion'
   | 'constancia'
   | 'cuponera'
+  | 'extracto'
 
 const KIND_LABEL: Record<DocumentKind, string> = {
   contrato: 'Contrato',
@@ -30,6 +31,7 @@ const KIND_LABEL: Record<DocumentKind, string> = {
   cancelacion: 'Cancelación',
   constancia: 'Constancia',
   cuponera: 'Cuponera',
+  extracto: 'Resumen de cuenta',
 }
 
 export function DocumentSheet({

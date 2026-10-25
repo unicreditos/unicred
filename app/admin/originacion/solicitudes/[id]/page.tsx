@@ -14,6 +14,8 @@ import { auditAdminView, loadDesk } from '@/lib/admin-desk/load'
 import { bcraByClient, fmtDni, fullName, KYC_LABEL, KYC_TONE } from '@/lib/uc/admin'
 import { cuotaFrancesa, fdate, fmtPct, money } from '@/lib/uc/format'
 import { DEFAULT_RISK_RULES } from '@/lib/loan-underwriting'
+import { ORDER_STAGE_LABEL } from '@/lib/merchant-orders/rules'
+import { loadOrders } from '@/lib/merchant-orders/service'
 
 export const metadata = { title: 'Solicitud' }
 
@@ -51,6 +53,8 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
   const kycFacts = await loadKycFacts(app.clientId).catch(() => null)
   const kycBlockers = kycFacts ? originacionKycBlockers(kycFacts) : ['No se pudo leer el estado de identidad.']
   const reopenFacts = loanRow ? await loadReopenFacts(app.id, loanRow.status).catch(() => null) : null
+  // Venta en comercio: el monto sale del catálogo y del anticipo, no se edita desde acá.
+  const [sale] = app.merchantId ? await loadOrders({ loanId: app.id, limit: 1 }).catch(() => []) : []
   const timeline = perms.has('credits.read') ? await getAuditLogForEntity('loan', app.id, 50).catch(() => []) : []
   const executed = !!reopenFacts && (reopenFacts.disbursementsCredited > 0 || reopenFacts.paidInstallments > 0)
   const DOC_LABEL = { dni_front: 'DNI frente', dni_back: 'DNI dorso', selfie: 'Selfie', video: 'Video de prueba de vida' } as const
@@ -76,6 +80,15 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
         description={`${money(app.amount)} en ${app.installments} cuotas · recibida el ${fdate(app.createdAt)}`}
         actions={<Badge tone={stTone}>{stLabel}</Badge>}
       />
+      {sale ? (
+        <div style={{ marginBottom: 20 }}>
+          <Callout icon="store" title={`Venta financiada en ${sale.merchantName} · ${sale.code} (${ORDER_STAGE_LABEL[sale.stage]})`}>
+            Precio {money(Number(sale.totalAmount))} · anticipo del 30% {money(Number(sale.downPaymentAmount))} a UNICRÉDITOS · financiado {money(Number(sale.financedAmount))}.
+            {' '}El capital no se gira al cliente: lo cobra el comercio en la liquidación del viernes después de entregar.{' '}
+            <Link href={`/admin/comercios/operaciones/${encodeURIComponent(sale.id)}`}>Ver la operación</Link>
+          </Callout>
+        </div>
+      ) : null}
 
       <Grid cols="21">
         <div style={{ display: 'grid', gap: 20 }}>
@@ -294,7 +307,7 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
                 applicationId={app.id}
                 expectedUpdatedAt={new Date(loanRow.updatedAt).toISOString()}
                 status={loanRow.status}
-                canEdit={Boolean(prodRow)}
+                canEdit={Boolean(prodRow) && !sale}
                 amount={app.amount}
                 installments={app.installments}
                 minAmount={Number(prodRow?.minAmount ?? 0)}
