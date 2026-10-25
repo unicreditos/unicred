@@ -2,19 +2,22 @@ import assert from 'node:assert/strict'
 import { describe, it, before, after } from 'node:test'
 
 /**
- * Prueba contra una base LOCAL (se saltea si DATABASE_URL no es 127.0.0.1/localhost):
- * el registro de auditoría no se puede editar, borrar ni vaciar.
+ * Prueba contra Postgres real: se omite sin TEST_DATABASE_URL (igual que el resto de las pruebas de integración);
+ * solo corre contra localhost y una base *_test. El registro de auditoría no se puede editar, borrar ni vaciar.
  */
-const url = process.env.DATABASE_URL ?? ''
+const url = process.env.TEST_DATABASE_URL ?? ''
 let host = ''
+let dbName = ''
 try {
-  host = new URL(url).hostname
+  const u = new URL(url)
+  host = u.hostname
+  dbName = u.pathname.replace(/^\//, '')
 } catch {
   // sin URL
 }
-const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(host)
+const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(host) && dbName.endsWith('_test')
 
-describe('auditoría de solo agregado', { skip: isLocal ? false : 'requiere DATABASE_URL local' }, () => {
+describe('auditoría de solo agregado', { skip: isLocal ? false : 'requiere TEST_DATABASE_URL local con base *_test' }, () => {
   let db: typeof import('../../lib/db').db
   let pool: typeof import('../../lib/db').pool
   let sqlTag: typeof import('drizzle-orm').sql
@@ -23,6 +26,7 @@ describe('auditoría de solo agregado', { skip: isLocal ? false : 'requiere DATA
   const blocked = (e: unknown) => /solo agregado/.test(String((e as { cause?: { message?: string } }).cause?.message ?? (e as Error).message))
 
   before(async () => {
+    process.env.DATABASE_URL = url
     ;({ db, pool } = await import('../../lib/db'))
     ;({ sql: sqlTag } = await import('drizzle-orm'))
     const { recordAudit } = await import('../../lib/audit')
