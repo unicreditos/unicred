@@ -2,10 +2,12 @@ import { addMonthsDateOnlyAR } from '@/lib/date-ar'
 import { bankAccount, disbursement, installment, loan } from '@/lib/db/schema'
 import { computeFrenchAmortization } from '@/lib/finance'
 import { canTransition } from '@/lib/loan-state'
+import { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
 import { newId } from '@/lib/session'
 import { and, desc, eq } from 'drizzle-orm'
 
 type DbLike = {
+  execute?: (...args: any[]) => any
   select: (...args: any[]) => any
   insert: (...args: any[]) => any
   update: (...args: any[]) => any
@@ -71,6 +73,8 @@ export async function ensurePendingDisbursement(
   input: { loanId: string; userId: string; amount: number; now?: Date },
 ) {
   const now = input.now ?? new Date()
+  // Venta en comercio: el capital lo cobra el comercio en la liquidación del viernes, no el cliente.
+  if (tx.execute && (await isMerchantOrderLoan(tx as Parameters<typeof isMerchantOrderLoan>[0], input.loanId))) return null
   const [existing] = await tx
     .select({ id: disbursement.id })
     .from(disbursement)

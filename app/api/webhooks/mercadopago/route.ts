@@ -4,6 +4,8 @@ import { getMercadoPagoQrOrder, paymentIdsFromQrOrder } from '@/lib/mercadopago-
 import { dispatchWalletQrNotification } from '@/lib/mercadopago/dispatch'
 import { findLocalPaymentId, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
+import { settleDownPaymentByMpPayment, settleDownPaymentFromMp } from '@/lib/merchant-orders/down-payment'
+import { isDownPaymentRef } from '@/lib/merchant-orders/rules'
 import { revalidatePath } from 'next/cache'
 
 export const runtime = 'nodejs'
@@ -65,6 +67,11 @@ export async function POST(req: NextRequest) {
       for (const id of paymentIdsFromQrOrder(order)) {
         if (!id.startsWith('ORD')) paymentIds.push(id)
       }
+      // Anticipo del 30% de una venta en comercio: tiene su propio circuito (no es una cuota).
+      if (isDownPaymentRef(orderExternalRef)) {
+        const down = await settleDownPaymentFromMp({ externalReference: orderExternalRef, orderId: mpPaymentId, mpPaymentIds: paymentIds })
+        return NextResponse.json({ ok: true, downPayment: down })
+      }
       if (!paymentIds.length) {
         const localPaymentId = await findLocalPaymentId({
           orderId: mpPaymentId,
@@ -96,6 +103,13 @@ export async function POST(req: NextRequest) {
         localPaymentId,
         webhookBody: body,
       })
+      if (!result.matched && !localPaymentId) {
+        const down = await settleDownPaymentByMpPayment(id)
+        if (down.matched) {
+          results.push({ mpPaymentId: id, matched: true, credited: 0, downPayment: down })
+          continue
+        }
+      }
       results.push({ mpPaymentId: id, ...result })
 
       if (result.matched && result.credited > 0 && result.userId) {

@@ -551,6 +551,28 @@ export function claimReceivedEmail(input: {
   return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
 }
 
+/** Aviso genérico de la operatoria (ventas financiadas en comercios, liquidaciones). */
+export function noticeEmail(input: {
+  to: string
+  name?: string | null
+  subject: string
+  title: string
+  lines: string[]
+  cta?: { href: string; label: string }
+  copyOps?: boolean
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const text = brandedText([`${who},`, '', ...input.lines, ...(input.cta ? ['', input.cta.href] : [])])
+  const html = brandedEmailHtml({
+    title: input.title,
+    bodyHtml: [`${who},`, ...input.lines]
+      .map((l) => `<p style="font-size:14px;line-height:1.6;margin:0 0 14px">${escapeHtml(l)}</p>`)
+      .join(''),
+    ...(input.cta ? { cta: input.cta } : {}),
+  })
+  return { to: input.to, subject: `${input.subject} — ${BRAND.company}`, html, text, ...(input.copyOps === false ? {} : { bcc: [opsMailbox()] }) }
+}
+
 export function payoutEmail(input: {
   to: string
   name?: string | null

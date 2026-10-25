@@ -1,5 +1,5 @@
+import { Guilloche } from '@/components/landing/guilloche'
 import { LiveStatement } from '@/components/landing/live-statement'
-import { Button } from '@/components/ui/button'
 import { IconTile } from '@/components/ui/icon-tile'
 import { PublicCtaBanner, PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { formatARS } from '@/lib/finance'
@@ -146,118 +146,117 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main id="contenido-principal">
-        {/* Hero */}
+        {/* Hero: la promesa (ver el costo completo antes de pedir) y el comprobante que la cumple */}
         <section className="relative overflow-hidden bg-brand-navy-800 text-white">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_70%_at_88%_0%,rgba(116,172,223,0.30),transparent_70%),radial-gradient(40%_50%_at_0%_100%,rgba(29,95,174,0.22),transparent_70%)]"
-          />
-          <div aria-hidden className="uc-grid-bg pointer-events-none absolute inset-0" />
-          <div className="relative mx-auto grid w-full max-w-7xl items-start gap-12 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-28 lg:pt-20">
-            <div className="uc-stagger min-w-0 lg:sticky lg:top-28 lg:col-span-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-white">
-                <span className="uc-dot-live h-1.5 w-1.5 rounded-full bg-brand-primary-300" aria-hidden /> Plataforma de soluciones financieras · 100% online
+          <Guilloche className="absolute -right-56 -top-40 h-[64rem] w-[64rem] lg:-right-24" />
+          <div className="relative mx-auto grid w-full max-w-7xl items-center gap-14 px-4 pb-20 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-12 lg:gap-12 lg:pb-28 lg:pt-24">
+            <div className="uc-stagger min-w-0 lg:col-span-7">
+              <p className="inline-flex items-center gap-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-brand-primary-300">
+                <span className="uc-dot-live h-1.5 w-1.5 rounded-full bg-signal-amber" aria-hidden /> Plataforma de soluciones financieras
               </p>
-              <h1 className="mt-6 text-balance font-display text-[2.5rem] font-extrabold leading-[1.05] tracking-[-0.03em] text-white sm:text-5xl lg:text-[3.75rem]">
-                Sabé cuánto devolvés. <span className="text-brand-primary-300">Antes de pedir.</span>
+              <h1 className="mt-6 text-balance font-display text-[3.1rem] font-extrabold leading-[0.95] tracking-[-0.035em] text-white sm:text-7xl lg:text-[4.6rem] xl:text-[5.25rem]">
+                Sabé cuánto devolvés. <span className="text-brand-primary-300 sm:whitespace-nowrap">Antes de pedir.</span>
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/80">{hero.value.text}</p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg" className="uc-shine h-12 rounded-xl px-6 text-base font-semibold shadow-lg shadow-brand-primary/30">
-                  <Link href="/sign-up">
-                    Crear mi cuenta <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="h-12 rounded-xl border-white/40 bg-transparent px-6 text-base font-semibold text-white hover:bg-white/10 hover:text-white"
+              <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/75 sm:text-xl">{hero.value.text}</p>
+              <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <Link
+                  href="/sign-up"
+                  className="group inline-flex h-13 items-center gap-2 rounded-full bg-brand-primary-300 px-7 text-base font-semibold text-brand-navy-900 shadow-lg shadow-black/20 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-800"
                 >
-                  <Link href="/sign-in">Ya tengo cuenta</Link>
-                </Button>
+                  Crear mi cuenta <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+                <Link href="/sign-in" className="text-base font-semibold text-white/85 underline-offset-[6px] hover:text-white hover:underline">
+                  Ya tengo cuenta
+                </Link>
               </div>
-              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75">
-                {['Sin punitorios', 'Sin gastos ni seguros', '10 días para arrepentirte'].map((t) => (
-                  <li key={t} className="inline-flex items-center gap-1.5">
-                    <ShieldCheck className="h-4 w-4 stroke-[1.75] text-brand-primary-300" aria-hidden /> {t}
-                  </li>
-                ))}
-              </ul>
-              <dl className="mt-9 flex max-w-lg flex-wrap gap-x-8 gap-y-4 border-t border-white/15 pt-6">
+              <dl className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-white/15 pt-6">
                 <div>
-                  <dt className="text-xs text-white/65">Hasta</dt>
-                  <dd className="mt-1 whitespace-nowrap font-display text-xl font-bold tabular-nums sm:text-2xl">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">Hasta</dt>
+                  <dd className="mt-1.5 whitespace-nowrap font-display text-xl font-bold tabular-nums sm:text-2xl">{formatARS(PERSONAL_QUOTE.maxAmount)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-white/65">Plazo</dt>
-                  <dd className="mt-1 whitespace-nowrap font-display text-xl font-bold tabular-nums sm:text-2xl">
-                    {PERSONAL_QUOTE.minTerm} a {PERSONAL_QUOTE.maxTerm}
-                    <span className="ml-1 text-sm font-medium text-white/65">cuotas</span>
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">Plazo</dt>
+                  <dd className="mt-1.5 whitespace-nowrap font-display text-xl font-bold tabular-nums sm:text-2xl">
+                    {PERSONAL_QUOTE.minTerm}–{PERSONAL_QUOTE.maxTerm}
+                    <span className="ml-1 text-sm font-medium text-white/55">cuotas</span>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-white/65">Cuota</dt>
-                  <dd className="mt-1 font-display text-xl font-bold sm:text-2xl">Fija</dd>
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">Cuota</dt>
+                  <dd className="mt-1.5 font-display text-xl font-bold sm:text-2xl">Fija</dd>
                 </div>
               </dl>
+              <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/65">
+                {['Sin punitorios', 'Sin gastos ni seguros', '10 días para arrepentirte'].map((t) => (
+                  <li key={t} className="inline-flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-brand-primary-300" strokeWidth={3} aria-hidden /> {t}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div className="uc-enter-card min-w-0 lg:col-span-6 lg:pl-6">
-              <LiveStatement />
+            <div className="uc-enter-card min-w-0 lg:col-span-5">
+              <LiveStatement className="mx-auto max-w-[34rem]" />
             </div>
           </div>
         </section>
 
-        {/* Fuentes */}
+        {/* Fuentes: con quién se verifica cada dato, como el pie de un comprobante */}
         <section aria-label="Fuentes de verificación" className="border-b border-brand-navy-100 bg-white">
-          <div className="mx-auto grid w-full max-w-7xl gap-x-6 px-4 sm:px-6 md:grid-cols-4">
-            {SOURCES.map((s, i) => (
-              <div
-                key={s.k}
-                style={{ '--uc-delay': `${i * 60}ms` } as React.CSSProperties}
-                className="uc-reveal flex items-start gap-3.5 py-6 md:border-l md:border-brand-navy-100 md:px-6 md:first:border-l-0 md:first:pl-0"
-              >
-                <IconTile size="sm">
-                  <s.icon />
-                </IconTile>
-                <div>
-                  <p className="text-sm font-bold tracking-wide text-brand-navy-800">{s.k}</p>
-                  <p className="mt-0.5 text-sm leading-snug text-brand-navy-600">{s.v}</p>
-                </div>
-              </div>
-            ))}
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:gap-10">
+            <p className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-navy-500">Verificamos con</p>
+            <ul className="grid flex-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+              {SOURCES.map((s, i) => (
+                <li
+                  key={s.k}
+                  style={{ '--uc-delay': `${i * 60}ms` } as React.CSSProperties}
+                  className="uc-reveal flex items-start gap-3"
+                >
+                  <s.icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-primary" aria-hidden />
+                  <div>
+                    <p className="font-display text-base font-bold tracking-tight text-brand-navy-900">{s.k}</p>
+                    <p className="mt-0.5 text-sm leading-snug text-brand-navy-600">{s.v}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
-        {/* Cómo funciona */}
+        {/* Cómo funciona: cinco pasos numerados como renglones de un extracto */}
         <section id="como-funciona" className="mx-auto w-full max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="grid gap-12 lg:grid-cols-12">
             <div className="lg:col-span-4">
               <div className="lg:sticky lg:top-28">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-primary-700">Cómo funciona</p>
-                <h2 className="mt-3 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-700">Cómo funciona</p>
+                <h2 className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl">
                   De la simulación a tu cuenta, en cinco pasos.
                 </h2>
-                <p className="mt-4 text-base leading-relaxed text-brand-navy-600">
+                <p className="mt-5 text-base leading-relaxed text-brand-navy-600">
                   El orden importa: no firmás nada hasta ver el plan de cuotas completo.
                 </p>
-                <Button asChild size="lg" className="uc-shine mt-7 h-12 rounded-xl px-6 text-base font-semibold">
-                  <Link href="/simulador">
-                    Probar el simulador <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
+                <Link
+                  href="/simulador"
+                  className="group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-brand-navy-900 px-6 text-base font-semibold text-white transition hover:bg-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                >
+                  Probar el simulador <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+                </Link>
               </div>
             </div>
-            <ol className="relative lg:col-span-8">
-              <span aria-hidden className="absolute bottom-6 left-[1.4rem] top-6 w-px bg-gradient-to-b from-brand-primary/50 via-brand-navy-200 to-transparent" />
+            <ol className="border-t border-brand-navy-900 lg:col-span-8">
               {STEPS.map((s, i) => (
-                <li key={s.t} className="uc-reveal relative grid grid-cols-[2.85rem_1fr] gap-5 pb-10 last:pb-0">
-                  <span className="relative z-10 flex h-11 w-11 items-center justify-center rounded-full bg-brand-primary text-sm font-bold tabular-nums text-white shadow-md shadow-brand-primary/30 ring-4 ring-paper">
-                    {i + 1}
+                <li
+                  key={s.t}
+                  style={{ '--uc-delay': `${i * 50}ms` } as React.CSSProperties}
+                  className="uc-reveal group grid grid-cols-[3.5rem_1fr] gap-4 border-b border-brand-navy-100 py-8 sm:grid-cols-[6rem_1fr] sm:gap-6"
+                >
+                  <span className="font-mono text-sm font-semibold tabular-nums text-brand-primary-700 sm:pt-1.5">
+                    {String(i + 1).padStart(2, '0')}
                   </span>
-                  <div className="rounded-2xl border border-brand-navy-100 bg-white p-5 shadow-xs sm:p-6">
-                    <h3 className="font-display text-xl font-bold tracking-tight">{s.t}</h3>
+                  <div>
+                    <h3 className="font-display text-2xl font-bold tracking-[-0.02em] transition group-hover:text-brand-primary-700 sm:text-[1.7rem]">
+                      {s.t}
+                    </h3>
                     <p className="mt-2 max-w-xl text-base leading-relaxed text-brand-navy-600">{s.d}</p>
                   </div>
                 </li>
@@ -266,30 +265,40 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Documentos */}
-        <section className="bg-white">
+        {/* Documentos: cada uno como una hoja con su membrete */}
+        <section className="border-y border-brand-navy-100 bg-white">
           <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-            <div className="uc-reveal max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-primary-700">Documentos</p>
-              <h2 className="mt-3 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
-                Todo lo que firmás queda en tu panel.
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-brand-navy-600">
+            <div className="uc-reveal flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-700">Documentos</p>
+                <h2 className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl">
+                  Todo lo que firmás queda en tu panel.
+                </h2>
+              </div>
+              <p className="max-w-sm text-base leading-relaxed text-brand-navy-600">
                 Contrato, pagaré, cuponera y recibos se generan con tus datos reales y los podés descargar cuando quieras.
               </p>
             </div>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {DOCUMENTS.map((d, i) => (
                 <article
                   key={d.t}
                   style={{ '--uc-delay': `${i * 70}ms` } as React.CSSProperties}
-                  className="uc-reveal uc-lift rounded-3xl border border-brand-navy-100 bg-paper p-6"
+                  className="uc-reveal uc-lift relative flex flex-col overflow-hidden rounded-2xl border border-brand-navy-100 bg-paper"
                 >
-                  <IconTile size="lg">
-                    <d.icon />
-                  </IconTile>
-                  <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{d.t}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-brand-navy-600">{d.d}</p>
+                  <div className="flex items-center justify-between border-b border-dashed border-brand-navy-200 px-5 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-brand-navy-500">
+                    <span>Doc. {String(i + 1).padStart(2, '0')}</span>
+                    <d.icon className="h-4 w-4 text-brand-primary" aria-hidden />
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="font-display text-xl font-bold tracking-tight">{d.t}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-brand-navy-600">{d.d}</p>
+                    <div className="mt-auto space-y-1.5 pt-6" aria-hidden>
+                      <span className="block h-1 w-full rounded-full bg-brand-navy-100" />
+                      <span className="block h-1 w-4/5 rounded-full bg-brand-navy-100" />
+                      <span className="block h-1 w-2/5 rounded-full bg-brand-primary/40" />
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
@@ -298,32 +307,28 @@ export default async function HomePage() {
 
         {/* Seguridad */}
         <section aria-labelledby="seguridad-titulo" className="relative overflow-hidden bg-brand-navy-800 text-white">
-          <div aria-hidden className="uc-grid-bg pointer-events-none absolute inset-0 opacity-70" />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_100%_0%,rgba(116,172,223,0.25),transparent_70%)]"
-          />
-          <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-            <div className="uc-reveal max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-primary-300">Seguridad</p>
-              <h2 id="seguridad-titulo" className="mt-3 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
+          <Guilloche className="absolute -bottom-72 -left-72 h-[52rem] w-[52rem]" petals={28} />
+          <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:py-28">
+            <div className="uc-reveal lg:col-span-4">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-300">Seguridad</p>
+              <h2 id="seguridad-titulo" className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl">
                 Tu cuenta y tus datos, protegidos.
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-white/75">
+              <p className="mt-5 text-base leading-relaxed text-white/70">
                 Controles que ya forman parte de la plataforma, para que solo vos operes con tu identidad.
               </p>
             </div>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:col-span-8">
               {SECURITY.map((s, i) => (
                 <article
                   key={s.t}
                   style={{ '--uc-delay': `${i * 70}ms` } as React.CSSProperties}
-                  className="uc-reveal rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-brand-primary-300/50 hover:bg-white/[0.09]"
+                  className="uc-reveal bg-brand-navy-800 p-7 transition duration-300 hover:bg-brand-navy-700"
                 >
                   <IconTile size="lg" tone="onDark">
                     <s.icon />
                   </IconTile>
-                  <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{s.t}</h3>
+                  <h3 className="mt-6 font-display text-xl font-bold tracking-tight">{s.t}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-white/70">{s.d}</p>
                 </article>
               ))}
@@ -335,35 +340,35 @@ export default async function HomePage() {
         <section className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
           <div className="grid gap-12 lg:grid-cols-12">
             <div className="lg:col-span-5">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-primary-700">Transparencia</p>
-              <h2 className="mt-3 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-700">Transparencia</p>
+              <h2 className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl">
                 Las reglas, escritas sin letra chica.
               </h2>
-              <div className="uc-reveal relative mt-8 overflow-hidden rounded-3xl bg-brand-navy-800 p-6 text-white shadow-xl shadow-brand-navy-800/20">
-                <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-primary/30 blur-3xl" />
-                <p className="relative text-xs font-semibold uppercase tracking-[0.1em] text-white/65">Costo de referencia</p>
-                <p className="relative mt-3 font-display text-5xl font-extrabold tabular-nums text-signal-amber">
+              <div className="uc-reveal relative mt-10 overflow-hidden rounded-3xl bg-brand-navy-900 p-7 text-white">
+                <Guilloche className="absolute -right-24 -top-24 h-72 w-72" petals={24} />
+                <p className="relative font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Costo de referencia</p>
+                <p className="relative mt-3 font-display text-6xl font-extrabold tracking-[-0.03em] tabular-nums text-signal-amber">
                   {PERSONAL_QUOTE.cftLabel}
                 </p>
-                <p className="relative mt-1 text-sm text-white/70">
+                <p className="relative mt-2 text-sm leading-relaxed text-white/70">
                   CFT con IVA sobre intereses (TNA {PERSONAL_QUOTE.tnaLabel}). Es un crédito caro: por eso lo ves completo
                   antes de decidir.
                 </p>
               </div>
             </div>
-            <ul className="divide-y divide-brand-navy-100 border-y border-brand-navy-100 lg:col-span-7">
+            <ul className="border-t border-brand-navy-900 lg:col-span-7">
               {RULES.map((r, i) => (
                 <li
                   key={r.t}
                   style={{ '--uc-delay': `${i * 60}ms` } as React.CSSProperties}
-                  className="uc-reveal flex gap-4 py-6"
+                  className="uc-reveal flex gap-5 border-b border-brand-navy-100 py-7"
                 >
-                  <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white shadow-sm shadow-brand-primary/30">
+                  <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-navy-900 text-white">
                     <Check className="h-4 w-4" strokeWidth={3} aria-hidden />
                   </span>
                   <div>
-                    <h3 className="font-display text-xl font-bold tracking-tight">{r.t}</h3>
-                    <p className="mt-1 text-base leading-relaxed text-brand-navy-600">{r.d}</p>
+                    <h3 className="font-display text-2xl font-bold tracking-[-0.02em]">{r.t}</h3>
+                    <p className="mt-1.5 text-base leading-relaxed text-brand-navy-600">{r.d}</p>
                   </div>
                 </li>
               ))}
@@ -375,8 +380,8 @@ export default async function HomePage() {
         <section className="border-t border-brand-navy-100 bg-white">
           <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:py-24">
             <div className="lg:col-span-4">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-primary-700">Preguntas</p>
-              <h2 className="mt-3 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.025em]">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-700">Preguntas</p>
+              <h2 className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl">
                 Lo que más nos preguntan.
               </h2>
             </div>

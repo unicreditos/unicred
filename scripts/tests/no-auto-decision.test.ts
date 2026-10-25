@@ -48,11 +48,15 @@ describe('Decision manual: el score solo recomienda', () => {
     assert.doesNotThrow(() => assertHumanDecision({ action: 'approve', note: '', scoreAtApproval: 0 }, false))
   })
   it('los 4 puntos de solicitud usan statusForDecision y ninguno aprueba por outcome', () => {
-    for (const f of ['app/actions/loans.ts', 'app/actions/merchant.ts', 'lib/mobile/ops.ts']) {
+    for (const f of ['app/actions/loans.ts', 'lib/mobile/ops.ts']) {
       const s = src(f)
       assert.match(s, /statusForDecision\(decision\)/, f)
       assert.doesNotMatch(s, /status = 'approved'/, f)
     }
+    // Ventas en comercios: el crédito nace siempre pendiente; la mesa decide a mano.
+    const sale = src('lib/merchant-orders/service.ts')
+    assert.match(sale, /status: 'pending',/)
+    assert.doesNotMatch(sale, /status: 'approved'/)
   })
   it('las decisiones humanas validan nota en desk y API movil', () => {
     assert.match(src('lib/mobile/ops.ts'), /assertHumanDecision\(\{ action: 'approve'/)

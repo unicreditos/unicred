@@ -46,6 +46,8 @@ describe('panel autenticado', () => {
     assert.equal(shouldBounceLoggedInToWorkspace('/pagar/inst_1'), false)
     assert.equal(shouldBounceLoggedInToWorkspace('/cuenta/seguridad'), false)
     assert.equal(shouldBounceLoggedInToWorkspace('/verificar-2fa'), false)
+    // Vidriera de un comercio: el cliente pide su compra en cuotas con la sesión abierta.
+    assert.equal(shouldBounceLoggedInToWorkspace('/red-comercios/merch_1'), false)
   })
 
   it('no acepta un next externo', () => {

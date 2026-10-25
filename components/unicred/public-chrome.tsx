@@ -1,5 +1,6 @@
 'use client'
 
+import { Guilloche } from '@/components/landing/guilloche'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { BRAND, GROUP, groupOperatorLine, groupSiblingUnits } from '@/lib/brand'
@@ -74,7 +75,7 @@ export function PublicHeader() {
 
         <div className="flex shrink-0 items-center gap-2">
           {isLoggedIn ? (
-            <Button asChild size="lg" className="h-10 rounded-lg px-3 font-semibold sm:px-4">
+            <Button asChild size="lg" className="h-10 rounded-full px-3 font-semibold sm:px-4">
               <Link href={accountHref}>
                 <LayoutDashboard className="h-4 w-4" />
                 <span className="sm:hidden">{accountHref === '/admin' ? 'Admin' : 'Mi cuenta'}</span>
@@ -87,11 +88,11 @@ export function PublicHeader() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="hidden h-10 rounded-lg border-white/40 bg-transparent px-4 font-semibold text-white hover:bg-white/10 hover:text-white sm:inline-flex"
+                className="hidden h-10 rounded-full border-white/40 bg-transparent px-4 font-semibold text-white hover:bg-white/10 hover:text-white sm:inline-flex"
               >
                 <Link href="/sign-in">Iniciar sesión</Link>
               </Button>
-              <Button asChild size="lg" className="h-10 rounded-lg px-3 font-semibold sm:px-4">
+              <Button asChild size="lg" className="h-10 rounded-full px-3 font-semibold sm:px-4">
                 <Link href="/sign-up">
                   Pedir crédito <ArrowRight className="hidden h-4 w-4 sm:block" aria-hidden />
                 </Link>
@@ -102,7 +103,7 @@ export function PublicHeader() {
             type="button"
             variant="outline"
             size="icon"
-            className="size-10 rounded-lg border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white lg:hidden"
+            className="size-10 rounded-full border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white lg:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
@@ -242,34 +243,33 @@ export function PublicFooter() {
 
 export function PublicCtaBanner() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-brand-navy-800 p-8 text-white sm:p-12">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-primary/25 blur-3xl"
-        />
-        <div className="relative max-w-2xl">
-          <h2 className="font-display text-3xl font-bold leading-[1.05] tracking-tight sm:text-5xl">
-            Mirá el costo completo antes de decidir.
-          </h2>
-          <p className="mt-4 max-w-xl text-base text-white/70">
-            Creá tu cuenta, verificá tu identidad y, si tu perfil califica, firmás con la cuota, la TNA y el CFT a la
-            vista. Tenés 10 días para arrepentirte.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base font-semibold">
-              <Link href="/sign-up">
-                Pedir mi crédito <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="h-12 rounded-xl border-white/25 bg-transparent px-6 text-base font-semibold text-white hover:bg-white/10 hover:text-white"
+    <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+      <div className="relative overflow-hidden rounded-[2rem] bg-brand-navy-800 px-7 py-12 text-white sm:px-12 sm:py-16">
+        <Guilloche className="absolute -right-40 -top-56 h-[40rem] w-[40rem]" petals={30} />
+        <div className="relative grid gap-10 lg:grid-cols-12 lg:items-end">
+          <div className="lg:col-span-8">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-300">Empezá hoy</p>
+            <h2 className="mt-4 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
+              Mirá el costo completo antes de decidir.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70">
+              Creá tu cuenta, verificá tu identidad y, si tu perfil califica, firmás con la cuota, la TNA y el CFT a la
+              vista. Tenés 10 días para arrepentirte.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:col-span-4 lg:flex-col lg:items-stretch">
+            <Link
+              href="/sign-up"
+              className="group inline-flex h-13 items-center justify-center gap-2 rounded-full bg-brand-primary-300 px-7 text-base font-semibold text-brand-navy-900 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-800"
             >
-              <Link href="/simulador">Probar el simulador</Link>
-            </Button>
+              Pedir mi crédito <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+            <Link
+              href="/simulador"
+              className="inline-flex h-13 items-center justify-center rounded-full border border-white/25 px-7 text-base font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              Probar el simulador
+            </Link>
           </div>
         </div>
       </div>

@@ -69,7 +69,16 @@ const GROUPS: Group[] = [
       { label: 'Cuentas CBU', route: '/admin/clientes/cbu', perm: 'clients.read' },
     ],
   },
-  { id: 'comercios', label: 'Comercios', icon: 'store', route: '/admin/comercios', perm: 'merchants.read' },
+  {
+    id: 'comercios',
+    label: 'Comercios',
+    icon: 'store',
+    children: [
+      { label: 'Comercios adheridos', route: '/admin/comercios', perm: 'merchants.read' },
+      { label: 'Ventas en comercios', route: '/admin/comercios/operaciones', anyOf: ['merchants.read', 'payments.read'] },
+      { label: 'Liquidaciones', route: '/admin/comercios/liquidaciones', anyOf: ['payments.read', 'finance.read'] },
+    ],
+  },
   {
     id: 'finanzas',
     label: 'Finanzas',

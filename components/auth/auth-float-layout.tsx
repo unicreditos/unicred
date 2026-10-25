@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { Guilloche } from '@/components/landing/guilloche'
 import { BrandLogo } from '@/components/unicred/dashboard-kit'
 import { groupOperatorLine } from '@/lib/brand'
 import { PERSONAL_QUOTE } from '@/lib/loan-catalog'
@@ -31,11 +32,8 @@ export function AuthFloatLayout({
 }) {
   return (
     <div id="contenido-principal" className="grid min-h-svh bg-paper lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 top-1/3 h-96 w-96 rounded-full bg-brand-primary/20 blur-3xl"
-        />
+      <aside className="relative hidden overflow-hidden bg-brand-navy-800 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <Guilloche className="absolute -bottom-80 -right-80 h-[52rem] w-[52rem]" petals={30} />
         <BrandLogo showText light className="relative" />
 
         <div className="relative max-w-md">
@@ -45,13 +43,13 @@ export function AuthFloatLayout({
           <p className="mt-3 font-display text-6xl font-extrabold leading-none tracking-[-0.04em] text-signal-amber tabular-nums">
             CFT {PERSONAL_QUOTE.cftLabel}
           </p>
-          <h2 className="mt-8 font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em]">
+          <h2 className="mt-8 font-display text-[2.6rem] font-extrabold leading-[1.02] tracking-[-0.035em]">
             El costo completo, antes de firmar.
           </h2>
           <ul className="mt-8 space-y-3.5">
             {PROMISES.map((p) => (
               <li key={p} className="flex items-start gap-3 text-[15px] leading-snug text-white/80">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary-300 text-brand-navy-900">
                   <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                 </span>
                 {p}
