@@ -1,8 +1,8 @@
+import { Guilloche } from '@/components/landing/guilloche'
 import { PublicFooter, PublicHeader } from '@/components/unicred/public-chrome'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
 
 export function PublicPageShell({
   title,
@@ -26,49 +26,46 @@ export function PublicPageShell({
       <PublicHeader />
 
       <main id="contenido-principal">
-        <section className="relative overflow-hidden">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(31,111,181,0.12),transparent_70%)]"
-          />
-          <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12">
+        {/* Cabecera de página: la misma banda azul con roseta que la portada */}
+        <section className="relative overflow-hidden bg-brand-navy-800 text-white">
+          <Guilloche className="absolute -right-64 -top-72 h-[48rem] w-[48rem]" petals={30} />
+          <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-8 sm:px-6 sm:pb-20 sm:pt-10">
             <Link
               href="/"
-              className="mb-6 inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-brand-navy-600 transition hover:text-brand-primary-700"
+              className="mb-10 inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-white/65 transition hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden /> Volver al inicio
             </Link>
-            <div className="max-w-3xl space-y-5">
+            <div className="max-w-4xl">
               {eyebrow && (
-                <p className="inline-flex items-center gap-2 rounded-full border border-brand-navy-200 bg-white px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-brand-navy-600">
-                  {icon ?? <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" aria-hidden />}
+                <p className="inline-flex items-center gap-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-brand-primary-300 [&_svg]:h-3.5 [&_svg]:w-3.5">
+                  {icon ?? <span className="h-1.5 w-1.5 rounded-full bg-signal-amber" aria-hidden />}
                   {eyebrow}
                 </p>
               )}
-              <h1 className="text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.025em] text-brand-navy-900 sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 text-balance font-display text-[2.6rem] font-extrabold leading-[0.98] tracking-[-0.035em] text-white sm:text-[3.5rem] lg:text-[4.25rem]">
                 {title}
               </h1>
               {description && (
-                <p className="max-w-2xl text-lg leading-relaxed text-brand-navy-600">{description}</p>
+                <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/72">{description}</p>
               )}
               {(primaryAction || secondaryAction) && (
-                <div className="flex flex-wrap items-center gap-3 pt-2">
+                <div className="mt-9 flex flex-wrap items-center gap-3">
                   {primaryAction && (
-                    <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base font-semibold">
-                      <Link href={primaryAction.href}>
-                        {primaryAction.label} <ArrowRight className="h-4 w-4" aria-hidden />
-                      </Link>
-                    </Button>
+                    <Link
+                      href={primaryAction.href}
+                      className="group inline-flex h-12 items-center gap-2 rounded-full bg-brand-primary-300 px-6 text-base font-semibold text-brand-navy-900 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-800"
+                    >
+                      {primaryAction.label} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+                    </Link>
                   )}
                   {secondaryAction && (
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="lg"
-                      className="h-12 rounded-xl border-brand-navy-200 bg-white px-6 text-base font-semibold"
+                    <Link
+                      href={secondaryAction.href}
+                      className="inline-flex h-12 items-center rounded-full border border-white/25 px-6 text-base font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                     >
-                      <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
-                    </Button>
+                      {secondaryAction.label}
+                    </Link>
                   )}
                 </div>
               )}
@@ -76,7 +73,7 @@ export function PublicPageShell({
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-20 sm:px-6 lg:pb-28">{children}</section>
+        <section className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-20 pt-10 sm:px-6 sm:pt-14 lg:pb-28">{children}</section>
       </main>
 
       <PublicFooter />
@@ -104,9 +101,9 @@ export function PageSection({
     >
       <div className="max-w-3xl space-y-2">
         {eyebrow && (
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand-primary-700">{eyebrow}</p>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-primary-700">{eyebrow}</p>
         )}
-        <h2 className="text-balance font-display text-2xl font-bold tracking-tight text-brand-navy-900 sm:text-3xl">
+        <h2 className="text-balance font-display text-2xl font-extrabold tracking-[-0.025em] text-brand-navy-900 sm:text-[2rem]">
           {title}
         </h2>
         {subtitle && <p className="leading-relaxed text-brand-navy-600">{subtitle}</p>}
