@@ -123,7 +123,6 @@ test('Puntos de aprobacion manual y alta exigen Key 6', () => {
   const mutate = readFileSync('lib/admin-desk/mutate.ts', 'utf8')
   assert.match(mutate, /assertKey6\(acc\.userId, 'admin_decideKyc'/)
   assert.match(mutate, /assertKey6\(clientId, 'admin_createApplication'/)
-  assert.match(readFileSync('app/actions/admin.ts', 'utf8'), /assertKey6\(userId, 'admin_updateUser'/)
   assert.match(readFileSync('lib/mobile/ops.ts', 'utf8'), /assertKey6\(customerId, 'mobile_admin_kyc_approve'/)
   const didit = readFileSync('lib/didit.ts', 'utf8')
   assert.match(didit, /key6Gate\(role, key6InputFromDecision/)

@@ -1,7 +1,7 @@
 import { startOfDayAR } from '@/lib/date-ar'
 import { db } from '@/lib/db'
 import { installment, loanContract, user as userTable } from '@/lib/db/schema'
-import { contractReadyEmail, intimacionEmail, sendEmail } from '@/lib/email'
+import { contractReadyEmail, sendEmail } from '@/lib/email'
 import { publicSiteUrl } from '@/lib/site'
 import { and, eq, lt } from 'drizzle-orm'
 
@@ -191,33 +191,6 @@ export async function notifyContractReady(input: {
   }
 }
 
-export async function notifyIntimation(input: {
-  userId: string
-  contractId: string
-  amount: number
-  overdueCount: number
-}) {
-  try {
-    const [u] = await db
-      .select({ email: userTable.email, name: userTable.name })
-      .from(userTable)
-      .where(eq(userTable.id, input.userId))
-      .limit(1)
-    if (!u?.email) return
-    await sendEmail(
-      intimacionEmail({
-        to: u.email,
-        name: u.name,
-        amount: input.amount,
-        overdueCount: input.overdueCount,
-        url: `${appOrigin()}/dashboard/documentos/intimacion/${input.contractId}`,
-      }),
-    )
-  } catch (err) {
-    console.error('[expediente] no se pudo enviar la intimación:', (err as Error).message)
-  }
-}
-
 export function readSignatureData(value: unknown): ContractSignatureData {
   return asSignature(value)
 }
@@ -227,77 +200,3 @@ export function lastRefinanceAt(value: unknown): string | null {
   return list[list.length - 1]?.at ?? null
 }
 
-export async function persistIntimation(
-  contractId: string,
-  input: {
-    overdueCount: number
-    amount: number
-    installments: Array<{ number: number; dueDate: string; amount: number; daysLate: number }>
-  },
-) {
-  const [c] = await db
-    .select({
-      id: loanContract.id,
-      signatureData: loanContract.signatureData,
-    })
-    .from(loanContract)
-    .where(eq(loanContract.id, contractId))
-    .limit(1)
-  if (!c) throw new Error('Contrato no encontrado')
-
-  const prev = asSignature(c.signatureData)
-  const number = `INT-${contractId.slice(0, 8).toUpperCase()}-${String((prev.intimaciones?.length ?? 0) + 1).padStart(2, '0')}`
-  const next: ContractSignatureData = {
-    ...prev,
-    intimaciones: [
-      ...(prev.intimaciones ?? []),
-      {
-        number,
-        at: new Date().toISOString(),
-        overdueCount: input.overdueCount,
-        amount: input.amount,
-        installments: input.installments,
-      },
-    ],
-  }
-
-  await db
-    .update(loanContract)
-    .set({ signatureData: next, updatedAt: new Date() })
-    .where(eq(loanContract.id, contractId))
-
-  return number
-}
-
-export async function persistRefinance(
-  contractId: string,
-  input: { outstanding: number; installmentAmount: number; remainingCount: number },
-  client: DbLike = db,
-) {
-  const [c] = await client
-    .select({ id: loanContract.id, signatureData: loanContract.signatureData })
-    .from(loanContract)
-    .where(eq(loanContract.id, contractId))
-    .limit(1)
-  if (!c) throw new Error('Contrato no encontrado')
-  const prev = asSignature(c.signatureData)
-  const used = prev.refinanciaciones?.length ?? 0
-  const next: ContractSignatureData = {
-    ...prev,
-    refinanciaciones: [
-      ...(prev.refinanciaciones ?? []),
-      {
-        number: used + 1,
-        at: new Date().toISOString(),
-        outstanding: input.outstanding,
-        installmentAmount: input.installmentAmount,
-        remainingCount: input.remainingCount,
-      },
-    ],
-  }
-  await client
-    .update(loanContract)
-    .set({ signatureData: next, updatedAt: new Date() })
-    .where(eq(loanContract.id, contractId))
-  return used + 1
-}

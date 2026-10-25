@@ -215,8 +215,3 @@ export const getPublicMarketBoardCached = unstable_cache(
   { revalidate: 60 * 15, tags: ['bcra-market'] },
 )
 
-export async function persistLiveFxNow() {
-  const fx = normalizeFx(await getCotizaciones())
-  if (fx.length) await persistFx(fx)
-  return fx.length
-}

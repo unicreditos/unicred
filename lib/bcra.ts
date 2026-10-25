@@ -533,17 +533,6 @@ export type VariableBCRA = {
   primerFechaInformada?: string | null
 }
 
-export type SerieMonetariaPunto = {
-  idVariable: number
-  fecha: string
-  valor: number
-}
-
-export type MetodologiaVariable = {
-  id: number
-  detalle: string
-}
-
 export type MonetariasQuery = {
   idVariable?: number | string
   categoria?: string
@@ -584,40 +573,6 @@ function normalizeVariables(payload: any): VariableBCRA[] {
     .filter(Boolean) as VariableBCRA[]
 }
 
-function flattenSerieMonetaria(payload: any, fallbackId = 0): SerieMonetariaPunto[] {
-  const results = asArray(payload?.results)
-  const points: SerieMonetariaPunto[] = []
-  for (const row of results) {
-    const id = Number(row?.idVariable ?? fallbackId)
-    const detalle = asArray(row?.detalle)
-    if (detalle.length) {
-      for (const d of detalle) {
-        points.push({
-          idVariable: id,
-          fecha: String(d?.fecha ?? ''),
-          valor: Number(d?.valor ?? 0),
-        })
-      }
-      continue
-    }
-    if (row?.fecha != null || row?.valor != null) {
-      points.push({
-        idVariable: id,
-        fecha: String(row?.fecha ?? ''),
-        valor: Number(row?.valor ?? 0),
-      })
-    }
-  }
-  if (!points.length) {
-    return normalizeVariables(payload).map((v) => ({
-      idVariable: v.idVariable,
-      fecha: v.fecha,
-      valor: v.valor,
-    }))
-  }
-  return points.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))
-}
-
 export async function getMonetarias(query: MonetariasQuery = {}): Promise<VariableBCRA[]> {
   const path = `/estadisticas/v4.0/Monetarias${qs({
     IdVariable: query.idVariable,
@@ -654,67 +609,7 @@ export async function getPrincipalesVariables(): Promise<VariableBCRA[]> {
   return []
 }
 
-export async function getInformeMonetarioDiario(): Promise<VariableBCRA[]> {
-  const filtered = await getMonetarias({ categoria: 'Informe Monetario Diario', limit: 300 })
-  if (filtered.length) return filtered
-  const all = await getPrincipalesVariables()
-  return all.filter((v) => {
-    const cat = `${v.categoria ?? ''} ${v.descripcion}`.toLowerCase()
-    return cat.includes('informe monetario') || cat.includes('diario')
-  })
-}
-
-export async function getVariableMonetaria(
-  idVariable: number | string,
-  opts?: { desde?: string; hasta?: string; limit?: number; offset?: number },
-): Promise<SerieMonetariaPunto[]> {
-  const id = encodeURIComponent(String(idVariable))
-  const v4 = await bcraFetch<any>(
-    `/estadisticas/v4.0/Monetarias/${id}${qs({
-      Desde: opts?.desde,
-      Hasta: opts?.hasta,
-      Limit: opts?.limit ?? 1000,
-      Offset: opts?.offset,
-    })}`,
-  )
-  if (v4.ok) {
-    const series = flattenSerieMonetaria(v4.data, Number(idVariable) || 0)
-    if (series.length) return series
-  }
-  const v3 = await bcraFetch<any>(`/estadisticas/v3.0/monetarias/${id}`)
-  if (!v3.ok) return []
-  return flattenSerieMonetaria(v3.data, Number(idVariable) || 0)
-}
-
-export async function getMetodologiaMonetaria(): Promise<MetodologiaVariable[]> {
-  const data = await bcraFetch<any>(`/estadisticas/v4.0/Metodologia${qs({ Limit: 500 })}`)
-  if (!data.ok) return []
-  const results = asArray(data.data?.results).flat()
-  return results
-    .map((m: any) => ({
-      id: Number(m?.id ?? m?.idVariable ?? 0),
-      detalle: String(m?.detalle ?? m?.descripcion ?? ''),
-    }))
-    .filter((m: MetodologiaVariable) => m.id || m.detalle)
-}
-
-export async function getMetodologiaVariable(idVariable: number | string): Promise<MetodologiaVariable[]> {
-  const id = encodeURIComponent(String(idVariable))
-  const data = await bcraFetch<any>(`/estadisticas/v4.0/Metodologia/${id}`)
-  if (!data.ok) return []
-  return asArray(data.data?.results).map((m: any) => ({
-    id: Number(m?.id ?? idVariable),
-    detalle: String(m?.detalle ?? m?.descripcion ?? ''),
-  }))
-}
-
 /* -------------------------- Estadísticas cambiarias v1.0 -------------------------- */
-// Docs: https://estadisticas-cambiarias.bcra.apidocs.ar/
-
-export type DivisaBCRA = {
-  codigo: string
-  denominacion: string
-}
 
 export type CotizacionBCRA = {
   moneda: string
@@ -723,15 +618,6 @@ export type CotizacionBCRA = {
   tipoPase: number | null
   tipoCotizacion: number | null
   fecha: string | null
-}
-
-export async function getDivisas(): Promise<DivisaBCRA[]> {
-  const data = await bcraFetch<any>(`/estadisticascambiarias/v1.0/Maestros/Divisas`)
-  if (!data.ok) return []
-  return asArray(data.data?.results).map((d: any) => ({
-    codigo: String(d?.codigo ?? d?.codigoMoneda ?? '').toUpperCase(),
-    denominacion: String(d?.denominacion ?? d?.descripcion ?? ''),
-  })).filter((d: DivisaBCRA) => d.codigo)
 }
 
 function mapCotizacionDetalle(d: any, fecha: string | null): CotizacionBCRA {
@@ -757,34 +643,6 @@ export async function getCotizaciones(fecha?: string): Promise<CotizacionBCRA[]>
   return detalle.map((d: any) => mapCotizacionDetalle(d, fechaRes))
 }
 
-export async function getCotizacionesMoneda(
-  codMoneda: string,
-  opts?: { fechaDesde?: string; fechaHasta?: string; limit?: number; offset?: number },
-): Promise<CotizacionBCRA[]> {
-  const moneda = encodeURIComponent(codMoneda.trim().toUpperCase())
-  const data = await bcraFetch<any>(
-    `/estadisticascambiarias/v1.0/Cotizaciones/${moneda}${qs({
-      fechaDesde: opts?.fechaDesde,
-      fechaHasta: opts?.fechaHasta,
-      limit: opts?.limit ?? 30,
-      offset: opts?.offset,
-    })}`,
-  )
-  if (!data.ok) return []
-  const rows = asArray(data.data?.results)
-  const out: CotizacionBCRA[] = []
-  for (const row of rows) {
-    const fecha = row?.fecha ?? null
-    for (const d of asArray(row?.detalle)) {
-      out.push(mapCotizacionDetalle(d, fecha))
-    }
-    if (!asArray(row?.detalle).length && (row?.codigoMoneda || row?.tipoCotizacion != null)) {
-      out.push(mapCotizacionDetalle(row, fecha))
-    }
-  }
-  return out
-}
-
 /* -------------------------- Régimen de Transparencia v1.0 -------------------------- */
 // Docs: https://regimen-transparencia.bcra.apidocs.ar/
 
@@ -797,49 +655,6 @@ export const TRANSPARENCIA_PRODUCTOS = [
   { id: 'personales', label: 'Préstamos personales', path: '/transparencia/v1.0/Prestamos/Personales' },
   { id: 'tarjetas', label: 'Tarjetas de crédito', path: '/transparencia/v1.0/TarjetasCredito' },
 ] as const
-
-export type TransparenciaProductoId = (typeof TRANSPARENCIA_PRODUCTOS)[number]['id']
-
-export type TransparenciaResultado = {
-  producto: TransparenciaProductoId
-  label: string
-  found: boolean
-  unavailable: boolean
-  count: number
-  results: Record<string, unknown>[]
-}
-
-export async function getTransparencia(
-  producto: TransparenciaProductoId,
-  codigoEntidad?: number | string,
-): Promise<TransparenciaResultado> {
-  const spec = TRANSPARENCIA_PRODUCTOS.find((p) => p.id === producto)
-  if (!spec) {
-    return { producto, label: producto, found: false, unavailable: true, count: 0, results: [] }
-  }
-  const data = await bcraFetch<any>(
-    `${spec.path}${qs({ codigoEntidad: codigoEntidad ? String(codigoEntidad).replace(/\D/g, '') : undefined })}`,
-  )
-  if (!data.ok) {
-    return {
-      producto,
-      label: spec.label,
-      found: false,
-      unavailable: data.status !== 404,
-      count: 0,
-      results: [],
-    }
-  }
-  const results = asArray<Record<string, unknown>>(data.data?.results ?? data.data)
-  return {
-    producto,
-    label: spec.label,
-    found: results.length > 0,
-    unavailable: false,
-    count: results.length,
-    results,
-  }
-}
 
 export { formatPeriodoBcra, SITUACION_BCRA } from '@/lib/bcra-labels'
 

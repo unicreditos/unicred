@@ -272,8 +272,3 @@ export async function validateBankAccountAuto(opts: {
   }
 }
 
-export const ARGENAPI_CONFIG = {
-  apiKeySet: cfgSet,
-  baseUrl: BASE_URL,
-  timeoutMs: TIMEOUT_MS,
-}

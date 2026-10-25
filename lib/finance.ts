@@ -17,12 +17,6 @@ export const IVA_INTERESES = 0.21
 /** Punitorios del mutuo personal/comercial vigente: 0% cuantificado (art. 36 inc. h). */
 export const PUNITORY_RATE = 0
 
-/** CFT informado = TEA con IVA sobre intereses, sin gastos ni seguros extra. */
-export function estimatedCftFromMonthlyRate(monthlyRatePercent: number): number {
-  if (!Number.isFinite(monthlyRatePercent) || monthlyRatePercent <= 0) return 0
-  return computeFrenchAmortization(100_000, 12, monthlyRatePercent).cft
-}
-
 /**
  * Sistema francés de amortización: cuota fija.
  * @param principal  Capital solicitado
@@ -157,10 +151,6 @@ export function normalizeBankAlias(input: string): string {
 
 export function isValidBankAlias(alias: string): boolean {
   return /^[a-z0-9.]{6,20}$/.test(alias)
-}
-
-export function formatAlias(a: string) {
-  return normalizeBankAlias(a)
 }
 
 export function displayAlias(a: string | null | undefined): string {

@@ -210,12 +210,6 @@ export function kycMediaBundle(
   }
 }
 
-export function groupDni(value: string | null | undefined) {
-  const digits = String(value || '').replace(/\D/g, '')
-  if (!digits) return '— — — —'
-  return digits.replace(/(\d{1,4})(?=(\d{4})*$)/g, '$1 ').trim()
-}
-
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (!parts.length) return 'UC'

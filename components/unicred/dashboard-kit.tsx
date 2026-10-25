@@ -3,11 +3,6 @@ import { cn } from '@/lib/utils'
 import {
   TrendingUp,
   TrendingDown,
-  Landmark,
-  Clock,
-  Shield,
-  Globe2,
-  FileCheck2,
   CircleDot,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -387,43 +382,6 @@ export function BrandLogo({
     <Link href={href} className={cn('inline-flex items-center', className)} aria-label="Unicréditos, ir al inicio">
       {showText ? <BrandWordmark light={light} /> : <BrandMark className="h-9 w-9" tone={light ? 'white' : 'brand'} />}
     </Link>
-  )
-}
-
-export function TrustBar({ tone = 'navy' }: { tone?: 'navy' | 'light' }) {
-  const items = [
-    { icon: <Landmark className="h-4 w-4" />, label: 'Consulta Central de Deudores BCRA' },
-    { icon: <FileCheck2 className="h-4 w-4" />, label: 'TNA y CFT antes de firmar' },
-    { icon: <Clock className="h-4 w-4" />, label: 'Cuota fija · sistema francés' },
-    { icon: <Shield className="h-4 w-4" />, label: 'Identidad Didit · Ley 25.326' },
-    { icon: <Globe2 className="h-4 w-4" />, label: 'Contrato y pagaré en tu panel' },
-  ]
-  const light = tone === 'light'
-  return (
-    <div
-      className={
-        light
-          ? 'w-full border-y border-border/50 bg-white/80 text-brand-navy-600 backdrop-blur-md'
-          : 'w-full bg-brand-navy-800 text-slate-200'
-      }
-    >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-3 px-4 py-3 sm:justify-between">
-        {items.map((i, idx) => (
-          <div key={idx} className="flex items-center gap-2 text-[12px] font-medium">
-            <span
-              className={
-                light
-                  ? 'flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary ring-1 ring-brand-primary/15'
-                  : 'flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-brand-cian-300 ring-1 ring-white/5'
-              }
-            >
-              {i.icon}
-            </span>
-            <span className="tracking-tight">{i.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }
 

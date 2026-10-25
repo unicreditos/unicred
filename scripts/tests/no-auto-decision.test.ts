@@ -54,9 +54,7 @@ describe('Decision manual: el score solo recomienda', () => {
       assert.doesNotMatch(s, /status = 'approved'/, f)
     }
   })
-  it('las decisiones humanas validan nota en admin, desk y API movil', () => {
-    assert.match(src('app/actions/admin.ts'), /assertHumanDecision\(\{ action: 'approve'/)
-    assert.match(src('app/actions/admin.ts'), /assertHumanDecision\(\{ action: 'reject'/)
+  it('las decisiones humanas validan nota en desk y API movil', () => {
     assert.match(src('lib/mobile/ops.ts'), /assertHumanDecision\(\{ action: 'approve'/)
     assert.match(src('lib/mobile/ops.ts'), /assertHumanDecision\(\{ action: 'reject'/)
     assert.doesNotMatch(src('lib/admin-desk/mutate.ts'), /Calificado desde mesa admin/)

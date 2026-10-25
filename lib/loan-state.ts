@@ -58,18 +58,6 @@ export function canTransition(from: string, to: string): boolean {
   return TRANSITIONS[from].includes(to)
 }
 
-export function assertTransition(from: string, to: string): asserts to is LoanStatus {
-  if (!isLoanStatus(to)) {
-    throw new Error(`Estado de crédito desconocido: "${to}"`)
-  }
-  if (!canTransition(from, to)) {
-    const fromLabel = isLoanStatus(from) ? LOAN_STATUS_LABELS[from] : from
-    throw new Error(
-      `Transición inválida: un crédito "${fromLabel}" no puede pasar a "${LOAN_STATUS_LABELS[to]}".`,
-    )
-  }
-}
-
 export function canAdminTransition(from: string, to: string): boolean {
   if (!isLoanStatus(from) || !isLoanStatus(to)) return false
   if (from === to) return true
@@ -91,11 +79,6 @@ export function assertAdminTransition(from: string, to: string): asserts to is L
       `Desde el admin, un crédito "${fromLabel}" no puede pasar a "${LOAN_STATUS_LABELS[to]}".`,
     )
   }
-}
-
-export function allowedTransitions(from: string): LoanStatus[] {
-  if (!isLoanStatus(from)) return []
-  return [...TRANSITIONS[from]]
 }
 
 export function allowedAdminTransitions(from: string): LoanStatus[] {

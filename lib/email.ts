@@ -245,34 +245,6 @@ export function contractReadyEmail(input: {
   return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
 }
 
-export function intimacionEmail(input: {
-  to: string
-  name?: string | null
-  amount: number
-  overdueCount: number
-  url: string
-}): EmailMessage {
-  const who = input.name?.trim() || 'Hola'
-  const subject = `Intimación de pago — ${BRAND.company}`
-  const text = brandedText([
-    `${who},`,
-    '',
-    `Registramos ${input.overdueCount} cuota(s) vencida(s) por ${moneyLabel(input.amount)}.`,
-    'Esta comunicación constituye intimación de pago y reserva de acciones, incluido el pagaré.',
-    '',
-    input.url,
-  ])
-  const html = brandedEmailHtml({
-    title: 'Intimación de pago',
-    bodyHtml: `
-      <p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, hay ${input.overdueCount} cuota(s) vencida(s) por <strong>${escapeHtml(moneyLabel(input.amount))}</strong>.</p>
-      <p style="font-size:14px;line-height:1.6;margin:0 0 24px">Esta comunicación constituye intimación de pago y reserva de acciones, incluido el pagaré.</p>
-    `,
-    cta: { href: input.url, label: 'Ver intimación', danger: true },
-  })
-  return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
-}
-
 export function inquiryEmail(input: {
   kind: string
   name: string

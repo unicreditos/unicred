@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { adminPermission, adminRole, adminRolePermission, profile } from '@/lib/db/schema'
-import { eq, inArray } from 'drizzle-orm'
+import { adminPermission, adminRolePermission, profile } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { assertAdmin } from '@/lib/session'
 import { ensureRbacSchema, type PermissionKey } from '@/lib/db/ensure-rbac'
 import { cache } from 'react'
@@ -45,49 +45,3 @@ export async function hasPermission(userId: string, permissionKey: PermissionKey
   return perms.has(permissionKey)
 }
 
-export type AdminRoleRow = {
-  id: string
-  key: string
-  label: string
-  description: string | null
-  isSystem: boolean
-  permissions: string[]
-}
-
-/** Roles disponibles con sus permisos, para la pantalla de Operadores/Roles. */
-export async function listAdminRoles(): Promise<AdminRoleRow[]> {
-  await ensureRbacSchema()
-  const roles = await db.select().from(adminRole).orderBy(adminRole.label)
-  if (!roles.length) return []
-  const roleIds = roles.map((r) => r.id)
-  const rows = await db
-    .select({ roleId: adminRolePermission.roleId, key: adminPermission.key })
-    .from(adminRolePermission)
-    .innerJoin(adminPermission, eq(adminPermission.id, adminRolePermission.permissionId))
-    .where(inArray(adminRolePermission.roleId, roleIds))
-  const byRole = new Map<string, string[]>()
-  for (const r of rows) {
-    const list = byRole.get(r.roleId) ?? []
-    list.push(r.key)
-    byRole.set(r.roleId, list)
-  }
-  return roles.map((r) => ({
-    id: r.id,
-    key: r.key,
-    label: r.label,
-    description: r.description,
-    isSystem: r.isSystem,
-    permissions: byRole.get(r.id) ?? [],
-  }))
-}
-
-/** Asigna un rol RBAC a un admin. Requiere users.manage; el propio rol nunca se puede autoquitar sin ese permiso. */
-export async function assignAdminRole(targetUserId: string, roleId: string) {
-  const actorUserId = await requirePermission('users.manage')
-  const [role] = await db.select().from(adminRole).where(eq(adminRole.id, roleId)).limit(1)
-  if (!role) throw new Error('Rol no encontrado')
-  const [target] = await db.select({ role: profile.role }).from(profile).where(eq(profile.userId, targetUserId)).limit(1)
-  if (!target || target.role !== 'admin') throw new Error('El usuario no es un operador admin')
-  await db.update(profile).set({ adminRoleId: roleId, updatedAt: new Date() }).where(eq(profile.userId, targetUserId))
-  return { ok: true as const, by: actorUserId }
-}

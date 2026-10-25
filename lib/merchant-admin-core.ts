@@ -9,7 +9,6 @@ export const MERCHANT_FLAGS = {
 } as const
 export type MerchantFlag = keyof typeof MERCHANT_FLAGS
 export const isMerchantFlag = (v: unknown): v is MerchantFlag => typeof v === 'string' && v in MERCHANT_FLAGS
-export const FLAG_PENDING_NOTE = 'Pendiente de integración: hoy es solo una bandera interna. No crea sucursal, caja ni QR en Mercado Pago.'
 
 export type DocState = 'missing' | 'uploaded' | 'approved' | 'observed'
 export type DocRow = { id: string; type: string; status: string; fileName: string; sha256: string; createdAt: string | Date; reviewNote?: string | null }

@@ -220,18 +220,6 @@ export async function mobileCreditProducts() {
   }
 }
 
-export async function mobileMyLoans(userId: string) {
-  const rows = await db.select().from(loan).where(eq(loan.userId, userId)).orderBy(desc(loan.createdAt))
-  return rows.map((l) => ({
-    id: l.id,
-    status: String(l.status).toUpperCase(),
-    amount: Number(l.principal),
-    installments: l.term,
-    type: l.type,
-    createdAt: l.createdAt ? new Date(l.createdAt).toISOString() : null,
-  }))
-}
-
 export async function mobilePaymentsUpcoming(userId: string) {
   const rows = await db
     .select()
@@ -271,17 +259,3 @@ export async function mobilePaymentsUpcoming(userId: string) {
   }
 }
 
-export async function mobileProfile(userId: string) {
-  const [usr] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
-  const [prof] = await db.select().from(profile).where(eq(profile.userId, userId)).limit(1)
-  return {
-    id: usr?.id,
-    email: usr?.email,
-    name: usr?.name,
-    phone: usr?.phoneNumber ?? prof?.phone ?? null,
-    dni: prof?.dni ?? null,
-    cuil: prof?.cuil ?? null,
-    kycStatus: prof?.kycStatus ?? 'pending',
-    role: prof?.role ?? usr?.role ?? 'customer',
-  }
-}

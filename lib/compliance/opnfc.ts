@@ -17,12 +17,3 @@ export function opnfcBand(outstandingPrincipal: number): OpnfcBand {
   return 'below'
 }
 
-export function opnfcLabel(band: OpnfcBand) {
-  if (band === 'threshold_crossed') {
-    return 'El stock vigente cruzó el umbral de $10 M. Hay 120 días para inscribirse como PNFC por ARCA.'
-  }
-  if (band === 'approaching') {
-    return 'El stock vigente supera $8 M. Preparar inscripción PNFC si el próximo balance cierra sobre $10 M.'
-  }
-  return 'Stock de financiaciones vigentes por debajo del umbral PNFC de $10 M.'
-}

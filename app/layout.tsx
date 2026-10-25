@@ -28,7 +28,7 @@ const closed = maintenanceEnabled()
 
 const siteTitle = 'UNICRÉDITOS · Plataforma de soluciones financieras'
 const siteDescription =
-  'Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.'
+  'Plataforma de soluciones financieras: préstamos personales online y financiación para comercios, con el costo completo a la vista antes de firmar.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),

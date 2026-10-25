@@ -25,8 +25,6 @@ import { assertVerifiedCustomer } from '@/lib/onboarding-gate'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
 const MAX_TRANSFER = 10_000_000
-/** Techo de sanidad para un solo evento de acreditación entrante (webhook). No es un límite de negocio: es un freno ante un payload malformado o forjado. */
-export const MAX_INBOUND_WEBHOOK_CREDIT = 5_000_000
 
 const RECEIPT_BRANDING = receiptBranding()
 
@@ -169,69 +167,6 @@ export async function ensureWalletAccount(userId: string): Promise<WalletSnapsho
   })
 
   return loadSnapshot(userId, id)
-}
-
-export async function creditWallet(input: {
-  userId?: string
-  cvu?: string
-  alias?: string
-  amount: number
-  kind: string
-  externalId?: string | null
-  reference?: string | null
-  notes?: string | null
-  paymentId?: string | null
-}) {
-  const amount = round2(input.amount)
-  if (!(amount > 0)) throw new Error('Importe inválido.')
-
-  return db.transaction(async (tx) => {
-    const filters = []
-    if (input.userId) filters.push(eq(walletAccount.userId, input.userId))
-    if (input.cvu) filters.push(eq(walletAccount.cvu, input.cvu.replace(/\D/g, '')))
-    if (input.alias) filters.push(eq(walletAccount.alias, input.alias.replace(/^@/, '').toLowerCase()))
-    if (!filters.length) throw new Error('Billetera no indicada.')
-
-    const [wallet] = await tx.select().from(walletAccount).where(and(...filters)).for('update').limit(1)
-    if (!wallet) return { matched: false as const, credited: 0 }
-
-    if (input.externalId) {
-      const [dup] = await tx
-        .select({ id: walletMovement.id })
-        .from(walletMovement)
-        .where(eq(walletMovement.externalId, input.externalId))
-        .limit(1)
-      if (dup) return { matched: true as const, duplicate: true as const, credited: 0, walletId: wallet.id }
-    }
-
-    const next = round2(money(wallet.balance) + amount)
-    const now = new Date()
-    await tx
-      .update(walletAccount)
-      .set({ balance: String(next.toFixed(2)), updatedAt: now })
-      .where(eq(walletAccount.id, wallet.id))
-    await tx.insert(walletMovement).values({
-      id: crypto.randomUUID(),
-      walletId: wallet.id,
-      userId: wallet.userId,
-      direction: 'credit',
-      kind: input.kind,
-      amount: String(amount.toFixed(2)),
-      balanceAfter: String(next.toFixed(2)),
-      paymentId: input.paymentId ?? null,
-      externalId: input.externalId ?? null,
-      reference: input.reference ?? null,
-      notes: input.notes ?? null,
-      createdAt: now,
-    })
-    return { matched: true as const, credited: amount, walletId: wallet.id, userId: wallet.userId, balance: next }
-  })
-}
-
-export async function loadWalletSandbox(_userId: string, _amount: number): Promise<never> {
-  throw new Error(
-    'Las cargas de prueba están deshabilitadas. Transferí a tu CVU o alias; el saldo se acredita cuando tesorería confirma el ingreso.',
-  )
 }
 
 export async function reportWalletInbound(_userId: string, _amount: number, _originRaw: string): Promise<never> {

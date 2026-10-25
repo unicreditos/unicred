@@ -164,8 +164,3 @@ export async function sendMerchantMessage(merchantId: string, body: string, requ
   } catch (e) { return fail(e) }
 }
 
-export async function markMerchantMessagesRead(merchantId: string): Promise<void> {
-  const admin = await requirePermission('merchants.read')
-  await ensureMerchantAdminSchema()
-  await S.markReadWith(sx(), { merchantId, readerRole: 'admin', reader: admin })
-}

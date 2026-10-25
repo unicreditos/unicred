@@ -88,7 +88,7 @@ export default function OpengraphImage() {
           }}
         >
           <div style={{ display: 'flex' }}>
-            Préstamos · Pagos de servicios · Billetera · Comercios
+            Préstamos personales · Financiación para comercios
           </div>
           <div style={{ display: 'flex', color: '#ffffff', fontWeight: 700 }}>unicreditos.com</div>
         </div>

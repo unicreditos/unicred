@@ -1,8 +1,6 @@
 'use server'
 
 import { enforceActionLimit } from '@/lib/action-rate-limit'
-import { markItemsRead } from '@/lib/inbox-read'
-import { getInbox } from '@/lib/notifications'
 import { revalidateOps } from '@/lib/revalidate'
 import { assertRole, getRoleForUser } from '@/lib/session'
 import {
@@ -12,7 +10,6 @@ import {
   getOrOpenChatCase,
   heartbeatPresence,
   insertSupportMessage,
-  listAdminCases,
   listRelatedLoans,
   listThread,
   listUserCases,
@@ -87,16 +84,6 @@ export async function loadSupportThread(caseId: string, opts?: { markViewed?: bo
   return { thread, agentsOnline: await countAgentsOnline() }
 }
 
-export async function getAdminSupportDesk(caseId?: string) {
-  const userId = await assertRole('admin')
-  await heartbeatPresence(userId, 'admin', caseId ?? null)
-  const cases = await listAdminCases()
-  const selected = caseId ? cases.find((c) => c.id === caseId) ?? null : null
-  if (caseId && selected) await markCaseViewed(caseId, userId, 'admin')
-  const thread = selected ? await listThread(selected.id) : []
-  return { agentsOnline: await countAgentsOnline(), cases, selected, thread }
-}
-
 export async function resolveSupportCase(caseId: string, note?: string) {
   const userId = await assertRole('admin')
   await assertCanAccessCase(caseId, userId, 'admin')
@@ -105,17 +92,3 @@ export async function resolveSupportCase(caseId: string, note?: string) {
   return { ok: true as const }
 }
 
-export async function markNotificationRead(itemId: string) {
-  const userId = await assertRole('customer', 'merchant', 'admin')
-  return markItemsRead(userId, [itemId])
-}
-
-export async function markAllNotificationsRead() {
-  const userId = await assertRole('customer', 'merchant', 'admin')
-  const role = await getRoleForUser(userId)
-  const inbox = await getInbox(userId, role)
-  return markItemsRead(
-    userId,
-    inbox.items.map((it) => it.id),
-  )
-}

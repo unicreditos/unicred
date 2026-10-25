@@ -67,10 +67,6 @@ export function diffFields<T extends Record<string, unknown>>(
   return Object.keys(changes).length ? changes : null
 }
 
-export async function getAuditLog(limit = 100) {
-  return db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(limit)
-}
-
 export async function getAuditLogForEntity(entityType: string, entityId: string, limit = 40) {
   return db
     .select()

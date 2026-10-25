@@ -9,9 +9,7 @@ import { notifySupportClaim } from '@/lib/notify-email'
 import { revalidateCustomer, revalidateOps } from '@/lib/revalidate'
 import { assertRole, getRoleForUser, newId } from '@/lib/session'
 import { asCategory, insertSupportMessage } from '@/lib/support'
-import { and, desc, eq } from 'drizzle-orm'
-
-export type ClaimCategory = 'cobros' | 'identidad' | 'desembolso' | 'contrato' | 'comercio' | 'otro'
+import { desc, eq } from 'drizzle-orm'
 
 export async function listMyClaims() {
   const userId = await assertRole('customer', 'merchant')
@@ -77,34 +75,3 @@ export async function createClaim(input: { category: string; subject: string; bo
   return { ok: true as const, id: row.id }
 }
 
-export async function listOpenClaimsAdmin() {
-  await assertRole('admin')
-  await ensureSupportCaseTable()
-  return db.select().from(supportCase).orderBy(desc(supportCase.createdAt)).limit(80)
-}
-
-export async function respondClaimAdmin(id: string, response: string) {
-  const adminId = await assertRole('admin')
-  await ensureSupportCaseTable()
-  const text = String(response ?? '').trim().slice(0, 4000)
-  if (text.length < 8) throw new Error('La respuesta debe tener al menos 8 caracteres.')
-  const now = new Date()
-  await insertSupportMessage({
-    caseId: id,
-    authorUserId: adminId,
-    authorRole: 'admin',
-    body: text,
-  })
-  await db
-    .update(supportCase)
-    .set({
-      response: text,
-      status: 'resolved',
-      waitingOn: 'none',
-      respondedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(supportCase.id, id)))
-  revalidateOps()
-  return { ok: true as const }
-}

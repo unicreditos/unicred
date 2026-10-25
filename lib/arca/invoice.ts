@@ -6,7 +6,7 @@ import { arcaInvoice, installment, loan, paymentReceipt, profile } from '@/lib/d
 import { IVA_INTERESES } from '@/lib/finance'
 import { frenchInstallmentSplit } from '@/lib/legal/money-words'
 import { newId } from '@/lib/session'
-import { desc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
@@ -156,10 +156,5 @@ export async function enqueueInvoicesForPayment(paymentId: string) {
     .from(paymentReceipt)
     .where(eq(paymentReceipt.paymentId, paymentId))
   enqueueInterestInvoices(rows.map((row) => row.installmentId).filter((id): id is string => Boolean(id)))
-}
-
-export async function listArcaInvoices(limit = 80) {
-  await ensureOriginacionSchema()
-  return db.select().from(arcaInvoice).orderBy(desc(arcaInvoice.createdAt)).limit(limit)
 }
 

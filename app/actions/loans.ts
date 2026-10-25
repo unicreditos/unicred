@@ -12,10 +12,9 @@ import { ensureLoanContract, notifyContractReady, syncOverdueInstallments } from
 import { decideUnderwriting, recommendationOf, statusForDecision, manualDecisionOnly, MANUAL_DECISION_NOTICE, computeCreditOffer, OPEN_LOAN_STATUSES, type AppRepaymentHistory } from '@/lib/loan-underwriting'
 import { getActiveRiskRules } from '@/lib/risk-rules'
 import { loanPricingFields } from '@/lib/loan-rates'
-import { installment, kycVerification, loan, loanProduct, payment, profile } from '@/lib/db/schema'
+import { installment, kycVerification, loan, loanProduct, profile } from '@/lib/db/schema'
 import { diditApprovedForUser } from '@/lib/didit'
 import { ensureOriginacionSchema } from '@/lib/db/ensure-originacion'
-import { applyLoanWithdrawal } from '@/lib/legal/withdrawal-apply'
 import { revalidateCustomer } from '@/lib/revalidate'
 import { assertRole, getOrCreateProfile, newId } from '@/lib/session'
 import { and, desc, eq, inArray } from 'drizzle-orm'
@@ -592,36 +591,6 @@ export async function getMyInstallments({ upcomingOnly }: { upcomingOnly?: boole
     if (r.status === 'overdue' || d < today) return true
     return d <= in60
   })
-}
-
-export async function getLoanInstallments(loanId: string) {
-  const userId = await assertRole('customer')
-  const rows = await db
-    .select()
-    .from(installment)
-    .where(and(eq(installment.loanId, loanId), eq(installment.userId, userId)))
-    .orderBy(installment.number)
-
-  const pays = await db
-    .select()
-    .from(payment)
-    .where(and(eq(payment.loanId, loanId), eq(payment.userId, userId)))
-
-  return rows.map((row) => {
-    if (row.paidAt) return row
-    const match = pays.find((p) => {
-      if (!p.paidAt) return false
-      if (p.installmentId === row.id) return true
-      const ids = (p.gatewayResponse as { installment_ids?: unknown } | null)?.installment_ids
-      return Array.isArray(ids) && ids.includes(row.id)
-    })
-    return match ? { ...row, paidAt: match.paidAt } : row
-  })
-}
-
-export async function withdrawLoanAcceptance(loanId: string) {
-  const userId = await assertRole('customer')
-  return applyLoanWithdrawal(loanId, userId)
 }
 
 /*
