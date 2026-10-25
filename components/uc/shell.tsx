@@ -91,16 +91,27 @@ export function UcShell({ menu, area, user, today, bottomNav, homeHref, children
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(active?.group.children ? [active.group.id] : []))
 
-  // Al navegar: se cierra el menú y se abre el grupo de la pantalla nueva. Se ajusta durante el render
-  // (patrón oficial de React para derivar estado de props) en vez de en un efecto.
-  const navKey = `${pathname}`
-  const [prevNavKey, setPrevNavKey] = useState(navKey)
-  if (prevNavKey !== navKey) {
-    setPrevNavKey(navKey)
+  useEffect(() => {
+    // Al navegar: se cierra el menú y se abre el grupo de la pantalla nueva (evita setState en render → hydration).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrawer(false)
     setUserMenu(false)
-    setExpanded(new Set(active?.group.children ? [active.group.id] : []))
-  }
+    let best = 0
+    let groupId: string | null = null
+    let hasChildren = false
+    for (const g of menu) {
+      const candidates = g.children ? g.children.map((c) => c.route) : g.route ? [g.route] : []
+      for (const route of candidates) {
+        const s = matchScore(pathname, route)
+        if (s > best) {
+          best = s
+          groupId = g.id
+          hasChildren = Boolean(g.children)
+        }
+      }
+    }
+    setExpanded(new Set(groupId && hasChildren ? [groupId] : []))
+  }, [pathname, menu])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

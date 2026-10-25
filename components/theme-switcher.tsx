@@ -1,6 +1,6 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,11 +13,13 @@ interface ThemeSwitcherProps {
 
 export function ThemeSwitcher({ className, showLabel = false, variant = 'icon' }: ThemeSwitcherProps) {
   const { resolvedTheme, setTheme } = useTheme()
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  )
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // La bandera evita renderizar el tema del cliente durante la hidratación.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
 
   if (!mounted) {
     return (

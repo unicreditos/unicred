@@ -266,8 +266,9 @@ export const auth = betterAuth({
   },
   advanced: {
     defaultCookieAttributes: {
-      sameSite: 'lax' as const,
-      secure: !isDev,
+      // El preview de v0 corre dentro de un iframe cross-site.
+      sameSite: isDev ? ('none' as const) : ('lax' as const),
+      secure: true,
       httpOnly: true,
       path: '/',
       priority: 'high',
