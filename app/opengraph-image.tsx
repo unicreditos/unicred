@@ -1,7 +1,7 @@
 import { GROUP } from '@/lib/brand'
 import { ImageResponse } from 'next/og'
 
-export const alt = 'UNICRÉDITOS — Créditos digitales en Argentina'
+export const alt = 'UNICRÉDITOS — Plataforma de soluciones financieras'
 
 export const size = {
   width: 1200,
@@ -20,7 +20,7 @@ export default function OpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          backgroundColor: '#0F2A4A',
+          backgroundColor: '#0B1E3F',
           padding: 80,
           fontFamily: 'sans-serif',
         }}
@@ -30,7 +30,7 @@ export default function OpengraphImage() {
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            color: '#8FD3D8',
+            color: '#A9CBEC',
             fontSize: 26,
             fontWeight: 600,
             letterSpacing: 4,
@@ -43,7 +43,7 @@ export default function OpengraphImage() {
               width: 14,
               height: 14,
               borderRadius: 14,
-              backgroundColor: '#2A9CA4',
+              backgroundColor: '#4A8FCB',
             }}
           />
           {GROUP.name}
@@ -72,7 +72,7 @@ export default function OpengraphImage() {
               lineHeight: 1.2,
             }}
           >
-            Créditos digitales en Argentina
+            Plataforma de soluciones financieras
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export default function OpengraphImage() {
           }}
         >
           <div style={{ display: 'flex' }}>
-            Préstamos personales · Consumo · Comercios adheridos
+            Préstamos · Pagos de servicios · Billetera · Comercios
           </div>
           <div style={{ display: 'flex', color: '#ffffff', fontWeight: 700 }}>unicreditos.com</div>
         </div>

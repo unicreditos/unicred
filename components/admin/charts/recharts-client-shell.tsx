@@ -223,7 +223,7 @@ export function RechartsClientShell({
       {/* Barra de Filtros y Navegación de Vistas */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         {/* Selector de pestañas temáticas */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-medium">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto p-1 bg-slate-100 rounded-lg text-xs font-medium [&>button]:shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('all')}

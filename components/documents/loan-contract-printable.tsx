@@ -92,7 +92,7 @@ export function LoanContractPrintable({ contract }: { contract: ContractDocData 
       <DocumentSection number="01" title="Comparecencia y capacidad">
         <p className="text-[13px] leading-relaxed text-slate-700">
           En la Ciudad Autónoma de Buenos Aires, entre <strong>{legalPartyLine()}</strong>, inscripta
-          ante IGJ bajo {BRAND.igj}, IVA {BRAND.iva}, en adelante el <strong>Prestamista</strong> o
+          ante IGJ bajo {BRAND.igj}, {BRAND.iva}, en adelante el <strong>Prestamista</strong> o
           el <strong>Acreedor</strong>, titular de la marca UNICRÉDITOS; y{' '}
           <strong>{contract.customer?.name ?? '—'}</strong>, DNI {contract.customer?.dni ?? '—'},
           CUIL {contract.customer?.cuil ?? '—'}, con domicilio en {domicilio}, en adelante el{' '}

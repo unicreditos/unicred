@@ -27,6 +27,8 @@ import { and, eq, sql, desc, inArray, gte } from 'drizzle-orm'
 import { sameInstallmentSet } from '@/lib/payments/settle-mp'
 import { createPaymentLinkMP, ensureMercadoPagoCustomer, getMercadoPagoPublicKey, getSiteBaseUrl, MP_CONFIG, type MPPaymentChannel } from '@/lib/mercadopago'
 import { attachMercadoPagoQr, qrDataFromGateway } from '@/lib/payments/installment-mp-qr'
+import { ensureInstallmentNetworkTicket } from '@/lib/payments/installment-mp-ticket'
+import type { MpOfflineTicketNetwork } from '@/lib/mercadopago'
 import { computeEarlySettlement } from '@/lib/legal/settlement'
 import { creditWallet, findWalletByDestination } from '@/lib/payments/wallet'
 
@@ -652,6 +654,91 @@ export async function getLoanCouponQrs(loanId: string) {
   // No pre-emitir QR ni cupones de Pago Fácil/Rapipago: vencen y solo se
   // generan cuando el cliente elige ese medio al pagar la cuota.
   return { qrs: {}, tickets: {} }
+}
+
+/** Emite (o reutiliza) el cupón de red de Mercado Pago y devuelve la ruta de vista previa para imprimir. */
+export async function issueInstallmentCashTicket(installmentId: string, network: MpOfflineTicketNetwork) {
+  const userId = await assertRole('customer')
+  await enforceActionLimit('payment', userId)
+  const id = String(installmentId ?? '').trim()
+  if (!id) throw new Error('Cuota inválida.')
+  if (network !== 'pagofacil' && network !== 'rapipago') {
+    throw new Error('Red de cobro inválida.')
+  }
+  if (!MP_CONFIG.accessTokenSet) {
+    throw new Error('Mercado Pago no está disponible en este momento.')
+  }
+
+  const [row] = await db
+    .select({
+      id: installment.id,
+      number: installment.number,
+      amount: installment.amount,
+      dueDate: installment.dueDate,
+      status: installment.status,
+      loanId: installment.loanId,
+      userId: installment.userId,
+    })
+    .from(installment)
+    .where(and(eq(installment.id, id), eq(installment.userId, userId)))
+    .limit(1)
+  if (!row) throw new Error('Cuota no encontrada.')
+  if (row.status === 'paid' || row.status === 'cancelled') {
+    throw new Error('Esta cuota ya no admite cupón de pago.')
+  }
+  const [loanRow] = await db
+    .select({ status: loan.status })
+    .from(loan)
+    .where(and(eq(loan.id, row.loanId), eq(loan.userId, userId)))
+    .limit(1)
+  if (!loanRow || loanRow.status !== 'active') {
+    throw new Error('Solo podés emitir cupones de un crédito vigente.')
+  }
+
+  const session = await getSession()
+  const [payer] = await db
+    .select({ email: userTable.email, name: userTable.name })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1)
+  const [prof] = await db.select({ dni: profile.dni, cuil: profile.cuil }).from(profile).where(eq(profile.userId, userId)).limit(1)
+  const email = payer?.email?.trim() || session?.user?.email?.trim()
+  if (!email) {
+    throw new Error('Tu cuenta necesita un correo para emitir cupones de Pago Fácil / Rapipago.')
+  }
+
+  const amount = Number(row.amount)
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Importe de cuota inválido.')
+
+  const payerFirst = payer?.name?.split(' ')[0]
+  const payerLast = payer?.name?.split(' ').slice(1).join(' ') || undefined
+  const identificationNumber = (prof?.cuil || prof?.dni || '').replace(/\D/g, '') || undefined
+  const identificationType = identificationNumber
+    ? identificationNumber.length === 11
+      ? 'CUIT'
+      : 'DNI'
+    : undefined
+
+  await ensureInstallmentNetworkTicket({
+    userId,
+    loanId: row.loanId,
+    installmentId: row.id,
+    number: row.number,
+    amount,
+    dueDate: row.dueDate,
+    network,
+    payerEmail: email,
+    payerFirstName: payerFirst,
+    payerLastName: payerLast,
+    identificationType,
+    identificationNumber,
+  })
+
+  revalidateCustomer()
+  return {
+    ok: true as const,
+    previewPath: `/dashboard/pagos/cupon/${encodeURIComponent(row.id)}?network=${network}`,
+  }
 }
 
 export async function reportCouponTransfer(installmentId: string, formData: FormData) {

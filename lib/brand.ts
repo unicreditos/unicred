@@ -51,7 +51,7 @@ export const GROUP = {
     {
       id: 'unicreditos',
       name: 'UNICRÉDITOS',
-      role: 'Créditos en línea',
+      role: 'Plataforma de soluciones financieras',
       href: 'https://www.unicreditos.com/',
       current: true,
     },
@@ -64,7 +64,10 @@ export const BRAND = {
   company: 'UNICRÉDITOS',
   legalName: 'RM International Group S.A.S.',
   legalForm: 'Sociedad por Acciones Simplificada',
-  slogan: 'Crédito en línea, con TNA y CFT a la vista',
+  slogan: 'Plataforma de soluciones financieras',
+  /** Descripción corta para SEO, manifest y redes. */
+  description:
+    'Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.',
   tagline: 'Pedilo online. Lo evaluamos. Lo acreditamos en tu cuenta.',
   valueProp: 'Crédito personal 100% digital, con el costo completo antes de firmar.',
   cuit: resolvedCuit,

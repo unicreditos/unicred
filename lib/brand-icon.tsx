@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 
-/** Escudo "U" para íconos de la app (favicon, apple-touch, manifest). Fondo marino, escudo blanco. */
+/** "U" con sol para íconos de la app (favicon, apple-touch, manifest). Fondo marino, U celeste y sol. */
 export function brandIconElement(px: number): ReactElement {
   const shield = Math.round(px * 0.62)
   return (
@@ -11,19 +11,12 @@ export function brandIconElement(px: number): ReactElement {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0F2A4A',
+        background: '#0B1E3F',
       }}
     >
       <svg width={shield} height={shield} viewBox="0 0 48 48">
-        <path d="M24 3 41.5 9.2v13.6c0 10.2-7.2 18.2-17.5 22.2C13.7 41 6.5 33 6.5 22.8V9.2L24 3Z" fill="#FFFFFF" />
-        <path
-          d="M17.2 15v10.4a6.8 6.8 0 0 0 13.6 0V15"
-          fill="none"
-          stroke="#0C7C84"
-          strokeWidth="4.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M12 8v18a12 12 0 0 0 24 0V8" fill="none" stroke="#74ACDF" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="24" cy="24" r="5.2" fill="#F5B50F" />
       </svg>
     </div>
   )

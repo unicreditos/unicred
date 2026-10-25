@@ -103,7 +103,7 @@ export default async function AdminHome({
         description={`Cartera activa y operaciones al ${fdatetime(now)} h`}
         actions={
           <div className="uc-cta-row" style={{ gap: 10 }}>
-            <ButtonLink href="/admin/panel-control">Panel Ejecutivo (Recharts)</ButtonLink>
+            <ButtonLink href="/admin/panel-control">Panel Ejecutivo</ButtonLink>
             <ButtonLink href="/admin/clientes/planilla">Planilla de clientes</ButtonLink>
             <ButtonLink href="/admin/finanzas/resumen">Balance y tesorería</ButtonLink>
             <ButtonLink primary href="/admin/originacion/solicitudes">Ver solicitudes</ButtonLink>
@@ -155,8 +155,8 @@ export default async function AdminHome({
             href: '/admin/cobranzas/mora',
             label: 'Cartera en mora',
             value: late.length,
-            amount: money(sum(late, (c) => c.principalOutstanding)),
-            amountLabel: 'saldo vencido a recuperar',
+            amount: money(sum(state.collections, (c) => c.overdueAmount)),
+            amountLabel: 'vencido a recuperar',
             extra: (
               <div className="uc-buckets" aria-label="Mora por tramo de días de atraso">
                 <div className="uc-bucket-bar">
@@ -194,7 +194,7 @@ export default async function AdminHome({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Nuevo Panel Ejecutivo Recharts
+            Panel Ejecutivo de cartera
           </div>
           <h3 className="text-base font-bold text-white tracking-tight">
             Visualización avanzada de métricas clave en tiempo real
@@ -208,7 +208,7 @@ export default async function AdminHome({
           className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md"
         >
           <Icon name="chart" size="xs" />
-          Abrir Panel Recharts &rarr;
+          Abrir Panel Ejecutivo &rarr;
         </Link>
       </div>
 

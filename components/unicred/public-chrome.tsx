@@ -49,7 +49,7 @@ export function PublicHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-navy-800 text-white">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         <BrandLogo showText light />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Principal">
@@ -72,11 +72,13 @@ export function PublicHeader() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {isLoggedIn ? (
-            <Button asChild size="lg" className="h-10 rounded-lg px-4 font-semibold">
+            <Button asChild size="lg" className="h-10 rounded-lg px-3 font-semibold sm:px-4">
               <Link href={accountHref}>
-                <LayoutDashboard className="h-4 w-4" /> {accountLabel}
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="sm:hidden">{accountHref === '/admin' ? 'Admin' : 'Mi cuenta'}</span>
+                <span className="hidden sm:inline">{accountLabel}</span>
               </Link>
             </Button>
           ) : (
@@ -89,9 +91,9 @@ export function PublicHeader() {
               >
                 <Link href="/sign-in">Iniciar sesión</Link>
               </Button>
-              <Button asChild size="lg" className="h-10 rounded-lg px-4 font-semibold">
+              <Button asChild size="lg" className="h-10 rounded-lg px-3 font-semibold sm:px-4">
                 <Link href="/sign-up">
-                  Pedir crédito <ArrowRight className="h-4 w-4" aria-hidden />
+                  Pedir crédito <ArrowRight className="hidden h-4 w-4 sm:block" aria-hidden />
                 </Link>
               </Button>
             </>

@@ -29,7 +29,7 @@ export function PublicPageShell({
         <section className="relative overflow-hidden">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(12,124,132,0.12),transparent_70%)]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(60%_60%_at_85%_0%,rgba(31,111,181,0.12),transparent_70%)]"
           />
           <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12">
             <Link

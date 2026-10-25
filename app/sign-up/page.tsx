@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
+import { SignupSessionGate } from '@/components/auth/signup-session-gate'
 import { RegisterWizard } from '@/components/register-wizard'
-import { hasLoanIntent, parseLoanIntent, solicitarHref } from '@/lib/loan-intent'
+import { hasLoanIntent, parseLoanIntent } from '@/lib/loan-intent'
 import { getSession, getDashboardUrlForUser } from '@/lib/session'
 import { pageMetadata } from '@/lib/seo'
-import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Crear cuenta',
@@ -19,8 +19,8 @@ export default async function SignUpPage({
 }) {
   const intent = parseLoanIntent(await searchParams)
   const session = await getSession()
-  if (session?.user?.id) {
-    redirect(hasLoanIntent(intent) ? solicitarHref(intent) : await getDashboardUrlForUser(session.user.id))
+  if (session?.user?.id && !hasLoanIntent(intent)) {
+    return <SignupSessionGate panelHref={await getDashboardUrlForUser(session.user.id)} />
   }
   return <RegisterWizard intent={intent} />
 }

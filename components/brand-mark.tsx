@@ -1,3 +1,4 @@
+import { BRAND } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 /** Escudo con la "U" de Unicréditos. `white` es para fondos oscuros (marino). */
@@ -11,24 +12,16 @@ export function BrandMark({
   const white = tone === 'white'
   return (
     <svg viewBox="0 0 48 48" className={cn('h-5 w-5 shrink-0', className)} aria-hidden>
-      <defs>
-        <linearGradient id="uc-mark-g" x1="8" y1="3" x2="40" y2="45" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#2A9CA4" />
-          <stop offset="1" stopColor="#0A6A71" />
-        </linearGradient>
-      </defs>
+      {/* "U" abierta que sostiene un sol: el crédito que se te acredita, con el costo a la vista. */}
       <path
-        d="M24 3 41.5 9.2v13.6c0 10.2-7.2 18.2-17.5 22.2C13.7 41 6.5 33 6.5 22.8V9.2L24 3Z"
-        fill={white ? '#FFFFFF' : 'url(#uc-mark-g)'}
-      />
-      <path
-        d="M17.2 15v10.4a6.8 6.8 0 0 0 13.6 0V15"
+        d="M12 8v18a12 12 0 0 0 24 0V8"
         fill="none"
-        stroke={white ? '#0F2A4A' : '#FFFFFF'}
-        strokeWidth="4.4"
+        stroke={white ? '#74ACDF' : '#0B1E3F'}
+        strokeWidth="6.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <circle cx="24" cy="24" r="5.2" fill="#F5B50F" />
     </svg>
   )
 }
@@ -36,7 +29,7 @@ export function BrandMark({
 /** Marca + nombre. `light` = sobre fondo oscuro. */
 export function BrandWordmark({
   light = false,
-  subtitle = 'Préstamos personales',
+  subtitle = BRAND.slogan,
   className,
 }: {
   light?: boolean
@@ -53,7 +46,7 @@ export function BrandWordmark({
         {subtitle ? (
           <span
             className={cn(
-              'mt-1 text-[11px] font-medium uppercase tracking-[0.12em]',
+              'mt-1 max-w-[10.5rem] text-balance text-[9.5px] font-semibold uppercase leading-[1.2] tracking-[0.1em]',
               light ? 'text-white/70' : 'text-brand-navy-500',
             )}
           >

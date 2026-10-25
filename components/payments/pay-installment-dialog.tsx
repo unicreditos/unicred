@@ -1,6 +1,13 @@
 'use client'
 
-import { createPaymentLink, getCheckoutStatus, getCollectionAccount, reportBankTransfer, type PaymentMethod } from '@/app/actions/payments'
+import {
+  createPaymentLink,
+  getCheckoutStatus,
+  getCollectionAccount,
+  issueInstallmentCashTicket,
+  reportBankTransfer,
+  type PaymentMethod,
+} from '@/app/actions/payments'
 import { WalletPayBox } from '@/components/payments/wallet-desk'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +17,7 @@ import type { BrickChannel } from '@/lib/payments/brick-methods'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -48,7 +56,12 @@ function isTicketMethod(method: PaymentMethod) {
 }
 
 function needsMpSession(method: PaymentMethod) {
-  return isCardMethod(method) || isTicketMethod(method)
+  return isCardMethod(method)
+}
+
+function ticketNetwork(method: PaymentMethod): 'pagofacil' | 'rapipago' {
+  if (method === 'rapipago') return 'rapipago'
+  return 'pagofacil'
 }
 
 function toBrickChannel(method: PaymentMethod): BrickChannel {
@@ -105,6 +118,7 @@ export function PayInstallmentDialog({
   const [treasury, setTreasury] = useState<Awaited<ReturnType<typeof getCollectionAccount>> | null>(null)
   const startedFor = useRef('')
   const idsKey = installments.map((row) => row.id).join(',')
+  const router = useRouter()
 
   const total = installments.reduce((sum, row) => sum + Number(row.amount), 0)
 
@@ -163,6 +177,31 @@ export function PayInstallmentDialog({
     startedFor.current = key
     void startMp(chosen)
   }, [open, chosen, idsKey, startMp])
+
+  useEffect(() => {
+    if (!open || !chosen || !isTicketMethod(chosen)) return
+    if (installments.length !== 1) {
+      toast.error('Pago Fácil y Rapipago: emití un cupón por cuota (elegí una sola).')
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- el efecto arranca una operación externa (cupón MP) y revierte la elección inválida
+      setChosen(null)
+      startedFor.current = ''
+      return
+    }
+    const key = `${idsKey}:${chosen}:ticket`
+    if (startedFor.current === key) return
+    startedFor.current = key
+    setBusy(true)
+    void issueInstallmentCashTicket(installments[0].id, ticketNetwork(chosen))
+      .then((r) => {
+        onClose()
+        router.push(r.previewPath)
+      })
+      .catch((err) => {
+        toast.error((err as Error).message)
+        startedFor.current = ''
+      })
+      .finally(() => setBusy(false))
+  }, [open, chosen, idsKey, installments, onClose, router])
 
   const handlePaid = useCallback(
     async (status: string, extra?: { receiptId?: string | null; credited?: number }) => {
@@ -338,12 +377,21 @@ export function PayInstallmentDialog({
               Informar transferencia
             </Button>
           </form>
+        ) : isTicketMethod(chosen) ? (
+          <div className="space-y-4 p-4">
+            <p className="text-sm text-slate-600">
+              Mercado Pago emite el cupón de {chosen === 'rapipago' ? 'Rapipago' : 'Pago Fácil'}. En unos segundos vas a
+              la vista previa para imprimir o guardar como PDF.
+            </p>
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {busy ? 'Generando cupón…' : 'Preparando…'}
+            </p>
+          </div>
         ) : (
           <div className="space-y-4 p-4">
             <p className="text-xs font-medium text-slate-600">
-              {isCardMethod(chosen)
-                ? 'Cargá los datos de la tarjeta como en un punto de venta. El cobro es de UNICRÉDITOS: no tenés que entrar a tu cuenta de Mercado Pago.'
-                : 'Se emite solo el cupón de este medio. Tiene fecha de vencimiento: imprimilo o pagalo ahora.'}
+              Cargá los datos de la tarjeta como en un punto de venta. El cobro es de UNICRÉDITOS: no tenés que entrar
+              a tu cuenta de Mercado Pago.
             </p>
             {session?.publicKey ? (
               <MercadoPagoCheckoutBrick

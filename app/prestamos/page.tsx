@@ -17,7 +17,7 @@ export const metadata = pageMetadata({
 export default function PrestamosPage() {
   return (
     <PublicPageShell
-      eyebrow="Crédito en línea"
+      eyebrow="Préstamo personal en línea"
       title="Pedilo online. Lo evaluamos. Lo acreditamos en tu cuenta."
       description={`Hasta ${formatARS(PERSONAL_QUOTE.maxAmount)} en ${PERSONAL_QUOTE.minTerm} a ${PERSONAL_QUOTE.maxTerm} cuotas fijas. El primer crédito está acotado a ${formatARS(FIRST_CREDIT_HARD_CAP)}. Sin sucursal, con KYC biométrico y Central de Deudores BCRA.`}
       icon={<Banknote className="h-3.5 w-3.5" />}

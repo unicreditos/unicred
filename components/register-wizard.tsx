@@ -162,7 +162,15 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     setAddress(match.address || address)
     setName(match.name)
     setCuil(match.cuil)
-    setDni(match.dni ?? identifier.replace(/\D/g, '').slice(0, 8))
+    const typed = identifier.replace(/\D/g, '')
+    const fromPadron = String(match.dni ?? '').replace(/\D/g, '')
+    const dniDigits =
+      fromPadron.length >= 7 && fromPadron.length <= 8
+        ? fromPadron
+        : typed.length === 7 || typed.length === 8
+          ? typed
+          : fromPadron || typed
+    setDni(dniDigits)
   }
 
   async function handleCreate() {
@@ -378,12 +386,15 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
             />
             Confirmo que estos datos me corresponden y autorizo a UNICRÉDITOS a usarlos para el alta.
           </label>
+          {dni.replace(/\D/g, '').length < 7 ? (
+            <Alert text="El número no alcanza para un DNI de 7 u 8 dígitos. Volvé e ingresá el DNI, no un CUIL recortado." />
+          ) : null}
           {error && <Alert text={error} />}
           <NavRow
             onBack={() => go('id')}
             nextLabel="Confirmar y seguir"
             nextDisabled={
-              !confirmedIdentity || !name.trim() || dni.length < 7 || isSocietyLabelForDidit(name, identity.name)
+              !confirmedIdentity || !name.trim() || dni.replace(/\D/g, '').length < 7 || isSocietyLabelForDidit(name, identity.name)
             }
             onNext={() => go('contacto')}
           />

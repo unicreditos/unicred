@@ -46,7 +46,7 @@ async function main() {
     // Sitio principal
     probe('home', '/', {
       status: [200],
-      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Sabé cuánto devolvés', 'Préstamos personales'],
+      bodyIncludes: ['UNICRÉDITOS', 'UNIPAGOS', 'Sabé cuánto devolvés', 'Plataforma de soluciones financieras'],
     }),
     probe('health', '/api/health', { status: [200], bodyIncludes: '"ok":true' }),
     probe('login', '/sign-in', {

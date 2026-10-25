@@ -122,7 +122,7 @@ async function hydrateTicketFromMercadoPago(parsed: {
   }
 }
 
-async function ensureInstallmentNetworkTicket(opts: {
+export async function ensureInstallmentNetworkTicket(opts: {
   userId: string
   loanId: string
   installmentId: string

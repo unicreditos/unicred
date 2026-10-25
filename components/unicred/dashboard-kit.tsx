@@ -171,7 +171,7 @@ export function LineChart({
   points,
   labels,
   height = 200,
-  color = '#0C7C84',
+  color = '#1F6FB5',
   fill = true,
   yMax,
   yFormatter = (v) => String(Math.round(v)),

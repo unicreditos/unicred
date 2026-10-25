@@ -6,7 +6,30 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+type SelectItemEntry = { value: unknown; label: React.ReactNode }
+
+/** Recorre el JSX del Select y junta cada <SelectItem> (valor → etiqueta). */
+function collectSelectItems(node: React.ReactNode, out: SelectItemEntry[] = []): SelectItemEntry[] {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement(child)) return
+    const props = child.props as { value?: unknown; children?: React.ReactNode }
+    if (child.type === SelectItem) out.push({ value: props.value, label: props.children })
+    else if (props.children) collectSelectItems(props.children, out)
+  })
+  return out
+}
+
+/**
+ * Base UI muestra en el trigger el *valor* crudo (`prod_personal`, `12`, `cobros`) salvo que
+ * conozca las etiquetas. Se derivan de los <SelectItem> hijos para que el trigger siempre
+ * muestre el texto legible, sin repetir `items` en cada pantalla.
+ */
+function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectPrimitive.Root.Props<Value, Multiple>,
+) {
+  const items = props.items ?? collectSelectItems(props.children)
+  return <SelectPrimitive.Root {...props} items={items} />
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

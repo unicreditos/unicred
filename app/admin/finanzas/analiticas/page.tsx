@@ -25,7 +25,7 @@ export default async function AnaliticasPage() {
       actions={
         <div className="uc-cta-row" style={{ gap: 10 }}>
           <ButtonLink primary href="/admin/panel-control">
-            Ver Panel Ejecutivo Recharts
+            Ver Panel Ejecutivo
           </ButtonLink>
         </div>
       }

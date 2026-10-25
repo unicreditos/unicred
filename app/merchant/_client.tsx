@@ -532,7 +532,7 @@ function MerchantOverview({
             <LineChart
               points={months.map((m) => m.value)}
               labels={months.map((m) => m.label)}
-              color="#0C7C84"
+              color="#1F6FB5"
               height={220}
               yFormatter={(v) => formatARS(v)}
             />
@@ -548,7 +548,7 @@ function MerchantOverview({
             centerTitle="Ops"
             centerValue={String(totals.totalOps)}
             segments={[
-              { label: 'Vigentes', value: totals.activeCount, color: '#0C7C84', count: totals.activeCount },
+              { label: 'Vigentes', value: totals.activeCount, color: '#1F6FB5', count: totals.activeCount },
               { label: 'Cobradas', value: totals.receivedCount, color: '#10B981', count: totals.receivedCount },
               { label: 'Rechazadas', value: totals.rejectedCount, color: '#DC2626', count: totals.rejectedCount },
               { label: 'Otras', value: Math.max(0, totals.totalOps - totals.activeCount - totals.receivedCount - totals.rejectedCount), color: '#94A3B8' },
@@ -2217,7 +2217,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
   const { labels: mesesLabels, amounts: evolV, counts: evolQ } = monthlySalesSeries(sales)
 
   const catSegments = [
-    { label: "Activos", value: totals.activeCount ?? 0, color: "#0C7C84" },
+    { label: "Activos", value: totals.activeCount ?? 0, color: "#1F6FB5" },
     { label: "Cobrados", value: totals.receivedCount ?? 0, color: "#10B981" },
     { label: "Rechazados", value: totals.rejectedCount ?? 0, color: "#F43F5E" },
   ].filter((s) => s.value > 0)
@@ -2241,7 +2241,7 @@ function ReportesTab({ sales, totals }: { sales: SaleType[]; totals: any }) {
             points={evolV}
             labels={mesesLabels}
             height={260}
-            color="#0C7C84"
+            color="#1F6FB5"
             fill
             yFormatter={(v) => (v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}K`)}
           />
