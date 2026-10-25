@@ -13,3 +13,8 @@ export async function consumeRateLimit(key: string, limit: number, windowMs: num
   await ensureRateLimitTable()
   return consumeRateLimitWith(db, key, limit, windowMs)
 }
+
+export function formatRetry(retryInMs?: number) {
+  const minutes = Math.max(1, Math.ceil((retryInMs ?? 60_000) / 60_000))
+  return minutes === 1 ? '1 minuto' : `${minutes} minutos`
+}

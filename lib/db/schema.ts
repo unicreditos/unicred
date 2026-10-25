@@ -853,3 +853,144 @@ export const adminAuditLog = pgTable('admin_audit_log', {
   index('admin_audit_log_actor_idx').on(t.actorUserId),
   index('admin_audit_log_entity_idx').on(t.entityType, t.entityId),
 ])
+
+/* ---- Tablas portadas de unicred-verify (la base se comparte; ver scripts/sql/2026-10-25_07_verify_tablas.sql) ---- */
+
+export const signatureCheck = pgTable('signature_check', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  loanId: text('loanId').notNull().references(() => loan.id, { onDelete: 'cascade' }),
+  contractId: text('contractId').notNull().references(() => loanContract.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'),
+  method: text('method').notNull().default('manual'),
+  referenceSource: text('referenceSource'),
+  faceMatchScore: numeric('faceMatchScore', { precision: 5, scale: 2 }),
+  providerRequestId: text('providerRequestId'),
+  /**
+   * ⚠️ MIGRACIÓN PENDIENTE (SEC-05): La selfie de validación se almacena como
+   * data-URL en Postgres. Esto implica filas grandes y potencial exposición en
+   * backups. Migrar a presigned URLs de S3/R2: guardar solo la URL, no el blob.
+   * Mientras tanto, la columna solo es accesible desde el panel de administración
+   * y nunca se serializa en respuestas públicas.
+   */
+  selfieImage: text('selfieImage'),
+  reason: text('reason'),
+  ip: text('ip'),
+  userAgent: text('userAgent'),
+  reviewedBy: text('reviewedBy'),
+  reviewedAt: tsCol('reviewedAt'),
+  usedAt: tsCol('usedAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('signature_check_user_idx').on(t.userId),
+  index('signature_check_contract_idx').on(t.contractId),
+  index('signature_check_status_idx').on(t.status),
+])
+
+/**
+ * Cobros con QR de Mercado Pago. Cada persona tiene su propia caja (PDV) en la cuenta de Mercado Pago de UNICRÉDITOS:
+ * `mp_qr_pos` (una por persona), `mp_qr_order` (QR con importe, uno por cobro) y `mp_qr_payment` (cada pago recibido,
+ * clave = id del pago en Mercado Pago, así un mismo pago nunca se acredita dos veces). Tablas propias de esta app.
+ */
+export const mpQrPos = pgTable('mp_qr_pos', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull(),
+  externalId: text('externalId').notNull().unique(),
+  mpPosId: text('mpPosId'),
+  mpStoreId: text('mpStoreId'),
+  storeExternalId: text('storeExternalId'),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('active'),
+  qrImageUrl: text('qrImageUrl'),
+  qrTemplateUrl: text('qrTemplateUrl'),
+  qrCode: text('qrCode'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
+
+export const mpQrOrder = pgTable('mp_qr_order', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  walletId: text('walletId').notNull(),
+  posExternalId: text('posExternalId').notNull(),
+  externalReference: text('externalReference').notNull().unique(),
+  mpOrderId: text('mpOrderId').unique(),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  concept: text('concept'),
+  qrData: text('qrData'),
+  /** dynamic = QR propio del cobro · static = el importe se carga en el QR permanente de la caja */
+  mode: text('mode').notNull().default('dynamic'),
+  status: text('status').notNull().default('created'),
+  expiresAt: tsCol('expiresAt'),
+  mpPaymentId: text('mpPaymentId'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('mp_qr_order_user_idx').on(t.userId),
+  index('mp_qr_order_status_idx').on(t.status),
+])
+
+export const mpQrPayment = pgTable('mp_qr_payment', {
+  mpPaymentId: text('mpPaymentId').primaryKey(),
+  userId: text('userId'),
+  walletId: text('walletId'),
+  orderId: text('orderId'),
+  posExternalId: text('posExternalId'),
+  matchedBy: text('matchedBy'),
+  status: text('status').notNull().default('pending'),
+  mpStatus: text('mpStatus'),
+  amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  fee: numeric('fee', { precision: 14, scale: 2 }),
+  creditedAmount: numeric('creditedAmount', { precision: 14, scale: 2 }),
+  reversedAmount: numeric('reversedAmount', { precision: 14, scale: 2 }).notNull().default('0'),
+  paymentMethod: text('paymentMethod'),
+  movementId: text('movementId'),
+  reversalMovementId: text('reversalMovementId'),
+  note: text('note'),
+  raw: jsonb('raw'),
+  paidAt: tsCol('paidAt'),
+  createdAt: ts().notNull().defaultNow(),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+}, (t) => [
+  index('mp_qr_payment_user_idx').on(t.userId),
+  index('mp_qr_payment_status_idx').on(t.status),
+])
+
+export const installmentReminder = pgTable('installment_reminder', {
+  id: text('id').primaryKey(),
+  installmentId: text('installmentId').notNull().references(() => installment.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  sentAt: tsCol('sentAt').notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('installment_reminder_unique').on(t.installmentId, t.kind),
+  index('installment_reminder_user_idx').on(t.userId),
+])
+
+/** Destinatarios que una persona guarda para volver a transferirles sin tipear el alias. */
+export const savedContact = pgTable('saved_contact', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  cvu: text('cvu').notNull(),
+  alias: text('alias'),
+  name: text('name').notNull(),
+  label: text('label'),
+  lastUsedAt: tsCol('lastUsedAt'),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('saved_contact_user_cvu_unique').on(t.userId, t.cvu),
+  index('saved_contact_user_idx').on(t.userId),
+])
+
+/** Notas internas del equipo sobre una persona. Nunca las ve la persona. */
+export const adminNote = pgTable('admin_note', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  authorId: text('authorId'),
+  authorName: text('authorName'),
+  body: text('body').notNull(),
+  pinned: boolean('pinned').notNull().default(false),
+  createdAt: ts().notNull().defaultNow(),
+}, (t) => [index('admin_note_user_idx').on(t.userId)])

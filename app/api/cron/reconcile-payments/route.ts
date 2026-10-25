@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { reconcileOpenDiditSessions } from '@/lib/kyc/reconcile-didit'
 import { reconcileOpenMercadoPagoPayments } from '@/lib/payments/settle-mp'
 import { expireStalePayments } from '@/lib/payments/expire'
+import { reconcileQr } from '@/lib/mercadopago/settle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +28,10 @@ export async function GET(req: NextRequest) {
     reconcileOpenDiditSessions(40),
   ])
   const expired = await expireStalePayments()
+  const qr = await reconcileQr({ limit: 60 }).catch((err) => {
+    console.error('[cron] conciliación de cobros QR:', err instanceof Error ? err.message : err)
+    return null
+  })
 
   return NextResponse.json({
     ok: true,
@@ -35,6 +40,7 @@ export async function GET(req: NextRequest) {
       credited: payments.filter((r) => r.credited > 0).length,
       expired,
     },
+    qr,
     kyc: {
       scanned: kyc.length,
       applied: kyc.filter((r) => r.applied).length,

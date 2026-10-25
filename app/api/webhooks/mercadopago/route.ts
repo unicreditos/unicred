@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateWebhookSignature } from '@/lib/mercadopago'
 import { getMercadoPagoQrOrder, paymentIdsFromQrOrder } from '@/lib/mercadopago-qr'
+import { dispatchWalletQrNotification } from '@/lib/mercadopago/dispatch'
 import { findLocalPaymentId, settleMercadoPagoPayment } from '@/lib/payments/settle-mp'
 import { notifyPaymentReceived, notifyPaymentRejected } from '@/lib/notify-email'
 import { revalidatePath } from 'next/cache'
@@ -48,6 +49,10 @@ export async function POST(req: NextRequest) {
       mpPaymentId.startsWith('ORD') ||
       /order/i.test(topic) ||
       String(body?.action ?? '').startsWith('order.')
+
+    // Cobros con QR de la billetera (caja propia de cada persona): se acreditan en su billetera.
+    const wallet = await dispatchWalletQrNotification({ dataId: mpPaymentId, isOrder: looksLikeOrder, topic: topic.toLowerCase() })
+    if (wallet.handled) return NextResponse.json(wallet.body ?? { ok: true, matched: true, wallet: true })
 
     const paymentIds: string[] = []
     let orderExternalRef: string | null = body?.data?.external_reference ?? body?.external_reference ?? null

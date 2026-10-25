@@ -25,6 +25,21 @@ const MENU: MenuItem[] = [
       { label: 'Historial de pagos', route: '/dashboard/pagos/historial' },
     ],
   },
+  {
+    id: 'billetera',
+    label: 'Billetera',
+    icon: 'wallet',
+    children: [
+      { label: 'Mi billetera', route: '/dashboard/billetera' },
+      { label: 'Transferir', route: '/dashboard/billetera/transferir' },
+      { label: 'Cobrar con QR', route: '/dashboard/billetera/qr' },
+      { label: 'Pagar con QR', route: '/dashboard/billetera/pagar' },
+      { label: 'Retirar', route: '/dashboard/billetera/retirar' },
+      { label: 'Movimientos', route: '/dashboard/billetera/movimientos' },
+      { label: 'Cuentas bancarias', route: '/dashboard/billetera/cuentas' },
+      { label: 'Comercios adheridos', route: '/dashboard/billetera/comercios' },
+    ],
+  },
   { id: 'solicitar', label: 'Solicitar crédito', icon: 'plus', route: '/dashboard/solicitar' },
   { id: 'documentos', label: 'Documentos', icon: 'file', route: '/dashboard/documentos' },
   {

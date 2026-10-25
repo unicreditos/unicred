@@ -114,3 +114,10 @@ export function paymentMethodLabel(method: string | null | undefined) {
   if (!method) return '—'
   return map[method] ?? method.replace(/_/g, ' ')
 }
+
+/** CUIL con guiones para documentos (20-12345678-9); "—" si no hay dato. */
+export function docCuil(value: string | null | undefined): string {
+  if (!value || value === '—') return '—'
+  const d = value.replace(/\D/g, '')
+  return d.length === 11 ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}` : value
+}

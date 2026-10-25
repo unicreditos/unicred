@@ -550,3 +550,29 @@ export function claimReceivedEmail(input: {
   })
   return { to: input.to, subject, html, text, bcc: [opsMailbox()] }
 }
+
+export function payoutEmail(input: {
+  to: string
+  name?: string | null
+  status: 'executed' | 'cancelled'
+  amount: string | number
+  reference: string
+  reason?: string
+}): EmailMessage {
+  const who = input.name?.trim() || 'Hola'
+  const link = `${emailOrigin()}/dashboard/billetera`
+  const amount = moneyLabel(input.amount)
+  const done = input.status === 'executed'
+  const subject = done ? `Enviamos tu retiro — ${BRAND.company}` : `Tu retiro no se pudo realizar — ${BRAND.company}`
+  const lines = done
+    ? [`${who},`, '', `Enviamos ${amount} a tu cuenta bancaria. Referencia: ${input.reference}.`, 'Según tu banco, puede demorar unos minutos en verse reflejado.', '', link]
+    : [`${who},`, '', `Tu retiro de ${amount} (ref. ${input.reference}) no se pudo realizar y el dinero volvió a tu billetera.`, ...(input.reason ? [`Motivo: ${input.reason}`] : []), '', link]
+  const html = brandedEmailHtml({
+    title: done ? 'Tu retiro fue enviado' : 'Tu retiro no se pudo realizar',
+    bodyHtml: done
+      ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, enviamos <strong>${escapeHtml(amount)}</strong> a tu cuenta bancaria. Referencia: <strong>${escapeHtml(input.reference)}</strong>.</p><p style="font-size:14px;line-height:1.6;margin:0 0 24px">Según tu banco, puede demorar unos minutos en verse reflejado.</p>`
+      : `<p style="font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(who)}, tu retiro de <strong>${escapeHtml(amount)}</strong> (ref. ${escapeHtml(input.reference)}) no se pudo realizar y el dinero volvió a tu billetera.</p>${input.reason ? `<p style="font-size:14px;line-height:1.6;margin:0 0 24px">Motivo: ${escapeHtml(input.reason)}</p>` : ''}`,
+    cta: { href: link, label: 'Ver mi billetera' },
+  })
+  return { to: input.to, subject, html, text: brandedText(lines), bcc: [opsMailbox()] }
+}

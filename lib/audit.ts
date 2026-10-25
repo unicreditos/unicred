@@ -3,10 +3,10 @@ import { adminAuditLog, user as userTable } from '@/lib/db/schema'
 import { ensureAuditSchema } from '@/lib/db/ensure-audit'
 import { and, desc, eq } from 'drizzle-orm'
 
-export type AuditSeverity = 'info' | 'warning' | 'error'
+export type AuditSeverity = 'info' | 'warning' | 'error' | 'critical'
 
 export type AuditEntry = {
-  actorUserId: string
+  actorUserId: string | null
   action: string
   entityType: string
   entityId?: string | null

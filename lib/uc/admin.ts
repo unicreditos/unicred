@@ -51,6 +51,16 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    id: 'tesoreria',
+    label: 'Billetera y tesorería',
+    icon: 'wallet',
+    children: [
+      { label: 'Billeteras', route: '/admin/billeteras', perm: 'finance.read' },
+      { label: 'Retiros', route: '/admin/retiros', perm: 'finance.read' },
+      { label: 'Cobros con QR', route: '/admin/cobros-qr', perm: 'finance.read' },
+    ],
+  },
+  {
     id: 'clientes',
     label: 'Clientes',
     icon: 'users',
@@ -65,7 +75,7 @@ const GROUPS: Group[] = [
     label: 'Finanzas',
     icon: 'chart',
     children: [
-      { label: 'Panel Ejecutivo (Recharts)', route: '/admin/panel-control', perm: 'finance.read' },
+      { label: 'Panel Ejecutivo', route: '/admin/panel-control', perm: 'finance.read' },
       { label: 'Finanzas', route: '/admin/finanzas/resumen', perm: 'finance.read' },
       { label: 'Analíticas', route: '/admin/finanzas/analiticas', perm: 'finance.read' },
     ],
