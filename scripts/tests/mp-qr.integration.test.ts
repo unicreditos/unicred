@@ -149,10 +149,14 @@ run('cobros con QR de Mercado Pago (integración)', () => {
   const tag = crypto.randomUUID().slice(0, 8)
   const u = { a: `mq_a_${tag}`, b: `mq_b_${tag}`, c: `mq_c_${tag}` }
 
+  // CUIL distinto por persona (en la base el CUIL es único) y distinto del de la prueba de billetera.
+  const CUILS = ['20111111112', '27111111114', '27222222223']
+  let nextCuil = 0
   async function newUser(id: string, name: string) {
     const now = new Date()
+    const cuil = CUILS[nextCuil++ % CUILS.length]
     await m.db.insert(m.schema.user).values({ id, name, email: `${id}@example.test`, createdAt: now, updatedAt: now })
-    await m.db.insert(m.schema.profile).values({ id: `p_${id}`, userId: id, cuil: '20301234563', dni: '30123456', kycStatus: 'approved', createdAt: now, updatedAt: now })
+    await m.db.insert(m.schema.profile).values({ id: `p_${id}`, userId: id, cuil, dni: cuil.slice(2, 10), kycStatus: 'approved', createdAt: now, updatedAt: now })
   }
   async function balance(userId: string) {
     const [w] = await m.db.select().from(m.schema.walletAccount).where(m.eq(m.schema.walletAccount.userId, userId))
