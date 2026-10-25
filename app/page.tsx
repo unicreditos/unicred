@@ -23,9 +23,9 @@ import {
 import Link from 'next/link'
 
 export const metadata = pageMetadata({
-  title: 'Préstamos personales online',
+  title: 'Plataforma de soluciones financieras',
   description:
-    'Préstamo personal online en Argentina. Simulá la cuota con TNA, TEA y CFT a la vista, verificá tu identidad y firmá solo cuando el costo total te cierra.',
+    'Plataforma de soluciones financieras en Argentina: préstamo personal online con TNA, TEA y CFT a la vista, pagos de servicios, billetera virtual y red de comercios.',
   path: '/',
 })
 
@@ -150,13 +150,13 @@ export default async function HomePage() {
         <section className="relative overflow-hidden bg-brand-navy-800 text-white">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_70%_at_88%_0%,rgba(42,156,164,0.30),transparent_70%),radial-gradient(40%_50%_at_0%_100%,rgba(29,95,174,0.22),transparent_70%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_70%_at_88%_0%,rgba(116,172,223,0.30),transparent_70%),radial-gradient(40%_50%_at_0%_100%,rgba(29,95,174,0.22),transparent_70%)]"
           />
           <div aria-hidden className="uc-grid-bg pointer-events-none absolute inset-0" />
           <div className="relative mx-auto grid w-full max-w-7xl items-start gap-12 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-28 lg:pt-20">
             <div className="uc-stagger min-w-0 lg:sticky lg:top-28 lg:col-span-6">
               <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-white">
-                <span className="uc-dot-live h-1.5 w-1.5 rounded-full bg-brand-primary-300" aria-hidden /> Préstamos personales · 100% online
+                <span className="uc-dot-live h-1.5 w-1.5 rounded-full bg-brand-primary-300" aria-hidden /> Plataforma de soluciones financieras · 100% online
               </p>
               <h1 className="mt-6 text-balance font-display text-[2.5rem] font-extrabold leading-[1.05] tracking-[-0.03em] text-white sm:text-5xl lg:text-[3.75rem]">
                 Sabé cuánto devolvés. <span className="text-brand-primary-300">Antes de pedir.</span>
@@ -301,7 +301,7 @@ export default async function HomePage() {
           <div aria-hidden className="uc-grid-bg pointer-events-none absolute inset-0 opacity-70" />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_100%_0%,rgba(42,156,164,0.25),transparent_70%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_100%_0%,rgba(116,172,223,0.25),transparent_70%)]"
           />
           <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
             <div className="uc-reveal max-w-2xl">

@@ -115,7 +115,7 @@ export function brandedEmailHtml(input: {
   const site = emailOrigin()
   const btn = input.cta
     ? `<p style="margin:0 0 24px">
-        <a href="${escapeHtml(input.cta.href)}" style="display:inline-block;background:${input.cta.danger ? '#B42318' : '#0C7C84'};color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600">
+        <a href="${escapeHtml(input.cta.href)}" style="display:inline-block;background:${input.cta.danger ? '#B42318' : '#1F6FB5'};color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600">
           ${escapeHtml(input.cta.label)}
         </a>
       </p>`
@@ -131,7 +131,7 @@ export function brandedEmailHtml(input: {
         <td align="center">
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #d6dee8">
             <tr>
-              <td style="background:#0F2A4A;padding:16px 24px">
+              <td style="background:#0B1E3F;padding:16px 24px">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="vertical-align:middle">
@@ -146,7 +146,7 @@ export function brandedEmailHtml(input: {
               </td>
             </tr>
             <tr>
-              <td style="font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0F2A4A;padding:28px 24px 8px">
+              <td style="font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0B1E3F;padding:28px 24px 8px">
                 <h1 style="font-size:20px;line-height:1.3;margin:0 0 16px">${escapeHtml(input.title)}</h1>
                 ${input.bodyHtml}
                 ${btn}
@@ -158,7 +158,7 @@ export function brandedEmailHtml(input: {
                   ${escapeHtml(BRAND.legalName)} · CUIT ${escapeHtml(String(BRAND.cuit))} · ${escapeHtml(BRAND.address)}
                 </p>
                 <p style="font-size:12px;line-height:1.5;color:#64748b;margin:6px 0 0">
-                  <a href="${site}" style="color:#0C7C84;text-decoration:none">${escapeHtml(BRAND.domain)}</a>
+                  <a href="${site}" style="color:#1F6FB5;text-decoration:none">${escapeHtml(BRAND.domain)}</a>
                   · ${escapeHtml(BRAND.supportEmail)}
                 </p>
                 ${note}

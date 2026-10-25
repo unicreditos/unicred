@@ -96,7 +96,14 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     lastLookup.current = digits
     setError(null)
     setLookupLoading(true)
-    const res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    let res: Awaited<ReturnType<typeof lookupRegistrationIdentity>>
+    try {
+      res = await lookupRegistrationIdentity({ identifier: digits, accountType: 'persona' })
+    } catch {
+      setLookupLoading(false)
+      setError('No pudimos consultar el padrón. Revisá el número e intentá de nuevo.')
+      return
+    }
     setLookupLoading(false)
     if (!res.ok) {
       setError(res.error)
@@ -154,7 +161,15 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
     setAddress(match.address || address)
     setName(match.name)
     setCuil(match.cuil)
-    setDni(match.dni ?? identifier.replace(/\D/g, '').slice(0, 8))
+    const typed = identifier.replace(/\D/g, '')
+    const fromPadron = String(match.dni ?? '').replace(/\D/g, '')
+    const dniDigits =
+      fromPadron.length >= 7 && fromPadron.length <= 8
+        ? fromPadron
+        : typed.length === 7 || typed.length === 8
+          ? typed
+          : fromPadron || typed
+    setDni(dniDigits)
   }
 
   async function handleCreate() {
@@ -169,55 +184,58 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
       return
     }
     setSaving(true)
-    const created = await authClient.signUp.email({ email, password, name: name || email })
-    if (created.error) {
-      setSaving(false)
-      setError('No pudimos crear la cuenta. El email puede estar en uso.')
-      return
-    }
-    const signed = await authClient.signIn.email({ email, password })
-    if (signed.error) {
-      setSaving(false)
-      setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
-      return
-    }
+    try {
+      const created = await authClient.signUp.email({ email, password, name: name || email })
+      if (created.error) {
+        setError(created.error.message || 'No pudimos crear la cuenta. El email puede estar en uso.')
+        return
+      }
+      const signed = await authClient.signIn.email({ email, password })
+      if (signed.error) {
+        setError('La cuenta se creó pero no pudimos ingresar. Probá en Ingresar.')
+        return
+      }
 
-    const done = await completeRegistration({
-      accountType: 'persona',
-      name,
-      cuil,
-      dni,
-      phone,
-      birthDate,
-      province: geo.province || identity.province || '',
-      department: geo.department || identity.department || '',
-      city: geo.city || identity.city || '',
-      postalCode: geo.postalCode || identity.postalCode || '',
-      address: address || identity.address || '',
-      monthlyIncome: 0,
-      employmentStatus: '',
-      businessName: '',
-      category: '',
-      confirmedIdentity,
-      acceptedTerms,
-      acceptedBcraConsent,
-      identity,
-    })
-    setSaving(false)
-    if (!done.ok) {
-      setError(done.error)
-      return
+      const done = await completeRegistration({
+        accountType: 'persona',
+        name,
+        cuil,
+        dni,
+        phone,
+        birthDate,
+        province: geo.province || identity.province || '',
+        department: geo.department || identity.department || '',
+        city: geo.city || identity.city || '',
+        postalCode: geo.postalCode || identity.postalCode || '',
+        address: address || identity.address || '',
+        monthlyIncome: 0,
+        employmentStatus: '',
+        businessName: '',
+        category: '',
+        confirmedIdentity,
+        acceptedTerms,
+        acceptedBcraConsent,
+        identity,
+      })
+      if (!done.ok) {
+        setError(done.error)
+        return
+      }
+      setResult({
+        score: done.score?.score ?? null,
+        band: done.score?.band,
+        reasons: done.score?.reasons,
+        reportId: done.reportId,
+        dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
+        warning: done.warning,
+        diditConfigured: done.diditConfigured,
+      })
+      go('resultado')
+    } catch {
+      setError('No pudimos crear la cuenta. Intentá de nuevo en unos minutos.')
+    } finally {
+      setSaving(false)
     }
-    setResult({
-      score: done.score?.score ?? null,
-      band: done.score?.band,
-      reasons: done.score?.reasons,
-      reportId: done.reportId,
-      dashboardUrl: intent && hasLoanIntent(intent) ? solicitarHref(intent) : done.dashboardUrl,
-      warning: done.warning,
-      diditConfigured: done.diditConfigured,
-    })
-    go('resultado')
   }
 
   const contactoReady =
@@ -366,12 +384,15 @@ export function RegisterWizard({ intent }: { intent?: LoanIntent }) {
             />
             Confirmo que estos datos me corresponden y autorizo a UNICRÉDITOS a usarlos para el alta.
           </label>
+          {dni.replace(/\D/g, '').length < 7 ? (
+            <Alert text="El número no alcanza para un DNI de 7 u 8 dígitos. Volvé e ingresá el DNI, no un CUIL recortado." />
+          ) : null}
           {error && <Alert text={error} />}
           <NavRow
             onBack={() => go('id')}
             nextLabel="Confirmar y seguir"
             nextDisabled={
-              !confirmedIdentity || !name.trim() || dni.length < 7 || isSocietyLabelForDidit(name, identity.name)
+              !confirmedIdentity || !name.trim() || dni.replace(/\D/g, '').length < 7 || isSocietyLabelForDidit(name, identity.name)
             }
             onNext={() => go('contacto')}
           />

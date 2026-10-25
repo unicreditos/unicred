@@ -39,6 +39,8 @@ export default async function RedComerciosPage({
       <form className="mb-8 flex flex-wrap gap-2" action="/red-comercios" method="get">
         <input
           name="q"
+          type="search"
+          aria-label="Buscar comercio, rubro o ciudad"
           defaultValue={q ?? ''}
           placeholder="Buscar comercio, rubro o ciudad"
           className="h-11 min-w-[220px] flex-1 rounded-xl border border-border bg-white px-4 text-sm shadow-sm outline-none ring-brand-primary/30 focus:ring-2"

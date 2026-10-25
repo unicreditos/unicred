@@ -17,12 +17,12 @@
   --uc-table-border:#e1e6ed;
   --uc-table-head:#f3f6f9;
   --uc-table-zebra:#f9fafc;
-  --uc-table-hover:#e9f3f5;
-  --uc-accent:#0c7c84;
-  --uc-accent-hover:#0a6a71;
-  --uc-accent-soft:#e6f4f5;
+  --uc-table-hover:#EAF2FB;
+  --uc-accent:#1F6FB5;
+  --uc-accent-hover:#185A97;
+  --uc-accent-soft:#EEF5FC;
   --uc-accent-fg:#ffffff;
-  --uc-navy:#0f2a4a;
+  --uc-navy:#0B1E3F;
   --uc-focus:#1677d2;
   --uc-success:#15803d;
   --uc-warning:#a85a00;
@@ -33,11 +33,11 @@
   --uc-badge-danger-bg:#fde5e5;  --uc-badge-danger-fg:#9f1d27;
   --uc-badge-info-bg:#e2ecf8;    --uc-badge-info-fg:#194c8a;
   --uc-badge-neutral-bg:#ecf0f4; --uc-badge-neutral-fg:#435163;
-  --uc-sb-bg:#0f2a4a;
+  --uc-sb-bg:#0B1E3F;
   --uc-sb-text:#e8eef6;
   --uc-sb-text-muted:#a7b6ca;
   --uc-sb-hover:#173a62;
-  --uc-sb-active-bg:#0f5f68;
+  --uc-sb-active-bg:#17497F;
   --uc-sb-active-fg:#ffffff;
   --uc-sb-border:#1f3f66;
   --uc-shadow-sm:0 1px 2px rgba(15,27,45,.06);
@@ -63,10 +63,10 @@
   --uc-table-head:#162237;
   --uc-table-zebra:#131d2f;
   --uc-table-hover:#1b2c45;
-  --uc-accent:#3dbfc7;
-  --uc-accent-hover:#63d0d6;
-  --uc-accent-soft:#12353b;
-  --uc-accent-fg:#04232a;
+  --uc-accent:#74ACDF;
+  --uc-accent-hover:#9CC4EA;
+  --uc-accent-soft:#12263F;
+  --uc-accent-fg:#07142B;
   --uc-navy:#0a111e;
   --uc-focus:#6cb2ff;
   --uc-success:#4ade80;
@@ -82,7 +82,7 @@
   --uc-sb-text:#dde5ef;
   --uc-sb-text-muted:#93a1b6;
   --uc-sb-hover:#152238;
-  --uc-sb-active-bg:#10363d;
+  --uc-sb-active-bg:#142F52;
   --uc-sb-active-fg:#ffffff;
   --uc-sb-border:#1b2840;
   --uc-shadow-sm:0 1px 2px rgba(0,0,0,.4);
@@ -323,7 +323,7 @@ table.uc-dt{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5p
 .uc-soon p{margin:0 0 20px;color:var(--uc-text-muted)}
 
 /* ========================================================= DIÁLOGO + TOAST */
-dialog.uc-dlg{border:1px solid var(--uc-border);border-radius:14px;padding:0;width:520px;max-width:calc(100vw - 32px);background:var(--uc-surface);color:var(--uc-text);box-shadow:var(--uc-shadow-lg)}
+dialog.uc-dlg{border:1px solid var(--uc-border);border-radius:14px;padding:0;margin:auto;max-height:calc(100dvh - 32px);width:520px;max-width:calc(100vw - 32px);background:var(--uc-surface);color:var(--uc-text);box-shadow:var(--uc-shadow-lg)}
 dialog.uc-dlg::backdrop{background:rgba(8,15,28,.5)}
 .uc-dlg header{padding:20px 24px 4px}
 .uc-dlg h2{margin:0;font-size:17px}
@@ -624,7 +624,8 @@ a.uc-row-action{text-decoration:none}
   --secondary:#e2f0f1;--secondary-foreground:#0f1b2d;--accent:#e2f0f1;--accent-foreground:#0f1b2d;
   --border:#dce2ea;--input:#dce2ea;
 }
-[data-theme="dark"] .uc main [data-slot="card"]{color:#0f1b2d}
+[data-theme="dark"] .uc main [data-slot="card"],
+[data-theme="dark"] .uc main .bg-card{color:#0f1b2d}
 
 /* Pantallas de cuenta fuera del panel (seguridad, 2FA, retorno de identidad) */
 .uc-standalone{min-height:100vh;min-height:100svh;background:var(--uc-bg);color:var(--uc-text)}

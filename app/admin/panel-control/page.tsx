@@ -10,7 +10,7 @@ import { RechartsClientShell } from '@/components/admin/charts/recharts-client-s
 import { fdatetime } from '@/lib/uc/format'
 
 export const metadata = {
-  title: 'Panel de Control Ejecutivo · Alertas Críticas y Métricas Recharts',
+  title: 'Panel de Control Ejecutivo · Alertas críticas y métricas',
   description: 'Panel de control ejecutivo: volumen por mes, morosidad en tiempo real, distribución de cartera y alertas críticas por rubro comercial mediante mapa de calor.',
 }
 
@@ -22,7 +22,7 @@ export default async function AdminPanelControlPage() {
   const head = (
     <PageHead
       title="Panel de Control Ejecutivo"
-      description={`Visualización de métricas clave con Recharts · Actualizado al ${fdatetime(new Date())} h`}
+      description={`Métricas clave de la cartera · Actualizado al ${fdatetime(new Date())} h`}
       actions={
         <div className="uc-cta-row" style={{ gap: 10 }}>
           <ButtonLink href="/admin">Centro de Control</ButtonLink>

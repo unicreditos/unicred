@@ -105,7 +105,14 @@ export default async function SolicitudDetail({ params }: { params: Promise<{ id
                   ['DNI', <span key="d" className="uc-num">{fmtDni(client.dni) || '—'}</span>],
                   ['CUIL', <span key="c" className="uc-num">{client.cuit || '—'}</span>],
                   ['Ingresos declarados', income ? <span key="i" className="uc-num">{money(income)}</span> : '—'],
-                  ['Identidad', <Badge key="k" tone={KYC_TONE[client.kycStatus] ?? 'neutral'}>{KYC_LABEL[client.kycStatus] ?? client.kycStatus}</Badge>],
+                  [
+                    'Identidad',
+                    kycOk && kycBlockers.length > 0 ? (
+                      <Badge key="k" tone="warning">Verificado · con faltantes</Badge>
+                    ) : (
+                      <Badge key="k" tone={KYC_TONE[client.kycStatus] ?? 'neutral'}>{KYC_LABEL[client.kycStatus] ?? client.kycStatus}</Badge>
+                    ),
+                  ],
                   ['Score interno', client.score ? <span key="s" className="uc-num">{client.score}</span> : '—'],
                   ['Ocupación', client.occupation || '—'],
                   ['Localidad', [client.address.city, client.address.province].filter(Boolean).join(', ') || '—'],

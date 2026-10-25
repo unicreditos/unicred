@@ -3,6 +3,8 @@ import { dirname } from 'node:path'
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
 
+const isProd = process.env.NODE_ENV === 'production'
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -23,10 +25,9 @@ const csp = [
   "manifest-src 'self'",
   // Nadie puede incrustar el sitio salvo él mismo (los documentos del panel se muestran en un iframe propio).
   "frame-ancestors 'self'",
-  'upgrade-insecure-requests',
+  // En desarrollo (http://localhost) forzar https rompe los iframes y fetch internos.
+  ...(isProd ? ['upgrade-insecure-requests'] : []),
 ].join('; ')
-
-const isProd = process.env.NODE_ENV === 'production'
 
 /**
  * Backoffice: nada de terceros. Sin Mercado Pago, sin Didit, sin frames externos y sin conexiones
@@ -48,7 +49,8 @@ const adminCsp = [
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-ancestors 'self'",
-  'upgrade-insecure-requests',
+  // En desarrollo (http://localhost) forzar https rompe los iframes y fetch internos.
+  ...(isProd ? ['upgrade-insecure-requests'] : []),
 ].join('; ')
 
 /** Paneles autenticados (/admin y /dashboard): aislados del resto del sitio y del navegador. */

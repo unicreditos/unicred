@@ -27,9 +27,9 @@ const mono = JetBrains_Mono({
 // Con el sitio cerrado no se publican datos de la empresa: ni autor en el <head> ni JSON-LD.
 const closed = maintenanceEnabled()
 
-const siteTitle = 'UNICRÉDITOS'
+const siteTitle = 'UNICRÉDITOS · Plataforma de soluciones financieras'
 const siteDescription =
-  'Préstamos personales y comerciales en línea con simulación de cuotas, scoring BCRA y gestión de pagos.'
+  'Plataforma de soluciones financieras: préstamos personales online, pagos de servicios, billetera virtual y red de comercios, con el costo completo a la vista.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://unicreditos.com'),
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#0F2A4A',
+  themeColor: '#0B1E3F',
 }
 
 import { AnalyticsGate } from '@/components/analytics-gate'

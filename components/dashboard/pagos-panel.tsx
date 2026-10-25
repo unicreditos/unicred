@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
 import { PayInstallmentDialog, payCta } from '@/components/payments/pay-installment-dialog'
 
@@ -230,7 +231,16 @@ export function PagosPanel({
             <Button
               disabled={isPending || selectedIds.length === 0}
               className="w-full gap-1.5"
-              onClick={() => setPayOpen(true)}
+              onClick={() => {
+                if (
+                  (method === 'pago_facil' || method === 'rapipago') &&
+                  selectedIds.length !== 1
+                ) {
+                  toast.error('Pago Fácil y Rapipago: emití un cupón por cuota (elegí una sola).')
+                  return
+                }
+                setPayOpen(true)
+              }}
             >
               <Wallet className="h-4 w-4" />
               {payCta(method)}
