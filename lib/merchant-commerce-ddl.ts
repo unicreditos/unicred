@@ -99,4 +99,26 @@ export const MERCHANT_COMMERCE_DDL: string[] = [
     "createdAt" timestamptz NOT NULL DEFAULT now(),
     "updatedAt" timestamptz NOT NULL DEFAULT now()
   )`,
+  // Devoluciones, plazo del anticipo y recordatorios (2026-10-25). ADD COLUMN IF NOT EXISTS: aditivo.
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "approvedAt" timestamptz`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "remindersSent" integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundStatus" text`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundAmount" numeric(14,2)`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundMethod" text`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundReference" text`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundedAt" timestamptz`,
+  `ALTER TABLE merchant_order ADD COLUMN IF NOT EXISTS "refundedBy" text`,
+  `DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'merchant_order_refundStatus_check') THEN
+      ALTER TABLE merchant_order ADD CONSTRAINT "merchant_order_refundStatus_check" CHECK ("refundStatus" IS NULL OR "refundStatus" IN ('pending','refunded'));
+    END IF;
+  END $$`,
+  `CREATE INDEX IF NOT EXISTS merchant_order_refund_idx ON merchant_order ("refundStatus") WHERE "refundStatus" = 'pending'`,
+  `CREATE TABLE IF NOT EXISTS bank_holiday (
+    date text PRIMARY KEY,
+    name text,
+    kind text,
+    source text NOT NULL DEFAULT 'argentinadatos',
+    "updatedAt" timestamptz NOT NULL DEFAULT now()
+  )`,
 ]

@@ -20,7 +20,10 @@ export default async function CreditosPage() {
     getMyMerchantOrders(),
   ])
   const purchaseByLoan = new Map(purchases.orders.map((o) => [o.loanId, o]))
-  const openPurchases = purchases.orders.filter((o) => !['entregada', 'liquidada', 'rechazada', 'anulada'].includes(o.stage))
+  // Una anulada con anticipo por devolver sigue a la vista hasta que se devuelva.
+  const openPurchases = purchases.orders.filter(
+    (o) => !['entregada', 'liquidada', 'rechazada', 'anulada'].includes(o.stage) || o.refundStatus === 'pending',
+  )
   // Una compra en curso ya se muestra con su propia tarjeta: no se repite como crédito.
   const openLoanIds = new Set(openPurchases.map((o) => o.loanId))
   const visibleLoans = loans.filter((l) => !openLoanIds.has(l.id))

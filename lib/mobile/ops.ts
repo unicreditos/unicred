@@ -20,6 +20,7 @@ import { notifyLoanRejected } from '@/lib/notify-email'
 import { activateLoanAfterDisbursement, ensureInstallmentPlan, ensurePendingDisbursement } from '@/lib/loan-schedule'
 import { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
 import { notifyOrderDecision } from '@/lib/merchant-orders/notify'
+import { recordOrderDecision } from '@/lib/merchant-orders/service'
 import { assertCanApproveLoan } from '@/lib/loan-approval-gate'
 import { assertAdminTransition } from '@/lib/loan-state'
 import { getInbox } from '@/lib/notifications'
@@ -1325,6 +1326,7 @@ export async function mobileAdminApproveLoan(adminId: string, id: string, note?:
       term: existing.term,
     })
   }
+  await recordOrderDecision(id, 'approved')
   await notifyOrderDecision(id, 'approved')
   return { success: true, message: 'Préstamo aprobado' }
 }

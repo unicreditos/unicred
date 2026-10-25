@@ -4,6 +4,7 @@ import { CardHead, KpiGrid, NoAccess, PageHead, Pad } from '@/components/uc/bloc
 import type { GridRow } from '@/components/uc/grid-types'
 import { loadDeskChrome } from '@/lib/admin-desk/load'
 import { formatCBU } from '@/lib/finance'
+import { loadBankHolidays } from '@/lib/merchant-orders/holidays'
 import { formatPayDate, nextSettlementDate } from '@/lib/merchant-orders/rules'
 import { listSettlements } from '@/lib/merchant-orders/service'
 import { fdate, money } from '@/lib/uc/format'
@@ -12,7 +13,7 @@ export const metadata = { title: 'Liquidaciones a comercios' }
 export const dynamic = 'force-dynamic'
 
 export default async function LiquidacionesComerciosPage() {
-  const { perms } = await loadDeskChrome()
+  const [{ perms }] = await Promise.all([loadDeskChrome(), loadBankHolidays()])
   const head = (
     <PageHead
       title="Liquidaciones a comercios"

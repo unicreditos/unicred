@@ -1,4 +1,4 @@
-import { CancelOrderForm, DownPaymentReview } from '@/app/admin/comercios/operaciones/_forms'
+import { CancelOrderForm, DownPaymentReview, RefundForm } from '@/app/admin/comercios/operaciones/_forms'
 import { BackLink, Badge, CardHead, Grid, Kv, NoAccess, PageHead, Pad } from '@/components/uc/blocks'
 import { loadDeskChrome } from '@/lib/admin-desk/load'
 import { DOWN_PAYMENT_LABEL, formatPayDate, ORDER_STAGE_LABEL, type DownPaymentStatus } from '@/lib/merchant-orders/rules'
@@ -16,6 +16,8 @@ export default async function OperacionComercioPage({ params }: { params: Promis
   const o = await getOrder(id)
   if (!o) notFound()
   const canReconcile = perms.has('payments.reconcile')
+  const canRefund = perms.has('disbursements.credit')
+  const refundAmount = money(Number(o.refundAmount ?? o.downPaymentAmount))
   const canCancel = perms.has('merchants.write') && !o.deliveredAt && !o.cancelledAt && o.stage !== 'rechazada'
 
   return (
@@ -82,12 +84,35 @@ export default async function OperacionComercioPage({ params }: { params: Promis
                 <a className="uc-btn uc-sm" href={`/api/admin/merchant-orders/${o.id}/proof`} target="_blank" rel="noreferrer">Ver comprobante</a>
               </p>
             ) : null}
-            {o.downPaymentStatus === 'reported' && canReconcile && !o.cancelledAt ? (
+            {o.downPaymentStatus === 'reported' && canReconcile ? (
               <div style={{ marginTop: 16 }}>
+                {o.cancelledAt ? (
+                  <p className="uc-small" style={{ marginBottom: 8 }}>
+                    La operación está anulada. Si el dinero entró, acreditalo: queda como devolución pendiente. Si no entró, rechazá el comprobante.
+                  </p>
+                ) : null}
                 <DownPaymentReview orderId={o.id} amount={money(Number(o.downPaymentAmount))} />
               </div>
             ) : null}
           </Pad>
+          {o.refundStatus ? (
+            <Pad>
+              <CardHead title="Devolución del anticipo" aside={<Badge tone={o.refundStatus === 'refunded' ? 'success' : 'danger'}>{o.refundStatus === 'refunded' ? 'Devuelto' : 'Pendiente'}</Badge>} />
+              <Kv
+                rows={[
+                  ['Importe', refundAmount],
+                  ['Medio', o.refundMethod === 'mp' ? 'Reintegro Mercado Pago' : o.refundMethod === 'transferencia' ? 'Transferencia' : '—'],
+                  ['Referencia', o.refundReference ?? '—'],
+                  ['Devuelto', o.refundedAt ? fdate(o.refundedAt) : '—'],
+                ]}
+              />
+              {o.refundStatus === 'pending' && canRefund ? (
+                <div style={{ marginTop: 16 }}>
+                  <RefundForm orderId={o.id} amount={refundAmount} viaMp={Boolean(o.mpPaymentId)} />
+                </div>
+              ) : null}
+            </Pad>
+          ) : null}
           {canCancel ? (
             <Pad>
               <CardHead title="Anular operación" />

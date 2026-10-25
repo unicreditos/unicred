@@ -2,8 +2,14 @@
 
 /** Backoffice de ventas en comercios: anticipos, anulaciones y pago de liquidaciones. */
 import { recordAudit } from '@/lib/audit'
-import { notifyDownPaymentConfirmed, notifyDownPaymentRejected, notifySettlementPaid } from '@/lib/merchant-orders/notify'
-import { cancelOrder, confirmDownPayment, markSettlementPaid, OrderError, rejectDownPayment } from '@/lib/merchant-orders/service'
+import {
+  notifyDownPaymentConfirmed,
+  notifyDownPaymentRejected,
+  notifyOrderCancelled,
+  notifyRefunded,
+  notifySettlementPaid,
+} from '@/lib/merchant-orders/notify'
+import { cancelOrder, confirmDownPayment, markSettlementPaid, OrderError, refundDownPayment, rejectDownPayment } from '@/lib/merchant-orders/service'
 import { requirePermission } from '@/lib/rbac'
 import { touchDesk } from '@/lib/merchant-orders/desk-cache'
 import { revalidatePath } from 'next/cache'
@@ -30,6 +36,17 @@ export async function adminConfirmDownPayment(input: { orderId: string; referenc
     const reference = input.reference.trim()
     if (reference.length < 4) throw new OrderError('Anotá el número de operación que ves en el extracto.')
     const res = await confirmDownPayment({ orderId: input.orderId, by: adminId, method: 'transferencia', reference })
+    if (res.refundNeeded) {
+      await recordAudit({
+        actorUserId: adminId,
+        action: 'DOWN_PAYMENT_REFUND_PENDING',
+        entityType: 'merchant_order',
+        entityId: input.orderId,
+        targetUserId: res.order.customerUserId,
+        severity: 'warning',
+        summary: `Transferencia ref. ${reference} recibida con la operación anulada: queda para devolver`,
+      })
+    }
     if (res.changed) {
       await recordAudit({
         actorUserId: adminId,
@@ -67,15 +84,16 @@ export async function adminRejectDownPayment(input: { orderId: string; note: str
 export async function adminCancelOrder(input: { orderId: string; reason: string }): Promise<OpsResult> {
   try {
     const adminId = await requirePermission('merchants.write')
-    await cancelOrder({ orderId: input.orderId, by: adminId, reason: input.reason, asAdmin: true })
+    const res = await cancelOrder({ orderId: input.orderId, by: adminId, reason: input.reason, asAdmin: true })
     await recordAudit({
       actorUserId: adminId,
       action: 'MERCHANT_ORDER_CANCELLED',
       entityType: 'merchant_order',
       entityId: input.orderId,
       severity: 'warning',
-      summary: `Anulada por UNICRÉDITOS: ${input.reason.trim()}`,
+      summary: `Anulada por UNICRÉDITOS: ${input.reason.trim()}${res?.refundPending ? ' · anticipo a devolver' : ''}`,
     })
+    if (res) await notifyOrderCancelled(input.orderId)
     refresh(input.orderId)
     return { ok: true }
   } catch (err) {
@@ -97,6 +115,29 @@ export async function adminMarkSettlementPaid(input: { settlementId: string; tra
     })
     await notifySettlementPaid({ merchantId: s.merchantId, code: s.code, netAmount: s.netAmount, transferReference: s.transferReference ?? '' })
     refresh()
+    return { ok: true }
+  } catch (err) {
+    return fail(err)
+  }
+}
+
+export async function adminRefundDownPayment(input: { orderId: string; method: 'mp' | 'transferencia'; reference?: string }): Promise<OpsResult> {
+  try {
+    const adminId = await requirePermission('disbursements.credit')
+    const res = await refundDownPayment({ orderId: input.orderId, by: adminId, method: input.method, reference: input.reference })
+    if (res.changed) {
+      await recordAudit({
+        actorUserId: adminId,
+        action: 'DOWN_PAYMENT_REFUNDED',
+        entityType: 'merchant_order',
+        entityId: input.orderId,
+        targetUserId: res.order.customerUserId,
+        severity: 'warning',
+        summary: `Anticipo $ ${res.order.refundAmount ?? res.order.downPaymentAmount} devuelto · ${res.order.refundReference ?? ''}`.trim(),
+      })
+      await notifyRefunded(input.orderId)
+    }
+    refresh(input.orderId)
     return { ok: true }
   } catch (err) {
     return fail(err)

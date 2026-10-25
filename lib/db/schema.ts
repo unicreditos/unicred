@@ -276,6 +276,16 @@ export const merchantOrder = pgTable('merchant_order', {
   cancelledAt: tsCol('cancelledAt'),
   cancelledBy: text('cancelledBy'),
   cancelReason: text('cancelReason'),
+  /** Cuándo la mesa aprobó el crédito: cuenta el plazo para firmar y pagar el anticipo. */
+  approvedAt: tsCol('approvedAt'),
+  remindersSent: integer('remindersSent').notNull().default(0),
+  /** Devolución del anticipo de una operación anulada con el dinero ya cobrado. */
+  refundStatus: text('refundStatus'),
+  refundAmount: numeric('refundAmount', { precision: 14, scale: 2 }),
+  refundMethod: text('refundMethod'),
+  refundReference: text('refundReference'),
+  refundedAt: tsCol('refundedAt'),
+  refundedBy: text('refundedBy'),
   createdBy: text('createdBy'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: tsUpdated().notNull().defaultNow(),
@@ -289,7 +299,18 @@ export const merchantOrder = pgTable('merchant_order', {
   check('merchant_order_totalAmount_check', sql`${t.totalAmount} > 0`),
   check('merchant_order_downPaymentStatus_check', sql`${t.downPaymentStatus} IN ('pending','reported','confirmed','rejected')`),
   check('merchant_order_split_ok', sql`${t.downPaymentAmount} + ${t.financedAmount} = ${t.totalAmount}`),
+  check('merchant_order_refundStatus_check', sql`${t.refundStatus} IS NULL OR ${t.refundStatus} IN ('pending','refunded')`),
+  index('merchant_order_refund_idx').on(t.refundStatus).where(sql`${t.refundStatus} = 'pending'`),
 ])
+
+/** Feriados bancarios de Argentina (se actualizan solos desde una fuente pública; hay lista fija de respaldo). */
+export const bankHoliday = pgTable('bank_holiday', {
+  date: text('date').primaryKey(),
+  name: text('name'),
+  kind: text('kind'),
+  source: text('source').notNull().default('argentinadatos'),
+  updatedAt: tsUpdated().notNull().defaultNow(),
+})
 
 /** Lote semanal que UNICRÉDITOS transfiere a cada comercio (viernes o próximo día hábil). */
 export const merchantSettlement = pgTable('merchant_settlement', {

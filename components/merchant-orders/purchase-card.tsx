@@ -32,6 +32,11 @@ export type PurchaseOrder = {
   deliveredAt: Date | string | null
   qr: { data: string; expiresAt: Date | string } | null
   pendingSteps: string[]
+  cancelReason: string | null
+  refundStatus: string | null
+  refundAmount: string | null
+  refundMethod: string | null
+  refundReference: string | null
 }
 
 export type TreasuryInfo = { bank: string; holder: string; cuit: string; cbu: string; alias: string | null; accountType: string }
@@ -274,7 +279,22 @@ export function PurchaseCard({ order, treasury }: { order: PurchaseOrder; treasu
             </p>
           ) : null}
           {order.stage === 'rechazada' ? <p className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">La mesa no aprobó esta compra en cuotas.</p> : null}
-          {order.stage === 'anulada' ? <p className="rounded-xl bg-slate-100 p-4 text-sm text-slate-700">La operación se anuló.</p> : null}
+          {order.stage === 'anulada' ? (
+            <div className="rounded-xl bg-slate-100 p-4 text-sm text-slate-700">
+              <p>La operación se anuló{order.cancelReason ? `: ${order.cancelReason}` : '.'}</p>
+              {order.refundStatus === 'pending' ? (
+                <p className="mt-2 font-semibold text-slate-900">
+                  Te devolvemos el anticipo de {formatARS(order.refundAmount ?? order.downPaymentAmount)} por el mismo medio con que pagaste. Te avisamos por mail cuando esté hecho.
+                </p>
+              ) : null}
+              {order.refundStatus === 'refunded' ? (
+                <p className="mt-2 font-semibold text-emerald-800">
+                  Te devolvimos {formatARS(order.refundAmount ?? order.downPaymentAmount)}
+                  {order.refundMethod === 'mp' ? ' en Mercado Pago' : order.refundReference ? ` · operación ${order.refundReference}` : ''}.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {order.stage === 'esperando_cliente' ? (
             <>

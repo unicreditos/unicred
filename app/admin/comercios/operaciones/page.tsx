@@ -31,7 +31,8 @@ export default async function OperacionesComerciosPage() {
   if (!perms.has('merchants.read') && !perms.has('payments.read')) return <>{head}<NoAccess what="las ventas en comercios" /></>
 
   const orders = await loadOrders({ limit: 1000 })
-  const toReview = orders.filter((o) => o.downPaymentStatus === 'reported' && !o.cancelledAt)
+  const toReview = orders.filter((o) => o.downPaymentStatus === 'reported')
+  const toRefund = orders.filter((o) => o.refundStatus === 'pending')
   const pendingCredit = orders.filter((o) => o.stage === 'en_revision')
   const rows: GridRow[] = orders.map((o) => ({
     id: o.id,
@@ -45,8 +46,8 @@ export default async function OperacionesComerciosPage() {
       o.downPaymentStatus === 'confirmed' ? 'success' : o.downPaymentStatus === 'reported' ? 'warning' : 'neutral',
     ),
     financiado: Number(o.financedAmount),
-    etapaKey: o.stage,
-    etapa: badge(ORDER_STAGE_LABEL[o.stage], TONE[o.stage]),
+    etapaKey: o.refundStatus === 'pending' ? 'a_devolver' : o.stage,
+    etapa: o.refundStatus === 'pending' ? badge('Anulada · anticipo a devolver', 'danger') : badge(ORDER_STAGE_LABEL[o.stage], TONE[o.stage]),
     alta: new Date(o.createdAt).toISOString(),
     ver: [
       { kind: 'link' as const, label: 'Abrir', href: `/admin/comercios/operaciones/${encodeURIComponent(o.id)}` },
@@ -71,6 +72,18 @@ export default async function OperacionesComerciosPage() {
           },
         ]}
       />
+      {toRefund.length ? (
+        <div id="devoluciones" style={{ margin: '20px 0' }}>
+          <Callout icon="alert" title={`${toRefund.length} anticipo${toRefund.length === 1 ? '' : 's'} para devolver por ventas anuladas`}>
+            {toRefund.map((o, i) => (
+              <span key={o.id}>
+                {i ? ' · ' : ''}
+                <a href={`/admin/comercios/operaciones/${o.id}`}>{o.code}</a> ({money(Number(o.refundAmount ?? o.downPaymentAmount))})
+              </span>
+            ))}
+          </Callout>
+        </div>
+      ) : null}
       {toReview.length ? (
         <div id="anticipos" style={{ margin: '20px 0' }}>
           <Callout icon="alert" title={`${toReview.length} anticipo${toReview.length === 1 ? '' : 's'} por transferencia para revisar`}>
@@ -104,7 +117,8 @@ export default async function OperacionesComerciosPage() {
               { v: 'lista_para_entregar', l: 'Para entregar' },
               { v: 'entregada', l: 'A liquidar' },
               { v: 'liquidada', l: 'Liquidadas' },
-              { v: 'cerradas', l: 'Rechazadas/anuladas', in: ['rechazada', 'anulada'] },
+              { v: 'a_devolver', l: 'Anticipo a devolver' },
+              { v: 'cerradas', l: 'Rechazadas/anuladas', in: ['rechazada', 'anulada', 'a_devolver'] },
             ],
           },
           columns: [

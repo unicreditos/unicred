@@ -31,7 +31,8 @@ export async function getMyMerchantOrders() {
       alias: TREASURY_ACCOUNT.alias,
       accountType: TREASURY_ACCOUNT.accountType,
     },
-    orders: orders.map(({ deliveryCode, downPaymentProof: _proof, mpQrData, mpQrExpiresAt, ...o }) => ({
+    // Fuera lo interno: comprobante, QR vencido e ids de quien operó en el backoffice.
+    orders: orders.map(({ deliveryCode, downPaymentProof: _proof, mpQrData, mpQrExpiresAt, refundedBy: _rb, cancelledBy: _cb, downPaymentReviewedBy: _rv, ...o }) => ({
       ...o,
       deliveryCode: o.stage === 'lista_para_entregar' ? deliveryCode : null,
       qr: mpQrData && mpQrExpiresAt && new Date(mpQrExpiresAt).getTime() > Date.now() && o.downPaymentStatus !== 'confirmed'

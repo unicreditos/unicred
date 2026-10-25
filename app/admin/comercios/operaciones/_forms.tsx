@@ -1,6 +1,13 @@
 'use client'
 
-import { adminCancelOrder, adminConfirmDownPayment, adminMarkSettlementPaid, adminRejectDownPayment, type OpsResult } from '@/app/admin/comercios/operaciones/actions'
+import {
+  adminCancelOrder,
+  adminConfirmDownPayment,
+  adminMarkSettlementPaid,
+  adminRefundDownPayment,
+  adminRejectDownPayment,
+  type OpsResult,
+} from '@/app/admin/comercios/operaciones/actions'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -76,6 +83,41 @@ export function CancelOrderForm({ orderId, refundNeeded }: { orderId: string; re
       {refundNeeded ? <p className="uc-small" style={{ color: 'var(--uc-danger)' }}>El anticipo ya está acreditado: registrá la devolución al cliente.</p> : null}
       <button className="uc-btn" disabled={pending} type="submit">Anular operación</button>
     </form>
+  )
+}
+
+export function RefundForm({ orderId, amount, viaMp }: { orderId: string; amount: string; viaMp: boolean }) {
+  const { pending, run } = useRun()
+  const [ref, setRef] = useState('')
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      {viaMp ? (
+        <button
+          className="uc-btn uc-primary"
+          disabled={pending}
+          type="button"
+          onClick={() => {
+            if (!confirm(`Se reintegran ${amount} al cliente por Mercado Pago. ¿Confirmás?`)) return
+            run(() => adminRefundDownPayment({ orderId, method: 'mp' }), 'Reintegro hecho en Mercado Pago: avisamos al cliente')
+          }}
+        >
+          Reintegrar {amount} por Mercado Pago
+        </button>
+      ) : null}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          run(() => adminRefundDownPayment({ orderId, method: 'transferencia', reference: ref }), 'Devolución registrada: avisamos al cliente')
+        }}
+        style={{ display: 'grid', gap: 8 }}
+      >
+        <label className="uc-small">
+          {viaMp ? 'O si lo devolviste por transferencia, n.º de operación' : `Transferí ${amount} a la cuenta de origen del comprobante y cargá el n.º de operación`}
+          <input className={input} value={ref} onChange={(e) => setRef(e.target.value)} required minLength={4} placeholder="Ej.: 000123456789" />
+        </label>
+        <button className={viaMp ? 'uc-btn' : 'uc-btn uc-primary'} disabled={pending} type="submit">Registrar devolución</button>
+      </form>
+    </div>
   )
 }
 

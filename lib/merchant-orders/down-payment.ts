@@ -103,6 +103,18 @@ export async function settleDownPaymentFromMp(input: { externalReference?: strin
       mpPaymentId: String(id),
       paidAmount: Number(p.transaction_amount ?? 0),
     })
+    if (res.refundNeeded) {
+      await recordAudit({
+        actorUserId: '',
+        action: 'DOWN_PAYMENT_REFUND_PENDING',
+        entityType: 'merchant_order',
+        entityId: row.id,
+        targetUserId: res.order.customerUserId,
+        severity: 'warning',
+        summary: `Pago ${id} de $ ${res.order.downPaymentAmount} recibido con la operación anulada: queda para devolver`,
+      })
+      touchDesk()
+    }
     if (res.changed) {
       await recordAudit({
         actorUserId: '',

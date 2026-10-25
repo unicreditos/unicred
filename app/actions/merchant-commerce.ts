@@ -9,7 +9,8 @@ import { db } from '@/lib/db'
 import { ensureMerchantCommerceSchema } from '@/lib/db/ensure-merchant-commerce'
 import { loanProduct, merchantPayoutAccount, merchantProduct } from '@/lib/db/schema'
 import { catalogByType } from '@/lib/loan-catalog'
-import { notifyDelivered, notifyOrderCreated } from '@/lib/merchant-orders/notify'
+import { notifyDelivered, notifyOrderCancelled, notifyOrderCreated } from '@/lib/merchant-orders/notify'
+import { loadBankHolidays } from '@/lib/merchant-orders/holidays'
 import { DOWN_PAYMENT_RATE, nextSettlementDate } from '@/lib/merchant-orders/rules'
 import {
   cancelOrder,
@@ -49,7 +50,7 @@ export async function getMerchantCommerce() {
   await assertRole('customer', 'merchant')
   const m = await getMyMerchant()
   if (!m) return null
-  await ensureMerchantCommerceSchema()
+  await Promise.all([ensureMerchantCommerceSchema(), loadBankHolidays()])
   const catalog = catalogByType('consumo')
   const [[product], products, orders, settlements, payout] = await Promise.all([
     db.select().from(loanProduct).where(eq(loanProduct.id, catalog.id)).limit(1),
@@ -230,6 +231,7 @@ export async function cancelMerchantOrder(input: { orderId: string; reason: stri
       severity: 'warning',
       summary: input.reason.trim(),
     })
+    await notifyOrderCancelled(input.orderId)
     revalidatePath('/merchant')
     revalidatePath('/dashboard')
     touchDesk()

@@ -25,6 +25,8 @@ import { computeFrenchAmortization } from '@/lib/finance'
 import { loanPricingFields } from '@/lib/loan-rates'
 import { catalogByType } from '@/lib/loan-catalog'
 import { activateLoanAfterDisbursement } from '@/lib/loan-schedule'
+import { mpApiFetch } from '@/lib/mercadopago'
+import { loadBankHolidays } from '@/lib/merchant-orders/holidays'
 import { canTransition } from '@/lib/loan-state'
 import {
   computeCreditOffer,
@@ -46,7 +48,9 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-export { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
+import { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
+
+export { isMerchantOrderLoan }
 
 export class OrderError extends Error {}
 
@@ -333,12 +337,30 @@ export async function confirmDownPayment(input: {
   return db.transaction(async (tx) => {
     const [o] = await tx.select().from(merchantOrder).where(eq(merchantOrder.id, input.orderId)).for('update').limit(1)
     if (!o) throw new OrderError('Operación no encontrada.')
-    if (o.downPaymentStatus === 'confirmed') return { changed: false, order: o }
-    if (o.cancelledAt) throw new OrderError('La operación está anulada: el anticipo se devuelve, no se acredita.')
+    if (o.downPaymentStatus === 'confirmed') return { changed: false, refundNeeded: false, order: o }
     if (input.paidAmount != null && input.paidAmount + 0.005 < Number(o.downPaymentAmount)) {
       throw new OrderError(`El pago ($ ${input.paidAmount}) es menor al anticipo ($ ${o.downPaymentAmount}).`)
     }
     const now = new Date()
+    if (o.cancelledAt) {
+      // El dinero entró después de anular (QR pagado tarde, transferencia ya hecha): se registra y queda para devolver.
+      const [kept] = await tx
+        .update(merchantOrder)
+        .set({
+          downPaymentStatus: 'confirmed',
+          downPaymentMethod: input.method,
+          downPaymentReference: input.reference ?? o.downPaymentReference,
+          mpPaymentId: input.mpPaymentId ?? o.mpPaymentId,
+          downPaidAt: now,
+          downPaymentReviewedBy: input.by,
+          refundStatus: o.refundStatus ?? 'pending',
+          refundAmount: o.refundAmount ?? o.downPaymentAmount,
+          updatedAt: now,
+        })
+        .where(eq(merchantOrder.id, o.id))
+        .returning()
+      return { changed: false, refundNeeded: true, order: kept }
+    }
     const [updated] = await tx
       .update(merchantOrder)
       .set({
@@ -352,7 +374,7 @@ export async function confirmDownPayment(input: {
       })
       .where(eq(merchantOrder.id, o.id))
       .returning()
-    return { changed: true, order: updated }
+    return { changed: true, refundNeeded: false, order: updated }
   })
 }
 
@@ -387,6 +409,7 @@ export async function deliverOrder(input: { orderId: string; merchantId: string;
   }
   if (code.length !== 6 || code !== order.deliveryCode) throw new OrderError('El código de entrega no coincide. Pedile al cliente el código que ve en su cuenta.')
 
+  await loadBankHolidays()
   const now = new Date()
   const payDate = settlementDateFor(now)
   let effectivePayDate = payDate
@@ -440,15 +463,75 @@ export async function cancelOrder(input: { orderId: string; by: string; reason: 
   }
   const now = new Date()
   await db.transaction(async (tx) => {
+    const paid = order.downPaymentStatus === 'confirmed'
     await tx
       .update(merchantOrder)
-      .set({ cancelledAt: now, cancelledBy: input.by, cancelReason: reason, updatedAt: now })
+      .set({
+        cancelledAt: now,
+        cancelledBy: input.by,
+        cancelReason: reason,
+        ...(paid ? { refundStatus: 'pending', refundAmount: order.downPaymentAmount } : {}),
+        updatedAt: now,
+      })
       .where(and(eq(merchantOrder.id, order.id), isNull(merchantOrder.deliveredAt)))
     const [l] = await tx.select({ status: loan.status }).from(loan).where(eq(loan.id, order.loanId)).limit(1)
     if (l && canTransition(l.status, 'cancelled') && l.status !== 'cancelled') {
       await tx.update(loan).set({ status: 'cancelled', rejectionReason: `Venta anulada: ${reason}`, updatedAt: now }).where(eq(loan.id, order.loanId))
     }
   })
+  return { refundPending: order.downPaymentStatus === 'confirmed' }
+}
+
+/* ------------------------------ Devolución del anticipo ------------------------------ */
+
+/**
+ * Devuelve el anticipo de una operación anulada. Si se cobró por QR se reintegra por la API de Mercado Pago
+ * (total, idempotente); si fue transferencia, tesorería transfiere y carga el número de operación.
+ */
+export async function refundDownPayment(input: { orderId: string; by: string; method: 'mp' | 'transferencia'; reference?: string }) {
+  await ensureMerchantCommerceSchema()
+  const [o] = await db.select().from(merchantOrder).where(eq(merchantOrder.id, input.orderId)).limit(1)
+  if (!o) throw new OrderError('Operación no encontrada.')
+  if (o.refundStatus === 'refunded') return { changed: false, order: o }
+  if (o.refundStatus !== 'pending' || !o.cancelledAt) throw new OrderError('Esta operación no tiene un anticipo para devolver.')
+  let reference = input.reference?.trim() ?? ''
+  if (input.method === 'mp') {
+    if (!o.mpPaymentId) throw new OrderError('El anticipo no se cobró con Mercado Pago: devolvelo por transferencia.')
+    const res = await mpApiFetch<{ id?: number | string; status?: string; message?: string }>(`/v1/payments/${encodeURIComponent(o.mpPaymentId)}/refunds`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+      idempotencyKey: `refund-${o.id}`,
+    })
+    if (!res.ok || !res.data?.id) {
+      throw new OrderError(`Mercado Pago no aceptó la devolución${res.data?.message ? `: ${res.data.message}` : ` (HTTP ${res.status})`}. Podés devolverlo por transferencia.`)
+    }
+    reference = `MP reintegro ${res.data.id}`
+  } else if (reference.length < 4) {
+    throw new OrderError('Cargá el número de operación de la transferencia de devolución.')
+  }
+  const now = new Date()
+  const [updated] = await db
+    .update(merchantOrder)
+    .set({ refundStatus: 'refunded', refundMethod: input.method, refundReference: reference.slice(0, 120), refundedAt: now, refundedBy: input.by, updatedAt: now })
+    .where(and(eq(merchantOrder.id, o.id), eq(merchantOrder.refundStatus, 'pending')))
+    .returning()
+  return { changed: Boolean(updated), order: updated ?? o }
+}
+
+/* ------------------------------ Decisión de la mesa ------------------------------ */
+
+/** Marca cuándo la mesa aprobó: desde ahí corre el plazo para firmar y pagar el anticipo. */
+export async function recordOrderDecision(loanId: string, decision: 'approved' | 'rejected') {
+  if (decision !== 'approved') return
+  try {
+    if (!(await isMerchantOrderLoan(db, loanId))) return
+    await db
+      .update(merchantOrder)
+      .set({ approvedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(merchantOrder.loanId, loanId), isNull(merchantOrder.approvedAt)))
+  } catch (err) {
+    console.error('[merchant-orders] fecha de aprobación:', err instanceof Error ? err.message : err)
+  }
 }
 
 /* ------------------------------ Liquidaciones ------------------------------ */

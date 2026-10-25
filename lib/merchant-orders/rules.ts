@@ -135,21 +135,63 @@ export function customerPendingSteps(input: { contractSigned: boolean; downPayme
   return steps
 }
 
+/* ------------------------- Plazo del cliente ------------------------- */
+
+/** Días desde la aprobación para firmar y pagar el anticipo. Después la operación se anula sola. */
+export const DOWN_PAYMENT_WINDOW_DAYS = 10
+/** Recordatorios al cliente: a los 2 días y a los 7 de aprobada. */
+export const REMINDER_DAYS = [2, 7] as const
+
+export type FollowUp = { kind: 'expire' } | { kind: 'remind'; daysLeft: number | null } | null
+
+/**
+ * Qué hacer hoy con una operación aprobada que espera al cliente. No vence si el anticipo ya se cobró (habría
+ * que devolverlo: lo decide una persona) ni si hay una transferencia informada esperando a tesorería.
+ */
+export function followUpFor(input: { ageDays: number; remindersSent: number; downPaymentStatus: string; contractSigned: boolean }): FollowUp {
+  const paid = input.downPaymentStatus === 'confirmed'
+  const inReview = input.downPaymentStatus === 'reported'
+  if (paid && input.contractSigned) return null
+  if (!paid && !inReview && input.ageDays >= DOWN_PAYMENT_WINDOW_DAYS) return { kind: 'expire' }
+  const due = REMINDER_DAYS.filter((d) => input.ageDays >= d).length
+  const needsAction = !input.contractSigned || (!paid && !inReview)
+  if (due > input.remindersSent && needsAction) {
+    return { kind: 'remind', daysLeft: paid || inReview ? null : Math.max(0, Math.ceil(DOWN_PAYMENT_WINDOW_DAYS - input.ageDays)) }
+  }
+  return null
+}
+
 /* ------------------------- Calendario de liquidación ------------------------- */
 
 /**
- * Feriados nacionales (y días no laborables en que los bancos no operan) que pueden mover un viernes
- * de liquidación. Fuente: calendario oficial de feriados de Argentina. Agregar el año siguiente acá.
+ * Feriados nacionales y días no laborables (puentes) en que los bancos no operan. Es la lista de respaldo
+ * (fuente: calendario oficial publicado en api.argentinadatos.com); el cron diario guarda los años nuevos en
+ * `bank_holiday` y el servidor los suma con `registerBankHolidays` antes de calcular fechas de pago.
  */
 export const AR_BANK_HOLIDAYS = new Set<string>([
   // 2026
   '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-23', '2026-03-24', '2026-04-02', '2026-04-03',
   '2026-05-01', '2026-05-25', '2026-06-15', '2026-06-20', '2026-07-09', '2026-07-10', '2026-08-17',
-  '2026-10-12', '2026-11-23', '2026-12-07', '2026-12-08', '2026-12-25',
+  '2026-10-12', '2026-11-09', '2026-11-23', '2026-12-07', '2026-12-08', '2026-12-25',
   // 2027
-  '2027-01-01', '2027-02-08', '2027-02-09', '2027-03-24', '2027-03-26', '2027-04-02', '2027-05-25',
-  '2027-06-21', '2027-07-09', '2027-08-16', '2027-10-11', '2027-12-08',
+  '2027-01-01', '2027-02-08', '2027-02-09', '2027-03-24', '2027-03-26', '2027-04-02', '2027-05-01',
+  '2027-05-25', '2027-06-17', '2027-06-20', '2027-07-09', '2027-08-17', '2027-10-12', '2027-11-20',
+  '2027-12-08', '2027-12-25',
 ])
+
+const DATE_KEY_RX = /^\d{4}-\d{2}-\d{2}$/
+
+/** Suma feriados al calendario (los que el cron trajo de la fuente oficial). Ignora fechas mal formadas. */
+export function registerBankHolidays(dates: Iterable<string>) {
+  for (const d of dates) if (DATE_KEY_RX.test(d)) AR_BANK_HOLIDAYS.add(d)
+}
+
+/** Último año con feriados cargados: si es el actual, falta el calendario del año que viene. */
+export function lastHolidayYear() {
+  let max = 0
+  for (const d of AR_BANK_HOLIDAYS) max = Math.max(max, Number(d.slice(0, 4)))
+  return max
+}
 
 function keyToUtc(key: string) {
   const [y, m, d] = key.split('-').map(Number)

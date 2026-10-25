@@ -1,7 +1,7 @@
 /** Avisos por mail de la venta financiada en comercios. Nunca cortan el flujo de negocio. */
 import { db } from '@/lib/db'
 import { merchant, user as userTable } from '@/lib/db/schema'
-import { emailOrigin, noticeEmail, sendEmail } from '@/lib/email'
+import { emailOrigin, noticeEmail, opsMailbox, sendEmail } from '@/lib/email'
 import { formatARS } from '@/lib/finance'
 import { isMerchantOrderLoan } from '@/lib/merchant-orders/detect'
 import { formatPayDate } from '@/lib/merchant-orders/rules'
@@ -153,4 +153,81 @@ export async function notifySettlementPaid(input: { merchantId: string; code: st
     lines: [`Transferimos ${formatARS(input.netAmount)} a tu cuenta de cobro (liquidación ${input.code}).`, `Número de operación: ${input.transferReference}.`],
     cta: { href: `${emailOrigin()}/merchant?tab=liquidaciones`, label: 'Ver el detalle' },
   })
+}
+
+/** Operación anulada (por el comercio, por la mesa o por vencimiento del plazo del anticipo). */
+export async function notifyOrderCancelled(orderId: string) {
+  const o = await getOrder(orderId)
+  if (!o) return
+  const refund = o.refundStatus === 'pending'
+  await send(await mailOf(o.customerUserId), {
+    subject: `Se anuló tu compra ${o.code}`,
+    title: 'Compra anulada',
+    lines: [
+      `Se anuló tu compra ${o.code} en ${o.merchantName}${o.cancelReason ? `. Motivo: ${o.cancelReason}` : '.'}`,
+      refund
+        ? `Te devolvemos el anticipo de ${formatARS(o.refundAmount ?? o.downPaymentAmount)} por el mismo medio con que pagaste. Te avisamos cuando esté hecho.`
+        : 'No quedó ningún crédito a tu nombre por esta compra.',
+    ],
+    cta: { href: `${emailOrigin()}/dashboard/creditos`, label: 'Ver mi cuenta' },
+  })
+  await send(await merchantMail(o.merchantId), {
+    subject: `Operación ${o.code} anulada`,
+    title: 'Operación anulada',
+    lines: [`La operación ${o.code} de ${o.customerName ?? 'tu cliente'} quedó anulada${o.cancelReason ? `: ${o.cancelReason}` : '.'}`, 'No entregues el producto financiado.'],
+    cta: { href: `${emailOrigin()}/merchant?tab=operaciones`, label: 'Ver operaciones' },
+  })
+}
+
+export async function notifyRefunded(orderId: string) {
+  const o = await getOrder(orderId)
+  if (!o || o.refundStatus !== 'refunded') return
+  await send(await mailOf(o.customerUserId), {
+    subject: 'Te devolvimos el anticipo',
+    title: 'Anticipo devuelto',
+    lines: [
+      `Te devolvimos ${formatARS(o.refundAmount ?? o.downPaymentAmount)} del anticipo de la compra anulada ${o.code}.`,
+      o.refundMethod === 'mp'
+        ? 'El reintegro se hizo en Mercado Pago: se ve en tu cuenta o tarjeta según el medio que usaste (puede demorar unos días hábiles).'
+        : `Lo transferimos a tu cuenta. Número de operación: ${o.refundReference ?? '—'}.`,
+    ],
+    cta: { href: `${emailOrigin()}/dashboard/creditos`, label: 'Ver mi cuenta' },
+  })
+}
+
+/** Recordatorio al cliente: la compra está aprobada pero falta firmar o pagar el anticipo. */
+export async function notifyPendingStepsReminder(orderId: string, daysLeft: number | null) {
+  const o = await getOrder(orderId)
+  if (!o || o.stage !== 'esperando_cliente') return
+  const missing = [!o.contractSigned ? 'firmar el contrato' : null, o.downPaymentStatus !== 'confirmed' ? `pagar el anticipo de ${formatARS(o.downPaymentAmount)}` : null]
+    .filter(Boolean)
+    .join(' y ')
+  await send(await mailOf(o.customerUserId), {
+    subject: `Tu compra en ${o.merchantName} te espera`,
+    title: 'Falta un paso para retirar tu compra',
+    lines: [
+      `Tu compra ${o.code} (${itemsLine(o)}) está aprobada. Para retirarla te falta ${missing}.`,
+      daysLeft == null
+        ? 'Cuando lo completes, en tu cuenta aparece el código de entrega para retirar el producto.'
+        : daysLeft > 0
+          ? `Tenés ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} para hacerlo; después la operación se anula sola.`
+          : 'Si no lo completás hoy, la operación se anula.',
+    ],
+    cta: { href: `${emailOrigin()}/dashboard/creditos`, label: 'Completar mi compra' },
+  })
+}
+
+/** Resumen diario para tesorería y la mesa (solo si hay algo que hacer). */
+export async function notifyOpsDigest(input: { title: string; lines: string[] }) {
+  if (!input.lines.length) return
+  await send(
+    { email: opsMailbox(), name: 'Equipo UNICRÉDITOS' },
+    {
+      subject: input.title,
+      title: input.title,
+      lines: input.lines,
+      cta: { href: `${emailOrigin()}/admin/comercios/operaciones`, label: 'Abrir ventas en comercios' },
+      copyOps: false,
+    },
+  )
 }

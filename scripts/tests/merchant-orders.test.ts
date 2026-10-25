@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  AR_BANK_HOLIDAYS,
   customerPendingSteps,
+  DOWN_PAYMENT_WINDOW_DAYS,
+  followUpFor,
   isBusinessDay,
+  lastHolidayYear,
+  registerBankHolidays,
   newDeliveryCode,
   newOrderCode,
   orderStage,
@@ -98,4 +103,44 @@ describe('códigos', () => {
     assert.match(newDeliveryCode(), /^\d{6}$/)
   })
   it('código de operación legible', () => assert.match(newOrderCode(), /^OP-[A-HJ-NP-Z2-9]{6}$/))
+})
+
+describe('plazo del cliente: recordatorios y vencimiento', () => {
+  const base = { remindersSent: 0, downPaymentStatus: 'pending', contractSigned: false }
+  it('el primer día no hace nada', () => assert.equal(followUpFor({ ...base, ageDays: 1 }), null))
+  it('a los 2 días recuerda con los días que quedan', () =>
+    assert.deepEqual(followUpFor({ ...base, ageDays: 2.2 }), { kind: 'remind', daysLeft: DOWN_PAYMENT_WINDOW_DAYS - 2 }))
+  it('no repite un recordatorio ya enviado', () => assert.equal(followUpFor({ ...base, ageDays: 3, remindersSent: 1 }), null))
+  it('a los 7 días manda el segundo', () => assert.equal(followUpFor({ ...base, ageDays: 7.1, remindersSent: 1 })?.kind, 'remind'))
+  it('al vencer el plazo sin anticipo se anula', () => assert.deepEqual(followUpFor({ ...base, ageDays: 10, remindersSent: 2 }), { kind: 'expire' }))
+  it('con el anticipo cobrado nunca se anula sola (habría que devolverlo)', () => {
+    const r = followUpFor({ ...base, downPaymentStatus: 'confirmed', ageDays: 30, remindersSent: 0 })
+    assert.deepEqual(r, { kind: 'remind', daysLeft: null })
+  })
+  it('con una transferencia en revisión no se anula ni se apura el pago', () => {
+    assert.equal(followUpFor({ ...base, downPaymentStatus: 'reported', contractSigned: true, ageDays: 30 }), null)
+    assert.deepEqual(followUpFor({ ...base, downPaymentStatus: 'reported', ageDays: 3 }), { kind: 'remind', daysLeft: null })
+  })
+  it('firmado y pagado no necesita seguimiento', () =>
+    assert.equal(followUpFor({ ...base, downPaymentStatus: 'confirmed', contractSigned: true, ageDays: 40 }), null))
+})
+
+describe('feriados: fuente oficial con respaldo fijo', () => {
+  it('el respaldo cubre el año que viene', () => assert.ok(lastHolidayYear() >= 2027))
+  it('incluye los puentes en que no operan los bancos', () => {
+    assert.ok(AR_BANK_HOLIDAYS.has('2026-12-07'))
+    assert.ok(AR_BANK_HOLIDAYS.has('2026-07-10'))
+  })
+  it('suma feriados nuevos e ignora basura', () => {
+    registerBankHolidays(['2030-01-01', 'no-es-fecha', '2030-13'])
+    assert.ok(AR_BANK_HOLIDAYS.has('2030-01-01'))
+    assert.ok(!AR_BANK_HOLIDAYS.has('no-es-fecha'))
+    assert.equal(isBusinessDay('2030-01-01'), false)
+    AR_BANK_HOLIDAYS.delete('2030-01-01')
+  })
+  it('un viernes feriado cargado desde la fuente corre la liquidación (y saltea el lunes 09/11, también feriado)', () => {
+    registerBankHolidays(['2026-11-06'])
+    assert.equal(settlementDateFor(at('2026-11-02T15:00:00Z')), '2026-11-10')
+    AR_BANK_HOLIDAYS.delete('2026-11-06')
+  })
 })
